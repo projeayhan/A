@@ -1,0 +1,391 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/theme/app_theme.dart';
+import '../services/car_sales_admin_service.dart';
+
+class CarSalesFuelTypesScreen extends ConsumerStatefulWidget {
+  const CarSalesFuelTypesScreen({super.key});
+
+  @override
+  ConsumerState<CarSalesFuelTypesScreen> createState() => _CarSalesFuelTypesScreenState();
+}
+
+class _CarSalesFuelTypesScreenState extends ConsumerState<CarSalesFuelTypesScreen> {
+  @override
+  Widget build(BuildContext context) {
+    final typesAsync = ref.watch(carFuelTypesProvider);
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Yakıt Tipleri',
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'Araç yakıt tiplerini ekleyin ve düzenleyin (Benzin, Dizel, Elektrik vb.)',
+                      style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                    ),
+                  ],
+                ),
+                Row(
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: () => ref.invalidate(carFuelTypesProvider),
+                      icon: const Icon(Icons.refresh, size: 18),
+                      label: const Text('Yenile'),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton.icon(
+                      onPressed: () => _showDialog(),
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('Yakıt Tipi Ekle'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Expanded(
+              child: typesAsync.when(
+                data: (types) => _buildTable(types),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('Hata: $e')),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTable(List<CarFuelType> items) {
+    if (items.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.local_gas_station, size: 64, color: AppColors.textMuted),
+            SizedBox(height: 16),
+            Text('Henüz yakıt tipi yok', style: TextStyle(color: AppColors.textMuted)),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.surfaceLight),
+      ),
+      child: SingleChildScrollView(
+        child: DataTable(
+          columnSpacing: 32,
+          columns: const [
+            DataColumn(label: Text('ID')),
+            DataColumn(label: Text('Ad')),
+            DataColumn(label: Text('İkon')),
+            DataColumn(label: Text('Renk')),
+            DataColumn(label: Text('Sıra')),
+            DataColumn(label: Text('Durum')),
+            DataColumn(label: Text('İşlemler')),
+          ],
+          rows: items.map((item) => _buildRow(item)).toList(),
+        ),
+      ),
+    );
+  }
+
+  DataRow _buildRow(CarFuelType item) {
+    final color = _parseColor(item.color);
+
+    return DataRow(
+      cells: [
+        DataCell(Text(item.id, style: const TextStyle(fontFamily: 'monospace'))),
+        DataCell(Text(item.name, style: const TextStyle(fontWeight: FontWeight.w500))),
+        DataCell(
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(_getIconData(item.icon), size: 20, color: color),
+              const SizedBox(width: 8),
+              Text(item.icon ?? '-', style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+            ],
+          ),
+        ),
+        DataCell(
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: AppColors.surfaceLight),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(item.color ?? '-', style: const TextStyle(fontSize: 12, fontFamily: 'monospace')),
+            ],
+          ),
+        ),
+        DataCell(Text(item.sortOrder.toString())),
+        DataCell(_buildStatusBadge(item.isActive)),
+        DataCell(
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                onPressed: () => _showDialog(item: item),
+                icon: const Icon(Icons.edit, size: 20),
+                tooltip: 'Düzenle',
+                color: AppColors.info,
+              ),
+              IconButton(
+                onPressed: () => _delete(item),
+                icon: const Icon(Icons.delete, size: 20),
+                tooltip: 'Sil',
+                color: AppColors.error,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Color _parseColor(String? hex) {
+    if (hex == null || hex.isEmpty) return AppColors.textMuted;
+    try {
+      return Color(int.parse(hex.replaceFirst('#', '0xFF')));
+    } catch (_) {
+      return AppColors.textMuted;
+    }
+  }
+
+  IconData _getIconData(String? iconName) {
+    const iconMap = {
+      'local_gas_station': Icons.local_gas_station,
+      'electric_bolt': Icons.electric_bolt,
+      'eco': Icons.eco,
+      'power': Icons.power,
+      'propane_tank': Icons.propane_tank,
+    };
+    return iconMap[iconName] ?? Icons.local_gas_station;
+  }
+
+  Widget _buildStatusBadge(bool isActive) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: (isActive ? AppColors.success : AppColors.error).withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        isActive ? 'Aktif' : 'Pasif',
+        style: TextStyle(
+          color: isActive ? AppColors.success : AppColors.error,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
+  }
+
+  void _showDialog({CarFuelType? item}) {
+    final isEdit = item != null;
+    final idController = TextEditingController(text: item?.id ?? '');
+    final nameController = TextEditingController(text: item?.name ?? '');
+    final iconController = TextEditingController(text: item?.icon ?? 'local_gas_station');
+    final colorController = TextEditingController(text: item?.color ?? '#6B7280');
+    final sortOrderController = TextEditingController(text: (item?.sortOrder ?? 0).toString());
+    bool isActive = item?.isActive ?? true;
+
+    final colorOptions = [
+      ('#EF4444', 'Kırmızı (Benzin)'),
+      ('#6B7280', 'Gri (Dizel)'),
+      ('#10B981', 'Yeşil (Elektrik)'),
+      ('#3B82F6', 'Mavi (Hibrit)'),
+      ('#8B5CF6', 'Mor (Plug-in)'),
+      ('#F59E0B', 'Turuncu (LPG)'),
+    ];
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(isEdit ? 'Yakıt Tipi Düzenle' : 'Yeni Yakıt Tipi Ekle'),
+          content: SizedBox(
+            width: 400,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: idController,
+                    decoration: const InputDecoration(
+                      labelText: 'ID *',
+                      hintText: 'petrol, diesel, electric',
+                    ),
+                    enabled: !isEdit,
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: nameController,
+                    decoration: const InputDecoration(labelText: 'Ad *'),
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    initialValue: iconController.text.isNotEmpty ? iconController.text : null,
+                    decoration: const InputDecoration(labelText: 'İkon'),
+                    items: const [
+                      DropdownMenuItem(value: 'local_gas_station', child: Text('⛽ Benzin İstasyonu')),
+                      DropdownMenuItem(value: 'electric_bolt', child: Text('⚡ Elektrik')),
+                      DropdownMenuItem(value: 'eco', child: Text('🌿 Eko/Hibrit')),
+                      DropdownMenuItem(value: 'power', child: Text('🔌 Plug-in')),
+                      DropdownMenuItem(value: 'propane_tank', child: Text('🛢️ LPG')),
+                    ],
+                    onChanged: (v) => iconController.text = v ?? 'local_gas_station',
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    initialValue: colorController.text.isNotEmpty ? colorController.text : null,
+                    decoration: const InputDecoration(labelText: 'Renk'),
+                    items: colorOptions.map((c) => DropdownMenuItem(
+                      value: c.$1,
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 20,
+                            height: 20,
+                            margin: const EdgeInsets.only(right: 8),
+                            decoration: BoxDecoration(
+                              color: _parseColor(c.$1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          Text(c.$2),
+                        ],
+                      ),
+                    )).toList(),
+                    onChanged: (v) => setDialogState(() => colorController.text = v ?? '#6B7280'),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: sortOrderController,
+                    decoration: const InputDecoration(labelText: 'Sıra'),
+                    keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: 16),
+                  SwitchListTile(
+                    title: const Text('Aktif'),
+                    value: isActive,
+                    onChanged: (v) => setDialogState(() => isActive = v),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('İptal'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                if (idController.text.isEmpty || nameController.text.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('ID ve Ad zorunludur')),
+                  );
+                  return;
+                }
+
+                final data = {
+                  'id': idController.text.toLowerCase().replaceAll(' ', '_'),
+                  'name': nameController.text,
+                  'icon': iconController.text,
+                  'color': colorController.text,
+                  'sort_order': int.tryParse(sortOrderController.text) ?? 0,
+                  'is_active': isActive,
+                };
+
+                final service = ref.read(carSalesAdminServiceProvider);
+                try {
+                  if (isEdit) {
+                    await service.updateFuelType(item.id, data);
+                  } else {
+                    await service.createFuelType(data);
+                  }
+                  ref.invalidate(carFuelTypesProvider);
+                  if (mounted) Navigator.pop(context);
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
+                    );
+                  }
+                }
+              },
+              child: Text(isEdit ? 'Güncelle' : 'Ekle'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _delete(CarFuelType item) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Yakıt Tipini Sil'),
+        content: Text('"${item.name}" yakıt tipini silmek istediğinize emin misiniz?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            child: const Text('Sil'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final service = ref.read(carSalesAdminServiceProvider);
+      try {
+        await service.deleteFuelType(item.id);
+        ref.invalidate(carFuelTypesProvider);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Yakıt tipi silindi'), backgroundColor: AppColors.success),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
+          );
+        }
+      }
+    }
+  }
+}

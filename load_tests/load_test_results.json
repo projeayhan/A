@@ -1,0 +1,12 @@
+{
+  "test_date": "2026-01-22T19:43:30.529Z",
+  "total_requests": 23499,
+  "failed_requests": 0,
+  "avg_response_time": "779.16ms",
+  "p95_response_time": "1999.86ms",
+  "max_response_time": "46229.36ms",
+  "requests_per_second": "348.01",
+  "dashboard_p95": "2426.20ms",
+  "orders_p95": "1408.60ms",
+  "merchants_p95": "1733.00ms"
+}

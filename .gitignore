@@ -1,0 +1,51 @@
+# Flutter/Dart
+**/build/
+**/.dart_tool/
+**/.packages
+**/.pub-cache/
+**/.pub/
+**/pubspec.lock
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# Windows ephemeral files
+**/windows/flutter/ephemeral/
+
+# macOS ephemeral files
+**/macos/Flutter/ephemeral/
+
+# Android
+**/android/.gradle/
+**/android/local.properties
+**/android/key.properties
+**/*.jks
+
+# iOS
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+
+# Generated files
+**/*.g.dart
+**/*.freezed.dart
+**/*.gr.dart
+
+# Miscellaneous
+*.log
+*.pyc
+.DS_Store
+Thumbs.db
+
+# Invalid Windows filenames
+nul
+**/nul
+
+# Temp Claude files
+**/tmpclaude-*
+CUsers*

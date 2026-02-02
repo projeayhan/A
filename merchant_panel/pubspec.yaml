@@ -1,0 +1,67 @@
+name: merchant_panel
+description: "OdaBase Merchant Panel - Restaurant & Store Management Dashboard"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.7.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # UI Components
+  cupertino_icons: ^1.0.8
+  google_fonts: ^6.2.1
+  fl_chart: ^0.69.2
+  data_table_2: ^2.5.15
+  cached_network_image: ^3.4.1
+  shimmer: ^3.0.0
+  badges: ^3.1.2
+
+  # State Management
+  flutter_riverpod: ^2.6.1
+
+  # Routing
+  go_router: ^14.8.1
+
+  # Backend
+  supabase_flutter: ^2.9.0
+
+  # Utils
+  intl: ^0.20.2
+  shared_preferences: ^2.5.3
+  file_picker: ^10.0.0
+  image_picker: ^1.1.2
+  url_launcher: ^6.3.1
+  uuid: ^4.5.1
+
+  # PDF & Excel
+  pdf: ^3.11.1
+  printing: ^5.13.4
+  excel: ^4.0.6
+  path_provider: ^2.1.5
+
+  # Audio for notifications
+  audioplayers: ^6.1.0
+
+  # Maps
+  google_maps_flutter: ^2.10.0
+  google_maps_flutter_web: ^0.5.10
+
+  # HTTP
+  http: ^1.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/
+    - assets/sounds/
