@@ -32,61 +32,77 @@ class AppBreakpoints {
 
 enum DeviceType { mobile, tablet, desktop }
 
-/// Responsive spacing system
+/// Responsive spacing system - Mobile-first compact design
 class AppSpacing {
-  // Base spacing values (mobile-first)
-  static const double xs = 4;
-  static const double sm = 8;
-  static const double md = 12;
-  static const double lg = 16;
-  static const double xl = 20;
-  static const double xxl = 24;
-  static const double xxxl = 32;
+  // Base spacing values (mobile-first, compact)
+  static const double xs = 2;
+  static const double sm = 4;
+  static const double md = 8;
+  static const double lg = 12;
+  static const double xl = 16;
+  static const double xxl = 20;
+  static const double xxxl = 24;
 
   /// Get horizontal page padding based on screen size
   static double pagePaddingH(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width < AppBreakpoints.tablet) return 12;
+    if (width < AppBreakpoints.desktop) return 20;
+    return 28;
+  }
+
+  /// Get vertical page padding based on screen size
+  static double pagePaddingV(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width < AppBreakpoints.tablet) return 8;
+    if (width < AppBreakpoints.desktop) return 16;
+    return 20;
+  }
+
+  /// Get card padding based on screen size
+  static double cardPadding(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width < AppBreakpoints.tablet) return 8;
+    if (width < AppBreakpoints.desktop) return 12;
+    return 16;
+  }
+
+  /// Get compact card padding for list items
+  static double cardPaddingCompact(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width < AppBreakpoints.tablet) return 6;
+    if (width < AppBreakpoints.desktop) return 10;
+    return 12;
+  }
+
+  /// Get section gap based on screen size
+  static double sectionGap(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
     if (width < AppBreakpoints.tablet) return 16;
     if (width < AppBreakpoints.desktop) return 24;
     return 32;
   }
 
-  /// Get vertical page padding based on screen size
-  static double pagePaddingV(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    if (width < AppBreakpoints.tablet) return 16;
-    if (width < AppBreakpoints.desktop) return 20;
-    return 24;
-  }
-
-  /// Get card padding based on screen size
-  static double cardPadding(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    if (width < AppBreakpoints.tablet) return 12;
-    if (width < AppBreakpoints.desktop) return 16;
-    return 20;
-  }
-
-  /// Get section gap based on screen size
-  static double sectionGap(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    if (width < AppBreakpoints.tablet) return 24;
-    if (width < AppBreakpoints.desktop) return 32;
-    return 40;
-  }
-
   /// Get item gap in lists
   static double itemGap(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    if (width < AppBreakpoints.tablet) return 12;
-    if (width < AppBreakpoints.desktop) return 16;
-    return 20;
+    if (width < AppBreakpoints.tablet) return 8;
+    if (width < AppBreakpoints.desktop) return 12;
+    return 16;
+  }
+
+  /// Get compact item gap for dense lists
+  static double itemGapCompact(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width < AppBreakpoints.tablet) return 4;
+    if (width < AppBreakpoints.desktop) return 8;
+    return 10;
   }
 
   /// Get bottom nav safe area
   static double bottomNavPadding(BuildContext context) {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
-    return 80 + bottomPadding; // Nav height + safe area
+    return 56 + bottomPadding; // Compact nav height + safe area
   }
 }
 
@@ -134,118 +150,188 @@ class AppGrid {
   }
 }
 
-/// Responsive typography scaling
+/// Responsive typography scaling - Compact mobile-first
 class AppTypography {
   /// Get heading size based on screen
   static double heading1(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    if (width < AppBreakpoints.tablet) return 24;
-    if (width < AppBreakpoints.desktop) return 28;
-    return 32;
+    if (width < AppBreakpoints.tablet) return 18;
+    if (width < AppBreakpoints.desktop) return 22;
+    return 26;
   }
 
   static double heading2(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    if (width < AppBreakpoints.tablet) return 20;
-    if (width < AppBreakpoints.desktop) return 22;
-    return 24;
-  }
-
-  static double heading3(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    if (width < AppBreakpoints.tablet) return 16;
+    if (width < AppBreakpoints.tablet) return 15;
     if (width < AppBreakpoints.desktop) return 18;
     return 20;
   }
 
-  static double body(BuildContext context) {
+  static double heading3(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    if (width < AppBreakpoints.tablet) return 14;
+    if (width < AppBreakpoints.tablet) return 13;
     if (width < AppBreakpoints.desktop) return 15;
-    return 16;
+    return 17;
   }
 
-  static double caption(BuildContext context) {
+  static double body(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width < AppBreakpoints.tablet) return 13;
+    if (width < AppBreakpoints.desktop) return 14;
+    return 15;
+  }
+
+  static double bodySmall(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
     if (width < AppBreakpoints.tablet) return 12;
     if (width < AppBreakpoints.desktop) return 13;
     return 14;
   }
+
+  static double caption(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width < AppBreakpoints.tablet) return 11;
+    if (width < AppBreakpoints.desktop) return 12;
+    return 13;
+  }
+
+  static double captionSmall(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width < AppBreakpoints.tablet) return 10;
+    if (width < AppBreakpoints.desktop) return 11;
+    return 12;
+  }
+
+  /// Price text - slightly larger for visibility
+  static double price(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width < AppBreakpoints.tablet) return 14;
+    if (width < AppBreakpoints.desktop) return 15;
+    return 16;
+  }
 }
 
-/// Responsive sizing for UI elements
+/// Responsive sizing for UI elements - Compact mobile-first
 class AppSizing {
   /// Get icon size based on screen
   static double iconSmall(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    if (width < AppBreakpoints.tablet) return 16;
-    if (width < AppBreakpoints.desktop) return 18;
-    return 20;
+    if (width < AppBreakpoints.tablet) return 14;
+    if (width < AppBreakpoints.desktop) return 16;
+    return 18;
   }
 
   static double iconMedium(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    if (width < AppBreakpoints.tablet) return 20;
-    if (width < AppBreakpoints.desktop) return 22;
-    return 24;
+    if (width < AppBreakpoints.tablet) return 18;
+    if (width < AppBreakpoints.desktop) return 20;
+    return 22;
   }
 
   static double iconLarge(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    if (width < AppBreakpoints.tablet) return 24;
-    if (width < AppBreakpoints.desktop) return 28;
-    return 32;
+    if (width < AppBreakpoints.tablet) return 22;
+    if (width < AppBreakpoints.desktop) return 26;
+    return 30;
   }
 
   /// Get avatar size
   static double avatarSmall(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    if (width < AppBreakpoints.tablet) return 32;
-    if (width < AppBreakpoints.desktop) return 36;
-    return 40;
+    if (width < AppBreakpoints.tablet) return 28;
+    if (width < AppBreakpoints.desktop) return 32;
+    return 36;
   }
 
   static double avatarMedium(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    if (width < AppBreakpoints.tablet) return 40;
-    if (width < AppBreakpoints.desktop) return 48;
-    return 56;
+    if (width < AppBreakpoints.tablet) return 36;
+    if (width < AppBreakpoints.desktop) return 44;
+    return 52;
   }
 
   static double avatarLarge(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    if (width < AppBreakpoints.tablet) return 56;
-    if (width < AppBreakpoints.desktop) return 64;
-    return 72;
+    if (width < AppBreakpoints.tablet) return 48;
+    if (width < AppBreakpoints.desktop) return 56;
+    return 64;
   }
 
   /// Get card image height
-  static double cardImageHeight(BuildContext context, {double baseHeight = 120}) {
+  static double cardImageHeight(BuildContext context, {double baseHeight = 80}) {
     final width = MediaQuery.of(context).size.width;
     if (width < AppBreakpoints.tablet) return baseHeight;
-    if (width < AppBreakpoints.desktop) return baseHeight * 1.2;
-    return baseHeight * 1.4;
+    if (width < AppBreakpoints.desktop) return baseHeight * 1.15;
+    return baseHeight * 1.3;
   }
 
-  /// Get touch target minimum size (Material guidelines: 48dp)
+  /// Get list item image size (square)
+  static double listItemImage(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width < AppBreakpoints.tablet) return 64;
+    if (width < AppBreakpoints.desktop) return 80;
+    return 96;
+  }
+
+  /// Get compact list item image size
+  static double listItemImageCompact(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width < AppBreakpoints.tablet) return 56;
+    if (width < AppBreakpoints.desktop) return 68;
+    return 80;
+  }
+
+  /// Get hero/banner image height
+  static double heroImageHeight(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width < AppBreakpoints.tablet) return 180;
+    if (width < AppBreakpoints.desktop) return 220;
+    return 280;
+  }
+
+  /// Get touch target minimum size (Material guidelines: 48dp, but we use 44 for compact)
   static double touchTarget(BuildContext context) {
-    return 48;
+    return 44;
   }
 
   /// Get button height
   static double buttonHeight(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    if (width < AppBreakpoints.tablet) return 48;
-    if (width < AppBreakpoints.desktop) return 52;
-    return 56;
+    if (width < AppBreakpoints.tablet) return 44;
+    if (width < AppBreakpoints.desktop) return 48;
+    return 52;
+  }
+
+  /// Get compact button height
+  static double buttonHeightCompact(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width < AppBreakpoints.tablet) return 36;
+    if (width < AppBreakpoints.desktop) return 40;
+    return 44;
   }
 
   /// Get dropdown/overlay max width
   static double dropdownMaxWidth(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
     if (width < AppBreakpoints.tablet) return width * 0.9;
-    if (width < AppBreakpoints.desktop) return 400;
-    return 450;
+    if (width < AppBreakpoints.desktop) return 360;
+    return 400;
+  }
+
+  /// Get list item height (for consistent row heights)
+  static double listItemHeight(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width < AppBreakpoints.tablet) return 72;
+    if (width < AppBreakpoints.desktop) return 84;
+    return 96;
+  }
+
+  /// Get compact list item height
+  static double listItemHeightCompact(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    if (width < AppBreakpoints.tablet) return 56;
+    if (width < AppBreakpoints.desktop) return 64;
+    return 72;
   }
 }
 
@@ -266,8 +352,10 @@ extension ResponsiveExtension on BuildContext {
   double get pagePaddingH => AppSpacing.pagePaddingH(this);
   double get pagePaddingV => AppSpacing.pagePaddingV(this);
   double get cardPadding => AppSpacing.cardPadding(this);
+  double get cardPaddingCompact => AppSpacing.cardPaddingCompact(this);
   double get sectionGap => AppSpacing.sectionGap(this);
   double get itemGap => AppSpacing.itemGap(this);
+  double get itemGapCompact => AppSpacing.itemGapCompact(this);
   double get bottomNavPadding => AppSpacing.bottomNavPadding(this);
 
   // Page padding as EdgeInsets
@@ -280,6 +368,10 @@ extension ResponsiveExtension on BuildContext {
         horizontal: pagePaddingH,
       );
 
+  // Compact card padding as EdgeInsets
+  EdgeInsets get cardInsets => EdgeInsets.all(cardPadding);
+  EdgeInsets get cardInsetsCompact => EdgeInsets.all(cardPaddingCompact);
+
   // Grid shortcuts
   int get gridColumns => AppGrid.columns(this);
   int get serviceGridColumns => AppGrid.serviceColumns(this);
@@ -291,7 +383,10 @@ extension ResponsiveExtension on BuildContext {
   double get heading2Size => AppTypography.heading2(this);
   double get heading3Size => AppTypography.heading3(this);
   double get bodySize => AppTypography.body(this);
+  double get bodySmallSize => AppTypography.bodySmall(this);
   double get captionSize => AppTypography.caption(this);
+  double get captionSmallSize => AppTypography.captionSmall(this);
+  double get priceSize => AppTypography.price(this);
 
   // Sizing shortcuts
   double get iconSmall => AppSizing.iconSmall(this);
@@ -301,10 +396,16 @@ extension ResponsiveExtension on BuildContext {
   double get avatarMedium => AppSizing.avatarMedium(this);
   double get avatarLarge => AppSizing.avatarLarge(this);
   double get buttonHeight => AppSizing.buttonHeight(this);
+  double get buttonHeightCompact => AppSizing.buttonHeightCompact(this);
   double get dropdownMaxWidth => AppSizing.dropdownMaxWidth(this);
+  double get listItemImage => AppSizing.listItemImage(this);
+  double get listItemImageCompact => AppSizing.listItemImageCompact(this);
+  double get heroImageHeight => AppSizing.heroImageHeight(this);
+  double get listItemHeight => AppSizing.listItemHeight(this);
+  double get listItemHeightCompact => AppSizing.listItemHeightCompact(this);
 
   // Card image height with custom base
-  double cardImageHeight([double baseHeight = 120]) =>
+  double cardImageHeight([double baseHeight = 80]) =>
       AppSizing.cardImageHeight(this, baseHeight: baseHeight);
 }
 

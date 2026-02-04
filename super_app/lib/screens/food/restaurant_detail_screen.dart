@@ -563,7 +563,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
 
   Widget _buildHeroSection(bool isDark) {
     return SizedBox(
-      height: 240,
+      height: context.heroImageHeight,
       child: Stack(
         children: [
           // Background Image
@@ -580,7 +580,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                     : null,
               ),
               child: widget.imageUrl.isEmpty
-                  ? Icon(Icons.restaurant, size: 64, color: Colors.grey[400])
+                  ? Icon(Icons.restaurant, size: 48, color: Colors.grey[400])
                   : null,
             ),
           ),
@@ -590,7 +590,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
             top: 0,
             left: 0,
             right: 0,
-            height: 96,
+            height: 80,
             child: Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -607,9 +607,9 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
 
           // Top Buttons
           Positioned(
-            top: MediaQuery.of(context).padding.top + 16,
-            left: 16,
-            right: 16,
+            top: MediaQuery.of(context).padding.top + 8,
+            left: context.pagePaddingH,
+            right: context.pagePaddingH,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -617,7 +617,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                 Row(
                   children: [
                     _buildCircleButton(Icons.search, _showSearchDialog),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
                     _buildCircleButton(
                       _isFavorite ? Icons.favorite : Icons.favorite_border,
                       _toggleFavorite,
@@ -630,33 +630,33 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
 
           // Delivery Time Badge
           Positioned(
-            bottom: 16,
-            right: 16,
+            bottom: 10,
+            right: context.pagePaddingH,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
                 color: isDark ? FoodColors.surfaceDark : Colors.white,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.15),
-                    blurRadius: 8,
+                    blurRadius: 6,
                   ),
                 ],
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.schedule,
-                    size: 18,
+                    size: context.iconSmall,
                     color: FoodColors.primary,
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: 3),
                   Text(
                     widget.deliveryTime,
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: context.captionSize,
                       fontWeight: FontWeight.bold,
                       color: isDark ? Colors.white : const Color(0xFF111827),
                     ),
@@ -674,20 +674,20 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 40,
-        height: 40,
+        width: 36,
+        height: 36,
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.2),
           shape: BoxShape.circle,
         ),
-        child: Icon(icon, color: Colors.white, size: 24),
+        child: Icon(icon, color: Colors.white, size: 20),
       ),
     );
   }
 
   Widget _buildRestaurantInfo(bool isDark) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
+      padding: EdgeInsets.fromLTRB(context.pagePaddingH, 12, context.pagePaddingH, 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -699,8 +699,8 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                 child: Text(
                   widget.name,
                   style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
+                    fontSize: context.heading1Size,
+                    fontWeight: FontWeight.w700,
                     color: isDark ? Colors.white : const Color(0xFF111827),
                   ),
                 ),
@@ -708,22 +708,22 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
               GestureDetector(
                 onTap: _scrollToReviews,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: isDark
                         ? const Color(0xFF166534).withValues(alpha: 0.3)
                         : const Color(0xFFDCFCE7),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(6),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.star, size: 14, color: FoodColors.primary),
-                      const SizedBox(width: 4),
+                      Icon(Icons.star, size: context.captionSize, color: FoodColors.primary),
+                      const SizedBox(width: 2),
                       Text(
                         widget.rating.toString(),
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: context.bodySmallSize,
                           fontWeight: FontWeight.bold,
                           color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF15803D),
                         ),
@@ -734,37 +734,14 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  widget.categories.isNotEmpty ? widget.categories : 'Restoran',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: isDark ? Colors.grey[400] : Colors.grey[500],
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: _scrollToReviews,
-                child: Row(
-                  children: [
-                    const Icon(Icons.star, size: 16, color: FoodColors.primary),
-                    const SizedBox(width: 2),
-                    Text(
-                      '${widget.rating}',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        color: FoodColors.primary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          const SizedBox(height: 4),
+          Text(
+            widget.categories.isNotEmpty ? widget.categories : 'Restoran',
+            style: TextStyle(
+              fontSize: context.captionSize,
+              color: isDark ? Colors.grey[400] : Colors.grey[500],
+            ),
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -781,14 +758,14 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
     }
 
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.symmetric(horizontal: context.pagePaddingH, vertical: 8),
       child: GestureDetector(
         onTap: _showStoreInfo,
         child: Container(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(context.cardPadding),
           decoration: BoxDecoration(
             color: isDark ? FoodColors.surfaceDark : const Color(0xFFFCFAF8),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
             border: Border.all(
               color: isDark ? Colors.grey[800]! : Colors.grey[100]!,
             ),
@@ -942,47 +919,46 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Category Title - More prominent styling
+        // Category Title - Compact styling
         Container(
-          margin: const EdgeInsets.only(top: 8),
+          margin: const EdgeInsets.only(top: 4),
           decoration: BoxDecoration(
             color: isDark ? const Color(0xFF1F2937) : const Color(0xFFF8F9FA),
             border: Border(
               left: BorderSide(
                 color: FoodColors.primary,
-                width: 4,
+                width: 3,
               ),
               bottom: BorderSide(
                 color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
-                width: 1,
+                width: 0.5,
               ),
             ),
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: EdgeInsets.symmetric(horizontal: context.pagePaddingH, vertical: 10),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   selectedCategory,
                   style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
+                    fontSize: context.heading3Size,
+                    fontWeight: FontWeight.w600,
                     color: isDark ? Colors.white : const Color(0xFF111827),
-                    letterSpacing: 0.2,
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     color: isDark ? Colors.grey[800] : Colors.grey[200],
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
                     '${filteredItems.length} ürün',
                     style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                      fontSize: context.captionSmallSize,
+                      fontWeight: FontWeight.w500,
                       color: isDark ? Colors.grey[300] : Colors.grey[700],
                     ),
                   ),
@@ -1010,13 +986,13 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
               cartIconKey: _cartIconKey,
               hasOptionGroups: item.hasOptionGroups,
             ),
-            Divider(height: 1, color: isDark ? Colors.grey[800] : Colors.grey[100]),
+            Divider(height: 0.5, color: isDark ? Colors.grey[800] : Colors.grey[100]),
           ],
         )),
 
         // Spacer
         Container(
-          height: 16,
+          height: 8,
           color: isDark ? Colors.black.withValues(alpha: 0.2) : const Color(0xFFF9FAFB),
         ),
       ],
@@ -1099,55 +1075,54 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Category Header - More prominent styling
+        // Category Header - Compact styling
         Container(
-          margin: const EdgeInsets.only(top: 8),
+          margin: const EdgeInsets.only(top: 4),
           decoration: BoxDecoration(
             color: isDark ? const Color(0xFF1F2937) : const Color(0xFFF8F9FA),
             border: Border(
               left: BorderSide(
                 color: isPopularSection ? Colors.orange : FoodColors.primary,
-                width: 4,
+                width: 3,
               ),
               bottom: BorderSide(
                 color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
-                width: 1,
+                width: 0.5,
               ),
             ),
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: EdgeInsets.symmetric(horizontal: context.pagePaddingH, vertical: 10),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(
                   children: [
                     if (isPopularSection) ...[
-                      const Icon(Icons.local_fire_department, color: Colors.orange, size: 22),
-                      const SizedBox(width: 8),
+                      Icon(Icons.local_fire_department, color: Colors.orange, size: context.iconMedium),
+                      const SizedBox(width: 6),
                     ],
                     Text(
                       categoryName,
                       style: TextStyle(
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
+                        fontSize: context.heading3Size,
+                        fontWeight: FontWeight.w600,
                         color: isDark ? Colors.white : const Color(0xFF111827),
-                        letterSpacing: 0.2,
                       ),
                     ),
                   ],
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     color: isDark ? Colors.grey[800] : Colors.grey[200],
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: Text(
                     '${items.length} ürün',
                     style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                      fontSize: context.captionSmallSize,
+                      fontWeight: FontWeight.w500,
                       color: isDark ? Colors.grey[300] : Colors.grey[700],
                     ),
                   ),
@@ -1175,13 +1150,13 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
               cartIconKey: _cartIconKey,
               hasOptionGroups: item.hasOptionGroups,
             ),
-            Divider(height: 1, color: isDark ? Colors.grey[800] : Colors.grey[100]),
+            Divider(height: 0.5, color: isDark ? Colors.grey[800] : Colors.grey[100]),
           ],
         )),
 
         // Category separator
         Container(
-          height: 8,
+          height: 6,
           color: isDark ? Colors.black.withValues(alpha: 0.2) : const Color(0xFFF3F4F6),
         ),
       ],
@@ -1192,7 +1167,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
     final reviewsAsync = ref.watch(merchantReviewsProvider(widget.restaurantId));
 
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(context.pagePaddingH),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1202,25 +1177,30 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
               Text(
                 'Değerlendirmeler',
                 style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                  fontSize: context.heading2Size,
+                  fontWeight: FontWeight.w600,
                   color: isDark ? Colors.white : const Color(0xFF111827),
                 ),
               ),
               TextButton(
                 onPressed: () => _showAllReviews(isDark),
-                child: const Text(
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Text(
                   'Tümünü Gör',
                   style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
+                    fontSize: context.bodySmallSize,
+                    fontWeight: FontWeight.w600,
                     color: FoodColors.primary,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
 
           reviewsAsync.when(
             data: (reviews) {

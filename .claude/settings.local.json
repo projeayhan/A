@@ -187,7 +187,10 @@
       "Bash(git -C c:/A remote set-url:*)",
       "Bash(git -C c:/A remote:*)",
       "Bash(git -C c:/A branch:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nfeat: Add AI chat assistant and improve app screens\n\n- Add floating AI assistant widget to admin, merchant, courier panels\n- Add AI chat service across all apps \\(super_app, admin, courier, merchant, rent_a_car\\)\n- Add order-chat-ai Supabase Edge Function\n- Add app dialogs utility for consistent dialog handling\n- Update auth screens \\(login, register, forgot password\\)\n- Improve food ordering flow screens\n- Update taxi screens and widgets\n- Enhance admin panel with food management features\n- Update merchant panel screens and widgets\n- Improve rental and emlak dashboard screens\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

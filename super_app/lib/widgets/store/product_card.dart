@@ -29,12 +29,12 @@ class ProductCard extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: isDark ? Colors.grey[900] : Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(10),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.06),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
@@ -45,10 +45,10 @@ class ProductCard extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(16),
+                    top: Radius.circular(10),
                   ),
                   child: AspectRatio(
-                    aspectRatio: 1,
+                    aspectRatio: 1.1, // Slightly wider for compact look
                     child: Image.network(
                       ImageUtils.getProductThumbnail(product.imageUrl),
                       fit: BoxFit.cover,
@@ -57,7 +57,7 @@ class ProductCard extends StatelessWidget {
                         child: Icon(
                           Icons.image_outlined,
                           color: AppColors.primary,
-                          size: 48,
+                          size: 32,
                         ),
                       ),
                     ),
@@ -66,22 +66,22 @@ class ProductCard extends StatelessWidget {
                 // Discount badge
                 if (product.discountPercent != null)
                   Positioned(
-                    top: 8,
-                    left: 8,
+                    top: 6,
+                    left: 6,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
+                        horizontal: 6,
+                        vertical: 2,
                       ),
                       decoration: BoxDecoration(
                         color: Colors.red,
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
                         '%${product.discountPercent}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
-                          fontSize: 12,
+                          fontSize: context.captionSmallSize,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -89,8 +89,8 @@ class ProductCard extends StatelessWidget {
                   ),
                 // Favorite button
                 Positioned(
-                  top: 8,
-                  right: 8,
+                  top: 6,
+                  right: 6,
                   child: GestureDetector(
                     onTap: () {
                       if (onFavorite != null) {
@@ -99,7 +99,7 @@ class ProductCard extends StatelessWidget {
                     },
                     behavior: HitTestBehavior.opaque,
                     child: Container(
-                      padding: const EdgeInsets.all(6),
+                      padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
                         color: isDark
                             ? Colors.black.withValues(alpha: 0.5)
@@ -108,7 +108,7 @@ class ProductCard extends StatelessWidget {
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.1),
-                            blurRadius: 4,
+                            blurRadius: 3,
                           ),
                         ],
                       ),
@@ -118,20 +118,20 @@ class ProductCard extends StatelessWidget {
                             : Icons.favorite_border_rounded,
                         color:
                             isFavorite ? Colors.red : Colors.grey[400],
-                        size: 20,
+                        size: 16,
                       ),
                     ),
                   ),
                 ),
-                // Store promotion label (mağaza tarafından belirlenen etiket)
+                // Store promotion label
                 if (product.promotionLabel != null)
                   Positioned(
-                    bottom: 8,
-                    left: 8,
+                    bottom: 6,
+                    left: 6,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 5,
+                        horizontal: 6,
+                        vertical: 3,
                       ),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
@@ -140,20 +140,20 @@ class ProductCard extends StatelessWidget {
                             Colors.deepOrange.shade500,
                           ],
                         ),
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(4),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.25),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
+                            color: Colors.black.withValues(alpha: 0.2),
+                            blurRadius: 3,
+                            offset: const Offset(0, 1),
                           ),
                         ],
                       ),
                       child: Text(
                         product.promotionLabel!,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
-                          fontSize: 11,
+                          fontSize: context.captionSmallSize,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -162,19 +162,19 @@ class ProductCard extends StatelessWidget {
                 // Badges row
                 if (product.promotionLabel == null)
                   Positioned(
-                    bottom: 8,
-                    left: 8,
-                    right: 8,
+                    bottom: 6,
+                    left: 6,
+                    right: 6,
                     child: Row(
                       children: [
                         if (product.freeShipping)
-                          _buildBadge(
+                          _buildBadge(context,
                             'Ücretsiz Kargo',
                             const Color(0xFF10B981),
                           ),
                         if (product.fastDelivery) ...[
-                          if (product.freeShipping) const SizedBox(width: 6),
-                          _buildBadge(
+                          if (product.freeShipping) const SizedBox(width: 4),
+                          _buildBadge(context,
                             'Hızlı',
                             AppColors.primary,
                           ),
@@ -185,17 +185,17 @@ class ProductCard extends StatelessWidget {
               ],
             ),
             Padding(
-              padding: EdgeInsets.all(context.cardPadding),
+              padding: EdgeInsets.all(context.cardPaddingCompact),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   if (showStoreName)
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
+                      padding: const EdgeInsets.only(bottom: 2),
                       child: Text(
                         product.storeName,
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: context.captionSmallSize,
                           color: AppColors.primary,
                           fontWeight: FontWeight.w500,
                         ),
@@ -204,28 +204,28 @@ class ProductCard extends StatelessWidget {
                   Text(
                     product.name,
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: context.bodySmallSize,
                       fontWeight: FontWeight.w500,
                       color: isDark ? Colors.white : Colors.black87,
-                      height: 1.3,
+                      height: 1.2,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 4),
                   // Rating row
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.star_rounded,
                         color: Colors.amber,
-                        size: 14,
+                        size: context.captionSize,
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 2),
                       Text(
                         product.rating.toStringAsFixed(1),
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: context.captionSize,
                           fontWeight: FontWeight.w600,
                           color: isDark ? Colors.white70 : Colors.black87,
                         ),
@@ -233,7 +233,7 @@ class ProductCard extends StatelessWidget {
                       Text(
                         ' (${product.reviewCount})',
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: context.captionSmallSize,
                           color: Colors.grey[500],
                         ),
                       ),
@@ -242,14 +242,14 @@ class ProductCard extends StatelessWidget {
                         Text(
                           product.formattedSoldCount,
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: context.captionSmallSize,
                             color: Colors.grey[500],
                           ),
                         ),
                       ],
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 4),
                   // Price row
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.end,
@@ -257,17 +257,17 @@ class ProductCard extends StatelessWidget {
                       Text(
                         product.formattedPrice,
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: context.priceSize,
                           fontWeight: FontWeight.bold,
                           color: isDark ? Colors.white : Colors.black87,
                         ),
                       ),
                       if (product.originalPrice != null) ...[
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 6),
                         Text(
                           product.formattedOriginalPrice,
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: context.captionSize,
                             color: Colors.grey[500],
                             decoration: TextDecoration.lineThrough,
                           ),
@@ -284,18 +284,18 @@ class ProductCard extends StatelessWidget {
     );
   }
 
-  Widget _buildBadge(String text, Color color) {
+  Widget _buildBadge(BuildContext context, String text, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(3),
       ),
       child: Text(
         text,
-        style: const TextStyle(
+        style: TextStyle(
           color: Colors.white,
-          fontSize: 10,
+          fontSize: context.captionSmallSize,
           fontWeight: FontWeight.w600,
         ),
       ),

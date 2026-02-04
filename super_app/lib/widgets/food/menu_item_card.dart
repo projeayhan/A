@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/utils/image_utils.dart';
+import '../../core/theme/app_responsive.dart';
 import '../../screens/food/food_home_screen.dart';
 import 'add_to_cart_animation.dart';
 
@@ -79,6 +80,8 @@ class _MenuItemCardState extends State<MenuItemCard> {
 
   @override
   Widget build(BuildContext context) {
+    final imageSize = context.listItemImage; // 64px on mobile
+
     return InkWell(
       onTap: () {
         context.push(
@@ -95,7 +98,10 @@ class _MenuItemCardState extends State<MenuItemCard> {
         );
       },
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.symmetric(
+          horizontal: context.pagePaddingH,
+          vertical: context.cardPaddingCompact,
+        ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -107,38 +113,40 @@ class _MenuItemCardState extends State<MenuItemCard> {
                   Text(
                     widget.name,
                     style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                      fontSize: context.bodySize,
+                      fontWeight: FontWeight.w600,
                       color: widget.isDark ? Colors.white : const Color(0xFF111827),
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
                     widget.description,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: context.captionSize,
                       color: widget.isDark ? Colors.grey[400] : Colors.grey[500],
-                      height: 1.4,
+                      height: 1.3,
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 6),
                   Row(
                     children: [
                       Text(
                         '${widget.price.toStringAsFixed(2)} TL',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: context.priceSize,
                           fontWeight: FontWeight.bold,
                           color: widget.isDark ? Colors.white : const Color(0xFF111827),
                         ),
                       ),
                       if (widget.badge != null) ...[
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
+                            horizontal: 5,
                             vertical: 2,
                           ),
                           decoration: BoxDecoration(
@@ -149,8 +157,8 @@ class _MenuItemCardState extends State<MenuItemCard> {
                           ),
                           child: Text(
                             widget.badge!.toUpperCase(),
-                            style: const TextStyle(
-                              fontSize: 10,
+                            style: TextStyle(
+                              fontSize: context.captionSmallSize,
                               fontWeight: FontWeight.bold,
                               color: FoodColors.primary,
                             ),
@@ -162,29 +170,29 @@ class _MenuItemCardState extends State<MenuItemCard> {
                 ],
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 10),
 
             // Image with Add Button
             SizedBox(
-              width: 112,
-              height: 112,
+              width: imageSize,
+              height: imageSize,
               child: Stack(
                 children: [
                   ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(8),
                     child: Image.network(
                       ImageUtils.getProductThumbnail(widget.imageUrl),
-                      width: 112,
-                      height: 112,
+                      width: imageSize,
+                      height: imageSize,
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) {
                         return Container(
-                          width: 112,
-                          height: 112,
+                          width: imageSize,
+                          height: imageSize,
                           color: widget.isDark ? Colors.grey[800] : Colors.grey[100],
                           child: Icon(
                             Icons.fastfood,
-                            size: 32,
+                            size: 24,
                             color: widget.isDark ? Colors.grey[600] : Colors.grey[400],
                           ),
                         );
@@ -192,27 +200,27 @@ class _MenuItemCardState extends State<MenuItemCard> {
                     ),
                   ),
                   Positioned(
-                    bottom: 8,
-                    right: 8,
+                    bottom: 4,
+                    right: 4,
                     child: GestureDetector(
                       key: _addButtonKey,
                       onTap: _handleAddToCart,
                       child: Container(
-                        width: 32,
-                        height: 32,
+                        width: 28,
+                        height: 28,
                         decoration: BoxDecoration(
                           color: widget.isDark ? FoodColors.surfaceDark : Colors.white,
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withValues(alpha: 0.15),
-                              blurRadius: 8,
+                              blurRadius: 4,
                             ),
                           ],
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.add,
-                          size: 20,
+                          size: context.iconSmall,
                           color: FoodColors.primary,
                         ),
                       ),

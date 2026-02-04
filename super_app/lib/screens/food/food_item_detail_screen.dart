@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../core/theme/app_responsive.dart';
 import '../../core/utils/app_dialogs.dart';
 import '../../core/utils/image_utils.dart';
 import '../../core/providers/cart_provider.dart';
@@ -205,7 +206,7 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
 
   Widget _buildHeroSection(bool isDark) {
     return SizedBox(
-      height: 320,
+      height: context.heroImageHeight + 20, // Slightly taller for detail view
       child: Stack(
         children: [
           // Image
@@ -218,12 +219,12 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) {
                         return Center(
-                          child: Icon(Icons.fastfood, size: 64, color: Colors.grey[400]),
+                          child: Icon(Icons.fastfood, size: 48, color: Colors.grey[400]),
                         );
                       },
                     )
                   : Center(
-                      child: Icon(Icons.fastfood, size: 64, color: Colors.grey[400]),
+                      child: Icon(Icons.fastfood, size: 48, color: Colors.grey[400]),
                     ),
             ),
           ),
@@ -233,7 +234,7 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
             top: 0,
             left: 0,
             right: 0,
-            height: 120,
+            height: 80,
             child: Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -250,9 +251,9 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
 
           // Navigation Buttons
           Positioned(
-            top: MediaQuery.of(context).padding.top + 12,
-            left: 16,
-            right: 16,
+            top: MediaQuery.of(context).padding.top + 8,
+            left: context.pagePaddingH,
+            right: context.pagePaddingH,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -260,7 +261,7 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
                 Row(
                   children: [
                     _buildCircleButton(Icons.share, () {}),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
                     _buildCircleButton(Icons.favorite_border, () {}),
                   ],
                 ),
@@ -270,33 +271,33 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
 
           // Pagination Dots
           Positioned(
-            bottom: 30,
+            bottom: 24,
             left: 0,
             right: 0,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  width: 24,
-                  height: 6,
+                  width: 20,
+                  height: 5,
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(3),
+                    borderRadius: BorderRadius.circular(2.5),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Container(
-                  width: 6,
-                  height: 6,
+                  width: 5,
+                  height: 5,
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.5),
                     shape: BoxShape.circle,
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Container(
-                  width: 6,
-                  height: 6,
+                  width: 5,
+                  height: 5,
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.5),
                     shape: BoxShape.circle,
@@ -314,33 +315,33 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 40,
-        height: 40,
+        width: 36,
+        height: 36,
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.2),
           shape: BoxShape.circle,
         ),
-        child: Icon(icon, color: Colors.white, size: 24),
+        child: Icon(icon, color: Colors.white, size: 20),
       ),
     );
   }
 
   Widget _buildContent(bool isDark) {
     return Container(
-      transform: Matrix4.translationValues(0, -24, 0),
+      transform: Matrix4.translationValues(0, -20, 0),
       decoration: BoxDecoration(
         color: isDark ? FoodColors.backgroundDark : const Color(0xFFF8F7F5),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 20,
-            offset: const Offset(0, -4),
+            blurRadius: 12,
+            offset: const Offset(0, -2),
           ),
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 24, 20, 180),
+        padding: EdgeInsets.fromLTRB(context.pagePaddingH, 16, context.pagePaddingH, 150),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

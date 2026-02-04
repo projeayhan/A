@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/theme/app_responsive.dart';
 import '../../models/store/store_model.dart';
 
 class StoreCard extends StatelessWidget {
@@ -28,15 +29,15 @@ class StoreCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 140,
+        width: 120,
         decoration: BoxDecoration(
           color: isDark ? Colors.grey[900] : Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(10),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.06),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
@@ -47,42 +48,42 @@ class StoreCard extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(16),
+                    top: Radius.circular(10),
                   ),
                   child: Image.network(
                     store.coverUrl,
-                    height: 80,
+                    height: 64,
                     width: double.infinity,
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => Container(
-                      height: 80,
+                      height: 64,
                       color: AppColors.primary.withValues(alpha: 0.1),
                       child: Icon(
                         Icons.store_rounded,
                         color: AppColors.primary,
-                        size: 32,
+                        size: 24,
                       ),
                     ),
                   ),
                 ),
                 if (store.discountBadge != null)
                   Positioned(
-                    top: 8,
-                    left: 8,
+                    top: 4,
+                    left: 4,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
+                        horizontal: 5,
+                        vertical: 2,
                       ),
                       decoration: BoxDecoration(
                         color: Colors.red,
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
                         store.discountBadge!,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
-                          fontSize: 10,
+                          fontSize: context.captionSmallSize,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -91,7 +92,7 @@ class StoreCard extends StatelessWidget {
               ],
             ),
             Padding(
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(context.cardPaddingCompact),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -101,7 +102,7 @@ class StoreCard extends StatelessWidget {
                         child: Text(
                           store.name,
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: context.bodySmallSize,
                             fontWeight: FontWeight.w600,
                             color: isDark ? Colors.white : Colors.black87,
                           ),
@@ -113,23 +114,23 @@ class StoreCard extends StatelessWidget {
                         Icon(
                           Icons.verified_rounded,
                           color: AppColors.primary,
-                          size: 16,
+                          size: context.iconSmall,
                         ),
                     ],
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.star_rounded,
                         color: Colors.amber,
-                        size: 14,
+                        size: context.captionSize,
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 2),
                       Text(
                         store.formattedRating,
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: context.captionSize,
                           fontWeight: FontWeight.w600,
                           color: isDark ? Colors.white70 : Colors.black87,
                         ),
@@ -137,7 +138,7 @@ class StoreCard extends StatelessWidget {
                       Text(
                         ' (${store.reviewCount})',
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: context.captionSmallSize,
                           color: Colors.grey[500],
                         ),
                       ),
@@ -156,15 +157,15 @@ class StoreCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
+        margin: EdgeInsets.only(bottom: context.itemGap),
         decoration: BoxDecoration(
           color: isDark ? Colors.grey[900] : Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(10),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.06),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
@@ -175,50 +176,50 @@ class StoreCard extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(16),
+                    top: Radius.circular(10),
                   ),
                   child: Image.network(
                     store.coverUrl,
-                    height: 120,
+                    height: 90,
                     width: double.infinity,
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => Container(
-                      height: 120,
+                      height: 90,
                       color: AppColors.primary.withValues(alpha: 0.1),
                       child: Icon(
                         Icons.store_rounded,
                         color: AppColors.primary,
-                        size: 48,
+                        size: 36,
                       ),
                     ),
                   ),
                 ),
                 Positioned(
-                  bottom: -25,
-                  left: 16,
+                  bottom: -20,
+                  left: 12,
                   child: Container(
-                    width: 50,
-                    height: 50,
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
                       color: isDark ? Colors.grey[800] : Colors.white,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(8),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 8,
+                          blurRadius: 6,
                           offset: const Offset(0, 2),
                         ),
                       ],
                     ),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(8),
                       child: Image.network(
                         store.logoUrl,
                         fit: BoxFit.cover,
                         errorBuilder: (_, __, ___) => Icon(
                           Icons.store_rounded,
                           color: AppColors.primary,
-                          size: 24,
+                          size: 20,
                         ),
                       ),
                     ),
@@ -226,22 +227,22 @@ class StoreCard extends StatelessWidget {
                 ),
                 if (store.discountBadge != null)
                   Positioned(
-                    top: 12,
-                    right: 12,
+                    top: 8,
+                    right: 8,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
+                        horizontal: 8,
+                        vertical: 4,
                       ),
                       decoration: BoxDecoration(
                         color: Colors.red,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         store.discountBadge!,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
-                          fontSize: 12,
+                          fontSize: context.captionSize,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -250,7 +251,7 @@ class StoreCard extends StatelessWidget {
               ],
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 32, 16, 16),
+              padding: EdgeInsets.fromLTRB(context.pagePaddingH, 24, context.pagePaddingH, context.cardPadding),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -263,8 +264,8 @@ class StoreCard extends StatelessWidget {
                               child: Text(
                                 store.name,
                                 style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
+                                  fontSize: context.heading3Size,
+                                  fontWeight: FontWeight.w600,
                                   color: isDark ? Colors.white : Colors.black87,
                                 ),
                                 maxLines: 1,
@@ -272,11 +273,11 @@ class StoreCard extends StatelessWidget {
                               ),
                             ),
                             if (store.isVerified) ...[
-                              const SizedBox(width: 6),
+                              const SizedBox(width: 4),
                               Icon(
                                 Icons.verified_rounded,
                                 color: AppColors.primary,
-                                size: 20,
+                                size: context.iconMedium,
                               ),
                             ],
                           ],
@@ -284,26 +285,26 @@ class StoreCard extends StatelessWidget {
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
+                          horizontal: 8,
+                          vertical: 3,
                         ),
                         decoration: BoxDecoration(
                           color: Colors.amber.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(6),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.star_rounded,
                               color: Colors.amber,
-                              size: 16,
+                              size: context.iconSmall,
                             ),
-                            const SizedBox(width: 4),
+                            const SizedBox(width: 2),
                             Text(
                               store.formattedRating,
-                              style: const TextStyle(
-                                fontSize: 14,
+                              style: TextStyle(
+                                fontSize: context.bodySmallSize,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.amber,
                               ),
@@ -313,22 +314,22 @@ class StoreCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
                   Row(
                     children: [
-                      _buildInfoChip(
+                      _buildInfoChip(context,
                         Icons.people_outline_rounded,
                         '${store.formattedFollowers} takipçi',
                         isDark,
                       ),
-                      const SizedBox(width: 12),
-                      _buildInfoChip(
+                      const SizedBox(width: 10),
+                      _buildInfoChip(context,
                         Icons.inventory_2_outlined,
                         '${store.productCount} ürün',
                         isDark,
                       ),
-                      const SizedBox(width: 12),
-                      _buildInfoChip(
+                      const SizedBox(width: 10),
+                      _buildInfoChip(context,
                         Icons.local_shipping_outlined,
                         store.deliveryTime,
                         isDark,
@@ -336,24 +337,24 @@ class StoreCard extends StatelessWidget {
                     ],
                   ),
                   if (store.tags.isNotEmpty) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
                     Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
+                      spacing: 6,
+                      runSpacing: 6,
                       children: store.tags.map((tag) {
                         return Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 4,
+                            horizontal: 8,
+                            vertical: 3,
                           ),
                           decoration: BoxDecoration(
                             color: AppColors.primary.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(6),
+                            borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
                             tag,
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: context.captionSize,
                               color: AppColors.primary,
                               fontWeight: FontWeight.w500,
                             ),
@@ -371,20 +372,20 @@ class StoreCard extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoChip(IconData icon, String text, bool isDark) {
+  Widget _buildInfoChip(BuildContext context, IconData icon, String text, bool isDark) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(
           icon,
-          size: 14,
+          size: context.captionSize,
           color: Colors.grey[500],
         ),
-        const SizedBox(width: 4),
+        const SizedBox(width: 3),
         Text(
           text,
           style: TextStyle(
-            fontSize: 12,
+            fontSize: context.captionSize,
             color: Colors.grey[600],
           ),
         ),

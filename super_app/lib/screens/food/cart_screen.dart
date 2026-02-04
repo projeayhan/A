@@ -613,19 +613,21 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   }
 
   Widget _buildCartItemWidget(CartItem item, bool isDark) {
+    final imageSize = context.listItemImageCompact;
+
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(context.cardPaddingCompact),
       decoration: BoxDecoration(
         color: isDark ? Colors.grey[800] : Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: isDark ? Colors.grey[700]!.withValues(alpha: 0.5) : Colors.grey[100]!,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -633,10 +635,10 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         children: [
           // Image
           ClipRRect(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(8),
             child: Container(
-              width: 96,
-              height: 96,
+              width: imageSize,
+              height: imageSize,
               color: isDark ? Colors.grey[700] : Colors.grey[100],
               child: item.imageUrl.isNotEmpty
                   ? Image.network(
@@ -645,19 +647,19 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                       errorBuilder: (context, error, stackTrace) {
                         return Icon(
                           Icons.fastfood,
-                          size: 32,
+                          size: 24,
                           color: isDark ? Colors.grey[600] : Colors.grey[400],
                         );
                       },
                     )
                   : Icon(
                       Icons.fastfood,
-                      size: 32,
+                      size: 24,
                       color: isDark ? Colors.grey[600] : Colors.grey[400],
                     ),
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 10),
 
           // Details
           Expanded(
@@ -672,8 +674,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                       child: Text(
                         item.name,
                         style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
+                          fontSize: context.bodySize,
+                          fontWeight: FontWeight.w600,
                           color: isDark ? Colors.white : Colors.grey[900],
                         ),
                       ),
@@ -682,18 +684,18 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                       onTap: () => ref.read(cartProvider.notifier).removeItem(item.id),
                       child: Icon(
                         Icons.close,
-                        size: 20,
+                        size: context.iconSmall,
                         color: Colors.grey[400],
                       ),
                     ),
                   ],
                 ),
                 if (item.description != null) ...[
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
                     item.description!,
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: context.captionSize,
                       color: isDark ? Colors.grey[400] : Colors.grey[500],
                     ),
                     maxLines: 1,
@@ -701,9 +703,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                   ),
                 ],
                 if (item.extra != null) ...[
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                     decoration: BoxDecoration(
                       color: isDark
                           ? const Color(0xFF7C2D12).withValues(alpha: 0.2)
@@ -712,22 +714,22 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                     ),
                     child: Text(
                       item.extra!,
-                      style: const TextStyle(
-                        fontSize: 10,
+                      style: TextStyle(
+                        fontSize: context.captionSmallSize,
                         fontWeight: FontWeight.w500,
                         color: FoodColors.primary,
                       ),
                     ),
                   ),
                 ],
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
                       '${item.price.toStringAsFixed(2)} TL',
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: context.priceSize,
                         fontWeight: FontWeight.bold,
                         color: isDark ? Colors.white : Colors.grey[900],
                       ),
