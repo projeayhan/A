@@ -6,6 +6,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/services/taxi_service.dart';
 import '../../core/services/supabase_service.dart';
+import '../../core/utils/app_dialogs.dart';
 import '../../services/location_service.dart';
 import '../../widgets/taxi/animated_map_markers.dart';
 import '../../models/taxi/taxi_models.dart';
@@ -270,12 +271,7 @@ class _TaxiDriverScreenState extends ConsumerState<TaxiDriverScreen>
                           phoneController.text.isEmpty ||
                           plateController.text.isEmpty ||
                           modelController.text.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Lütfen zorunlu alanları doldurun'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
+                        await AppDialogs.showError(context, 'Lütfen zorunlu alanları doldurun');
                         return;
                       }
 
@@ -294,23 +290,13 @@ class _TaxiDriverScreenState extends ConsumerState<TaxiDriverScreen>
 
                         if (context.mounted) {
                           Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Başvurunuz alındı! Onay sonrası aktif olacaksınız.'),
-                              backgroundColor: Colors.green,
-                            ),
-                          );
+                          await AppDialogs.showSuccess(context, 'Başvurunuz alındı! Onay sonrası aktif olacaksınız.');
                           _loadDriverProfile();
                         }
                       } catch (e) {
                         setModalState(() => isLoading = false);
                         if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Hata: $e'),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
+                          await AppDialogs.showError(context, 'Hata: $e');
                         }
                       }
                     },
@@ -477,35 +463,17 @@ class _TaxiDriverScreenState extends ConsumerState<TaxiDriverScreen>
         _fitMapToRide();
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Sürüş kabul edildi!'),
-              backgroundColor: Colors.green,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          await AppDialogs.showSuccess(context, 'Sürüş kabul edildi!');
         }
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Bu sürüş artık mevcut değil'),
-              backgroundColor: Colors.orange,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          await AppDialogs.showWarning(context, 'Bu sürüş artık mevcut değil');
         }
         _loadPendingRequests();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Hata: $e'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        await AppDialogs.showError(context, 'Hata: $e');
       }
     }
   }
@@ -551,13 +519,7 @@ class _TaxiDriverScreenState extends ConsumerState<TaxiDriverScreen>
       _subscribeToNewRides();
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Yolculuk tamamlandı!'),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        await AppDialogs.showSuccess(context, 'Yolculuk tamamlandı!');
       }
     } catch (e) {
       debugPrint('Error: $e');

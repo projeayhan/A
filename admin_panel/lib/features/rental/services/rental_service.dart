@@ -581,6 +581,44 @@ final allCompaniesProvider = FutureProvider<List<RentalCompanyView>>((ref) async
   }
 });
 
+// Top Rental Car Model
+class TopRentalCar {
+  final String carId;
+  final String carName;
+  final int rentalCount;
+  final double avgRating;
+
+  const TopRentalCar({
+    required this.carId,
+    required this.carName,
+    required this.rentalCount,
+    required this.avgRating,
+  });
+
+  factory TopRentalCar.fromJson(Map<String, dynamic> json) {
+    return TopRentalCar(
+      carId: json['car_id'] ?? '',
+      carName: json['car_name'] ?? '',
+      rentalCount: (json['rental_count'] as num?)?.toInt() ?? 0,
+      avgRating: (json['avg_rating'] as num?)?.toDouble() ?? 0,
+    );
+  }
+}
+
+// Top Rental Cars Provider
+final topRentalCarsProvider = FutureProvider<List<TopRentalCar>>((ref) async {
+  final client = ref.watch(supabaseClientProvider);
+
+  try {
+    final response = await client.rpc('get_top_rental_cars', params: {'p_limit': 5});
+    return List<Map<String, dynamic>>.from(response)
+        .map((json) => TopRentalCar.fromJson(json))
+        .toList();
+  } catch (e) {
+    return [];
+  }
+});
+
 // ==================== ACTIONS ====================
 
 // Update Booking Status

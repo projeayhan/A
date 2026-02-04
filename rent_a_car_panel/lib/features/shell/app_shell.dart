@@ -6,6 +6,7 @@ import 'package:audioplayers/audioplayers.dart';
 
 import '../../core/theme.dart';
 import '../../core/services/notification_sound_service.dart';
+import '../../shared/widgets/floating_ai_assistant.dart';
 
 class AppShell extends StatefulWidget {
   final Widget child;
@@ -191,11 +192,13 @@ class _AppShellState extends State<AppShell> {
   Widget build(BuildContext context) {
     final currentPath = GoRouterState.of(context).matchedLocation;
 
-    return Scaffold(
-      body: Row(
-        children: [
-          // Sidebar
-          AnimatedContainer(
+    return Stack(
+      children: [
+        Scaffold(
+          body: Row(
+            children: [
+              // Sidebar
+              AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             width: _isCollapsed ? 70 : 260,
             child: Container(
@@ -404,6 +407,10 @@ class _AppShellState extends State<AppShell> {
           ),
         ],
       ),
+    ),
+    // Floating AI Assistant
+    const FloatingAIAssistant(),
+      ],
     );
   }
 

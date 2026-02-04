@@ -3,6 +3,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../services/google_places_service.dart';
 import '../../models/taxi/taxi_models.dart';
+import '../../core/utils/app_dialogs.dart';
 import 'taxi_vehicle_selection_screen.dart';
 
 class TaxiDestinationScreen extends ConsumerStatefulWidget {
@@ -316,12 +317,7 @@ class _TaxiDestinationScreenState extends ConsumerState<TaxiDestinationScreen>
 
   Future<void> _proceedToVehicleSelection() async {
     if (_dropoff == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Lütfen varış noktası seçin'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      await AppDialogs.showWarning(context, 'Lütfen varış noktası seçin');
       return;
     }
 

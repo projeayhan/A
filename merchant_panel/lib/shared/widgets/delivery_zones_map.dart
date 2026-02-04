@@ -5,6 +5,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/providers/merchant_provider.dart';
 import '../../core/services/supabase_service.dart';
+import '../../core/utils/app_dialogs.dart';
 
 // Delivery Zone Model
 class DeliveryZone {
@@ -170,9 +171,7 @@ class _DeliveryZonesMapState extends ConsumerState<DeliveryZonesMap> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Bolge yuklenemedi: $e'), backgroundColor: AppColors.error),
-        );
+        AppDialogs.showError(context, 'Bolge yuklenemedi: $e');
       }
     }
   }
@@ -233,9 +232,7 @@ class _DeliveryZonesMapState extends ConsumerState<DeliveryZonesMap> {
       _fitMapToZones();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Bolge eklenemedi: $e'), backgroundColor: AppColors.error),
-        );
+        AppDialogs.showError(context, 'Bolge eklenemedi: $e');
       }
     }
   }
@@ -264,9 +261,7 @@ class _DeliveryZonesMapState extends ConsumerState<DeliveryZonesMap> {
       _fitMapToZones();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Bolge guncellenemedi: $e'), backgroundColor: AppColors.error),
-        );
+        AppDialogs.showError(context, 'Bolge guncellenemedi: $e');
       }
     }
   }
@@ -311,9 +306,7 @@ class _DeliveryZonesMapState extends ConsumerState<DeliveryZonesMap> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Bolge silinemedi: $e'), backgroundColor: AppColors.error),
-        );
+        AppDialogs.showError(context, 'Bolge silinemedi: $e');
       }
     }
   }

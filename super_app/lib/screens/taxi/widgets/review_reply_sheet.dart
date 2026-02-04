@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../models/taxi/driver_review_models.dart';
 import '../../../core/services/taxi_service.dart';
+import '../../../core/utils/app_dialogs.dart';
 
 class ReviewReplySheet extends StatefulWidget {
   final DriverReview review;
@@ -65,23 +66,11 @@ class _ReviewReplySheetState extends State<ReviewReplySheet> {
       if (mounted) {
         widget.onReplied?.call();
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Cevabınız kaydedildi'),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        await AppDialogs.showSuccess(context, 'Cevabınız kaydedildi');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Hata: $e'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        await AppDialogs.showError(context, 'Hata: $e');
       }
     } finally {
       if (mounted) {
@@ -120,22 +109,11 @@ class _ReviewReplySheetState extends State<ReviewReplySheet> {
       if (mounted) {
         widget.onReplied?.call();
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Cevap silindi'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        await AppDialogs.showSuccess(context, 'Cevap silindi');
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Hata: $e'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        await AppDialogs.showError(context, 'Hata: $e');
       }
     } finally {
       if (mounted) {

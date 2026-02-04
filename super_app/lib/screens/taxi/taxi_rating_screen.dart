@@ -5,6 +5,7 @@ import '../../models/taxi/taxi_models.dart';
 import '../../models/taxi/driver_review_models.dart';
 import '../../core/services/taxi_service.dart';
 import '../../core/router/app_router.dart';
+import '../../core/utils/app_dialogs.dart';
 
 class TaxiRatingScreen extends ConsumerStatefulWidget {
   final TaxiRide ride;
@@ -130,13 +131,7 @@ class _TaxiRatingScreenState extends ConsumerState<TaxiRatingScreen>
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Değerlendirme gönderilemedi: $e'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        await AppDialogs.showError(context, 'Değerlendirme gönderilemedi: $e');
       }
     } finally {
       if (mounted) {

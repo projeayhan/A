@@ -275,19 +275,37 @@ class CourierDataNotifier extends Notifier<CourierDataState> {
     final supabase = Supabase.instance.client;
 
     try {
-      debugPrint('_loadOrders: Loading orders for courier $_courierId');
+      debugPrint('_loadOrders: Loading orders for courier $_courierId sorted by distance');
 
-      // Assigned orders - restorandan atanan siparişler 'confirmed' durumunda olabilir
-      final assignedOrders = await supabase
-          .from('orders')
-          .select('*, merchants(business_name, address, logo_url, phone, latitude, longitude)')
-          .eq('courier_id', _courierId!)
-          .inFilter('status', ['confirmed', 'preparing', 'ready', 'picked_up', 'delivering'])
-          .order('created_at', ascending: false);
+      // RPC ile mesafeye göre sıralı siparişleri al
+      final sortedOrders = await supabase.rpc('get_courier_orders_by_distance', params: {
+        'p_courier_id': _courierId,
+      });
 
-      debugPrint('_loadOrders: Found ${assignedOrders.length} assigned orders');
+      // RPC sonucunu UI'ın beklediği formata dönüştür
+      final assignedOrders = (sortedOrders as List).map((order) {
+        return {
+          'id': order['id'],
+          'order_number': order['order_number'],
+          'status': order['status'],
+          'delivery_address': order['delivery_address'],
+          'delivery_lat': order['delivery_latitude'],
+          'delivery_lon': order['delivery_longitude'],
+          'delivery_fee': order['delivery_fee'],
+          'distance_km': order['distance_km'],
+          'estimated_minutes': order['estimated_minutes'],
+          'merchants': {
+            'business_name': order['merchant_name'],
+            'address': order['merchant_address'],
+            'latitude': order['merchant_latitude'],
+            'longitude': order['merchant_longitude'],
+          },
+        };
+      }).toList();
+
+      debugPrint('_loadOrders: Found ${assignedOrders.length} assigned orders (sorted by distance)');
       for (var order in assignedOrders) {
-        debugPrint('  - Order: ${order['order_number']} status: ${order['status']}');
+        debugPrint('  - Order: ${order['order_number']} status: ${order['status']} distance: ${order['distance_km']} km');
       }
 
       // Active orders
@@ -1046,6 +1064,8 @@ class HomeScreen extends ConsumerWidget {
     final merchant = order['merchants'] as Map<String, dynamic>?;
     final deliveryFee = (order['delivery_fee'] as num?)?.toDouble() ?? 0;
     final status = order['status'] as String? ?? '';
+    final distanceKm = (order['distance_km'] as num?)?.toDouble();
+    final estimatedMinutes = (order['estimated_minutes'] as num?)?.toInt();
 
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 0, 20, 12),
@@ -1125,6 +1145,44 @@ class HomeScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 12),
+          // Mesafe ve tahmini süre
+          if (distanceKm != null)
+            Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.info.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.navigation, size: 14, color: AppColors.info),
+                  const SizedBox(width: 6),
+                  Text(
+                    '${distanceKm.toStringAsFixed(1)} km',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.info,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (estimatedMinutes != null) ...[
+                    const SizedBox(width: 8),
+                    Icon(Icons.access_time, size: 14, color: AppColors.info),
+                    const SizedBox(width: 4),
+                    Text(
+                      '~$estimatedMinutes dk',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.info,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
           // Teslimat adresi
           Row(
             children: [

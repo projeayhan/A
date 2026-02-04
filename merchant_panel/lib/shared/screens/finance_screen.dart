@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/providers/merchant_provider.dart';
+import '../../core/models/merchant_models.dart';
 
 class FinanceScreen extends ConsumerStatefulWidget {
   const FinanceScreen({super.key});
@@ -23,6 +24,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
         ? ref.watch(financeStatsProvider(FinanceQuery(
             merchantId: merchant.id,
             period: _selectedPeriod,
+            merchantType: merchant.type,
           )))
         : null;
 
@@ -112,7 +114,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
           child: _buildSummaryCard(
             'Toplam Gelir',
             '${stats.totalRevenue.toStringAsFixed(2)} TL',
-            '+${stats.completedOrders}',
+            '+${stats.completedOrders} siparis',
             Icons.trending_up,
             AppColors.success,
             true,
@@ -123,7 +125,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
           child: _buildSummaryCard(
             'Komisyon Kesintisi',
             '${stats.commission.toStringAsFixed(2)} TL',
-            '15%',
+            '%${stats.commissionRate.toStringAsFixed(0)}',
             Icons.account_balance,
             AppColors.warning,
             false,
@@ -140,17 +142,6 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
             Icons.account_balance_wallet,
             AppColors.primary,
             true,
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _buildSummaryCard(
-            'Bekleyen Odeme',
-            '${stats.pendingPayment.toStringAsFixed(2)} TL',
-            '3 gun',
-            Icons.schedule,
-            AppColors.info,
-            false,
           ),
         ),
       ],

@@ -13,6 +13,7 @@ import '../../core/models/merchant_models.dart';
 import '../../core/providers/merchant_provider.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/services/notification_sound_service.dart';
+import '../../core/utils/app_dialogs.dart';
 import '../screens/couriers_screen.dart';
 
 class OrderCard extends ConsumerStatefulWidget {
@@ -1142,9 +1143,7 @@ class _OrderCardState extends ConsumerState<OrderCard>
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
-        );
+        AppDialogs.showError(context, 'Hata: $e');
       }
     }
   }
@@ -1214,9 +1213,7 @@ class _OrderCardState extends ConsumerState<OrderCard>
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
-        );
+        AppDialogs.showError(context, 'Hata: $e');
       }
     }
   }

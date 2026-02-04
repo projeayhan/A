@@ -12,6 +12,16 @@ class AiChatService {
     String? sessionId,
   }) async {
     try {
+      // Check if user is logged in
+      final currentUser = _client.auth.currentUser;
+      if (currentUser == null) {
+        return {
+          'success': false,
+          'error': 'Lütfen önce giriş yapın.',
+          'needs_login': true,
+        };
+      }
+
       final response = await _client.functions.invoke(
         _functionName,
         body: {
@@ -21,6 +31,14 @@ class AiChatService {
           'user_type': 'customer',
         },
       );
+
+      if (response.status == 401) {
+        return {
+          'success': false,
+          'error': 'Oturum süreniz dolmuş. Lütfen tekrar giriş yapın.',
+          'needs_login': true,
+        };
+      }
 
       if (response.status != 200) {
         final errorMsg = response.data?['error'] ?? 'AI servisi hatası (${response.status})';

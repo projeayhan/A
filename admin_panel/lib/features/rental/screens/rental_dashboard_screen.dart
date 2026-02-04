@@ -454,6 +454,8 @@ class _RentalDashboardScreenState extends ConsumerState<RentalDashboardScreen> {
   }
 
   Widget _buildTopCarsCard() {
+    final topCarsAsync = ref.watch(topRentalCarsProvider);
+
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(20),
@@ -475,14 +477,18 @@ class _RentalDashboardScreenState extends ConsumerState<RentalDashboardScreen> {
             ),
             const SizedBox(height: 16),
             Expanded(
-              child: ListView(
-                children: [
-                  _buildTopCarRow('Mercedes E-Class', 24, 4.9),
-                  _buildTopCarRow('Tesla Model 3', 18, 4.9),
-                  _buildTopCarRow('BMW 5 Series', 15, 4.8),
-                  _buildTopCarRow('Toyota Corolla', 12, 4.6),
-                  _buildTopCarRow('Audi Q7', 10, 4.8),
-                ],
+              child: topCarsAsync.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(child: Text('Hata: $e', style: const TextStyle(color: AppColors.error))),
+                data: (topCars) => topCars.isEmpty
+                    ? const Center(child: Text('Veri yok', style: TextStyle(color: AppColors.textMuted)))
+                    : ListView.builder(
+                        itemCount: topCars.length,
+                        itemBuilder: (context, index) {
+                          final car = topCars[index];
+                          return _buildTopCarRow(car.carName, car.rentalCount, car.avgRating);
+                        },
+                      ),
               ),
             ),
           ],

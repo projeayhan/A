@@ -52,6 +52,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
 
   final GlobalKey _cartIconKey = GlobalKey();
   final GlobalKey<CartIconBounceState> _cartBounceKey = GlobalKey<CartIconBounceState>();
+  final GlobalKey _reviewsKey = GlobalKey();
 
   // Merchant details
   String? _merchantAddress;
@@ -147,6 +148,17 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
       if (mounted) {
         setState(() => _isLoadingMenu = false);
       }
+    }
+  }
+
+  void _scrollToReviews() {
+    final context = _reviewsKey.currentContext;
+    if (context != null) {
+      Scrollable.ensureVisible(
+        context,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOut,
+      );
     }
   }
 
@@ -524,7 +536,10 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                 _buildMenuSection(isDark),
 
                 // Reviews Section
-                _buildReviewsSection(isDark),
+                Container(
+                  key: _reviewsKey,
+                  child: _buildReviewsSection(isDark),
+                ),
 
                 // Bottom padding for cart button
                 SizedBox(height: context.bottomNavPadding + 80),
@@ -690,20 +705,30 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                   ),
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? const Color(0xFF166534).withValues(alpha: 0.3)
-                      : const Color(0xFFDCFCE7),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  widget.rating.toString(),
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF15803D),
+              GestureDetector(
+                onTap: _scrollToReviews,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? const Color(0xFF166534).withValues(alpha: 0.3)
+                        : const Color(0xFFDCFCE7),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.star, size: 14, color: FoodColors.primary),
+                      const SizedBox(width: 4),
+                      Text(
+                        widget.rating.toString(),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF15803D),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -723,18 +748,21 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                 ),
               ),
               const SizedBox(width: 8),
-              Row(
-                children: [
-                  const Icon(Icons.star, size: 16, color: FoodColors.primary),
-                  const SizedBox(width: 2),
-                  Text(
-                    '${widget.rating}',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: FoodColors.primary,
+              GestureDetector(
+                onTap: _scrollToReviews,
+                child: Row(
+                  children: [
+                    const Icon(Icons.star, size: 16, color: FoodColors.primary),
+                    const SizedBox(width: 2),
+                    Text(
+                      '${widget.rating}',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: FoodColors.primary,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),

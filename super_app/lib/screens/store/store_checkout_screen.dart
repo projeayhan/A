@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/providers/store_cart_provider.dart';
 import '../../core/providers/address_provider.dart';
 import '../../core/services/store_service.dart';
+import '../../core/utils/app_dialogs.dart';
 
 class StoreColors {
   static const primary = Color(0xFF6366F1);
@@ -87,9 +88,7 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
     if (selectedAddress == null) {
       setState(() => _isProcessing = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Lütfen bir adres seçin')),
-        );
+        AppDialogs.showWarning(context, 'Lütfen bir adres seçin');
       }
       return;
     }
@@ -151,12 +150,9 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
       if (hasError || lastOrderId == null) {
         setState(() => _isProcessing = false);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(errorMessage ?? 'Sipariş oluşturulamadı. Lütfen tekrar deneyin.'),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 5),
-            ),
+          AppDialogs.showError(
+            context,
+            errorMessage ?? 'Sipariş oluşturulamadı. Lütfen tekrar deneyin.',
           );
         }
         return;
@@ -173,9 +169,7 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
     } catch (e) {
       setState(() => _isProcessing = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Sipariş oluşturulurken hata: $e')),
-        );
+        AppDialogs.showError(context, 'Sipariş oluşturulurken hata: $e');
       }
     }
   }

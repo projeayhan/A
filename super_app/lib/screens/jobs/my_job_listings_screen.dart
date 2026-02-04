@@ -4,6 +4,7 @@ import '../../models/jobs/job_models.dart';
 import '../../models/jobs/job_data_models.dart';
 import '../../services/jobs_service.dart';
 import '../../widgets/moderation_feedback_widget.dart';
+import '../../core/utils/app_dialogs.dart';
 import 'add_job_listing_screen.dart';
 
 class MyJobListingsScreen extends StatefulWidget {
@@ -1048,14 +1049,7 @@ class _MyJobListingsScreenState extends State<MyJobListingsScreen>
     if (!mounted) return;
 
     if (info == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Moderasyon bilgisi yüklenemedi'),
-          backgroundColor: JobsColors.warning,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
+      AppDialogs.showWarning(context, 'Moderasyon bilgisi yüklenemedi');
       return;
     }
 

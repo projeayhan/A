@@ -425,6 +425,8 @@ class _EmlakDashboardScreenState extends ConsumerState<EmlakDashboardScreen> {
   }
 
   Widget _buildRecentActivityCard() {
+    final recentActivityAsync = ref.watch(emlakRecentActivityProvider);
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -445,18 +447,76 @@ class _EmlakDashboardScreenState extends ConsumerState<EmlakDashboardScreen> {
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: ListView(
-              children: [
-                _buildActivityItem('Yeni ilan eklendi', 'Villa - Girne', Icons.add, AppColors.success, '2 dk önce'),
-                _buildActivityItem('İlan onaylandı', 'Daire - Lefkoşa', Icons.check, AppColors.info, '15 dk önce'),
-                _buildActivityItem('İlan reddedildi', 'Arsa - İskele', Icons.close, AppColors.error, '1 saat önce'),
-                _buildActivityItem('Şehir eklendi', 'Güzelyurt', Icons.location_city, AppColors.primary, '2 saat önce'),
-              ],
+            child: recentActivityAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) => Center(child: Text('Hata: $e', style: const TextStyle(color: AppColors.error))),
+              data: (activities) => activities.isEmpty
+                  ? const Center(child: Text('Aktivite yok', style: TextStyle(color: AppColors.textMuted)))
+                  : ListView.builder(
+                      itemCount: activities.length,
+                      itemBuilder: (context, index) {
+                        final activity = activities[index];
+                        return _buildActivityItem(
+                          activity.title,
+                          activity.subtitle,
+                          _getActivityIcon(activity.activityType),
+                          _getActivityColor(activity.activityType),
+                          _formatTimeAgo(activity.createdAt),
+                        );
+                      },
+                    ),
             ),
           ),
         ],
       ),
     );
+  }
+
+  IconData _getActivityIcon(String activityType) {
+    switch (activityType) {
+      case 'new_listing':
+        return Icons.add;
+      case 'approved':
+        return Icons.check;
+      case 'rejected':
+        return Icons.close;
+      case 'city_added':
+        return Icons.location_city;
+      default:
+        return Icons.info;
+    }
+  }
+
+  Color _getActivityColor(String activityType) {
+    switch (activityType) {
+      case 'new_listing':
+        return AppColors.success;
+      case 'approved':
+        return AppColors.info;
+      case 'rejected':
+        return AppColors.error;
+      case 'city_added':
+        return AppColors.primary;
+      default:
+        return AppColors.textMuted;
+    }
+  }
+
+  String _formatTimeAgo(DateTime dateTime) {
+    final now = DateTime.now();
+    final diff = now.difference(dateTime);
+
+    if (diff.inMinutes < 1) {
+      return 'Az önce';
+    } else if (diff.inMinutes < 60) {
+      return '${diff.inMinutes} dk önce';
+    } else if (diff.inHours < 24) {
+      return '${diff.inHours} saat önce';
+    } else if (diff.inDays < 7) {
+      return '${diff.inDays} gün önce';
+    } else {
+      return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
+    }
   }
 
   Widget _buildActivityItem(String title, String subtitle, IconData icon, Color color, String time) {

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../core/utils/app_dialogs.dart';
 import '../../core/utils/image_utils.dart';
 import '../../core/providers/cart_provider.dart';
 import 'food_home_screen.dart';
@@ -970,13 +971,7 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
                       }
 
                       if (missingRequired.isNotEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Lütfen zorunlu seçenekleri belirleyin: ${missingRequired.join(", ")}'),
-                            backgroundColor: Colors.red,
-                            duration: const Duration(seconds: 3),
-                          ),
-                        );
+                        await AppDialogs.showError(context, 'Lütfen zorunlu seçenekleri belirleyin: ${missingRequired.join(", ")}');
                         return;
                       }
 

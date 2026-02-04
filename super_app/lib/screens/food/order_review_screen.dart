@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/app_dialogs.dart';
 import '../../core/utils/profanity_filter.dart';
 
 class OrderReviewScreen extends ConsumerStatefulWidget {
@@ -67,9 +68,7 @@ class _OrderReviewScreenState extends ConsumerState<OrderReviewScreen>
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Sipariş yüklenemedi: $e')),
-        );
+        AppDialogs.showError(context, 'Sipariş yüklenemedi: $e');
       }
     }
   }
@@ -77,24 +76,14 @@ class _OrderReviewScreenState extends ConsumerState<OrderReviewScreen>
   Future<void> _submitReview() async {
     // Validate all ratings
     if (_courierRating == 0 || _serviceRating == 0 || _tasteRating == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Lütfen tüm kategorileri değerlendirin'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      AppDialogs.showWarning(context, 'Lütfen tüm kategorileri değerlendirin');
       return;
     }
 
     // Check for profanity in comment
     final comment = _commentController.text.trim();
     if (comment.isNotEmpty && ProfanityFilter.containsProfanity(comment)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Yorumunuz uygunsuz ifadeler içeriyor. Lütfen düzenleyin.'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppDialogs.showError(context, 'Yorumunuz uygunsuz ifadeler içeriyor. Lütfen düzenleyin.');
       return;
     }
 
@@ -164,12 +153,7 @@ class _OrderReviewScreenState extends ConsumerState<OrderReviewScreen>
           errorMessage = 'Sipariş veya kullanıcı bilgisi bulunamadı';
         }
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(errorMessage),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppDialogs.showError(context, errorMessage);
       }
     } finally {
       if (mounted) {

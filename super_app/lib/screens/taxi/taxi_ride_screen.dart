@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../models/taxi/taxi_models.dart';
 import '../../core/services/taxi_service.dart';
 import '../../core/services/communication_service.dart';
+import '../../core/utils/app_dialogs.dart';
 import '../../services/google_places_service.dart';
 import '../../widgets/taxi/animated_map_markers.dart';
 import '../../widgets/secure_driver_card.dart';
@@ -456,23 +457,10 @@ class _TaxiRideScreenState extends ConsumerState<TaxiRideScreen>
   Future<void> _callDriver() async {
     // Güvenli arama - gerçek numara yerine uygulama içi arama kullan
     HapticFeedback.mediumImpact();
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
 
     final callInfo = await CommunicationService.initiateCall(_ride.id);
     if (callInfo != null && mounted) {
-      scaffoldMessenger.showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              const Icon(Icons.phone, color: Colors.white),
-              const SizedBox(width: 8),
-              const Text('Arama başlatılıyor...'),
-            ],
-          ),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      await AppDialogs.showSuccess(context, 'Arama başlatılıyor...');
     }
   }
 
@@ -488,12 +476,7 @@ class _TaxiRideScreenState extends ConsumerState<TaxiRideScreen>
 
   Future<void> _cancelRide() async {
     if (_ride.status == RideStatus.inProgress) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Yolculuk başladıktan sonra iptal edilemez'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      await AppDialogs.showWarning(context, 'Yolculuk başladıktan sonra iptal edilemez');
       return;
     }
 
@@ -526,13 +509,7 @@ class _TaxiRideScreenState extends ConsumerState<TaxiRideScreen>
       } catch (e) {
         setState(() => _isCancelling = false); // Reset if failed
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('İptal edilemedi: $e'),
-              backgroundColor: Colors.red,
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
+          await AppDialogs.showError(context, 'İptal edilemedi: $e');
         }
       }
     }
@@ -1299,14 +1276,9 @@ class _TaxiRideScreenState extends ConsumerState<TaxiRideScreen>
           // Share location button
           Expanded(
             child: FilledButton.icon(
-              onPressed: () {
+              onPressed: () async {
                 // TODO: Share location
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Konum paylaşma özelliği yakında'),
-                    behavior: SnackBarBehavior.floating,
-                  ),
-                );
+                await AppDialogs.showInfo(context, 'Konum paylaşma özelliği yakında');
               },
               icon: const Icon(Icons.share_location_rounded),
               label: const Text('Konum Paylaş'),

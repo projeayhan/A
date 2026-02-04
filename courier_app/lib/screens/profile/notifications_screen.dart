@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/services/courier_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/app_dialogs.dart';
 
 class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
@@ -57,12 +58,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
             ),
           );
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Güncelleme başarısız'),
-              backgroundColor: AppColors.error,
-            ),
-          );
+          AppDialogs.showError(context, 'Güncelleme başarısız');
         }
       }
     } finally {

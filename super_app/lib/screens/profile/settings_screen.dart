@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/providers/settings_provider.dart';
+import '../../core/utils/app_dialogs.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -847,14 +848,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: Text('Vazgeç', style: TextStyle(color: Colors.grey[600])),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Hesap silme talebi alındı. E-posta adresinize onay bağlantısı gönderildi.'),
-                  backgroundColor: Colors.orange,
-                ),
-              );
+              await AppDialogs.showWarning(context, 'Hesap silme talebi alındı. E-posta adresinize onay bağlantısı gönderildi.');
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
@@ -888,14 +884,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: Text('İptal', style: TextStyle(color: Colors.grey[600])),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Veri indirme talebi alındı. Hazır olduğunda e-posta ile bilgilendirileceksiniz.'),
-                  backgroundColor: Color(0xFF3B82F6),
-                ),
-              );
+              await AppDialogs.showInfo(context, 'Veri indirme talebi alındı. Hazır olduğunda e-posta ile bilgilendirileceksiniz.');
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF3B82F6),
@@ -940,14 +931,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: Text('Vazgeç', style: TextStyle(color: Colors.grey[600])),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Canlı destek özelliği yakında aktif olacak'),
-                  backgroundColor: Color(0xFF14B8A6),
-                ),
-              );
+              await AppDialogs.showInfo(context, 'Canlı destek özelliği yakında aktif olacak');
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF14B8A6),
@@ -1000,14 +986,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             child: Text('İptal', style: TextStyle(color: Colors.grey[600])),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Hata raporu gönderildi. Teşekkür ederiz!'),
-                  backgroundColor: Color(0xFFF59E0B),
-                ),
-              );
+              await AppDialogs.showSuccess(context, 'Hata raporu gönderildi. Teşekkür ederiz!');
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFFF59E0B),

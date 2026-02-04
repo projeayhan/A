@@ -449,6 +449,107 @@ class _BannersScreenState extends ConsumerState<BannersScreen> {
     );
   }
 
+  String _getLinkTypeSearchLabel(String? linkType) {
+    switch (linkType) {
+      case 'restaurant':
+        return 'Restoran Ara';
+      case 'menu_item':
+        return 'Yemek Ara';
+      case 'store':
+        return 'Mağaza Ara';
+      case 'product':
+        return 'Ürün Ara';
+      default:
+        return 'Ara';
+    }
+  }
+
+  IconData _getLinkTypeIcon(String? linkType) {
+    switch (linkType) {
+      case 'restaurant':
+        return Icons.restaurant;
+      case 'menu_item':
+        return Icons.fastfood;
+      case 'store':
+        return Icons.store;
+      case 'product':
+        return Icons.shopping_bag;
+      default:
+        return Icons.link;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _searchForLinkTarget(String linkType, String query) async {
+    final supabase = ref.read(supabaseProvider);
+    List<Map<String, dynamic>> results = [];
+
+    try {
+      switch (linkType) {
+        case 'restaurant':
+          final response = await supabase
+              .from('merchants')
+              .select('id, business_name, logo_url, category_tags')
+              .eq('type', 'restaurant')
+              .ilike('business_name', '%$query%')
+              .limit(10);
+          results = (response as List).map((item) => <String, dynamic>{
+            'id': item['id'],
+            'name': item['business_name'],
+            'image_url': item['logo_url'],
+            'subtitle': item['category_tags']?.toString() ?? 'Restoran',
+          }).toList();
+          break;
+
+        case 'menu_item':
+          final response = await supabase
+              .from('menu_items')
+              .select('id, name, image_url, price, merchants(business_name)')
+              .ilike('name', '%$query%')
+              .limit(10);
+          results = (response as List).map((item) => <String, dynamic>{
+            'id': item['id'],
+            'name': item['name'],
+            'image_url': item['image_url'],
+            'subtitle': '${item['merchants']?['business_name'] ?? ''} - ${item['price']} TL',
+          }).toList();
+          break;
+
+        case 'store':
+          final response = await supabase
+              .from('merchants')
+              .select('id, business_name, logo_url')
+              .eq('type', 'store')
+              .ilike('business_name', '%$query%')
+              .limit(10);
+          results = (response as List).map((item) => <String, dynamic>{
+            'id': item['id'],
+            'name': item['business_name'],
+            'image_url': item['logo_url'],
+            'subtitle': 'Mağaza',
+          }).toList();
+          break;
+
+        case 'product':
+          final response = await supabase
+              .from('products')
+              .select('id, name, image_url, price, merchants(business_name)')
+              .ilike('name', '%$query%')
+              .limit(10);
+          results = (response as List).map((item) => <String, dynamic>{
+            'id': item['id'],
+            'name': item['name'],
+            'image_url': item['image_url'],
+            'subtitle': '${item['merchants']?['business_name'] ?? ''} - ${item['price']} TL',
+          }).toList();
+          break;
+      }
+    } catch (e) {
+      debugPrint('Search error: $e');
+    }
+
+    return results;
+  }
+
   Future<void> _deleteBanner(String id) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -491,6 +592,14 @@ class _BannersScreenState extends ConsumerState<BannersScreen> {
     String? selectedImageName;
     String? existingImageUrl = existingBanner?['image_url'];
     bool isLoading = false;
+
+    // Link türü ve hedef seçimi
+    String? selectedLinkType = existingBanner?['link_type'];
+    String? selectedLinkId = existingBanner?['link_id'];
+    String? selectedLinkName; // Seçilen öğenin adı (görüntüleme için)
+    List<Map<String, dynamic>> searchResults = [];
+    bool isSearching = false;
+    final searchController = TextEditingController();
 
     // Tarih alanları
     DateTime startDate = existingBanner?['start_date'] != null
@@ -629,11 +738,180 @@ class _BannersScreenState extends ConsumerState<BannersScreen> {
                   enabled: !isLoading,
                 ),
                 const SizedBox(height: 16),
-                TextField(
-                  controller: linkController,
-                  decoration: const InputDecoration(labelText: 'Link (opsiyonel)'),
-                  enabled: !isLoading,
+                // Link Türü Seçimi
+                const Text('Tıklandığında Yönlendirme', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String?>(
+                  value: selectedLinkType,
+                  decoration: const InputDecoration(
+                    labelText: 'Link Türü',
+                    hintText: 'Seçiniz (opsiyonel)',
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: null, child: Text('Yok (Tıklanamaz)')),
+                    DropdownMenuItem(value: 'restaurant', child: Text('Restoran')),
+                    DropdownMenuItem(value: 'menu_item', child: Text('Yemek (Menü Ürünü)')),
+                    DropdownMenuItem(value: 'store', child: Text('Mağaza')),
+                    DropdownMenuItem(value: 'product', child: Text('Ürün')),
+                    DropdownMenuItem(value: 'external', child: Text('Harici Link (URL)')),
+                  ],
+                  onChanged: isLoading
+                      ? null
+                      : (value) {
+                          setDialogState(() {
+                            selectedLinkType = value;
+                            selectedLinkId = null;
+                            selectedLinkName = null;
+                            searchResults = [];
+                            searchController.clear();
+                          });
+                        },
                 ),
+                const SizedBox(height: 12),
+
+                // Link türüne göre arama veya URL girişi
+                if (selectedLinkType == 'external') ...[
+                  TextField(
+                    controller: linkController,
+                    decoration: const InputDecoration(
+                      labelText: 'Harici URL',
+                      hintText: 'https://example.com',
+                      prefixIcon: Icon(Icons.link),
+                    ),
+                    enabled: !isLoading,
+                  ),
+                ] else if (selectedLinkType != null) ...[
+                  // Arama alanı
+                  TextField(
+                    controller: searchController,
+                    decoration: InputDecoration(
+                      labelText: _getLinkTypeSearchLabel(selectedLinkType),
+                      hintText: 'Aramak için yazın...',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: isSearching
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: Padding(
+                                padding: EdgeInsets.all(12),
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                            )
+                          : null,
+                    ),
+                    enabled: !isLoading,
+                    onChanged: (value) async {
+                      if (value.length < 2) {
+                        setDialogState(() => searchResults = []);
+                        return;
+                      }
+                      setDialogState(() => isSearching = true);
+                      try {
+                        final results = await _searchForLinkTarget(selectedLinkType!, value);
+                        setDialogState(() {
+                          searchResults = results;
+                          isSearching = false;
+                        });
+                      } catch (e) {
+                        setDialogState(() => isSearching = false);
+                      }
+                    },
+                  ),
+                  // Seçilen öğe gösterimi
+                  if (selectedLinkId != null && selectedLinkName != null) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.success.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.success),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.check_circle, color: AppColors.success, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Seçilen:', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                                Text(selectedLinkName!, style: const TextStyle(fontWeight: FontWeight.w600)),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close, size: 18),
+                            onPressed: () {
+                              setDialogState(() {
+                                selectedLinkId = null;
+                                selectedLinkName = null;
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  // Arama sonuçları
+                  if (searchResults.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      constraints: const BoxConstraints(maxHeight: 150),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AppColors.surfaceLight),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: searchResults.length,
+                        itemBuilder: (context, index) {
+                          final item = searchResults[index];
+                          return ListTile(
+                            dense: true,
+                            leading: item['image_url'] != null
+                                ? ClipRRect(
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: Image.network(
+                                      item['image_url'],
+                                      width: 40,
+                                      height: 40,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => Container(
+                                        width: 40,
+                                        height: 40,
+                                        color: Colors.grey[300],
+                                        child: const Icon(Icons.image, size: 20),
+                                      ),
+                                    ),
+                                  )
+                                : Container(
+                                    width: 40,
+                                    height: 40,
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[300],
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Icon(_getLinkTypeIcon(selectedLinkType), size: 20),
+                                  ),
+                            title: Text(item['name'] ?? '', style: const TextStyle(fontSize: 14)),
+                            subtitle: item['subtitle'] != null
+                                ? Text(item['subtitle'], style: const TextStyle(fontSize: 12))
+                                : null,
+                            onTap: () {
+                              setDialogState(() {
+                                selectedLinkId = item['id'];
+                                selectedLinkName = item['name'];
+                                searchResults = [];
+                                searchController.clear();
+                              });
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ],
                 const SizedBox(height: 16),
                 // Tarih aralığı
                 Row(
@@ -770,9 +1048,11 @@ class _BannersScreenState extends ConsumerState<BannersScreen> {
                           'description': descriptionController.text.trim().isEmpty
                               ? null
                               : descriptionController.text.trim(),
-                          'link_url': linkController.text.trim().isEmpty
-                              ? null
-                              : linkController.text.trim(),
+                          'link_url': selectedLinkType == 'external' && linkController.text.trim().isNotEmpty
+                              ? linkController.text.trim()
+                              : null,
+                          'link_type': selectedLinkType,
+                          'link_id': selectedLinkId,
                           'image_url': imageUrl,
                           'category': selectedCategory,
                           'is_active': true,

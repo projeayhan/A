@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/services/ai_chat_service.dart';
+import '../../core/utils/app_dialogs.dart';
 
 class AiChatScreen extends ConsumerStatefulWidget {
   const AiChatScreen({super.key});
@@ -287,12 +288,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
                       }
                       if (mounted) {
                         Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Değerlendirmeniz için teşekkürler!'),
-                            backgroundColor: AppColors.success,
-                          ),
-                        );
+                        AppDialogs.showSuccess(context, 'Değerlendirmeniz için teşekkürler!');
                       }
                     }
                   : null,

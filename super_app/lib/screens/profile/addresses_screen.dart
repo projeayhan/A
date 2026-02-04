@@ -5,6 +5,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/providers/address_provider.dart';
+import '../../core/utils/app_dialogs.dart';
 
 class AddressesScreen extends ConsumerStatefulWidget {
   const AddressesScreen({super.key});
@@ -582,9 +583,7 @@ class _AddressesScreenState extends ConsumerState<AddressesScreen> {
                                               }
                                               if (permission == LocationPermission.deniedForever) {
                                                 if (context.mounted) {
-                                                  ScaffoldMessenger.of(context).showSnackBar(
-                                                    const SnackBar(content: Text('Konum izni gerekli. Ayarlardan izin verin.')),
-                                                  );
+                                                  await AppDialogs.showWarning(context, 'Konum izni gerekli. Ayarlardan izin verin.');
                                                 }
                                                 return;
                                               }
@@ -644,9 +643,7 @@ class _AddressesScreenState extends ConsumerState<AddressesScreen> {
                                               }
                                             } catch (e) {
                                               if (context.mounted) {
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  SnackBar(content: Text('Konum alınamadı: $e')),
-                                                );
+                                                await AppDialogs.showError(context, 'Konum alınamadı: $e');
                                               }
                                             } finally {
                                               setModalState(() => isLoadingLocation = false);
@@ -693,16 +690,12 @@ class _AddressesScreenState extends ConsumerState<AddressesScreen> {
                                                 }
                                               } else {
                                                 if (context.mounted) {
-                                                  ScaffoldMessenger.of(context).showSnackBar(
-                                                    const SnackBar(content: Text('Adres bulunamadı')),
-                                                  );
+                                                  await AppDialogs.showError(context, 'Adres bulunamadı');
                                                 }
                                               }
                                             } catch (e) {
                                               if (context.mounted) {
-                                                ScaffoldMessenger.of(context).showSnackBar(
-                                                  SnackBar(content: Text('Hata: $e')),
-                                                );
+                                                await AppDialogs.showError(context, 'Hata: $e');
                                               }
                                             } finally {
                                               setModalState(() => isLoadingLocation = false);
@@ -749,19 +742,12 @@ class _AddressesScreenState extends ConsumerState<AddressesScreen> {
                     child: ElevatedButton(
                       onPressed: () async {
                         if (titleController.text.isEmpty || addressController.text.isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Başlık ve adres gerekli')),
-                          );
+                          await AppDialogs.showError(context, 'Başlık ve adres gerekli');
                           return;
                         }
 
                         if (latitude == null || longitude == null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Kurye navigasyonu için konum gerekli. "Konumumu Bul" veya "Adresten Bul" butonunu kullanın.'),
-                              backgroundColor: Colors.orange,
-                            ),
-                          );
+                          await AppDialogs.showWarning(context, 'Kurye navigasyonu için konum gerekli. "Konumumu Bul" veya "Adresten Bul" butonunu kullanın.');
                           return;
                         }
 
@@ -789,14 +775,14 @@ class _AddressesScreenState extends ConsumerState<AddressesScreen> {
 
                         if (!context.mounted) return;
                         Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(success
-                                ? (existingAddress != null ? 'Adres güncellendi' : 'Adres eklendi')
-                                : 'Bir hata oluştu'),
-                            backgroundColor: success ? Colors.green : Colors.red,
-                          ),
-                        );
+                        if (success) {
+                          await AppDialogs.showSuccess(
+                            context,
+                            existingAddress != null ? 'Adres güncellendi' : 'Adres eklendi',
+                          );
+                        } else {
+                          await AppDialogs.showError(context, 'Bir hata oluştu');
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
@@ -949,12 +935,11 @@ class _AddressesScreenState extends ConsumerState<AddressesScreen> {
               final success = await ref.read(addressProvider.notifier).deleteAddress(address.id);
               if (!context.mounted) return;
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(success ? 'Adres silindi' : 'Bir hata oluştu'),
-                  backgroundColor: success ? Colors.red : Colors.orange,
-                ),
-              );
+              if (success) {
+                await AppDialogs.showSuccess(context, 'Adres silindi');
+              } else {
+                await AppDialogs.showError(context, 'Bir hata oluştu');
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,

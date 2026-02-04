@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/providers/merchant_provider.dart';
 import '../../../core/services/notification_sound_service.dart';
+import '../../../core/utils/app_dialogs.dart';
 
 // Reviews stream provider
 final reviewsStreamProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
@@ -589,12 +590,7 @@ class _ReviewsScreenState extends ConsumerState<ReviewsScreen>
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Hata: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppDialogs.showError(context, 'Hata: $e');
       }
     }
   }

@@ -1,6 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../screens/food/restaurant_detail_screen.dart';
+import '../../screens/food/food_item_detail_screen.dart';
 
 class FoodBannerCarousel extends StatefulWidget {
   final double height;
@@ -132,12 +135,107 @@ class _FoodBannerCarouselState extends State<FoodBannerCarousel> {
     );
   }
 
+  void _onBannerTap(Map<String, dynamic> banner) async {
+    final linkType = banner['link_type'] as String?;
+    final linkId = banner['link_id'] as String?;
+    final linkUrl = banner['link_url'] as String?;
+
+    if (linkType == null && linkUrl == null) return;
+
+    switch (linkType) {
+      case 'restaurant':
+        if (linkId != null) {
+          // Restoran bilgilerini çek
+          try {
+            final restaurant = await Supabase.instance.client
+                .from('merchants')
+                .select()
+                .eq('id', linkId)
+                .maybeSingle();
+
+            if (restaurant != null && mounted) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => RestaurantDetailScreen(
+                    restaurantId: linkId,
+                    name: restaurant['business_name'] ?? '',
+                    imageUrl: restaurant['logo_url'] ?? '',
+                    rating: (restaurant['rating'] as num?)?.toDouble() ?? 4.5,
+                    categories: restaurant['category_tags']?.toString() ?? '',
+                    deliveryTime: '${restaurant['delivery_time'] ?? 30} dk',
+                  ),
+                ),
+              );
+            }
+          } catch (e) {
+            debugPrint('Error loading restaurant: $e');
+          }
+        }
+        break;
+
+      case 'menu_item':
+        if (linkId != null) {
+          // Menu item ve restoran bilgilerini çek
+          try {
+            final menuItem = await Supabase.instance.client
+                .from('menu_items')
+                .select('*, merchants(business_name)')
+                .eq('id', linkId)
+                .maybeSingle();
+
+            if (menuItem != null && mounted) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => FoodItemDetailScreen(
+                    itemId: linkId,
+                    name: menuItem['name'] ?? '',
+                    description: menuItem['description'] ?? '',
+                    price: (menuItem['price'] as num?)?.toDouble() ?? 0,
+                    imageUrl: menuItem['image_url'] ?? '',
+                    rating: (menuItem['average_rating'] as num?)?.toDouble() ?? 4.5,
+                    restaurantName: menuItem['merchants']?['business_name'] ?? '',
+                    deliveryTime: '30-45 dk',
+                  ),
+                ),
+              );
+            }
+          } catch (e) {
+            debugPrint('Error loading menu item: $e');
+          }
+        }
+        break;
+
+      case 'external':
+        if (linkUrl != null) {
+          final uri = Uri.tryParse(linkUrl);
+          if (uri != null && await canLaunchUrl(uri)) {
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+          }
+        }
+        break;
+
+      default:
+        // link_url varsa external olarak aç
+        if (linkUrl != null) {
+          final uri = Uri.tryParse(linkUrl);
+          if (uri != null && await canLaunchUrl(uri)) {
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+          }
+        }
+    }
+  }
+
   Widget _buildBannerItem(Map<String, dynamic> banner) {
     final imageUrl = banner['image_url'] as String?;
     final title = banner['title'] as String? ?? 'Özel Fırsat';
     final description = banner['description'] as String? ?? 'Hemen Keşfet';
+    final hasLink = banner['link_type'] != null || banner['link_url'] != null;
 
-    return Container(
+    return GestureDetector(
+      onTap: hasLink ? () => _onBannerTap(banner) : null,
+      child: Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
@@ -245,6 +343,7 @@ class _FoodBannerCarouselState extends State<FoodBannerCarousel> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

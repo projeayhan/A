@@ -7,6 +7,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/models/merchant_models.dart';
 import '../../core/providers/merchant_provider.dart';
 import '../../core/services/notification_sound_service.dart';
+import '../../core/utils/app_dialogs.dart';
 import '../widgets/order_card.dart';
 
 class OrdersKanbanScreen extends ConsumerStatefulWidget {
@@ -699,9 +700,7 @@ class _KanbanOrderMessagesCardState extends State<_KanbanOrderMessagesCard> {
       _messageController.clear();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Mesaj gönderilemedi: $e')),
-        );
+        AppDialogs.showError(context, 'Mesaj gönderilemedi: $e');
       }
     } finally {
       if (mounted) {

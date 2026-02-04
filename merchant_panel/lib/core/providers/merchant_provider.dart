@@ -1200,6 +1200,36 @@ final financeStatsProvider = FutureProvider.family<FinanceStats, FinanceQuery>((
   final supabase = ref.read(supabaseClientProvider);
   final now = DateTime.now();
 
+  // Merchant type'a gore service_type belirle
+  String serviceType;
+  switch (query.merchantType) {
+    case MerchantType.restaurant:
+      serviceType = 'restaurant';
+      break;
+    case MerchantType.store:
+      serviceType = 'store';
+      break;
+  }
+
+  // Platform komisyon oranini al
+  double commissionRate = 15.0; // Varsayilan
+  try {
+    final commissionData = await supabase
+        .from('platform_commissions')
+        .select('platform_commission_rate')
+        .eq('service_type', serviceType)
+        .eq('is_active', true)
+        .maybeSingle();
+
+    if (commissionData != null) {
+      commissionRate = double.tryParse(
+        commissionData['platform_commission_rate']?.toString() ?? '15'
+      ) ?? 15.0;
+    }
+  } catch (e) {
+    if (kDebugMode) print('Komisyon orani alinamadi: $e');
+  }
+
   // Tarih araligini hesapla
   DateTime startDate;
   switch (query.period) {
@@ -1219,16 +1249,17 @@ final financeStatsProvider = FutureProvider.family<FinanceStats, FinanceQuery>((
       startDate = DateTime(now.year, now.month, 1);
   }
 
-  // Tum siparisleri al
+  // Tum siparisleri al (commission_rate dahil)
   final orders = await supabase
       .from('orders')
-      .select('id, total_amount, status, payment_method, created_at')
+      .select('id, total_amount, status, payment_method, created_at, commission_rate')
       .eq('merchant_id', query.merchantId)
       .gte('created_at', startDate.toIso8601String())
       .order('created_at', ascending: false);
 
-  // Toplam gelir (iptal olmayan siparisler)
+  // Toplam gelir ve komisyon hesapla
   double totalRevenue = 0;
+  double totalCommission = 0;
   double cashRevenue = 0;
   double cardRevenue = 0;
   double transferRevenue = 0;
@@ -1240,8 +1271,12 @@ final financeStatsProvider = FutureProvider.family<FinanceStats, FinanceQuery>((
     final amount = ((order['total_amount'] ?? 0) as num).toDouble();
     final paymentMethod = order['payment_method'] as String? ?? 'card';
 
+    // Siparişin kendi komisyon oranını kullan, yoksa güncel oranı fallback olarak kullan
+    final orderCommissionRate = (order['commission_rate'] as num?)?.toDouble() ?? commissionRate;
+
     if (status != 'cancelled') {
       totalRevenue += amount;
+      totalCommission += amount * (orderCommissionRate / 100);
       completedOrders++;
 
       // Odeme yontemine gore ayir
@@ -1261,21 +1296,8 @@ final financeStatsProvider = FutureProvider.family<FinanceStats, FinanceQuery>((
     }
   }
 
-  // Komisyon orani (%15)
-  final commissionRate = 0.15;
-  final commission = totalRevenue * commissionRate;
-  final netRevenue = totalRevenue - commission;
-
-  // Bekleyen odeme (son 3 gunun siparisleri)
-  final threeDaysAgo = now.subtract(const Duration(days: 3));
-  double pendingPayment = 0;
-  for (var order in orders) {
-    final createdAt = DateTime.parse(order['created_at']);
-    if (createdAt.isAfter(threeDaysAgo) && order['status'] != 'cancelled') {
-      pendingPayment += ((order['total_amount'] ?? 0) as num).toDouble();
-    }
-  }
-  pendingPayment = pendingPayment * (1 - commissionRate);
+  // Net gelir hesapla
+  final netRevenue = totalRevenue - totalCommission;
 
   // Gunluk gelir verileri (grafik icin)
   Map<String, double> dailyRevenue = {};
@@ -1287,9 +1309,10 @@ final financeStatsProvider = FutureProvider.family<FinanceStats, FinanceQuery>((
     final createdAt = DateTime.parse(order['created_at']);
     final dayKey = '${createdAt.day}';
     final amount = ((order['total_amount'] ?? 0) as num).toDouble();
+    final orderCommissionRate = (order['commission_rate'] as num?)?.toDouble() ?? commissionRate;
 
     dailyRevenue[dayKey] = (dailyRevenue[dayKey] ?? 0) + amount;
-    dailyNetRevenue[dayKey] = (dailyNetRevenue[dayKey] ?? 0) + (amount * (1 - commissionRate));
+    dailyNetRevenue[dayKey] = (dailyNetRevenue[dayKey] ?? 0) + (amount * (1 - orderCommissionRate / 100));
   }
 
   // Son islemleri olustur
@@ -1299,6 +1322,7 @@ final financeStatsProvider = FutureProvider.family<FinanceStats, FinanceQuery>((
     final amount = ((order['total_amount'] ?? 0) as num).toDouble();
     final createdAt = DateTime.parse(order['created_at']);
     final orderId = order['id'] as String? ?? '';
+    final orderCommissionRate = (order['commission_rate'] as num?)?.toDouble() ?? commissionRate;
 
     if (status != 'cancelled') {
       // Siparis odemesi
@@ -1311,11 +1335,11 @@ final financeStatsProvider = FutureProvider.family<FinanceStats, FinanceQuery>((
         date: createdAt,
       ));
 
-      // Komisyon kesintisi
+      // Komisyon kesintisi (siparişin kendi oranıyla)
       transactions.add(FinanceTransaction(
         id: 'COM-$orderId',
-        description: 'Komisyon Kesintisi',
-        amount: amount * commissionRate,
+        description: 'Komisyon Kesintisi (%${orderCommissionRate.toStringAsFixed(0)})',
+        amount: amount * (orderCommissionRate / 100),
         isIncome: false,
         status: 'Tamamlandi',
         date: createdAt,
@@ -1338,9 +1362,9 @@ final financeStatsProvider = FutureProvider.family<FinanceStats, FinanceQuery>((
 
   return FinanceStats(
     totalRevenue: totalRevenue,
-    commission: commission,
+    commission: totalCommission,
+    commissionRate: commissionRate, // Güncel oran (bilgi amaçlı)
     netRevenue: netRevenue,
-    pendingPayment: pendingPayment,
     cashRevenue: cashRevenue,
     cardRevenue: cardRevenue,
     transferRevenue: transferRevenue,
@@ -1355,8 +1379,13 @@ final financeStatsProvider = FutureProvider.family<FinanceStats, FinanceQuery>((
 class FinanceQuery {
   final String merchantId;
   final String period;
+  final MerchantType merchantType;
 
-  FinanceQuery({required this.merchantId, this.period = 'Bu Ay'});
+  FinanceQuery({
+    required this.merchantId,
+    this.period = 'Bu Ay',
+    this.merchantType = MerchantType.restaurant,
+  });
 
   @override
   bool operator ==(Object other) =>
@@ -1364,17 +1393,18 @@ class FinanceQuery {
       other is FinanceQuery &&
           runtimeType == other.runtimeType &&
           merchantId == other.merchantId &&
-          period == other.period;
+          period == other.period &&
+          merchantType == other.merchantType;
 
   @override
-  int get hashCode => merchantId.hashCode ^ period.hashCode;
+  int get hashCode => merchantId.hashCode ^ period.hashCode ^ merchantType.hashCode;
 }
 
 class FinanceStats {
   final double totalRevenue;
   final double commission;
+  final double commissionRate;
   final double netRevenue;
-  final double pendingPayment;
   final double cashRevenue;
   final double cardRevenue;
   final double transferRevenue;
@@ -1387,8 +1417,8 @@ class FinanceStats {
   FinanceStats({
     required this.totalRevenue,
     required this.commission,
+    required this.commissionRate,
     required this.netRevenue,
-    required this.pendingPayment,
     required this.cashRevenue,
     required this.cardRevenue,
     required this.transferRevenue,
@@ -1499,7 +1529,17 @@ final reportsStatsProvider = FutureProvider.family<ReportsStats, ReportsParams>(
   List<int> weeklyOrderCounts = [0, 0, 0, 0];
   List<int> prevPeriodWeeklyOrderCounts = [0, 0, 0, 0];
 
+  // Onceki donemdeki musterileri bul (tekrar eden musteri hesabi icin)
+  Set<String> prevPeriodCustomers = {};
+  for (var order in prevPeriodOrders) {
+    final usersId = order['user_id'] as String?;
+    if (usersId != null && order['status'] != 'cancelled') {
+      prevPeriodCustomers.add(usersId);
+    }
+  }
+
   // Secilen donem siparislerini isle
+  Set<String> newCustomers = {};
   for (var order in periodOrders) {
     final status = order['status'] as String? ?? '';
     final amount = ((order['total_amount'] ?? 0) as num).toDouble();
@@ -1520,6 +1560,10 @@ final reportsStatsProvider = FutureProvider.family<ReportsStats, ReportsParams>(
 
       if (usersId != null) {
         uniqueCustomers.add(usersId);
+        // Yeni musteri mi kontrol et (onceki donemde siparis vermemis)
+        if (!prevPeriodCustomers.contains(usersId)) {
+          newCustomers.add(usersId);
+        }
       }
 
       // Saat bazinda dagilim
@@ -1583,20 +1627,37 @@ final reportsStatsProvider = FutureProvider.family<ReportsStats, ReportsParams>(
 
   // Ortalama rating - calculate from courier, service, taste ratings
   double averageRating = 0;
+  double avgCourierRating = 0;
+  double avgServiceRating = 0;
+  double avgTasteRating = 0;
+
   if (reviews.isNotEmpty) {
     double totalRating = 0;
+    double totalCourier = 0;
+    double totalService = 0;
+    double totalTaste = 0;
+
     for (var review in reviews) {
       final courier = (review['courier_rating'] as num?)?.toDouble() ?? 0;
       final service = (review['service_rating'] as num?)?.toDouble() ?? 0;
       final taste = (review['taste_rating'] as num?)?.toDouble() ?? 0;
       totalRating += (courier + service + taste) / 3;
+      totalCourier += courier;
+      totalService += service;
+      totalTaste += taste;
     }
     averageRating = totalRating / reviews.length;
+    avgCourierRating = totalCourier / reviews.length;
+    avgServiceRating = totalService / reviews.length;
+    avgTasteRating = totalTaste / reviews.length;
   }
 
-  // Tekrar eden musteri orani (basit hesaplama)
-  // Gercek uygulamada customer_id ile gruplama yapilmali
-  double repeatCustomerRate = uniqueCustomers.length > 10 ? 68.0 : 45.0;
+  // Tekrar eden musteri orani
+  // Tekrar eden = onceki donemde de siparis vermis musteriler
+  int repeatCustomers = uniqueCustomers.intersection(prevPeriodCustomers).length;
+  double repeatCustomerRate = uniqueCustomers.isNotEmpty
+      ? (repeatCustomers / uniqueCustomers.length * 100)
+      : 0;
 
   // Ortalama siparis per musteri
   double avgOrdersPerCustomer = uniqueCustomers.isNotEmpty
@@ -1653,8 +1714,12 @@ final reportsStatsProvider = FutureProvider.family<ReportsStats, ReportsParams>(
     hourlyDistribution: hourlyDistribution,
     peakHour: peakHour,
     totalCustomers: uniqueCustomers.length,
+    newCustomersCount: newCustomers.length,
     repeatCustomerRate: repeatCustomerRate,
     averageRating: averageRating,
+    avgCourierRating: avgCourierRating,
+    avgServiceRating: avgServiceRating,
+    avgTasteRating: avgTasteRating,
     avgOrdersPerCustomer: avgOrdersPerCustomer,
     dailyStats: dailyStats,
   );
@@ -1689,8 +1754,12 @@ class ReportsStats {
   final List<int> hourlyDistribution;
   final int peakHour;
   final int totalCustomers;
+  final int newCustomersCount;
   final double repeatCustomerRate;
   final double averageRating;
+  final double avgCourierRating;
+  final double avgServiceRating;
+  final double avgTasteRating;
   final double avgOrdersPerCustomer;
   final List<DailyStat> dailyStats;
 
@@ -1709,8 +1778,12 @@ class ReportsStats {
     required this.hourlyDistribution,
     required this.peakHour,
     required this.totalCustomers,
+    required this.newCustomersCount,
     required this.repeatCustomerRate,
     required this.averageRating,
+    required this.avgCourierRating,
+    required this.avgServiceRating,
+    required this.avgTasteRating,
     required this.avgOrdersPerCustomer,
     required this.dailyStats,
   });

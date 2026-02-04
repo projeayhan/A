@@ -1795,35 +1795,7 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
     );
   }
 
-  // Kategori verileri - restoranları filtrelemek için kullanılacak
-  final List<Map<String, String>> _categories = [
-    {'name': 'Tümü', 'image': ''},
-    {
-      'name': 'Burger',
-      'image':
-          'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=100',
-    },
-    {
-      'name': 'Pizza',
-      'image':
-          'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=100',
-    },
-    {
-      'name': 'Kebap',
-      'image':
-          'https://images.unsplash.com/photo-1603360946369-dc9bb6258143?w=100',
-    },
-    {
-      'name': 'Sushi',
-      'image':
-          'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=100',
-    },
-    {
-      'name': 'Salata',
-      'image':
-          'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=100',
-    },
-  ];
+  // Kategoriler artık veritabanından yükleniyor (restaurantCategoriesProvider)
 
   // Tüm restoranlar - Supabase'den yüklenir
   final List<Map<String, dynamic>> _allRestaurantCards = [];
@@ -1943,32 +1915,43 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
   }
 
   Widget _buildCategories(bool isDark) {
-    return SizedBox(
-      height: 115,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        itemCount: _categories.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
-        itemBuilder: (context, index) {
-          final category = _categories[index];
-          final isSelected =
-              (_selectedCategory == null && index == 0) ||
-              _selectedCategory == category['name'];
+    final categoriesAsync = ref.watch(restaurantCategoriesProvider);
 
-          // "Tümü" için özel widget
-          if (index == 0) {
-            return _buildAllCategoryItem(isDark, isSelected);
-          }
+    return categoriesAsync.when(
+      data: (categories) {
+        return SizedBox(
+          height: 115,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            itemCount: categories.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (context, index) {
+              final category = categories[index];
+              final isSelected =
+                  (_selectedCategory == null && category.name == 'Tümü') ||
+                  _selectedCategory == category.name;
 
-          return _buildCategoryItem(
-            category['name']!,
-            category['image']!,
-            isSelected,
-            isDark,
-          );
-        },
+              // "Tümü" için özel widget
+              if (category.name == 'Tümü') {
+                return _buildAllCategoryItem(isDark, isSelected);
+              }
+
+              return _buildCategoryItem(
+                category.name,
+                category.imageUrl ?? '',
+                isSelected,
+                isDark,
+              );
+            },
+          ),
+        );
+      },
+      loading: () => const SizedBox(
+        height: 115,
+        child: Center(child: CircularProgressIndicator()),
       ),
+      error: (_, __) => const SizedBox(height: 115),
     );
   }
 

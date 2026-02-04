@@ -5,6 +5,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/app_responsive.dart';
+import '../../core/utils/app_dialogs.dart';
 import '../../models/rental/rental_models.dart';
 import '../../core/services/rental_service.dart';
 import '../../services/location_service.dart';
@@ -2582,12 +2583,7 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
                           child: ElevatedButton(
                             onPressed: () async {
                               if (addressController.text.trim().isEmpty) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Lütfen adres girin'),
-                                    backgroundColor: Colors.red,
-                                  ),
-                                );
+                                AppDialogs.showWarning(context, 'Lütfen adres girin');
                                 return;
                               }
 

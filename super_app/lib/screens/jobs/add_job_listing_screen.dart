@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../../models/jobs/job_models.dart';
 import '../../models/jobs/job_data_models.dart';
 import '../../services/jobs_service.dart';
+import '../../core/utils/app_dialogs.dart';
 
 class AddJobListingScreen extends StatefulWidget {
   final JobListingData? editingListing;
@@ -361,13 +362,7 @@ class _AddJobListingScreenState extends State<AddJobListingScreen>
 
   void _showError(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    AppDialogs.showError(context, message);
   }
 
   @override

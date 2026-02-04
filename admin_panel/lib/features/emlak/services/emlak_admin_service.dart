@@ -624,3 +624,41 @@ final promotionStatsProvider = FutureProvider<Map<String, dynamic>>((ref) async 
   final service = ref.watch(emlakAdminServiceProvider);
   return service.getPromotionStats();
 });
+
+// Recent Activity Model
+class EmlakRecentActivity {
+  final String activityType;
+  final String title;
+  final String subtitle;
+  final DateTime createdAt;
+
+  EmlakRecentActivity({
+    required this.activityType,
+    required this.title,
+    required this.subtitle,
+    required this.createdAt,
+  });
+
+  factory EmlakRecentActivity.fromJson(Map<String, dynamic> json) {
+    return EmlakRecentActivity(
+      activityType: json['activity_type'] as String? ?? '',
+      title: json['title'] as String? ?? '',
+      subtitle: json['subtitle'] as String? ?? '',
+      createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime.now(),
+    );
+  }
+}
+
+// Recent Activity Provider
+final emlakRecentActivityProvider = FutureProvider<List<EmlakRecentActivity>>((ref) async {
+  final client = Supabase.instance.client;
+
+  try {
+    final response = await client.rpc('get_emlak_recent_activity', params: {'p_limit': 10});
+    return List<Map<String, dynamic>>.from(response)
+        .map((json) => EmlakRecentActivity.fromJson(json))
+        .toList();
+  } catch (e) {
+    return [];
+  }
+});

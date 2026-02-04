@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/router/app_router.dart';
+import '../../core/utils/app_dialogs.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -85,14 +86,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     await ref.read(authProvider.notifier).signInWithApple();
   }
 
-  void _showError(String message, {bool isError = true}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? Colors.red : Colors.green,
-        duration: Duration(seconds: isError ? 4 : 2),
-      ),
-    );
+  Future<void> _showError(String message, {bool isError = true}) async {
+    if (isError) {
+      await AppDialogs.showError(context, message);
+    } else {
+      await AppDialogs.showSuccess(context, message);
+    }
   }
 
   @override

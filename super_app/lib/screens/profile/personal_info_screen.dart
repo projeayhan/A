@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/providers/user_provider.dart';
+import '../../core/utils/app_dialogs.dart';
 
 class PersonalInfoScreen extends ConsumerStatefulWidget {
   const PersonalInfoScreen({super.key});
@@ -906,14 +907,9 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
             child: Text('Vazgeç', style: TextStyle(color: Colors.grey[600])),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Hesabınız askıya alındı'),
-                  backgroundColor: Colors.orange,
-                ),
-              );
+              await AppDialogs.showWarning(context, 'Hesabınız askıya alındı');
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.orange,
@@ -954,20 +950,10 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
 
       if (mounted) {
         if (success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Bilgileriniz başarıyla güncellendi'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          await AppDialogs.showSuccess(context, 'Bilgileriniz başarıyla güncellendi');
         } else {
           setState(() => _isEditing = true); // Revert editing state on failure
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Güncelleme başarısız oldu'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          await AppDialogs.showError(context, 'Güncelleme başarısız oldu');
         }
       }
     }

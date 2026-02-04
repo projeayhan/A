@@ -7,6 +7,8 @@ class AppBanner {
   final String? description;
   final String? imageUrl;
   final String? linkUrl;
+  final String? linkType; // 'restaurant', 'product', 'menu_item', 'store', 'external'
+  final String? linkId;   // Hedef öğenin UUID'si
   final bool isActive;
   final int sortOrder;
   final String category;
@@ -19,6 +21,8 @@ class AppBanner {
     this.description,
     this.imageUrl,
     this.linkUrl,
+    this.linkType,
+    this.linkId,
     required this.isActive,
     required this.sortOrder,
     this.category = 'home',
@@ -33,6 +37,8 @@ class AppBanner {
       description: json['description'] as String?,
       imageUrl: json['image_url'] as String?,
       linkUrl: json['link_url'] as String?,
+      linkType: json['link_type'] as String?,
+      linkId: json['link_id'] as String?,
       isActive: json['is_active'] as bool? ?? true,
       sortOrder: json['sort_order'] as int? ?? 0,
       category: json['category'] as String? ?? 'home',
@@ -44,6 +50,9 @@ class AppBanner {
           : null,
     );
   }
+
+  /// Banner'ın tıklanabilir olup olmadığını kontrol eder
+  bool get hasLink => linkType != null || linkUrl != null;
 
   /// Banner'ın şu an aktif olup olmadığını kontrol eder
   bool get isCurrentlyActive {

@@ -9,6 +9,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/models/merchant_models.dart';
 import '../../../core/providers/merchant_provider.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../core/utils/app_dialogs.dart';
 
 // Menu Categories Provider
 final menuCategoriesProvider = StateNotifierProvider<
@@ -198,9 +199,8 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
               Tab(text: 'Urunler', icon: Icon(Icons.fastfood, size: 20)),
               Tab(text: 'Kategoriler', icon: Icon(Icons.category, size: 20)),
             ],
-            labelColor: AppColors.primary,
+            labelColor: Colors.white,
             unselectedLabelColor: AppColors.textMuted,
-            indicatorColor: AppColors.primary,
           ),
         ),
 
@@ -728,12 +728,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
                 if (kDebugMode) print('ERROR saving menu item: $e');
                 if (context.mounted) {
                   Navigator.pop(context); // Close loading dialog
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Hata: $e'),
-                      backgroundColor: AppColors.error,
-                    ),
-                  );
+                  AppDialogs.showError(context, 'Hata: $e');
                 }
               }
             },
@@ -908,12 +903,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
               } catch (e) {
                 if (context.mounted) {
                   Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Hata: $e'),
-                      backgroundColor: AppColors.error,
-                    ),
-                  );
+                  AppDialogs.showError(context, 'Hata: $e');
                 }
               }
             },
@@ -965,12 +955,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
                   } catch (e) {
                     if (context.mounted) {
                       Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Hata: $e'),
-                          backgroundColor: AppColors.error,
-                        ),
-                      );
+                      AppDialogs.showError(context, 'Hata: $e');
                     }
                   }
                 },
@@ -1035,12 +1020,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
                               ? null
                               : () async {
                                 if (nameController.text.trim().isEmpty) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Kategori adi zorunlu'),
-                                      backgroundColor: AppColors.error,
-                                    ),
-                                  );
+                                  AppDialogs.showError(context, 'Kategori adi zorunlu');
                                   return;
                                 }
 
@@ -1050,14 +1030,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
                                         .valueOrNull;
                                 if (kDebugMode) print('Merchant value: $merchant');
                                 if (merchant == null) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'Magaza bilgisi bulunamadi',
-                                      ),
-                                      backgroundColor: AppColors.error,
-                                    ),
-                                  );
+                                  AppDialogs.showError(context, 'Magaza bilgisi bulunamadi');
                                   Navigator.pop(context);
                                   return;
                                 }
@@ -1079,30 +1052,22 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
 
                                   if (context.mounted) {
                                     Navigator.pop(context);
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          success
-                                              ? 'Kategori eklendi!'
-                                              : 'Hata olustu',
+                                    if (success) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Kategori eklendi!'),
+                                          backgroundColor: AppColors.success,
                                         ),
-                                        backgroundColor:
-                                            success
-                                                ? AppColors.success
-                                                : AppColors.error,
-                                      ),
-                                    );
+                                      );
+                                    } else {
+                                      AppDialogs.showError(context, 'Hata olustu');
+                                    }
                                   }
                                 } catch (e) {
                                   if (kDebugMode) print('Category save error: $e');
                                   if (context.mounted) {
                                     setDialogState(() => isLoading = false);
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text('Hata: $e'),
-                                        backgroundColor: AppColors.error,
-                                      ),
-                                    );
+                                    AppDialogs.showError(context, 'Hata: $e');
                                   }
                                 }
                               },
@@ -1184,12 +1149,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
                               ? null
                               : () async {
                                 if (nameController.text.trim().isEmpty) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Kategori adi zorunlu'),
-                                      backgroundColor: AppColors.error,
-                                    ),
-                                  );
+                                  AppDialogs.showError(context, 'Kategori adi zorunlu');
                                   return;
                                 }
 
@@ -1218,19 +1178,16 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
 
                                 if (context.mounted) {
                                   Navigator.pop(context);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        success
-                                            ? 'Kategori guncellendi!'
-                                            : 'Hata olustu',
+                                  if (success) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Kategori guncellendi!'),
+                                        backgroundColor: AppColors.success,
                                       ),
-                                      backgroundColor:
-                                          success
-                                              ? AppColors.success
-                                              : AppColors.error,
-                                    ),
-                                  );
+                                    );
+                                  } else {
+                                    AppDialogs.showError(context, 'Hata olustu');
+                                  }
                                 }
                               },
                       child:
@@ -1280,15 +1237,16 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
 
                   if (context.mounted) {
                     Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          success ? 'Kategori silindi!' : 'Hata olustu',
+                    if (success) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Kategori silindi!'),
+                          backgroundColor: AppColors.success,
                         ),
-                        backgroundColor:
-                            success ? AppColors.success : AppColors.error,
-                      ),
-                    );
+                      );
+                    } else {
+                      AppDialogs.showError(context, 'Hata olustu');
+                    }
                   }
                 },
                 style: ElevatedButton.styleFrom(

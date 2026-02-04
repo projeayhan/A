@@ -8,6 +8,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/models/merchant_models.dart';
 import '../../core/providers/merchant_provider.dart';
 import '../../core/services/supabase_service.dart';
+import '../../core/utils/app_dialogs.dart';
 import 'couriers_screen.dart';
 
 class OrderDetailScreen extends ConsumerWidget {
@@ -1066,9 +1067,7 @@ class OrderDetailScreen extends ConsumerWidget {
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
-        );
+        AppDialogs.showError(context, 'Hata: $e');
       }
     }
   }
@@ -1127,19 +1126,12 @@ class OrderDetailScreen extends ConsumerWidget {
           );
         } else {
           final error = result['error'] as String? ?? 'Bilinmeyen hata';
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(error),
-              backgroundColor: AppColors.warning,
-            ),
-          );
+          AppDialogs.showWarning(context, error);
         }
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
-        );
+        AppDialogs.showError(context, 'Hata: $e');
       }
     }
   }
@@ -1509,12 +1501,7 @@ class _OrderMessagesCardState extends ConsumerState<_OrderMessagesCard> {
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Mesaj gönderilemedi: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        AppDialogs.showError(context, 'Mesaj gönderilemedi: $e');
       }
     }
   }

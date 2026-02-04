@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../core/utils/app_dialogs.dart';
 import '../../services/rental_service.dart';
 
 class MyBookingsScreen extends StatefulWidget {

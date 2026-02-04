@@ -1,15 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/providers/merchant_provider.dart';
 
-class NotificationsScreen extends ConsumerWidget {
+class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<NotificationsScreen> createState() => _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Ekran açıldığında tüm bildirimleri okundu olarak işaretle
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(notificationsProvider.notifier).markAllAsRead();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final notifications = ref.watch(notificationsProvider);
     final unreadCount = ref.watch(unreadNotificationsCountProvider);
 
@@ -81,6 +96,7 @@ class NotificationsScreen extends ConsumerWidget {
                       notification: notification,
                       onTap: () {
                         ref.read(notificationsProvider.notifier).markAsRead(notification.id);
+                        _navigateToNotificationTarget(context, notification);
                       },
                     );
                   },
@@ -88,6 +104,43 @@ class NotificationsScreen extends ConsumerWidget {
         ),
       ],
     );
+  }
+
+  void _navigateToNotificationTarget(BuildContext context, MerchantNotification notification) {
+    final data = notification.data;
+
+    switch (notification.type) {
+      case 'order':
+      case 'order_cancelled':
+        // Sipariş bildirimi - sipariş detayına git
+        final orderId = data?['order_id'] as String?;
+        if (orderId != null) {
+          context.push('/orders/$orderId');
+        } else {
+          context.go('/orders');
+        }
+        break;
+
+      case 'review':
+        // Yorum bildirimi - yorumlar sayfasına git
+        context.go('/reviews');
+        break;
+
+      case 'payment':
+        // Ödeme bildirimi - finans sayfasına git
+        context.go('/finance');
+        break;
+
+      case 'stock':
+        // Stok bildirimi - ürünler sayfasına git
+        context.go('/products');
+        break;
+
+      case 'system':
+      default:
+        // Sistem bildirimi - bir şey yapma
+        break;
+    }
   }
 
   Widget _buildEmptyState(BuildContext context) {

@@ -1,9 +1,21 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/restaurant_service.dart';
+import '../services/supabase_service.dart';
 import 'address_provider.dart';
 
-// Tüm restoranlar provider (teslimat bölgesi filtreli)
+// Merchants tablosu değişikliklerini dinle (rating güncellemeleri için)
+final _merchantsChangeProvider = StreamProvider<void>((ref) {
+  return SupabaseService.client
+      .from('merchants')
+      .stream(primaryKey: ['id'])
+      .map((_) {}); // Sadece değişiklik sinyali için
+});
+
+// Tüm restoranlar provider (teslimat bölgesi filtreli + realtime)
 final restaurantsProvider = FutureProvider<List<Restaurant>>((ref) async {
+  // Merchants değişikliklerini dinle - değişiklik olunca otomatik yenilenir
+  ref.watch(_merchantsChangeProvider);
+
   final selectedAddress = ref.watch(selectedAddressProvider);
   return await RestaurantService.getRestaurants(
     customerLat: selectedAddress?.latitude,
@@ -16,8 +28,11 @@ final restaurantCategoriesProvider = FutureProvider<List<RestaurantCategory>>((r
   return await RestaurantService.getCategories();
 });
 
-// Kategoriye göre restoranlar provider (teslimat bölgesi filtreli)
+// Kategoriye göre restoranlar provider (teslimat bölgesi filtreli + realtime)
 final restaurantsByCategoryProvider = FutureProvider.family<List<Restaurant>, String?>((ref, category) async {
+  // Merchants değişikliklerini dinle
+  ref.watch(_merchantsChangeProvider);
+
   final selectedAddress = ref.watch(selectedAddressProvider);
   if (category == null || category.isEmpty || category == 'Tümü') {
     return await RestaurantService.getRestaurants(
@@ -53,8 +68,11 @@ final restaurantSearchProvider = FutureProvider.family<List<Restaurant>, String>
   );
 });
 
-// Popüler restoranlar provider (teslimat bölgesi filtreli)
+// Popüler restoranlar provider (teslimat bölgesi filtreli + realtime)
 final popularRestaurantsProvider = FutureProvider<List<Restaurant>>((ref) async {
+  // Merchants değişikliklerini dinle
+  ref.watch(_merchantsChangeProvider);
+
   final selectedAddress = ref.watch(selectedAddressProvider);
   return await RestaurantService.getPopularRestaurants(
     customerLat: selectedAddress?.latitude,

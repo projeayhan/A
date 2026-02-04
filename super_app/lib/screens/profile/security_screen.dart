@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/services/supabase_service.dart';
+import '../../core/utils/app_dialogs.dart';
 
 class SecurityScreen extends ConsumerStatefulWidget {
   const SecurityScreen({super.key});
@@ -311,14 +312,9 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
                     Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Şifreniz başarıyla değiştirildi'),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
+                    await AppDialogs.showSuccess(context, 'Şifreniz başarıyla değiştirildi');
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
@@ -434,22 +430,12 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
                       final confirmPass = confirmPasswordController.text;
 
                       if (newPass.length < 8) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Şifre en az 8 karakter olmalıdır'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
+                        await AppDialogs.showError(context, 'Şifre en az 8 karakter olmalıdır');
                         return;
                       }
 
                       if (newPass != confirmPass) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Şifreler eşleşmiyor'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
+                        await AppDialogs.showError(context, 'Şifreler eşleşmiyor');
                         return;
                       }
 
@@ -459,22 +445,12 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
                         await SupabaseService.setPassword(newPass);
                         if (context.mounted) {
                           Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Şifreniz başarıyla belirlendi! Artık e-posta ile de giriş yapabilirsiniz.'),
-                              backgroundColor: Colors.green,
-                            ),
-                          );
+                          await AppDialogs.showSuccess(context, 'Şifreniz başarıyla belirlendi! Artık e-posta ile de giriş yapabilirsiniz.');
                         }
                       } catch (e) {
                         setModalState(() => isLoading = false);
                         if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Hata: $e'),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
+                          await AppDialogs.showError(context, 'Hata: $e');
                         }
                       }
                     },

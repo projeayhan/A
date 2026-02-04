@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/providers/payment_method_provider.dart';
+import '../../core/utils/app_dialogs.dart';
 
 class PaymentMethodsScreen extends ConsumerStatefulWidget {
   const PaymentMethodsScreen({super.key});
@@ -657,20 +658,11 @@ class _PaymentMethodsScreenState extends ConsumerState<PaymentMethodsScreen> {
                             .verifyPromoCode(controller.text);
 
                         if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                success
-                                    ? 'Kod uygulandı!'
-                                    : 'Geçersiz veya kullanılmış kod.',
-                              ),
-                              backgroundColor: success
-                                  ? const Color(0xFF10B981)
-                                  : Colors.red,
-                            ),
-                          );
                           if (success) {
+                            await AppDialogs.showSuccess(context, 'Kod uygulandı!');
                             controller.clear();
+                          } else {
+                            await AppDialogs.showError(context, 'Geçersiz veya kullanılmış kod.');
                           }
                         }
                       }
@@ -1074,12 +1066,7 @@ class _PaymentMethodsScreenState extends ConsumerState<PaymentMethodsScreen> {
                           cardHolder.isEmpty ||
                           expiry.isEmpty ||
                           cvv.length < 3) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Lütfen tüm alanları doldurun'),
-                            backgroundColor: Colors.red,
-                          ),
-                        );
+                        await AppDialogs.showError(context, 'Lütfen tüm alanları doldurun');
                         return;
                       }
 
@@ -1129,14 +1116,11 @@ class _PaymentMethodsScreenState extends ConsumerState<PaymentMethodsScreen> {
 
                       if (!context.mounted) return;
                       Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            success ? 'Kart eklendi' : 'Bir hata oluştu',
-                          ),
-                          backgroundColor: success ? Colors.green : Colors.red,
-                        ),
-                      );
+                      if (success) {
+                        await AppDialogs.showSuccess(context, 'Kart eklendi');
+                      } else {
+                        await AppDialogs.showError(context, 'Bir hata oluştu');
+                      }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
@@ -1259,15 +1243,10 @@ class _PaymentMethodsScreenState extends ConsumerState<PaymentMethodsScreen> {
             child: Text('İptal', style: TextStyle(color: Colors.grey[600])),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               ref.read(paymentMethodProvider.notifier).removeCard(card.id);
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Kart silindi'),
-                  backgroundColor: Colors.red,
-                ),
-              );
+              await AppDialogs.showSuccess(context, 'Kart silindi');
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,

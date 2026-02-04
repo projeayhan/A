@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/providers/merchant_provider.dart';
+import '../../core/utils/app_dialogs.dart';
 
 // Restorana ait kuryeler (work_mode = 'restaurant' veya 'both' ve merchant_id eşleşen)
 // StreamProvider ile realtime güncellemeler
@@ -322,7 +323,7 @@ class _CouriersScreenState extends ConsumerState<CouriersScreen>
     final courier = request['couriers'] as Map<String, dynamic>?;
     if (courier == null) return const SizedBox.shrink();
 
-    final rating = (courier['rating'] as num?)?.toDouble() ?? 5.0;
+    final rating = (courier['rating'] as num?)?.toDouble() ?? 0.0;
     final totalDeliveries = courier['total_deliveries'] as int? ?? 0;
     final workMode = courier['work_mode'] as String? ?? 'restaurant';
     final message = request['message'] as String?;
@@ -504,12 +505,7 @@ class _CouriersScreenState extends ConsumerState<CouriersScreen>
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Hata: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        AppDialogs.showError(context, 'Hata: $e');
       }
     }
   }
@@ -542,12 +538,7 @@ class _CouriersScreenState extends ConsumerState<CouriersScreen>
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Hata: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        AppDialogs.showError(context, 'Hata: $e');
       }
     }
   }
@@ -806,7 +797,7 @@ class _CouriersScreenState extends ConsumerState<CouriersScreen>
     final isOnline = courier['is_online'] == true;
     final isBusy = courier['is_busy'] == true;
     final workMode = courier['work_mode'] as String? ?? 'platform';
-    final rating = (courier['rating'] as num?)?.toDouble() ?? 5.0;
+    final rating = (courier['rating'] as num?)?.toDouble() ?? 0.0;
     final totalDeliveries = courier['total_deliveries'] as int? ?? 0;
 
     return ListTile(

@@ -16,6 +16,7 @@ import '../../screens/profile/notifications_screen.dart';
 import '../../screens/profile/help_screen.dart';
 import '../../screens/profile/about_screen.dart';
 import '../../screens/auth/pending_screen.dart';
+import '../../widgets/floating_ai_assistant.dart';
 
 class AppRoutes {
   static const String login = '/login';
@@ -158,7 +159,12 @@ class MainShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      body: child,
+      body: Stack(
+        children: [
+          child,
+          const FloatingAIAssistant(),
+        ],
+      ),
       bottomNavigationBar: const _BottomNavBar(),
     );
   }

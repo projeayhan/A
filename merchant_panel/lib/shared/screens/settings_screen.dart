@@ -11,38 +11,9 @@ import '../../core/providers/merchant_provider.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/services/geocoding_service.dart';
 import '../widgets/delivery_zones_map.dart';
+import '../../core/utils/app_dialogs.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
-
-// Working hours model
-class WorkingHours {
-  final String id;
-  final String merchantId;
-  final int dayOfWeek;
-  final bool isOpen;
-  final String openTime;
-  final String closeTime;
-
-  WorkingHours({
-    required this.id,
-    required this.merchantId,
-    required this.dayOfWeek,
-    required this.isOpen,
-    required this.openTime,
-    required this.closeTime,
-  });
-
-  factory WorkingHours.fromJson(Map<String, dynamic> json) {
-    return WorkingHours(
-      id: json['id'] ?? '',
-      merchantId: json['merchant_id'] ?? '',
-      dayOfWeek: json['day_of_week'] ?? 0,
-      isOpen: json['is_open'] ?? true,
-      openTime: json['open_time']?.toString().substring(0, 5) ?? '10:00',
-      closeTime: json['close_time']?.toString().substring(0, 5) ?? '22:00',
-    );
-  }
-}
 
 // Merchant settings model
 class MerchantSettings {
@@ -145,10 +116,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _isLoading = false;
   bool _dataLoaded = false;
 
-  // Working hours state
-  List<WorkingHours> _workingHours = [];
-  bool _workingHoursLoading = true;
-
   // Settings state
   MerchantSettings? _settings;
   bool _settingsLoading = true;
@@ -162,7 +129,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   final _tabs = [
     'Isletme Bilgileri',
-    'Calisma Saatleri',
     'Teslimat Ayarlari',
     'Bildirimler',
     'Dogrulama',
@@ -175,7 +141,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadMerchantData();
-      _loadWorkingHours();
       _loadSettings();
     });
   }
@@ -213,63 +178,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _coverUrl = merchant.coverUrl;
       _dataLoaded = true;
     });
-  }
-
-  Future<void> _loadWorkingHours() async {
-    final merchant = ref.read(currentMerchantProvider).valueOrNull;
-    if (merchant == null) return;
-
-    try {
-      final supabase = ref.read(supabaseProvider);
-
-      // First check if working hours exist
-      final response = await supabase
-          .from('merchant_working_hours')
-          .select()
-          .eq('merchant_id', merchant.id)
-          .order('day_of_week');
-
-      if (response.isEmpty) {
-        // Initialize default working hours
-        await supabase.rpc(
-          'initialize_merchant_working_hours',
-          params: {'p_merchant_id': merchant.id},
-        );
-
-        // Fetch again
-        final newResponse = await supabase
-            .from('merchant_working_hours')
-            .select()
-            .eq('merchant_id', merchant.id)
-            .order('day_of_week');
-
-        if (mounted) {
-          setState(() {
-            _workingHours =
-                newResponse.map<WorkingHours>((e) => WorkingHours.fromJson(e)).toList();
-            _workingHoursLoading = false;
-          });
-        }
-      } else {
-        if (mounted) {
-          setState(() {
-            _workingHours =
-                response.map<WorkingHours>((e) => WorkingHours.fromJson(e)).toList();
-            _workingHoursLoading = false;
-          });
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _workingHoursLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Calisma saatleri yuklenemedi: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
-    }
   }
 
   Future<void> _loadSettings() async {
@@ -320,12 +228,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _settingsLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Ayarlar yuklenemedi: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        AppDialogs.showError(context, 'Ayarlar yuklenemedi: $e');
       }
     }
   }
@@ -407,92 +310,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
-        );
-      }
-    }
-  }
-
-  Future<void> _saveBusinessInfo() async {
-    final merchant = ref.read(currentMerchantProvider).valueOrNull;
-    if (merchant == null) return;
-
-    setState(() => _isLoading = true);
-
-    try {
-      final supabase = ref.read(supabaseProvider);
-      await supabase
-          .from('merchants')
-          .update({
-            'business_name': _nameController.text.trim(),
-            'description': _descriptionController.text.trim(),
-            'phone': _phoneController.text.trim(),
-            'email': _emailController.text.trim(),
-            'address': _addressController.text.trim(),
-          })
-          .eq('id', merchant.id);
-
-      // Reload merchant data
-      await ref
-          .read(currentMerchantProvider.notifier)
-          .loadMerchantByUserId(supabase.auth.currentUser!.id);
-
-      setState(() => _isLoading = false);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Bilgiler kaydedildi!'),
-            backgroundColor: AppColors.success,
-          ),
-        );
-      }
-    } catch (e) {
-      setState(() => _isLoading = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
-        );
-      }
-    }
-  }
-
-  Future<void> _updateWorkingHours(WorkingHours hours, {bool? isOpen, String? openTime, String? closeTime}) async {
-    try {
-      final supabase = ref.read(supabaseProvider);
-
-      final updates = <String, dynamic>{
-        'updated_at': DateTime.now().toIso8601String(),
-      };
-      if (isOpen != null) updates['is_open'] = isOpen;
-      if (openTime != null) updates['open_time'] = openTime;
-      if (closeTime != null) updates['close_time'] = closeTime;
-
-      await supabase
-          .from('merchant_working_hours')
-          .update(updates)
-          .eq('id', hours.id);
-
-      // Update local state
-      setState(() {
-        final index = _workingHours.indexWhere((h) => h.id == hours.id);
-        if (index != -1) {
-          _workingHours[index] = WorkingHours(
-            id: hours.id,
-            merchantId: hours.merchantId,
-            dayOfWeek: hours.dayOfWeek,
-            isOpen: isOpen ?? hours.isOpen,
-            openTime: openTime ?? hours.openTime,
-            closeTime: closeTime ?? hours.closeTime,
-          );
-        }
-      });
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
-        );
+        AppDialogs.showError(context, 'Hata: $e');
       }
     }
   }
@@ -541,33 +359,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final lng = double.tryParse(lngText);
 
     if (lat == null || lng == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Gecerli koordinat degerleri girin'),
-          backgroundColor: AppColors.error,
-        ),
-      );
+      AppDialogs.showError(context, 'Gecerli koordinat degerleri girin');
       return;
     }
 
     // Koordinat aralığı kontrolü
     if (lat < -90 || lat > 90) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Enlem -90 ile 90 arasi olmali. Girilen: $lat'),
-          backgroundColor: AppColors.error,
-        ),
-      );
+      AppDialogs.showError(context, 'Enlem -90 ile 90 arasi olmali. Girilen: $lat');
       return;
     }
 
     if (lng < -180 || lng > 180) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Boylam -180 ile 180 arasi olmali. Girilen: $lng'),
-          backgroundColor: AppColors.error,
-        ),
-      );
+      AppDialogs.showError(context, 'Boylam -180 ile 180 arasi olmali. Girilen: $lng');
       return;
     }
 
@@ -616,9 +419,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
-        );
+        AppDialogs.showError(context, 'Hata: $e');
       }
     }
   }
@@ -762,9 +563,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
-        );
+        AppDialogs.showError(context, 'Hata: $e');
       }
     }
   }
@@ -806,9 +605,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
-        );
+        AppDialogs.showError(context, 'Hata: $e');
       }
     }
   }
@@ -850,9 +647,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
-        );
+        AppDialogs.showError(context, 'Hata: $e');
       }
     }
   }
@@ -866,9 +661,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Cikis yapilamadi: $e'), backgroundColor: AppColors.error),
-        );
+        AppDialogs.showError(context, 'Cikis yapilamadi: $e');
       }
     }
   }
@@ -878,64 +671,115 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final newPasswordController = TextEditingController();
     final confirmPasswordController = TextEditingController();
 
-    final result = await showDialog<bool>(
+    final result = await showDialog<Map<String, String>?>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Sifre Degistir'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: newPasswordController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Yeni Sifre',
-                hintText: 'En az 6 karakter',
+          title: const Text('Sifre Degistir'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: currentPasswordController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Mevcut Sifre',
+                  hintText: 'Guvenlik icin mevcut sifrenizi girin',
+                  prefixIcon: Icon(Icons.lock_outline),
+                ),
               ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: newPasswordController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Yeni Sifre',
+                  hintText: 'En az 6 karakter',
+                  prefixIcon: Icon(Icons.lock),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: confirmPasswordController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Yeni Sifre (Tekrar)',
+                  prefixIcon: Icon(Icons.lock),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, null),
+              child: const Text('Iptal'),
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: confirmPasswordController,
-              obscureText: true,
-              decoration: const InputDecoration(
-                labelText: 'Yeni Sifre (Tekrar)',
-              ),
+            ElevatedButton(
+              onPressed: () {
+                if (currentPasswordController.text.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Mevcut sifrenizi girin')),
+                  );
+                  return;
+                }
+                if (newPasswordController.text.length < 6) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Yeni sifre en az 6 karakter olmali')),
+                  );
+                  return;
+                }
+                if (newPasswordController.text != confirmPasswordController.text) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Yeni sifreler eslesmiyor')),
+                  );
+                  return;
+                }
+                if (currentPasswordController.text == newPasswordController.text) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Yeni sifre mevcut sifreden farkli olmali')),
+                  );
+                  return;
+                }
+                Navigator.pop(context, {
+                  'current': currentPasswordController.text,
+                  'new': newPasswordController.text,
+                });
+              },
+              child: const Text('Degistir'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Iptal'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (newPasswordController.text.length < 6) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Sifre en az 6 karakter olmali')),
-                );
-                return;
-              }
-              if (newPasswordController.text != confirmPasswordController.text) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Sifreler eslesmiyor')),
-                );
-                return;
-              }
-              Navigator.pop(context, true);
-            },
-            child: const Text('Degistir'),
-          ),
-        ],
-      ),
     );
 
-    if (result == true) {
+    if (result != null) {
       try {
         final supabase = ref.read(supabaseProvider);
+        final email = supabase.auth.currentUser?.email;
+
+        if (email == null) {
+          if (mounted) {
+            AppDialogs.showError(context, 'Kullanici bilgisi alinamadi');
+          }
+          return;
+        }
+
+        // Mevcut sifreyi dogrula
+        try {
+          await supabase.auth.signInWithPassword(
+            email: email,
+            password: result['current']!,
+          );
+        } catch (e) {
+          if (mounted) {
+            AppDialogs.showError(context, 'Mevcut sifre yanlis');
+          }
+          return;
+        }
+
+        // Yeni sifreyi kaydet
         await supabase.auth.updateUser(
-          UserAttributes(password: newPasswordController.text),
+          UserAttributes(password: result['new']!),
         );
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -946,9 +790,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
-          );
+          AppDialogs.showError(context, 'Sifre degistirilemedi: $e');
         }
       }
     }
@@ -1023,16 +865,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       case 0:
         return Icons.store;
       case 1:
-        return Icons.schedule;
-      case 2:
         return Icons.local_shipping;
-      case 3:
+      case 2:
         return Icons.notifications;
-      case 4:
+      case 3:
         return Icons.verified_user;
-      case 5:
+      case 4:
         return Icons.support_agent;
-      case 6:
+      case 5:
         return Icons.person;
       default:
         return Icons.settings;
@@ -1044,16 +884,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       case 0:
         return _buildBusinessSettings();
       case 1:
-        return _buildWorkingHoursSettings();
-      case 2:
         return _buildDeliverySettings();
-      case 3:
+      case 2:
         return _buildNotificationSettings();
-      case 4:
+      case 3:
         return _buildVerificationSettings();
-      case 5:
+      case 4:
         return _buildSupportSettings();
-      case 6:
+      case 5:
         return _buildAccountSettings();
       default:
         return const SizedBox();
@@ -1172,14 +1010,40 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         _SettingsCard(
           title: 'Temel Bilgiler',
           children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                color: AppColors.info.withAlpha(20),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.info.withAlpha(50)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: AppColors.info, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Bu bilgiler kayit sirasinda belirlenmistir ve degistirilemez.',
+                      style: TextStyle(
+                        color: AppColors.info,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
             TextFormField(
               controller: _nameController,
+              readOnly: true,
               decoration: const InputDecoration(labelText: 'Isletme Adi'),
             ),
             const SizedBox(height: 16),
             TextFormField(
               controller: _descriptionController,
               maxLines: 3,
+              readOnly: true,
               decoration: const InputDecoration(labelText: 'Aciklama'),
             ),
             const SizedBox(height: 16),
@@ -1188,6 +1052,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 Expanded(
                   child: TextFormField(
                     controller: _phoneController,
+                    readOnly: true,
                     decoration: const InputDecoration(labelText: 'Telefon'),
                   ),
                 ),
@@ -1195,6 +1060,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 Expanded(
                   child: TextFormField(
                     controller: _emailController,
+                    readOnly: true,
                     decoration: const InputDecoration(labelText: 'E-posta'),
                   ),
                 ),
@@ -1204,115 +1070,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             TextFormField(
               controller: _addressController,
               maxLines: 2,
+              readOnly: true,
               decoration: const InputDecoration(labelText: 'Adres'),
             ),
-          ],
-        ),
-        const SizedBox(height: 24),
-
-        Align(
-          alignment: Alignment.centerRight,
-          child: ElevatedButton(
-            onPressed: _isLoading ? null : _saveBusinessInfo,
-            child:
-                _isLoading
-                    ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                    : const Text('Degisiklikleri Kaydet'),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildWorkingHoursSettings() {
-    final days = [
-      'Pazartesi',
-      'Sali',
-      'Carsamba',
-      'Persembe',
-      'Cuma',
-      'Cumartesi',
-      'Pazar',
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Calisma Saatleri',
-          style: Theme.of(
-            context,
-          ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Isletmenizin acik oldugu saatleri belirleyin',
-          style: TextStyle(color: AppColors.textSecondary),
-        ),
-        const SizedBox(height: 32),
-
-        _SettingsCard(
-          title: 'Haftalik Program',
-          children: [
-            if (_workingHoursLoading)
-              const Center(child: CircularProgressIndicator())
-            else
-              ...List.generate(7, (index) {
-                final hours = _workingHours.firstWhere(
-                  (h) => h.dayOfWeek == index,
-                  orElse: () => WorkingHours(
-                    id: '',
-                    merchantId: '',
-                    dayOfWeek: index,
-                    isOpen: index != 6,
-                    openTime: '10:00',
-                    closeTime: '22:00',
-                  ),
-                );
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 16),
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 120,
-                        child: Text(
-                          days[index],
-                          style: const TextStyle(fontWeight: FontWeight.w500),
-                        ),
-                      ),
-                      Switch(
-                        value: hours.isOpen,
-                        onChanged: (value) => _updateWorkingHours(hours, isOpen: value),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Row(
-                          children: [
-                            _TimePickerButton(
-                              time: hours.openTime,
-                              enabled: hours.isOpen,
-                              onTimeSelected: (time) => _updateWorkingHours(hours, openTime: time),
-                            ),
-                            const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 8),
-                              child: Text('-'),
-                            ),
-                            _TimePickerButton(
-                              time: hours.closeTime,
-                              enabled: hours.isOpen,
-                              onTimeSelected: (time) => _updateWorkingHours(hours, closeTime: time),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }),
           ],
         ),
       ],
@@ -1630,57 +1390,150 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         ),
         const SizedBox(height: 32),
 
-        _SettingsCard(
-          title: 'AI Asistan',
-          children: [
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Container(
-                padding: const EdgeInsets.all(12),
+        // AI Asistan bilgilendirmesi
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                AppColors.primary.withAlpha(30),
+                AppColors.primary.withBlue(255).withAlpha(20),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.primary.withAlpha(50)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   gradient: AppColors.primaryGradient,
-                  borderRadius: BorderRadius.circular(12),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withAlpha(100),
+                      blurRadius: 20,
+                      spreadRadius: 2,
+                    ),
+                  ],
                 ),
-                child: const Icon(Icons.smart_toy, color: Colors.white),
+                child: const Icon(Icons.smart_toy, color: Colors.white, size: 28),
               ),
-              title: const Text(
-                'Isletme Asistani',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-              subtitle: Text(
-                '7/24 AI destekli yardim alin',
-                style: TextStyle(color: AppColors.textMuted),
-              ),
-              trailing: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppColors.success.withAlpha(30),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
+              const SizedBox(width: 20),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(
-                        color: AppColors.success,
-                        shape: BoxShape.circle,
+                    Row(
+                      children: [
+                        const Text(
+                          'AI Asistan',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.success,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Text(
+                            'Cevrimici',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Ekranin sag alt kosesindeki mavi robota tiklayarak 7/24 AI destekli yardim alabilirsiniz.',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
                       ),
                     ),
-                    const SizedBox(width: 6),
-                    const Text(
-                      'Cevrimici',
-                      style: TextStyle(
-                        color: AppColors.success,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Icon(Icons.arrow_downward, size: 16, color: AppColors.primary),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Sag alttaki robota tiklayin',
+                          style: TextStyle(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-              onTap: () => context.push('/support/ai-chat'),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
+
+        _SettingsCard(
+          title: 'Iletisim',
+          children: [
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.info.withAlpha(30),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.email, color: AppColors.info),
+              ),
+              title: const Text('E-posta Destek'),
+              subtitle: Text(
+                'destek@odabase.com',
+                style: TextStyle(color: AppColors.textMuted),
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () async {
+                final url = Uri.parse('mailto:destek@odabase.com');
+                if (await canLaunchUrl(url)) {
+                  await launchUrl(url);
+                }
+              },
+            ),
+            const Divider(height: 24),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.success.withAlpha(30),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.phone, color: AppColors.success),
+              ),
+              title: const Text('Telefon Destek'),
+              subtitle: Text(
+                '+90 392 000 00 00',
+                style: TextStyle(color: AppColors.textMuted),
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () async {
+                final url = Uri.parse('tel:+903920000000');
+                if (await canLaunchUrl(url)) {
+                  await launchUrl(url);
+                }
+              },
             ),
           ],
         ),
@@ -1702,6 +1555,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             _buildFaqItem(
               'Raporlari nasil gorurum?',
               'Raporlar sayfasindan satis, siparis ve musteri raporlarinizi inceleyebilirsiniz.',
+            ),
+            const Divider(height: 24),
+            _buildFaqItem(
+              'Teslimat bolgeleri nasil ayarlanir?',
+              'Ayarlar > Teslimat Ayarlari sayfasindan teslimat bolgelerinizi harita uzerinden belirleyebilirsiniz.',
             ),
           ],
         ),
@@ -1987,9 +1845,7 @@ class _VerificationSettingsState extends ConsumerState<_VerificationSettings> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
-        );
+        AppDialogs.showError(context, 'Hata: $e');
         setState(() => _isLoading = false);
       }
     }
@@ -2180,59 +2036,3 @@ class _SettingsSwitch extends StatelessWidget {
   }
 }
 
-class _TimePickerButton extends StatelessWidget {
-  final String time;
-  final bool enabled;
-  final Function(String)? onTimeSelected;
-
-  const _TimePickerButton({
-    required this.time,
-    this.enabled = true,
-    this.onTimeSelected,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: enabled
-          ? () async {
-              final parts = time.split(':');
-              final hour = int.tryParse(parts[0]) ?? 10;
-              final minute = int.tryParse(parts[1]) ?? 0;
-
-              final selectedTime = await showTimePicker(
-                context: context,
-                initialTime: TimeOfDay(hour: hour, minute: minute),
-                builder: (context, child) {
-                  return MediaQuery(
-                    data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-                    child: child!,
-                  );
-                },
-              );
-
-              if (selectedTime != null && onTimeSelected != null) {
-                final formattedTime =
-                    '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}';
-                onTimeSelected!(formattedTime);
-              }
-            }
-          : null,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: enabled ? AppColors.background : AppColors.background.withAlpha(128),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Text(
-          time,
-          style: TextStyle(
-            color: enabled ? AppColors.textPrimary : AppColors.textMuted,
-          ),
-        ),
-      ),
-    );
-  }
-}

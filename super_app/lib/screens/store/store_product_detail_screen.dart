@@ -5,6 +5,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/providers/store_cart_provider.dart';
 import '../../core/providers/product_favorite_provider.dart';
 import '../../core/utils/image_utils.dart';
+import '../../core/utils/app_dialogs.dart';
 import '../../models/store/store_product_model.dart';
 import '../../widgets/food/add_to_cart_animation.dart';
 
@@ -717,16 +718,9 @@ class _StoreProductDetailScreenState
                   }
 
                   if (missingSelections.isNotEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Lütfen seçim yapın: ${missingSelections.join(", ")}'),
-                        backgroundColor: Colors.red,
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        duration: const Duration(seconds: 3),
-                      ),
+                    AppDialogs.showWarning(
+                      context,
+                      'Lütfen seçim yapın: ${missingSelections.join(", ")}',
                     );
                     return;
                   }

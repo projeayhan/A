@@ -38,6 +38,97 @@ final driverPayoutsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) a
   return List<Map<String, dynamic>>.from(response);
 });
 
+// Earnings Stats Provider - günlük kazanç verileri ve özet
+final earningsStatsProvider = FutureProvider.family<EarningsStats, String>((ref, period) async {
+  final supabase = ref.watch(supabaseProvider);
+  final result = await supabase.rpc('get_earnings_stats', params: {'p_period': period});
+  return EarningsStats.fromJson(result as Map<String, dynamic>);
+});
+
+class DailyEarnings {
+  final DateTime date;
+  final String dayName;
+  final double driverEarnings;
+  final double partnerEarnings;
+  final double totalEarnings;
+
+  DailyEarnings({
+    required this.date,
+    required this.dayName,
+    required this.driverEarnings,
+    required this.partnerEarnings,
+    required this.totalEarnings,
+  });
+
+  factory DailyEarnings.fromJson(Map<String, dynamic> json) {
+    return DailyEarnings(
+      date: DateTime.parse(json['date'] as String),
+      dayName: json['day_name'] as String? ?? '',
+      driverEarnings: (json['driver_earnings'] as num?)?.toDouble() ?? 0,
+      partnerEarnings: (json['partner_earnings'] as num?)?.toDouble() ?? 0,
+      totalEarnings: (json['total_earnings'] as num?)?.toDouble() ?? 0,
+    );
+  }
+}
+
+class PendingPayoutInfo {
+  final int count;
+  final double amount;
+
+  PendingPayoutInfo({required this.count, required this.amount});
+
+  factory PendingPayoutInfo.fromJson(Map<String, dynamic> json) {
+    return PendingPayoutInfo(
+      count: json['count'] as int? ?? 0,
+      amount: (json['amount'] as num?)?.toDouble() ?? 0,
+    );
+  }
+}
+
+class EarningsStats {
+  final String period;
+  final List<DailyEarnings> dailyEarnings;
+  final double totalDriverEarnings;
+  final double totalPartnerEarnings;
+  final int completedPayouts;
+  final int pendingPayoutsCount;
+  final PendingPayoutInfo pendingDriverPayouts;
+  final PendingPayoutInfo pendingCourierPayouts;
+
+  EarningsStats({
+    required this.period,
+    required this.dailyEarnings,
+    required this.totalDriverEarnings,
+    required this.totalPartnerEarnings,
+    required this.completedPayouts,
+    required this.pendingPayoutsCount,
+    required this.pendingDriverPayouts,
+    required this.pendingCourierPayouts,
+  });
+
+  factory EarningsStats.fromJson(Map<String, dynamic> json) {
+    final dailyList = (json['daily_earnings'] as List<dynamic>?)
+        ?.map((e) => DailyEarnings.fromJson(e as Map<String, dynamic>))
+        .toList() ?? [];
+
+    final summary = json['summary'] as Map<String, dynamic>? ?? {};
+    final pendingPayouts = json['pending_payouts'] as Map<String, dynamic>? ?? {};
+    final driversData = pendingPayouts['drivers'] as Map<String, dynamic>? ?? {};
+    final couriersData = pendingPayouts['couriers'] as Map<String, dynamic>? ?? {};
+
+    return EarningsStats(
+      period: json['period'] as String? ?? 'week',
+      dailyEarnings: dailyList,
+      totalDriverEarnings: (summary['total_driver_earnings'] as num?)?.toDouble() ?? 0,
+      totalPartnerEarnings: (summary['total_partner_earnings'] as num?)?.toDouble() ?? 0,
+      completedPayouts: summary['completed_payouts'] as int? ?? 0,
+      pendingPayoutsCount: summary['pending_payouts'] as int? ?? 0,
+      pendingDriverPayouts: PendingPayoutInfo.fromJson(driversData),
+      pendingCourierPayouts: PendingPayoutInfo.fromJson(couriersData),
+    );
+  }
+}
+
 class EarningsScreen extends ConsumerStatefulWidget {
   const EarningsScreen({super.key});
 
@@ -156,6 +247,7 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> with SingleTick
 
   Widget _buildDriverEarningsTab() {
     final earningsAsync = ref.watch(driverEarningsProvider);
+    final statsAsync = ref.watch(earningsStatsProvider(_selectedPeriod));
 
     return earningsAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -183,7 +275,7 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> with SingleTick
                         const SizedBox(height: 12),
                         _buildStatCard('Net Kazanc', '${totalNet.toStringAsFixed(2)} TL', Icons.payments, AppColors.success),
                         const SizedBox(height: 12),
-                        _buildStatCard('Bekleyen Odeme', '${(totalNet * 0.3).toStringAsFixed(2)} TL', Icons.hourglass_empty, AppColors.info),
+                        _buildStatCard('Bekleyen Odeme', '${statsAsync.maybeWhen(data: (s) => s.pendingDriverPayouts.amount.toStringAsFixed(2), orElse: () => '0.00')} TL', Icons.hourglass_empty, AppColors.info),
                       ],
                     ),
                   ),
@@ -199,69 +291,10 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> with SingleTick
                           children: [
                             Text('Kazanc Trendi', style: Theme.of(context).textTheme.titleMedium),
                             const SizedBox(height: 16),
-                            SizedBox(
-                              height: 200,
-                              child: LineChart(
-                                LineChartData(
-                                  gridData: FlGridData(
-                                    show: true,
-                                    drawVerticalLine: false,
-                                    horizontalInterval: 1000,
-                                    getDrawingHorizontalLine: (value) => FlLine(
-                                      color: AppColors.surfaceLight,
-                                      strokeWidth: 1,
-                                    ),
-                                  ),
-                                  titlesData: FlTitlesData(
-                                    leftTitles: AxisTitles(
-                                      sideTitles: SideTitles(
-                                        showTitles: true,
-                                        reservedSize: 50,
-                                        getTitlesWidget: (value, meta) => Text(
-                                          '${(value / 1000).toStringAsFixed(0)}K',
-                                          style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
-                                        ),
-                                      ),
-                                    ),
-                                    bottomTitles: AxisTitles(
-                                      sideTitles: SideTitles(
-                                        showTitles: true,
-                                        getTitlesWidget: (value, meta) {
-                                          final days = ['Pzt', 'Sal', 'Car', 'Per', 'Cum', 'Cmt', 'Paz'];
-                                          if (value.toInt() < days.length) {
-                                            return Text(days[value.toInt()], style: const TextStyle(fontSize: 10, color: AppColors.textMuted));
-                                          }
-                                          return const Text('');
-                                        },
-                                      ),
-                                    ),
-                                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                  ),
-                                  borderData: FlBorderData(show: false),
-                                  lineBarsData: [
-                                    LineChartBarData(
-                                      spots: const [
-                                        FlSpot(0, 2500),
-                                        FlSpot(1, 3200),
-                                        FlSpot(2, 2800),
-                                        FlSpot(3, 4100),
-                                        FlSpot(4, 3800),
-                                        FlSpot(5, 5200),
-                                        FlSpot(6, 4500),
-                                      ],
-                                      isCurved: true,
-                                      color: AppColors.primary,
-                                      barWidth: 3,
-                                      dotData: const FlDotData(show: false),
-                                      belowBarData: BarAreaData(
-                                        show: true,
-                                        color: AppColors.primary.withValues(alpha: 0.1),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
+                            statsAsync.when(
+                              loading: () => const SizedBox(height: 200, child: Center(child: CircularProgressIndicator())),
+                              error: (e, _) => SizedBox(height: 200, child: Center(child: Text('Hata: $e'))),
+                              data: (stats) => _buildEarningsChart(stats),
                             ),
                           ],
                         ),
@@ -688,6 +721,28 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> with SingleTick
   }
 
   void _showPayoutDialog() {
+    final statsAsync = ref.read(earningsStatsProvider(_selectedPeriod));
+
+    // Get real data from provider
+    final driverCount = statsAsync.maybeWhen(
+      data: (s) => s.pendingDriverPayouts.count,
+      orElse: () => 0,
+    );
+    final driverAmount = statsAsync.maybeWhen(
+      data: (s) => s.pendingDriverPayouts.amount,
+      orElse: () => 0.0,
+    );
+    final courierCount = statsAsync.maybeWhen(
+      data: (s) => s.pendingCourierPayouts.count,
+      orElse: () => 0,
+    );
+    final courierAmount = statsAsync.maybeWhen(
+      data: (s) => s.pendingCourierPayouts.amount,
+      orElse: () => 0.0,
+    );
+    final totalCount = driverCount + courierCount;
+    final totalAmount = driverAmount + courierAmount;
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -708,11 +763,11 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> with SingleTick
                 ),
                 child: Column(
                   children: [
-                    _buildPayoutSummaryRow('Taksi Suruculeri', '15', '45,320.00 TL'),
+                    _buildPayoutSummaryRow('Taksi Suruculeri', '$driverCount', '${driverAmount.toStringAsFixed(2)} TL'),
                     const Divider(),
-                    _buildPayoutSummaryRow('Kuryeler', '23', '28,150.00 TL'),
+                    _buildPayoutSummaryRow('Kuryeler', '$courierCount', '${courierAmount.toStringAsFixed(2)} TL'),
                     const Divider(),
-                    _buildPayoutSummaryRow('Toplam', '38', '73,470.00 TL', isBold: true),
+                    _buildPayoutSummaryRow('Toplam', '$totalCount', '${totalAmount.toStringAsFixed(2)} TL', isBold: true),
                   ],
                 ),
               ),
@@ -786,5 +841,87 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> with SingleTick
       'status': 'rejected',
     }).eq('id', payout['id']);
     ref.invalidate(driverPayoutsProvider);
+  }
+
+  Widget _buildEarningsChart(EarningsStats stats) {
+    // Turkish day names mapping
+    const dayNames = {
+      'Mon': 'Pzt', 'Tue': 'Sal', 'Wed': 'Çar',
+      'Thu': 'Per', 'Fri': 'Cum', 'Sat': 'Cmt', 'Sun': 'Paz'
+    };
+
+    // Build FlSpot list from real data
+    final spots = <FlSpot>[];
+    for (int i = 0; i < stats.dailyEarnings.length; i++) {
+      spots.add(FlSpot(i.toDouble(), stats.dailyEarnings[i].driverEarnings));
+    }
+
+    // Calculate maxY dynamically
+    final maxEarnings = stats.dailyEarnings.isNotEmpty
+        ? stats.dailyEarnings.map((e) => e.driverEarnings).reduce((a, b) => a > b ? a : b)
+        : 1000.0;
+    final maxY = (maxEarnings * 1.2).ceil().toDouble();
+    final interval = maxY > 0 ? (maxY / 4).ceil().toDouble() : 1000.0;
+
+    return SizedBox(
+      height: 200,
+      child: LineChart(
+        LineChartData(
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            horizontalInterval: interval,
+            getDrawingHorizontalLine: (value) => FlLine(
+              color: AppColors.surfaceLight,
+              strokeWidth: 1,
+            ),
+          ),
+          titlesData: FlTitlesData(
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 50,
+                getTitlesWidget: (value, meta) => Text(
+                  '${(value / 1000).toStringAsFixed(0)}K',
+                  style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
+                ),
+              ),
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                getTitlesWidget: (value, meta) {
+                  final index = value.toInt();
+                  if (index >= 0 && index < stats.dailyEarnings.length) {
+                    final dayName = stats.dailyEarnings[index].dayName;
+                    final turkishDay = dayNames[dayName] ?? dayName;
+                    return Text(turkishDay, style: const TextStyle(fontSize: 10, color: AppColors.textMuted));
+                  }
+                  return const Text('');
+                },
+              ),
+            ),
+            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          ),
+          borderData: FlBorderData(show: false),
+          lineBarsData: [
+            LineChartBarData(
+              spots: spots.isEmpty ? [const FlSpot(0, 0)] : spots,
+              isCurved: true,
+              color: AppColors.primary,
+              barWidth: 3,
+              dotData: const FlDotData(show: false),
+              belowBarData: BarAreaData(
+                show: true,
+                color: AppColors.primary.withValues(alpha: 0.1),
+              ),
+            ),
+          ],
+          minY: 0,
+          maxY: maxY > 0 ? maxY : 1000,
+        ),
+      ),
+    );
   }
 }

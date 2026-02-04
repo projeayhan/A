@@ -7,6 +7,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/services/courier_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/app_dialogs.dart';
 import 'navigation_map_screen.dart';
 
 class OrderDetailScreen extends ConsumerStatefulWidget {
@@ -213,9 +214,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     bool isCustomer = true,
   }) {
     if (lat == null || lng == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Konum bilgisi bulunamadı')),
-      );
+      AppDialogs.showInfo(context, 'Konum bilgisi bulunamadı');
       return;
     }
 
@@ -240,9 +239,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
         await launchUrl(uri);
       }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Telefon numarası bulunamadı')),
-      );
+      AppDialogs.showInfo(context, 'Telefon numarası bulunamadı');
     }
   }
 

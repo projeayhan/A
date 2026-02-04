@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/models/merchant_models.dart';
 import '../../../core/providers/merchant_provider.dart';
+import '../../../core/utils/app_dialogs.dart';
 
 class ProductsScreen extends ConsumerStatefulWidget {
   const ProductsScreen({super.key});
@@ -125,27 +126,28 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                       color: AppColors.background,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: DropdownButton<String>(
-                      value: _selectedCategory,
-                      hint: const Text('Kategori'),
-                      underline: const SizedBox(),
-                      items: [
-                        const DropdownMenuItem(
-                          value: null,
-                          child: Text('Tum Kategoriler'),
-                        ),
-                        ...[
-                          'Elektronik',
-                          'Giyim',
-                          'Ev & Yasam',
-                          'Kozmetik',
-                          'Gida',
-                        ].map(
-                          (c) => DropdownMenuItem(value: c, child: Text(c)),
-                        ),
-                      ],
-                      onChanged:
-                          (value) => setState(() => _selectedCategory = value),
+                    child: ref.watch(productCategoriesProvider).when(
+                      loading: () => const SizedBox(
+                        width: 120,
+                        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                      ),
+                      error: (_, __) => const Text('Kategori yuklenemedi'),
+                      data: (categories) => DropdownButton<String>(
+                        value: _selectedCategory,
+                        hint: const Text('Kategori'),
+                        underline: const SizedBox(),
+                        items: [
+                          const DropdownMenuItem(
+                            value: null,
+                            child: Text('Tum Kategoriler'),
+                          ),
+                          ...categories.map(
+                            (c) => DropdownMenuItem(value: c.id, child: Text(c.name)),
+                          ),
+                        ],
+                        onChanged:
+                            (value) => setState(() => _selectedCategory = value),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -1176,12 +1178,7 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Resim secilemedi: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        AppDialogs.showError(context, 'Resim secilemedi: $e');
       }
     }
   }
@@ -1206,12 +1203,7 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
       return publicUrl;
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Resim yuklenemedi: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        AppDialogs.showError(context, 'Resim yuklenemedi: $e');
       }
       return null;
     } finally {
@@ -1344,7 +1336,7 @@ class _ImportDialogState extends State<_ImportDialog> {
         products.add(StoreProduct(
           id: DateTime.now().millisecondsSinceEpoch.toString() + i.toString(),
           storeId: '',
-          categoryId: parts.length > 3 ? parts[3] : 'Gida',
+          categoryId: parts.length > 3 && parts[3].isNotEmpty ? parts[3] : null,
           name: name,
           description: parts.length > 4 ? parts[4] : null,
           price: price,

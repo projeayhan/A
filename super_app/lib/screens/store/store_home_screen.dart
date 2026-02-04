@@ -691,7 +691,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
 
                     // Categories with "All" option
                     SizedBox(
-                      height: 100,
+                      height: 110,
                       child: ListView.separated(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         scrollDirection: Axis.horizontal,

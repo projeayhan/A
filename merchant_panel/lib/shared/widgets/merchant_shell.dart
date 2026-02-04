@@ -8,7 +8,9 @@ import '../../core/models/merchant_models.dart';
 import '../../core/providers/merchant_provider.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/services/notification_sound_service.dart';
+import '../../core/utils/app_dialogs.dart';
 import '../screens/couriers_screen.dart';
+import 'floating_ai_assistant.dart';
 
 class MerchantShell extends ConsumerStatefulWidget {
   final Widget child;
@@ -86,41 +88,9 @@ class _MerchantShellState extends ConsumerState<MerchantShell> {
       if (latestNotification.type == 'order_cancelled' && !latestNotification.isRead) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Row(
-                  children: [
-                    const Icon(Icons.cancel, color: Colors.white),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            latestNotification.title,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          Text(
-                            latestNotification.message,
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                backgroundColor: AppColors.error,
-                behavior: SnackBarBehavior.floating,
-                duration: const Duration(seconds: 5),
-                action: SnackBarAction(
-                  label: 'Kapat',
-                  textColor: Colors.white,
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-                  },
-                ),
-              ),
+            AppDialogs.showError(
+              context,
+              '${latestNotification.title}\n${latestNotification.message}',
             );
           }
         });
@@ -134,39 +104,47 @@ class _MerchantShellState extends ConsumerState<MerchantShell> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Row(
+      body: Stack(
         children: [
-          // Sidebar
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: _isExpanded ? 260 : 72,
-            child: _buildSidebar(
-              context,
-              currentRoute,
-              isRestaurant,
-              pendingOrdersCount,
-              unreadNotifications,
-              pendingCourierRequests,
-              merchant.valueOrNull,
-            ),
-          ),
-
-          // Main Content
-          Expanded(
-            child: Column(
-              children: [
-                // Top Bar
-                _buildTopBar(
+          // Ana içerik
+          Row(
+            children: [
+              // Sidebar
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: _isExpanded ? 260 : 72,
+                child: _buildSidebar(
                   context,
-                  merchant.valueOrNull,
+                  currentRoute,
+                  isRestaurant,
+                  pendingOrdersCount,
                   unreadNotifications,
+                  pendingCourierRequests,
+                  merchant.valueOrNull,
                 ),
+              ),
 
-                // Content
-                Expanded(child: widget.child),
-              ],
-            ),
+              // Main Content
+              Expanded(
+                child: Column(
+                  children: [
+                    // Top Bar
+                    _buildTopBar(
+                      context,
+                      merchant.valueOrNull,
+                      unreadNotifications,
+                    ),
+
+                    // Content
+                    Expanded(child: widget.child),
+                  ],
+                ),
+              ),
+            ],
           ),
+
+          // Floating AI Assistant
+          const FloatingAIAssistant(),
         ],
       ),
     );

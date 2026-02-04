@@ -1,9 +1,16 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/providers/banner_provider.dart';
+import '../../screens/food/restaurant_detail_screen.dart';
+import '../../screens/food/food_item_detail_screen.dart';
+import '../../screens/store/store_detail_screen.dart';
+import '../../screens/store/store_product_detail_screen.dart';
+import '../../models/store/store_model.dart';
+import '../../models/store/store_product_model.dart';
 
 // Banner için optimize edilmiş resim boyutları
 const int _bannerWidth = 800;
@@ -105,6 +112,136 @@ class _GenericBannerCarouselState extends ConsumerState<GenericBannerCarousel> {
     }
   }
 
+  /// Banner tıklandığında ilgili sayfaya yönlendirir
+  Future<void> _onBannerTap(AppBanner banner) async {
+    final linkType = banner.linkType;
+    final linkId = banner.linkId;
+    final linkUrl = banner.linkUrl;
+
+    if (linkType == null && linkUrl == null) return;
+
+    switch (linkType) {
+      case 'restaurant':
+        if (linkId != null) {
+          try {
+            final restaurant = await Supabase.instance.client
+                .from('merchants')
+                .select()
+                .eq('id', linkId)
+                .maybeSingle();
+
+            if (restaurant != null && mounted) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => RestaurantDetailScreen(
+                    restaurantId: linkId,
+                    name: restaurant['business_name'] ?? '',
+                    imageUrl: restaurant['logo_url'] ?? '',
+                    rating: (restaurant['rating'] as num?)?.toDouble() ?? 4.5,
+                    categories: restaurant['category_tags']?.toString() ?? '',
+                    deliveryTime: '${restaurant['delivery_time'] ?? 30} dk',
+                  ),
+                ),
+              );
+            }
+          } catch (e) {
+            debugPrint('Error loading restaurant: $e');
+          }
+        }
+        break;
+
+      case 'menu_item':
+        if (linkId != null) {
+          try {
+            final menuItem = await Supabase.instance.client
+                .from('menu_items')
+                .select('*, merchants(business_name)')
+                .eq('id', linkId)
+                .maybeSingle();
+
+            if (menuItem != null && mounted) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => FoodItemDetailScreen(
+                    itemId: linkId,
+                    name: menuItem['name'] ?? '',
+                    description: menuItem['description'] ?? '',
+                    price: (menuItem['price'] as num?)?.toDouble() ?? 0,
+                    imageUrl: menuItem['image_url'] ?? '',
+                    rating: (menuItem['average_rating'] as num?)?.toDouble() ?? 4.5,
+                    restaurantName: menuItem['merchants']?['business_name'] ?? '',
+                    deliveryTime: '30-45 dk',
+                  ),
+                ),
+              );
+            }
+          } catch (e) {
+            debugPrint('Error loading menu item: $e');
+          }
+        }
+        break;
+
+      case 'store':
+        if (linkId != null) {
+          try {
+            final storeData = await Supabase.instance.client
+                .from('merchants')
+                .select()
+                .eq('id', linkId)
+                .maybeSingle();
+
+            if (storeData != null && mounted) {
+              final store = Store.fromMerchant(storeData);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => StoreDetailScreen(store: store),
+                ),
+              );
+            }
+          } catch (e) {
+            debugPrint('Error loading store: $e');
+          }
+        }
+        break;
+
+      case 'product':
+        if (linkId != null) {
+          try {
+            final productData = await Supabase.instance.client
+                .from('products')
+                .select('*, merchants(business_name)')
+                .eq('id', linkId)
+                .maybeSingle();
+
+            if (productData != null && mounted) {
+              final product = StoreProduct.fromJson(
+                productData,
+                storeName: productData['merchants']?['business_name'],
+              );
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => StoreProductDetailScreen(product: product),
+                ),
+              );
+            }
+          } catch (e) {
+            debugPrint('Error loading product: $e');
+          }
+        }
+        break;
+
+      case 'external':
+      default:
+        if (linkUrl != null) {
+          _openLink(linkUrl);
+        }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final bannersAsync = ref.watch(widget.bannerProvider);
@@ -155,7 +292,7 @@ class _GenericBannerCarouselState extends ConsumerState<GenericBannerCarousel> {
       imageUrl: banner.imageUrl,
       title: banner.title,
       subtitle: banner.description ?? 'Hemen Keşfet',
-      onTap: banner.linkUrl != null ? () => _openLink(banner.linkUrl) : null,
+      onTap: banner.hasLink ? () => _onBannerTap(banner) : null,
     );
   }
 
@@ -193,9 +330,7 @@ class _GenericBannerCarouselState extends ConsumerState<GenericBannerCarousel> {
                     imageUrl: banner.imageUrl,
                     title: banner.title,
                     subtitle: banner.description ?? 'Hemen Keşfet',
-                    onTap: banner.linkUrl != null
-                        ? () => _openLink(banner.linkUrl)
-                        : null,
+                    onTap: banner.hasLink ? () => _onBannerTap(banner) : null,
                   ),
                 );
               },

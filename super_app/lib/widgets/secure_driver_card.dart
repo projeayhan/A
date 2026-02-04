@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../core/services/communication_service.dart';
+import '../core/utils/app_dialogs.dart';
 
 /// Güvenli Sürücü Bilgi Kartı (Müşteri için)
 class SecureDriverCard extends StatefulWidget {
@@ -221,13 +222,7 @@ class _SecureDriverCardState extends State<SecureDriverCard> {
         } catch (e) {
           debugPrint('Could not launch phone: $e');
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Arama başlatılamadı'),
-                backgroundColor: Colors.red,
-                behavior: SnackBarBehavior.floating,
-              ),
-            );
+            AppDialogs.showError(context, 'Arama başlatılamadı');
           }
         }
       } else {

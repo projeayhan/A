@@ -5,6 +5,7 @@ import '../core/theme/app_theme.dart';
 import '../core/theme/app_responsive.dart';
 import '../core/router/app_router.dart';
 import '../core/providers/navigation_provider.dart';
+import 'floating_ai_assistant.dart';
 
 class AppScaffold extends ConsumerWidget {
   final Widget child;
@@ -48,7 +49,12 @@ class AppScaffold extends ConsumerWidget {
     final showBottomNav = _shouldShowBottomNav(location);
 
     return Scaffold(
-      body: child,
+      body: Stack(
+        children: [
+          child,
+          const FloatingAIAssistant(),
+        ],
+      ),
       bottomNavigationBar: showBottomNav ? Container(
         decoration: BoxDecoration(
           color: isDark

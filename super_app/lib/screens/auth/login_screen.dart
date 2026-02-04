@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/app_dialogs.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/router/app_router.dart';
 import '../../core/services/supabase_service.dart';
@@ -65,12 +66,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
-    );
+    AppDialogs.showError(context, message);
   }
 
   @override

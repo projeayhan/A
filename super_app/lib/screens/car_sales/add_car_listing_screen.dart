@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../models/car_sales/car_sales_models.dart';
 import '../../services/car_sales_service.dart';
+import '../../core/utils/app_dialogs.dart';
 
 class AddCarListingScreen extends StatefulWidget {
   const AddCarListingScreen({super.key});
@@ -245,12 +246,7 @@ class _AddCarListingScreenState extends State<AddCarListingScreen>
       debugPrint('Error submitting listing: $e');
       if (mounted) {
         setState(() => _isSubmitting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('İlan oluşturulamadı: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppDialogs.showError(context, 'İlan oluşturulamadı: $e');
       }
     }
   }
@@ -1865,9 +1861,7 @@ class _AddCarListingScreenState extends State<AddCarListingScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (_localImages.length + _selectedImages.length >= 10) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('En fazla 10 fotoğraf ekleyebilirsiniz')),
-      );
+      AppDialogs.showWarning(context, 'En fazla 10 fotoğraf ekleyebilirsiniz');
       return;
     }
 
@@ -1984,9 +1978,7 @@ class _AddCarListingScreenState extends State<AddCarListingScreen>
     } catch (e) {
       debugPrint('Error picking image: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Fotoğraf seçilemedi: $e')),
-        );
+        AppDialogs.showError(context, 'Fotoğraf seçilemedi: $e');
       }
     }
   }
@@ -2021,9 +2013,7 @@ class _AddCarListingScreenState extends State<AddCarListingScreen>
     } catch (e) {
       debugPrint('Error picking images: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Fotoğraflar seçilemedi: $e')),
-        );
+        AppDialogs.showError(context, 'Fotoğraflar seçilemedi: $e');
       }
     }
   }

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/taxi/taxi_models.dart';
 import '../../services/google_places_service.dart';
 import '../../core/services/taxi_service.dart';
+import '../../core/utils/app_dialogs.dart';
 import 'taxi_searching_screen.dart';
 
 class TaxiVehicleSelectionScreen extends ConsumerStatefulWidget {
@@ -105,15 +106,9 @@ class _TaxiVehicleSelectionScreenState extends ConsumerState<TaxiVehicleSelectio
     }
   }
 
-  void _showErrorSnackBar(String message) {
+  Future<void> _showErrorSnackBar(String message) async {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    await AppDialogs.showError(context, message);
   }
 
   @override

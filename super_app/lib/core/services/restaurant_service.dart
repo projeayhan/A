@@ -257,7 +257,8 @@ class RestaurantService {
     }
   }
 
-  // Kategoriye göre restoranları getir (müşteri konumuna göre teslimat bölgesi filtreli)
+  // Kategoriye göre restoranları getir (menü kategorilerine göre filtreler)
+  // Örn: "Kahvaltı" kategorisine tıklandığında, menüsünde Kahvaltı olan restoranlar listelenir
   static Future<List<Restaurant>> getRestaurantsByCategory(
     String categoryName, {
     double? customerLat,
@@ -268,42 +269,25 @@ class RestaurantService {
         return getRestaurants(customerLat: customerLat, customerLon: customerLon);
       }
 
-      // Müşteri konumu varsa, teslimat bölgesi içindeki restoranları getir
-      if (customerLat != null && customerLon != null) {
-        final deliveryRangeResponse = await _client
-            .rpc('get_restaurants_in_delivery_range', params: {
-              'p_customer_lat': customerLat,
-              'p_customer_lon': customerLon,
-            });
+      // Menü kategorisine göre restoran ID'lerini bul
+      final categoryResponse = await _client
+          .rpc('get_restaurants_by_menu_category', params: {
+            'p_category_name': categoryName,
+            'p_customer_lat': customerLat,
+            'p_customer_lon': customerLon,
+          });
 
-        final deliverableIds = (deliveryRangeResponse as List)
-            .map((json) => json['merchant_id'] as String)
-            .toList();
+      final merchantIds = (categoryResponse as List)
+          .map((json) => json['merchant_id'] as String)
+          .toList();
 
-        if (deliverableIds.isEmpty) return [];
+      if (merchantIds.isEmpty) return [];
 
-        final response = await _client
-            .from('merchants')
-            .select()
-            .inFilter('id', deliverableIds)
-            .eq('type', 'restaurant')
-            .eq('is_approved', true)
-            .eq('is_open', true)
-            .contains('category_tags', [categoryName])
-            .order('rating', ascending: false);
-
-        return (response as List)
-            .map((json) => Restaurant.fromMerchantJson(json))
-            .toList();
-      }
-
+      // Bu restoran ID'lerine göre detayları getir
       final response = await _client
           .from('merchants')
           .select()
-          .eq('type', 'restaurant')
-          .eq('is_approved', true)
-          .eq('is_open', true)
-          .contains('category_tags', [categoryName])
+          .inFilter('id', merchantIds)
           .order('rating', ascending: false);
 
       return (response as List)
@@ -494,6 +478,37 @@ class RestaurantService {
 
       final orderNumber = 'ORD${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
 
+      // Merchant tipini al ve ilgili komisyon oranını çek
+      double? commissionRate;
+      try {
+        // Merchant tipini al
+        final merchantData = await _client
+            .from('merchants')
+            .select('type')
+            .eq('id', merchantId)
+            .maybeSingle();
+
+        if (merchantData != null) {
+          final merchantType = merchantData['type'] as String? ?? 'restaurant';
+
+          // Platform komisyon oranını al
+          final commissionData = await _client
+              .from('platform_commissions')
+              .select('platform_commission_rate')
+              .eq('service_type', merchantType)
+              .eq('is_active', true)
+              .maybeSingle();
+
+          if (commissionData != null) {
+            commissionRate = double.tryParse(
+              commissionData['platform_commission_rate']?.toString() ?? ''
+            );
+          }
+        }
+      } catch (e) {
+        if (kDebugMode) print('Error fetching commission rate: $e');
+      }
+
       final response = await _client.from('orders').insert({
         'order_number': orderNumber,
         'user_id': userId,
@@ -511,6 +526,7 @@ class RestaurantService {
         'payment_method': paymentMethod ?? 'cash',
         'status': 'pending',
         'payment_status': 'pending',
+        'commission_rate': commissionRate,
       }).select('id').single();
 
       return response['id'] as String;

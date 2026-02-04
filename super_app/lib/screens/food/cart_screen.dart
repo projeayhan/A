@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_responsive.dart';
+import '../../core/utils/app_dialogs.dart';
 import 'food_home_screen.dart';
 import '../../core/providers/address_provider.dart';
 import '../../core/providers/cart_provider.dart';
@@ -1334,16 +1335,12 @@ class _CartScreenState extends ConsumerState<CartScreen> {
 
     final selectedAddress = ref.read(selectedAddressProvider);
     if (selectedAddress == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lütfen teslimat adresi seçin')),
-      );
+      await AppDialogs.showWarning(context, 'Lütfen teslimat adresi seçin');
       return;
     }
 
     if (cartState.merchantId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sepet bilgisi eksik')),
-      );
+      await AppDialogs.showWarning(context, 'Sepet bilgisi eksik');
       return;
     }
 
@@ -1389,9 +1386,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Sipariş hatası: $e')),
-        );
+        await AppDialogs.showError(context, 'Sipariş hatası: $e');
       }
     } finally {
       if (mounted) {

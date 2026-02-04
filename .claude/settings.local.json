@@ -180,7 +180,14 @@
       "Bash(git init:*)",
       "Bash(git -C c:/A add -A)",
       "Bash(git -C c:/A status --short)",
-      "Bash(git -C c:/A reset)"
+      "Bash(git -C c:/A reset)",
+      "Bash(git -C c:/A commit -m \"Initial commit: Flutter monorepo project\n\n- admin_panel: Admin dashboard\n- courier_app: Courier application\n- merchant_panel: Merchant panel\n- super_app: Super app with food, taxi, rental services\n- taxi_app: Taxi driver app\n- emlakci_panel: Real estate panel\n- arac_satis_panel: Car sales panel\n- rent_a_car_panel: Rent a car panel\n- supabase: Backend functions and migrations\")",
+      "Bash(git -C c:/A remote add origin:*)",
+      "Bash(git -C c:/A push -u origin master)",
+      "Bash(git -C c:/A remote set-url:*)",
+      "Bash(git -C c:/A remote:*)",
+      "Bash(git -C c:/A branch:*)",
+      "Bash(git add:*)"
     ]
   }
 }

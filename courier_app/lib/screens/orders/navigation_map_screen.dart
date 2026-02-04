@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/app_dialogs.dart';
 
 const String _directionsProxyUrl = 'https://mzgtvdgwxrlhgjboolys.supabase.co/functions/v1/get-directions';
 const String _osrmDirectionsUrl = 'https://router.project-osrm.org/route/v1/driving';
@@ -426,9 +427,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
         await launchUrl(uri);
       }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Telefon numarası bulunamadı')),
-      );
+      AppDialogs.showInfo(context, 'Telefon numarası bulunamadı');
     }
   }
 

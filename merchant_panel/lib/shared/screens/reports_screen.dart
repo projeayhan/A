@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/providers/merchant_provider.dart';
 import '../../core/services/report_export_service.dart';
+import '../../core/utils/app_dialogs.dart';
 
 // Selected tab state provider
 final selectedReportTabProvider = StateProvider<int>((ref) => 0);
@@ -202,12 +203,7 @@ class ReportsScreen extends ConsumerWidget {
     final dateRange = ref.read(reportDateRangeProvider);
 
     if (merchant == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Merchant bilgisi bulunamadı'),
-          backgroundColor: AppColors.error,
-        ),
-      );
+      AppDialogs.showError(context, 'Merchant bilgisi bulunamadı');
       return;
     }
 
@@ -218,12 +214,7 @@ class ReportsScreen extends ConsumerWidget {
     )));
 
     if (reportsStats.valueOrNull == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Rapor verileri yüklenemedi'),
-          backgroundColor: AppColors.error,
-        ),
-      );
+      AppDialogs.showError(context, 'Rapor verileri yüklenemedi');
       return;
     }
 
@@ -276,12 +267,7 @@ class ReportsScreen extends ConsumerWidget {
           ),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${format.toUpperCase()} raporu oluşturulurken hata oluştu'),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        AppDialogs.showError(context, '${format.toUpperCase()} raporu oluşturulurken hata oluştu');
       }
     }
   }
@@ -1023,7 +1009,7 @@ class ReportsScreen extends ConsumerWidget {
           children: [
             Expanded(child: _buildCustomerMetricCard(context, 'Toplam Müşteri', stats.totalCustomers.toString(), Icons.people, AppColors.primary)),
             const SizedBox(width: 16),
-            Expanded(child: _buildCustomerMetricCard(context, 'Yeni Müşteri', '${(stats.totalCustomers * 0.15).round()}', Icons.person_add, AppColors.success)),
+            Expanded(child: _buildCustomerMetricCard(context, 'Yeni Müşteri', stats.newCustomersCount.toString(), Icons.person_add, AppColors.success)),
             const SizedBox(width: 16),
             Expanded(child: _buildCustomerMetricCard(context, 'Tekrar Eden', '%${stats.repeatCustomerRate.toStringAsFixed(0)}', Icons.repeat, AppColors.info)),
             const SizedBox(width: 16),
@@ -1192,11 +1178,11 @@ class ReportsScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 24),
-          _buildSatisfactionItem('Kurye Hizmeti', 4.2, AppColors.info),
+          _buildSatisfactionItem('Kurye Hizmeti', stats.avgCourierRating, AppColors.info),
           const SizedBox(height: 12),
-          _buildSatisfactionItem('Servis Kalitesi', 4.0, AppColors.success),
+          _buildSatisfactionItem('Servis Kalitesi', stats.avgServiceRating, AppColors.success),
           const SizedBox(height: 12),
-          _buildSatisfactionItem('Yemek Lezzeti', 3.8, AppColors.warning),
+          _buildSatisfactionItem('Yemek Lezzeti', stats.avgTasteRating, AppColors.warning),
         ],
       ),
     );
@@ -1432,7 +1418,7 @@ class ReportsScreen extends ConsumerWidget {
           const SizedBox(height: 24),
           _CustomerStatItem(icon: Icons.people, color: AppColors.primary, label: 'Toplam Müşteri', value: stats.totalCustomers.toString()),
           const SizedBox(height: 16),
-          _CustomerStatItem(icon: Icons.person_add, color: AppColors.success, label: 'Yeni Müşteri (Bu Ay)', value: '${(stats.totalCustomers * 0.15).round()}'),
+          _CustomerStatItem(icon: Icons.person_add, color: AppColors.success, label: 'Yeni Müşteri', value: stats.newCustomersCount.toString()),
           const SizedBox(height: 16),
           _CustomerStatItem(icon: Icons.repeat, color: AppColors.info, label: 'Tekrar Eden Müşteri', value: '%${stats.repeatCustomerRate.toStringAsFixed(0)}'),
           const SizedBox(height: 16),

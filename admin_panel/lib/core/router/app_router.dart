@@ -52,6 +52,7 @@ import '../../features/job_listings/screens/job_listings_list_screen.dart';
 import '../../features/job_listings/screens/job_companies_screen.dart';
 import '../../features/job_listings/screens/job_pricing_screen.dart';
 import '../../features/job_listings/screens/job_settings_screen.dart';
+import '../../features/food/screens/restaurant_categories_screen.dart';
 import '../../shared/widgets/admin_shell.dart';
 
 class AppRoutes {
@@ -98,6 +99,8 @@ class AppRoutes {
   static const String carSalesBodyTypes = '/car-sales/body-types';
   static const String carSalesFuelTypes = '/car-sales/fuel-types';
   static const String carSalesTransmissions = '/car-sales/transmissions';
+  // Yemek
+  static const String restaurantCategories = '/food/categories';
   // İş İlanları
   static const String jobListingsDashboard = '/job-listings';
   static const String jobCategories = '/job-listings/categories';
@@ -379,6 +382,13 @@ final routerProvider = Provider<GoRouter>((ref) {
             name: 'car-sales-transmissions',
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: CarSalesTransmissionsScreen()),
+          ),
+          // Food Routes
+          GoRoute(
+            path: AppRoutes.restaurantCategories,
+            name: 'restaurant-categories',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: RestaurantCategoriesScreen()),
           ),
           // Job Listings Routes
           GoRoute(

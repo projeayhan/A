@@ -10,6 +10,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/emlak/emlak_models.dart';
 import '../../services/emlak/property_service.dart';
 import '../../core/providers/emlak_provider.dart';
+import '../../core/utils/app_dialogs.dart';
 
 class AddPropertyScreen extends ConsumerStatefulWidget {
   final String? propertyId; // Düzenleme modunda property ID
@@ -181,12 +182,7 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
       debugPrint('Property yükleme hatası: $e');
       if (mounted) {
         setState(() => _isLoadingProperty = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('İlan yüklenirken hata: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppDialogs.showError(context, 'İlan yüklenirken hata: $e');
       }
     }
   }
@@ -262,9 +258,7 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Konum izni reddedildi')),
-            );
+            AppDialogs.showWarning(context, 'Konum izni reddedildi');
           }
           return;
         }
@@ -272,11 +266,7 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
 
       if (permission == LocationPermission.deniedForever) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Konum izni kalıcı olarak reddedildi. Ayarlardan izin verin.'),
-            ),
-          );
+          AppDialogs.showWarning(context, 'Konum izni kalıcı olarak reddedildi. Ayarlardan izin verin.');
         }
         return;
       }
@@ -308,9 +298,7 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Konum alınamadı: $e')),
-        );
+        AppDialogs.showError(context, 'Konum alınamadı: $e');
       }
     } finally {
       if (mounted) {
@@ -389,16 +377,12 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
     final lng = double.tryParse(_longitudeController.text.replaceAll(',', '.'));
 
     if (lat == null || lng == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Geçerli koordinat girin')),
-      );
+      AppDialogs.showWarning(context, 'Geçerli koordinat girin');
       return;
     }
 
     if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Koordinat aralık dışında')),
-      );
+      AppDialogs.showWarning(context, 'Koordinat aralık dışında');
       return;
     }
 
@@ -615,15 +599,7 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
   }
 
   void _showError(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
+    AppDialogs.showError(context, message);
   }
 
   @override
@@ -2154,12 +2130,7 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
     } catch (e) {
       // Hata durumunda kullanıcıya bilgi ver
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Fotoğraf seçilirken hata oluştu: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppDialogs.showError(context, 'Fotoğraf seçilirken hata oluştu: $e');
       }
     }
   }
@@ -2186,12 +2157,7 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Fotoğraf çekilirken hata oluştu: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppDialogs.showError(context, 'Fotoğraf çekilirken hata oluştu: $e');
       }
     }
   }

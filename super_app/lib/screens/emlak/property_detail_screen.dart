@@ -13,6 +13,7 @@ import '../../core/providers/chat_provider.dart';
 import '../../services/emlak/property_service.dart';
 import '../../services/emlak/appointment_service.dart';
 import '../../core/services/supabase_service.dart';
+import '../../core/utils/app_dialogs.dart';
 
 class PropertyDetailScreen extends ConsumerStatefulWidget {
   final String propertyId;
@@ -76,26 +77,16 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen>
         // İlan bulunamadı
         if (mounted) {
           setState(() => _isLoading = false);
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('İlan bulunamadı'),
-              backgroundColor: Colors.red,
-            ),
-          );
-          context.pop();
+          await AppDialogs.showError(context, 'İlan bulunamadı');
+          if (mounted) context.pop();
         }
       }
     } catch (e) {
       // Hata durumunda
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('İlan yüklenirken hata: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-        context.pop();
+        await AppDialogs.showError(context, 'İlan yüklenirken hata: $e');
+        if (mounted) context.pop();
       }
     }
   }
@@ -105,23 +96,13 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen>
 
     final currentUserId = SupabaseService.currentUser?.id;
     if (currentUserId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Mesaj göndermek için giriş yapmalısınız'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppDialogs.showError(context, 'Mesaj göndermek için giriş yapmalısınız');
       return;
     }
 
     // Kendi ilanımıza mesaj atamayız
     if (_property!.userId == currentUserId) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Kendi ilanınıza mesaj gönderemezsiniz'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      AppDialogs.showWarning(context, 'Kendi ilanınıza mesaj gönderemezsiniz');
       return;
     }
 
@@ -141,12 +122,7 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen>
     } catch (e) {
       if (mounted) {
         setState(() => _isStartingChat = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Mesaj başlatılamadı: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppDialogs.showError(context, 'Mesaj başlatılamadı: $e');
       }
     }
   }
@@ -1582,12 +1558,7 @@ Bu ilanı SuperApp'te görüntüle!
   Future<void> _callAgent(PropertyAgent agent) async {
     if (agent.phone.isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Telefon numarası bulunamadı'),
-            backgroundColor: Colors.orange,
-          ),
-        );
+        AppDialogs.showWarning(context, 'Telefon numarası bulunamadı');
       }
       return;
     }
@@ -1600,22 +1571,12 @@ Bu ilanı SuperApp'te görüntüle!
         await launchUrl(uri);
       } else {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Arama yapılamadı'),
-              backgroundColor: Colors.red,
-            ),
-          );
+          AppDialogs.showError(context, 'Arama yapılamadı');
         }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Hata: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppDialogs.showError(context, 'Hata: $e');
       }
     }
   }
@@ -1659,22 +1620,12 @@ class _ScheduleVisitSheetState extends State<_ScheduleVisitSheet> {
 
     final currentUserId = SupabaseService.currentUser?.id;
     if (currentUserId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Randevu almak için giriş yapmalısınız'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppDialogs.showError(context, 'Randevu almak için giriş yapmalısınız');
       return;
     }
 
     if (widget.property.userId == currentUserId) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Kendi ilanınıza randevu alamazsınız'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      AppDialogs.showWarning(context, 'Kendi ilanınıza randevu alamazsınız');
       return;
     }
 
@@ -1702,12 +1653,7 @@ class _ScheduleVisitSheetState extends State<_ScheduleVisitSheet> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Randevu oluşturulamadı: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppDialogs.showError(context, 'Randevu oluşturulamadı: $e');
       }
     }
   }
