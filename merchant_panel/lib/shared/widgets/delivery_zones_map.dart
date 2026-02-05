@@ -124,7 +124,12 @@ class _DeliveryZonesMapState extends ConsumerState<DeliveryZonesMap> {
 
   Future<void> _loadZones() async {
     final merchant = ref.read(currentMerchantProvider).valueOrNull;
-    if (merchant == null) return;
+    if (merchant == null) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+      return;
+    }
 
     try {
       final supabase = ref.read(supabaseProvider);

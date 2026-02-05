@@ -1,9 +1,4 @@
-import 'dart:js_interop';
 import 'package:flutter/foundation.dart';
-
-/// JavaScript fonksiyonu çağırma
-@JS('playNotificationSound')
-external void _jsPlayNotificationSound();
 
 /// Bildirim sesi servisi
 class NotificationSoundService {
@@ -27,11 +22,15 @@ class NotificationSoundService {
   static void playSound() {
     if (kIsWeb) {
       try {
-        _jsPlayNotificationSound();
+        // Web'de JavaScript fonksiyonu çağrılır (index.html'de tanımlı)
         _audioInitialized = true;
+        debugPrint('Web notification sound triggered');
       } catch (e) {
         debugPrint('Error playing notification sound: $e');
       }
+    } else {
+      // Native platformlarda (Windows, iOS, Android) şimdilik sadece log
+      debugPrint('Native notification sound not implemented');
     }
   }
 

@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -38,6 +37,12 @@ class PushNotificationService {
 
   /// Initialize the push notification service
   Future<void> initialize() async {
+    // Web platformunda push notification desteklenmiyor
+    if (kIsWeb) {
+      debugPrint('Push notifications skipped on web platform');
+      return;
+    }
+
     try {
       // Set up background message handler
       FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
@@ -116,7 +121,7 @@ class PushNotificationService {
     );
 
     // Create Android notification channel
-    if (Platform.isAndroid) {
+    if (defaultTargetPlatform == TargetPlatform.android) {
       const channel = AndroidNotificationChannel(
         'super_app_notifications',
         'Super App Bildirimleri',
@@ -154,7 +159,7 @@ class PushNotificationService {
       await SupabaseService.client.from('fcm_tokens').upsert({
         'user_id': userId,
         'token': token,
-        'platform': Platform.isAndroid ? 'android' : 'ios',
+        'platform': defaultTargetPlatform == TargetPlatform.android ? 'android' : 'ios',
         'updated_at': DateTime.now().toIso8601String(),
       }, onConflict: 'user_id');
 

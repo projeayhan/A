@@ -1081,212 +1081,398 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   Widget _buildDeliverySettings() {
     final merchant = ref.watch(currentMerchantProvider).valueOrNull;
-    final isRestaurant = merchant?.type == MerchantType.restaurant;
-    final businessTypeLabel = isRestaurant ? 'restoran' : 'magaza';
-    final businessTypeLabelCapital = isRestaurant ? 'Restoran' : 'Magaza';
+    final merchantType = merchant?.type ?? MerchantType.restaurant;
+    final isStore = merchantType == MerchantType.store;
+    final isRestaurant = merchantType == MerchantType.restaurant;
+    final isMarket = merchantType == MerchantType.market;
+    final hasLocalDelivery = isRestaurant || isMarket; // Restoran ve market yerel teslimat
+
+    final businessTypeLabel = isRestaurant ? 'restoran' : (isMarket ? 'market' : 'magaza');
+    final businessTypeLabelCapital = isRestaurant ? 'Restoran' : (isMarket ? 'Market' : 'Magaza');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Teslimat Ayarlari',
+          isStore ? 'Kargo Ayarlari' : 'Teslimat Ayarlari',
           style: Theme.of(
             context,
           ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
         Text(
-          'Teslimat bolgeleri ve ucretleri yapilandirin',
+          isStore
+              ? 'Kargo ve gonderim ayarlarini yapilandirin'
+              : 'Teslimat bolgeleri ve ucretleri yapilandirin',
           style: TextStyle(color: AppColors.textSecondary),
         ),
         const SizedBox(height: 32),
 
+        // Mağazalar için kargo bilgi kutusu
+        if (isStore) ...[
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.info.withAlpha(20),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.info.withAlpha(50)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.local_shipping, color: AppColors.info, size: 28),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Kargo ile Gonderim',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Magazaniz tum KKTC\'ye kargo ile hizmet vermektedir. Teslimat bolgesi kisitlamasi yoktur.',
+                        style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+        ],
+
         if (_settingsLoading)
           const Center(child: CircularProgressIndicator())
         else ...[
-          // Konum Ayarları (Koordinatlar)
-          _SettingsCard(
-            title: '$businessTypeLabelCapital Konumu',
-            children: [
-              Text(
-                'Teslimat mesafesi hesaplamalari icin ${businessTypeLabel}nizin koordinatlarini girin. Sadece rakamlari girin, nokta otomatik eklenir.',
-                style: TextStyle(color: AppColors.textMuted, fontSize: 13),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _latitudeController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Enlem (Latitude)',
-                        hintText: '35165554',
-                        prefixIcon: Icon(Icons.north),
-                        helperText: 'Ornek: 35165554 -> 35.165554',
-                      ),
-                      onChanged: (value) => _formatCoordinate(_latitudeController, value, isLatitude: true),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _longitudeController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Boylam (Longitude)',
-                        hintText: '33909293',
-                        prefixIcon: Icon(Icons.east),
-                        helperText: 'Ornek: 33909293 -> 33.909293',
-                      ),
-                      onChanged: (value) => _formatCoordinate(_longitudeController, value, isLatitude: false),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Align(
-                alignment: Alignment.centerRight,
-                child: ElevatedButton.icon(
-                  onPressed: _isLoading ? null : _saveLocationCoordinates,
-                  icon: const Icon(Icons.save, size: 18),
-                  label: const Text('Konumu Kaydet'),
+          // Restoran ve Market için konum ve teslimat bölgesi ayarları
+          if (hasLocalDelivery) ...[
+            _SettingsCard(
+              title: '$businessTypeLabelCapital Konumu',
+              children: [
+                Text(
+                  'Teslimat mesafesi hesaplamalari icin ${businessTypeLabel}nizin koordinatlarini girin. Sadece rakamlari girin, nokta otomatik eklenir.',
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 13),
                 ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _latitudeController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Enlem (Latitude)',
+                          hintText: '35165554',
+                          prefixIcon: Icon(Icons.north),
+                          helperText: 'Ornek: 35165554 -> 35.165554',
+                        ),
+                        onChanged: (value) => _formatCoordinate(_latitudeController, value, isLatitude: true),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _longitudeController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Boylam (Longitude)',
+                          hintText: '33909293',
+                          prefixIcon: Icon(Icons.east),
+                          helperText: 'Ornek: 33909293 -> 33.909293',
+                        ),
+                        onChanged: (value) => _formatCoordinate(_longitudeController, value, isLatitude: false),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: ElevatedButton.icon(
+                    onPressed: _isLoading ? null : _saveLocationCoordinates,
+                    icon: const Icon(Icons.save, size: 18),
+                    label: const Text('Konumu Kaydet'),
+                  ),
+                ),
+                // Harita gösterimi
+                if (_latitudeController.text.isNotEmpty && _longitudeController.text.isNotEmpty) ...[
+                  const SizedBox(height: 20),
+                  const Divider(),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Haritada Konumunuz',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildLocationMap(),
+                ],
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            _SettingsCard(
+              title: 'Teslimat Secenekleri',
+              children: [
+                _SettingsSwitch(
+                  title: 'Teslimat Aktif',
+                  subtitle: 'Teslimat siparisleri kabul edin',
+                  value: _settings?.deliveryEnabled ?? true,
+                  onChanged: (value) => _updateDeliveryOption('delivery_enabled', value),
+                ),
+                const Divider(height: 32),
+                _SettingsSwitch(
+                  title: 'Gel-Al Aktif',
+                  subtitle: 'Musteri isletmeden alsin',
+                  value: _settings?.pickupEnabled ?? true,
+                  onChanged: (value) => _updateDeliveryOption('pickup_enabled', value),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            _SettingsCard(
+              title: 'Teslimat Ucreti',
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _minOrderController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Minimum Siparis Tutari',
+                          suffixText: 'TL',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _deliveryFeeController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Teslimat Ucreti',
+                          suffixText: 'TL',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _freeDeliveryController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Ucretsiz Teslimat Limiti',
+                    suffixText: 'TL',
+                    helperText: 'Bu tutarin uzerindeki siparislerde teslimat ucretsiz',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            _SettingsCard(
+              title: 'Hazirlama Suresi',
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _minPrepTimeController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Minimum Sure',
+                          suffixText: 'dk',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _maxPrepTimeController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Maksimum Sure',
+                          suffixText: 'dk',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            Align(
+              alignment: Alignment.centerRight,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _saveDeliverySettings,
+                child:
+                    _isLoading
+                        ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                        : const Text('Degisiklikleri Kaydet'),
               ),
-              // Harita gösterimi
-              if (_latitudeController.text.isNotEmpty && _longitudeController.text.isNotEmpty) ...[
-                const SizedBox(height: 20),
-                const Divider(),
+            ),
+
+            const SizedBox(height: 32),
+            const Divider(),
+            const SizedBox(height: 32),
+
+            // Delivery Zones Map - Sadece restoran ve market için
+            const DeliveryZonesMap(),
+          ],
+
+          // Mağazalar için kargo ayarları
+          if (isStore) ...[
+            _SettingsCard(
+              title: 'Kargo Secenekleri',
+              children: [
+                _SettingsSwitch(
+                  title: 'Kargo ile Gonderim',
+                  subtitle: 'Siparisleri kargo ile gonderin',
+                  value: _settings?.deliveryEnabled ?? true,
+                  onChanged: (value) => _updateDeliveryOption('delivery_enabled', value),
+                ),
+                const Divider(height: 32),
+                _SettingsSwitch(
+                  title: 'Magazadan Teslim',
+                  subtitle: 'Musteri magazadan alabilsin',
+                  value: _settings?.pickupEnabled ?? true,
+                  onChanged: (value) => _updateDeliveryOption('pickup_enabled', value),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            _SettingsCard(
+              title: 'Kargo Ucreti',
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _minOrderController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Minimum Siparis Tutari',
+                          suffixText: 'TL',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _deliveryFeeController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Kargo Ucreti',
+                          suffixText: 'TL',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: _freeDeliveryController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Ucretsiz Kargo Limiti',
+                    suffixText: 'TL',
+                    helperText: 'Bu tutarin uzerindeki siparislerde kargo ucretsiz',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            _SettingsCard(
+              title: 'Hazirlama Suresi',
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _minPrepTimeController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Minimum Hazirlama',
+                          suffixText: 'gun',
+                          helperText: 'Kargoya verilme suresi',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _maxPrepTimeController,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'Maksimum Hazirlama',
+                          suffixText: 'gun',
+                          helperText: 'Kargoya verilme suresi',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+
+            // Kargo Şirketleri
+            _SettingsCard(
+              title: 'Kargo Firmalari',
+              children: [
+                Text(
+                  'Magazaniz asagidaki kargo firmalari ile calismaktadir:',
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    _CargoCompanyChip(name: 'Yurtici Kargo', isActive: true),
+                    _CargoCompanyChip(name: 'Aras Kargo', isActive: true),
+                    _CargoCompanyChip(name: 'MNG Kargo', isActive: false),
+                    _CargoCompanyChip(name: 'PTT Kargo', isActive: false),
+                  ],
+                ),
                 const SizedBox(height: 16),
                 Text(
-                  'Haritada Konumunuz',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
+                  'Kargo firmasi eklemek icin destek ile iletisime gecin.',
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                 ),
-                const SizedBox(height: 12),
-                _buildLocationMap(),
               ],
-            ],
-          ),
-          const SizedBox(height: 24),
-
-          _SettingsCard(
-            title: 'Teslimat Secenekleri',
-            children: [
-              _SettingsSwitch(
-                title: 'Teslimat Aktif',
-                subtitle: 'Teslimat siparisleri kabul edin',
-                value: _settings?.deliveryEnabled ?? true,
-                onChanged: (value) => _updateDeliveryOption('delivery_enabled', value),
-              ),
-              const Divider(height: 32),
-              _SettingsSwitch(
-                title: 'Gel-Al Aktif',
-                subtitle: 'Musteri isletmeden alsin',
-                value: _settings?.pickupEnabled ?? true,
-                onChanged: (value) => _updateDeliveryOption('pickup_enabled', value),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-
-          _SettingsCard(
-            title: 'Teslimat Ucreti',
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _minOrderController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Minimum Siparis Tutari',
-                        suffixText: 'TL',
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _deliveryFeeController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Teslimat Ucreti',
-                        suffixText: 'TL',
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _freeDeliveryController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Ucretsiz Teslimat Limiti',
-                  suffixText: 'TL',
-                  helperText: 'Bu tutarin uzerindeki siparislerde teslimat ucretsiz',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-
-          _SettingsCard(
-            title: 'Hazirlama Suresi',
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      controller: _minPrepTimeController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Minimum Sure',
-                        suffixText: 'dk',
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: TextFormField(
-                      controller: _maxPrepTimeController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Maksimum Sure',
-                        suffixText: 'dk',
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-
-          Align(
-            alignment: Alignment.centerRight,
-            child: ElevatedButton(
-              onPressed: _isLoading ? null : _saveDeliverySettings,
-              child:
-                  _isLoading
-                      ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                      : const Text('Degisiklikleri Kaydet'),
             ),
-          ),
+            const SizedBox(height: 24),
 
-          const SizedBox(height: 32),
-          const Divider(),
-          const SizedBox(height: 32),
-
-          // Delivery Zones Map
-          const DeliveryZonesMap(),
+            Align(
+              alignment: Alignment.centerRight,
+              child: ElevatedButton(
+                onPressed: _isLoading ? null : _saveDeliverySettings,
+                child:
+                    _isLoading
+                        ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                        : const Text('Degisiklikleri Kaydet'),
+              ),
+            ),
+          ],
         ],
       ],
     );
@@ -2032,6 +2218,52 @@ class _SettingsSwitch extends StatelessWidget {
         ),
         Switch(value: value, onChanged: onChanged),
       ],
+    );
+  }
+}
+
+class _CargoCompanyChip extends StatelessWidget {
+  final String name;
+  final bool isActive;
+
+  const _CargoCompanyChip({
+    required this.name,
+    required this.isActive,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: isActive
+            ? AppColors.success.withAlpha(30)
+            : AppColors.surfaceLight,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isActive
+              ? AppColors.success
+              : AppColors.border,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isActive ? Icons.check_circle : Icons.circle_outlined,
+            size: 18,
+            color: isActive ? AppColors.success : AppColors.textMuted,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            name,
+            style: TextStyle(
+              color: isActive ? AppColors.success : AppColors.textSecondary,
+              fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

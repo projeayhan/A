@@ -25,41 +25,13 @@ class StoreService {
     }
   }
 
-  // Tüm mağazaları getir (müşteri konumuna göre teslimat bölgesi filtreli)
+  // Tüm mağazaları getir (teslimat bölgesi kontrolü YOK - tüm KKTC'ye kargo ile hizmet verir)
   static Future<List<Store>> getStores({
     double? customerLat,
     double? customerLon,
   }) async {
     try {
-      // Müşteri konumu varsa, teslimat bölgesi içindeki mağazaları getir
-      if (customerLat != null && customerLon != null) {
-        // Önce teslimat yapabilen mağazaların ID'lerini al
-        final deliveryRangeResponse = await _client
-            .rpc('get_stores_in_delivery_range', params: {
-              'p_customer_lat': customerLat,
-              'p_customer_lon': customerLon,
-            });
-
-        final deliverableStoreIds = (deliveryRangeResponse as List)
-            .map((json) => json['merchant_id'] as String)
-            .toList();
-
-        if (deliverableStoreIds.isEmpty) return [];
-
-        final response = await _client
-            .from('merchants')
-            .select()
-            .inFilter('id', deliverableStoreIds)
-            .eq('type', 'store')
-            .eq('is_approved', true)
-            .order('rating', ascending: false);
-
-        return (response as List)
-            .map((json) => Store.fromMerchant(json))
-            .toList();
-      }
-
-      // Konum yoksa tüm mağazaları getir
+      // Mağazalar için bölge kontrolü yok - tüm onaylı mağazaları getir
       final response = await _client
           .from('merchants')
           .select()
@@ -76,41 +48,14 @@ class StoreService {
     }
   }
 
-  // Kategoriye göre mağazaları getir (müşteri konumuna göre teslimat bölgesi filtreli)
+  // Kategoriye göre mağazaları getir (teslimat bölgesi kontrolü YOK)
   static Future<List<Store>> getStoresByCategory(
     String categoryId, {
     double? customerLat,
     double? customerLon,
   }) async {
     try {
-      // Müşteri konumu varsa, teslimat bölgesi içindeki mağazaları getir
-      if (customerLat != null && customerLon != null) {
-        final deliveryRangeResponse = await _client
-            .rpc('get_stores_in_delivery_range', params: {
-              'p_customer_lat': customerLat,
-              'p_customer_lon': customerLon,
-            });
-
-        final deliverableStoreIds = (deliveryRangeResponse as List)
-            .map((json) => json['merchant_id'] as String)
-            .toList();
-
-        if (deliverableStoreIds.isEmpty) return [];
-
-        final response = await _client
-            .from('merchants')
-            .select()
-            .inFilter('id', deliverableStoreIds)
-            .eq('type', 'store')
-            .eq('is_approved', true)
-            .contains('category_tags', [categoryId])
-            .order('rating', ascending: false);
-
-        return (response as List)
-            .map((json) => Store.fromMerchant(json))
-            .toList();
-      }
-
+      // Mağazalar için bölge kontrolü yok
       final response = await _client
           .from('merchants')
           .select()
@@ -128,40 +73,13 @@ class StoreService {
     }
   }
 
-  // Öne çıkan mağazaları getir (müşteri konumuna göre teslimat bölgesi filtreli)
+  // Öne çıkan mağazaları getir (teslimat bölgesi kontrolü YOK)
   static Future<List<Store>> getFeaturedStores({
     double? customerLat,
     double? customerLon,
   }) async {
     try {
-      // Müşteri konumu varsa, teslimat bölgesi içindeki mağazaları getir
-      if (customerLat != null && customerLon != null) {
-        final deliveryRangeResponse = await _client
-            .rpc('get_stores_in_delivery_range', params: {
-              'p_customer_lat': customerLat,
-              'p_customer_lon': customerLon,
-            });
-
-        final deliverableStoreIds = (deliveryRangeResponse as List)
-            .map((json) => json['merchant_id'] as String)
-            .toList();
-
-        if (deliverableStoreIds.isEmpty) return [];
-
-        final response = await _client
-            .from('merchants')
-            .select()
-            .inFilter('id', deliverableStoreIds)
-            .eq('type', 'store')
-            .eq('is_approved', true)
-            .order('rating', ascending: false)
-            .limit(10);
-
-        return (response as List)
-            .map((json) => Store.fromMerchant(json))
-            .toList();
-      }
-
+      // Mağazalar için bölge kontrolü yok
       final response = await _client
           .from('merchants')
           .select()
@@ -363,42 +281,14 @@ class StoreService {
     }
   }
 
-  // Mağaza ara (müşteri konumuna göre teslimat bölgesi filtreli)
+  // Mağaza ara (teslimat bölgesi kontrolü YOK)
   static Future<List<Store>> searchStores(
     String query, {
     double? customerLat,
     double? customerLon,
   }) async {
     try {
-      // Müşteri konumu varsa, teslimat bölgesi içindeki mağazaları getir
-      if (customerLat != null && customerLon != null) {
-        final deliveryRangeResponse = await _client
-            .rpc('get_stores_in_delivery_range', params: {
-              'p_customer_lat': customerLat,
-              'p_customer_lon': customerLon,
-            });
-
-        final deliverableStoreIds = (deliveryRangeResponse as List)
-            .map((json) => json['merchant_id'] as String)
-            .toList();
-
-        if (deliverableStoreIds.isEmpty) return [];
-
-        final response = await _client
-            .from('merchants')
-            .select()
-            .inFilter('id', deliverableStoreIds)
-            .eq('type', 'store')
-            .eq('is_approved', true)
-            .ilike('business_name', '%$query%')
-            .order('rating', ascending: false)
-            .limit(20);
-
-        return (response as List)
-            .map((json) => Store.fromMerchant(json))
-            .toList();
-      }
-
+      // Mağazalar için bölge kontrolü yok
       final response = await _client
           .from('merchants')
           .select()

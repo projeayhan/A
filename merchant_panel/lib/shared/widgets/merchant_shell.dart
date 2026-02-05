@@ -52,6 +52,17 @@ class _MerchantShellState extends ConsumerState<MerchantShell> {
     }
   }
 
+  LinearGradient _getMerchantGradient(MerchantType type) {
+    switch (type) {
+      case MerchantType.restaurant:
+        return AppColors.restaurantGradient;
+      case MerchantType.market:
+        return AppColors.marketGradient;
+      case MerchantType.store:
+        return AppColors.storeGradient;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final merchant = ref.watch(currentMerchantProvider);
@@ -62,20 +73,22 @@ class _MerchantShellState extends ConsumerState<MerchantShell> {
     final pendingCourierRequests = courierRequests.valueOrNull?.length ?? 0;
     final currentRoute = GoRouterState.of(context).matchedLocation;
 
-    // Route guard: Restoran/Mağaza tipine göre yanlış sayfalara erişimi engelle
+    // Route guard: İşletme tipine göre yanlış sayfalara erişimi engelle
     final merchantData = merchant.valueOrNull;
     if (merchantData != null) {
       final isRestaurant = merchantData.type == MerchantType.restaurant;
+      final isProductBased = merchantData.type == MerchantType.market ||
+                             merchantData.type == MerchantType.store;
 
-      // Restoran kullanıcısı mağaza sayfalarına giremez
+      // Restoran kullanıcısı market/mağaza sayfalarına giremez
       if (isRestaurant && (currentRoute == '/products' || currentRoute == '/inventory' || currentRoute == '/categories')) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) context.go('/');
         });
       }
 
-      // Mağaza kullanıcısı restoran sayfalarına giremez
-      if (!isRestaurant && currentRoute == '/menu') {
+      // Market/Mağaza kullanıcısı restoran sayfalarına giremez
+      if (isProductBased && currentRoute == '/menu') {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) context.go('/');
         });
@@ -101,6 +114,8 @@ class _MerchantShellState extends ConsumerState<MerchantShell> {
     // Determine merchant type for conditional menu items
     final merchantType = merchant.valueOrNull?.type ?? MerchantType.restaurant;
     final isRestaurant = merchantType == MerchantType.restaurant;
+    final isProductBased = merchantType == MerchantType.market ||
+                           merchantType == MerchantType.store;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -116,7 +131,9 @@ class _MerchantShellState extends ConsumerState<MerchantShell> {
                 child: _buildSidebar(
                   context,
                   currentRoute,
+                  merchantType,
                   isRestaurant,
+                  isProductBased,
                   pendingOrdersCount,
                   unreadNotifications,
                   pendingCourierRequests,
@@ -153,7 +170,9 @@ class _MerchantShellState extends ConsumerState<MerchantShell> {
   Widget _buildSidebar(
     BuildContext context,
     String currentRoute,
+    MerchantType merchantType,
     bool isRestaurant,
+    bool isProductBased,
     int pendingOrders,
     int notifications,
     int pendingCourierRequests,
@@ -176,14 +195,11 @@ class _MerchantShellState extends ConsumerState<MerchantShell> {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    gradient:
-                        isRestaurant
-                            ? AppColors.restaurantGradient
-                            : AppColors.storeGradient,
+                    gradient: _getMerchantGradient(merchantType),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
-                    isRestaurant ? Icons.restaurant : Icons.store,
+                    merchantType.icon,
                     color: Colors.white,
                     size: 24,
                   ),
@@ -204,7 +220,7 @@ class _MerchantShellState extends ConsumerState<MerchantShell> {
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
-                          isRestaurant ? 'Restoran' : 'Magaza',
+                          merchantType.displayName,
                           style: TextStyle(
                             color: AppColors.textMuted,
                             fontSize: 12,
@@ -266,8 +282,8 @@ class _MerchantShellState extends ConsumerState<MerchantShell> {
                   ),
                 ],
 
-                // Store specific
-                if (!isRestaurant) ...[
+                // Market & Store specific (product-based businesses)
+                if (isProductBased) ...[
                   _NavItem(
                     icon: Icons.inventory_2_outlined,
                     activeIcon: Icons.inventory_2,

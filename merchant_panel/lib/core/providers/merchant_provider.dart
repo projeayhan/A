@@ -1206,6 +1206,9 @@ final financeStatsProvider = FutureProvider.family<FinanceStats, FinanceQuery>((
     case MerchantType.restaurant:
       serviceType = 'restaurant';
       break;
+    case MerchantType.market:
+      serviceType = 'market';
+      break;
     case MerchantType.store:
       serviceType = 'store';
       break;

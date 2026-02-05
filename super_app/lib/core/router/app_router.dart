@@ -52,6 +52,7 @@ import '../../screens/jobs/add_job_listing_screen.dart';
 import '../../screens/jobs/my_job_listings_screen.dart';
 import '../../models/jobs/job_models.dart';
 import '../../screens/support/ai_chat_screen.dart';
+import '../../screens/grocery/grocery_home_screen.dart';
 import '../../models/store/store_model.dart';
 import '../../models/store/store_product_model.dart';
 import '../../widgets/app_scaffold.dart';
@@ -77,6 +78,7 @@ class AppRoutes {
   static const String orderSuccess = '/food/order-success/:orderId';
   static const String orderTracking = '/food/order-tracking/:orderId';
   static const String market = '/market';
+  static const String grocery = '/grocery';
   static const String taxi = '/taxi';
   static const String rental = '/rental';
   static const String service = '/service';
@@ -325,6 +327,24 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/store/checkout',
             name: 'storeCheckout',
             builder: (context, state) => const StoreCheckoutScreen(),
+          ),
+          // Grocery (Market) Routes
+          GoRoute(
+            path: AppRoutes.grocery,
+            name: 'grocery',
+            builder: (context, state) => const GroceryHomeScreen(),
+          ),
+          GoRoute(
+            path: '/grocery/market/:id',
+            name: 'groceryMarketDetail',
+            builder: (context, state) {
+              final extra = state.extra as Map<String, dynamic>?;
+              final store = extra?['store'] as Store?;
+              if (store != null) {
+                return StoreDetailScreen(store: store);
+              }
+              return const Center(child: Text('Market bulunamadı'));
+            },
           ),
           GoRoute(
             path: AppRoutes.taxi,

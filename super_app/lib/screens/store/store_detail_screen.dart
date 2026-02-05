@@ -11,6 +11,20 @@ import '../../models/store/store_model.dart';
 import '../../models/store/store_product_model.dart';
 import '../../widgets/store/product_card.dart';
 import '../../core/providers/store_provider.dart';
+import '../../core/providers/ai_context_provider.dart';
+
+// Reviews provider for a store (merchant)
+final storeReviewsProvider =
+    FutureProvider.family<List<Map<String, dynamic>>, String>(
+        (ref, merchantId) async {
+  final response = await SupabaseService.client
+      .from('reviews')
+      .select('*')
+      .eq('merchant_id', merchantId)
+      .order('created_at', ascending: false)
+      .limit(10);
+  return List<Map<String, dynamic>>.from(response);
+});
 
 class StoreDetailScreen extends ConsumerStatefulWidget {
   final Store store;
@@ -28,6 +42,13 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen>
   bool _showTitle = false;
   String? _selectedCategory;
 
+  // Product search
+  final _productSearchController = TextEditingController();
+  final _productSearchFocusNode = FocusNode();
+  final LayerLink _searchLayerLink = LayerLink();
+  OverlayEntry? _searchOverlayEntry;
+  String _productSearchQuery = '';
+
   // Merchant details
   String? _merchantAddress;
   String? _merchantPhone;
@@ -40,7 +61,22 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen>
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _scrollController.addListener(_onScroll);
+    _productSearchController.addListener(_onProductSearchChanged);
+    _productSearchFocusNode.addListener(_onProductSearchFocusChanged);
     _loadMerchantDetails();
+    // Set AI context for this store/market (type determined in didChangeDependencies)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final location = GoRouterState.of(context).uri.path;
+      final isMarket = location.startsWith('/grocery/market');
+      final entityType = isMarket ? 'market' : 'store';
+      ref.read(aiScreenContextProvider.notifier).state = AiScreenContext(
+        screenType: '${entityType}_detail',
+        entityId: widget.store.id,
+        entityName: widget.store.name,
+        entityType: entityType,
+      );
+    });
   }
 
   Future<void> _loadMerchantDetails() async {
@@ -89,6 +125,11 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen>
 
   @override
   void dispose() {
+    _removeSearchOverlay();
+    _productSearchController.removeListener(_onProductSearchChanged);
+    _productSearchFocusNode.removeListener(_onProductSearchFocusChanged);
+    _productSearchController.dispose();
+    _productSearchFocusNode.dispose();
     _tabController.dispose();
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
@@ -100,6 +141,188 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen>
     if (show != _showTitle) {
       setState(() => _showTitle = show);
     }
+  }
+
+  void _onProductSearchFocusChanged() {
+    if (_productSearchFocusNode.hasFocus && _productSearchQuery.isNotEmpty) {
+      _showSearchOverlay();
+    } else if (!_productSearchFocusNode.hasFocus) {
+      Future.delayed(const Duration(milliseconds: 200), () {
+        if (mounted && !_productSearchFocusNode.hasFocus) {
+          _removeSearchOverlay();
+        }
+      });
+    }
+  }
+
+  void _onProductSearchChanged() {
+    final query = _productSearchController.text.trim().toLowerCase();
+    setState(() => _productSearchQuery = query);
+
+    if (query.isEmpty || query.length < 2) {
+      _removeSearchOverlay();
+      return;
+    }
+
+    // Debounce
+    Future.delayed(const Duration(milliseconds: 200), () {
+      if (mounted && _productSearchController.text.trim().toLowerCase() == query) {
+        _showSearchOverlay();
+      }
+    });
+  }
+
+  void _showSearchOverlay() {
+    _removeSearchOverlay();
+    if (_productSearchQuery.length < 2) return;
+    _searchOverlayEntry = _createSearchOverlayEntry();
+    Overlay.of(context).insert(_searchOverlayEntry!);
+  }
+
+  void _removeSearchOverlay() {
+    _searchOverlayEntry?.remove();
+    _searchOverlayEntry = null;
+  }
+
+  List<StoreProduct> _getFilteredSearchResults(List<StoreProduct> allProducts) {
+    if (_productSearchQuery.length < 2) return [];
+    final query = _productSearchQuery.toLowerCase();
+    return allProducts.where((p) {
+      return p.name.toLowerCase().contains(query) ||
+          p.category.toLowerCase().contains(query) ||
+          (p.description?.toLowerCase().contains(query) ?? false);
+    }).take(8).toList();
+  }
+
+  OverlayEntry _createSearchOverlayEntry() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final productsAsync = ref.read(productsByStoreProvider(widget.store.id));
+    final allProducts = productsAsync.valueOrNull ?? [];
+    final results = _getFilteredSearchResults(allProducts);
+
+    return OverlayEntry(
+      builder: (context) => Positioned(
+        width: MediaQuery.of(context).size.width - 32,
+        child: CompositedTransformFollower(
+          link: _searchLayerLink,
+          showWhenUnlinked: false,
+          offset: const Offset(0, 50),
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              constraints: const BoxConstraints(maxHeight: 350),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1F2937) : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.15),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: results.isEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.search_off, size: 40, color: Colors.grey[400]),
+                          const SizedBox(height: 8),
+                          Text(
+                            '"$_productSearchQuery" için ürün bulunamadı',
+                            style: TextStyle(
+                              color: isDark ? Colors.white70 : Colors.grey[600],
+                              fontSize: 14,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.separated(
+                      shrinkWrap: true,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      itemCount: results.length,
+                      separatorBuilder: (_, __) => Divider(
+                        height: 1,
+                        indent: 60,
+                        color: isDark ? Colors.grey[800] : Colors.grey[200],
+                      ),
+                      itemBuilder: (context, index) {
+                        final product = results[index];
+                        return ListTile(
+                          dense: true,
+                          leading: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: product.imageUrl != null
+                                ? Image.network(
+                                    product.imageUrl!,
+                                    width: 44,
+                                    height: 44,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => Container(
+                                      width: 44,
+                                      height: 44,
+                                      color: AppColors.primary.withValues(alpha: 0.1),
+                                      child: Icon(Icons.shopping_bag_outlined,
+                                          color: AppColors.primary, size: 22),
+                                    ),
+                                  )
+                                : Container(
+                                    width: 44,
+                                    height: 44,
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Icon(Icons.shopping_bag_outlined,
+                                        color: AppColors.primary, size: 22),
+                                  ),
+                          ),
+                          title: Text(
+                            product.name,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: isDark ? Colors.white : Colors.black87,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Text(
+                            product.category.isNotEmpty ? product.category : 'Ürün',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark ? Colors.white54 : Colors.grey[500],
+                            ),
+                          ),
+                          trailing: Text(
+                            '₺${product.price.toStringAsFixed(2)}',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          onTap: () {
+                            _removeSearchOverlay();
+                            _productSearchController.clear();
+                            _productSearchFocusNode.unfocus();
+                            context.push(
+                              '/store/product/${product.id}',
+                              extra: {'product': product},
+                            );
+                          },
+                        );
+                      },
+                    ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -1002,6 +1225,56 @@ SuperApp'te bu mağazayı keşfet! 🛍️
 
     return Column(
       children: [
+        // Product search bar
+        CompositedTransformTarget(
+          link: _searchLayerLink,
+          child: Container(
+            color: isDark ? Colors.grey[900] : Colors.white,
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: TextField(
+              controller: _productSearchController,
+              focusNode: _productSearchFocusNode,
+              style: TextStyle(
+                fontSize: 14,
+                color: isDark ? Colors.white : Colors.black87,
+              ),
+              decoration: InputDecoration(
+                hintText: 'Ürün ara...',
+                hintStyle: TextStyle(
+                  color: isDark ? Colors.white38 : Colors.grey[400],
+                  fontSize: 14,
+                ),
+                prefixIcon: Icon(
+                  Icons.search,
+                  size: 20,
+                  color: _productSearchFocusNode.hasFocus
+                      ? AppColors.primary
+                      : (isDark ? Colors.white38 : Colors.grey[400]),
+                ),
+                suffixIcon: _productSearchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: Icon(Icons.close, size: 18, color: Colors.grey[400]),
+                        onPressed: () {
+                          _productSearchController.clear();
+                          _productSearchFocusNode.unfocus();
+                        },
+                      )
+                    : null,
+                filled: true,
+                fillColor: isDark ? Colors.grey[800] : Colors.grey[100],
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: AppColors.primary, width: 1.5),
+                ),
+              ),
+            ),
+          ),
+        ),
         // Horizontal scrollable category chips
         Container(
           color: isDark ? Colors.grey[900] : Colors.white,
@@ -1366,202 +1639,406 @@ SuperApp'te bu mağazayı keşfet! 🛍️
   }
 
   Widget _buildReviewsTab(bool isDark) {
-    final reviews = [
-      {
-        'name': 'Ahmet Y.',
-        'rating': 5,
-        'date': '2 gün önce',
-        'comment':
-            'Harika bir mağaza! Ürünler çok kaliteli ve kargo hızlı geldi. Kesinlikle tavsiye ederim.',
-        'avatar': 'A',
-      },
-      {
-        'name': 'Elif K.',
-        'rating': 4,
-        'date': '1 hafta önce',
-        'comment':
-            'Ürün beklediğim gibi geldi. Paketleme güzeldi. Sadece kargo biraz gecikti.',
-        'avatar': 'E',
-      },
-      {
-        'name': 'Mehmet S.',
-        'rating': 5,
-        'date': '2 hafta önce',
-        'comment':
-            'Müşteri hizmetleri çok ilgili. Sorunumu hemen çözdüler. Teşekkürler!',
-        'avatar': 'M',
-      },
-    ];
+    final reviewsAsync =
+        ref.watch(storeReviewsProvider(widget.store.id));
 
-    return Column(
-      children: [
-        // Rating Summary
-        Container(
-          margin: const EdgeInsets.all(16),
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: isDark ? Colors.grey[900] : Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
-                blurRadius: 8,
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Column(
-                children: [
-                  Text(
-                    widget.store.formattedRating,
-                    style: TextStyle(
-                      fontSize: 48,
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white : Colors.black87,
-                    ),
-                  ),
-                  Row(
-                    children: List.generate(5, (index) {
-                      return Icon(
-                        index < widget.store.rating.floor()
-                            ? Icons.star_rounded
-                            : Icons.star_border_rounded,
-                        color: Colors.amber,
-                        size: 20,
-                      );
-                    }),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${widget.store.reviewCount} değerlendirme',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+    return reviewsAsync.when(
+      data: (reviews) {
+        // Calculate stats
+        double avgRating = widget.store.rating;
+        int totalReviews = reviews.length;
+        Map<int, int> ratingCounts = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0};
+
+        if (reviews.isNotEmpty) {
+          double totalRating = 0;
+          for (final review in reviews) {
+            final courier = review['courier_rating'] as int? ?? 0;
+            final service = review['service_rating'] as int? ?? 0;
+            final taste = review['taste_rating'] as int? ?? 0;
+            final avg = (courier + service + taste) / 3;
+            totalRating += avg;
+
+            final roundedRating = avg.round().clamp(1, 5);
+            ratingCounts[roundedRating] =
+                (ratingCounts[roundedRating] ?? 0) + 1;
+          }
+          avgRating = totalRating / reviews.length;
+        }
+
+        return Column(
+          children: [
+            // Rating Summary
+            Container(
+              margin: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: isDark ? Colors.grey[900] : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color:
+                        Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
+                    blurRadius: 8,
                   ),
                 ],
               ),
-              const SizedBox(width: 24),
-              Expanded(
-                child: Column(
-                  children: [
-                    _buildRatingBar('5', 0.7, isDark),
-                    _buildRatingBar('4', 0.2, isDark),
-                    _buildRatingBar('3', 0.05, isDark),
-                    _buildRatingBar('2', 0.03, isDark),
-                    _buildRatingBar('1', 0.02, isDark),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        // Reviews List
-        Expanded(
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: reviews.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final review = reviews[index];
-              return Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: isDark ? Colors.grey[900] : Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+              child: Row(
+                children: [
+                  Column(
+                    children: [
+                      Text(
+                        avgRating.toStringAsFixed(1),
+                        style: TextStyle(
+                          fontSize: 48,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                      Row(
+                        children: List.generate(5, (index) {
+                          if (index < avgRating.floor()) {
+                            return const Icon(Icons.star_rounded,
+                                color: Colors.amber, size: 20);
+                          } else if (index < avgRating) {
+                            return const Icon(Icons.star_half_rounded,
+                                color: Colors.amber, size: 20);
+                          }
+                          return Icon(Icons.star_border_rounded,
+                              color: Colors.grey[400], size: 20);
+                        }),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '$totalReviews değerlendirme',
+                        style:
+                            TextStyle(fontSize: 12, color: Colors.grey[500]),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 24),
+                  Expanded(
+                    child: Column(
                       children: [
-                        CircleAvatar(
-                          radius: 20,
-                          backgroundColor: AppColors.primary,
-                          child: Text(
-                            review['avatar'] as String,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                review['name'] as String,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  color: isDark ? Colors.white : Colors.black87,
-                                ),
-                              ),
-                              Row(
-                                children: [
-                                  ...List.generate(review['rating'] as int, (
-                                    _,
-                                  ) {
-                                    return const Icon(
-                                      Icons.star_rounded,
-                                      color: Colors.amber,
-                                      size: 14,
-                                    );
-                                  }),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    review['date'] as String,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey[500],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
+                        _buildRatingBar(
+                            '5',
+                            totalReviews > 0
+                                ? (ratingCounts[5] ?? 0) / totalReviews
+                                : 0,
+                            isDark),
+                        _buildRatingBar(
+                            '4',
+                            totalReviews > 0
+                                ? (ratingCounts[4] ?? 0) / totalReviews
+                                : 0,
+                            isDark),
+                        _buildRatingBar(
+                            '3',
+                            totalReviews > 0
+                                ? (ratingCounts[3] ?? 0) / totalReviews
+                                : 0,
+                            isDark),
+                        _buildRatingBar(
+                            '2',
+                            totalReviews > 0
+                                ? (ratingCounts[2] ?? 0) / totalReviews
+                                : 0,
+                            isDark),
+                        _buildRatingBar(
+                            '1',
+                            totalReviews > 0
+                                ? (ratingCounts[1] ?? 0) / totalReviews
+                                : 0,
+                            isDark),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    Text(
-                      review['comment'] as String,
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: isDark ? Colors.white70 : Colors.black87,
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
+                  ),
+                ],
+              ),
+            ),
+            // Reviews List
+            if (reviews.isNotEmpty)
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: reviews.length,
+                  itemBuilder: (context, index) =>
+                      _buildReviewCard(reviews[index], isDark),
                 ),
-              );
-            },
-          ),
-        ),
-      ],
+              )
+            else
+              Expanded(
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.rate_review_outlined,
+                          size: 48, color: Colors.grey[400]),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Henüz değerlendirme yok',
+                        style: TextStyle(color: Colors.grey[500]),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (_, __) => const SizedBox(),
     );
   }
 
-  Widget _buildRatingBar(String label, double value, bool isDark) {
+  Widget _buildRatingBar(String label, double percentage, bool isDark) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Row(
         children: [
-          Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+          SizedBox(
+            width: 12,
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[500],
+              ),
+            ),
+          ),
           const SizedBox(width: 8),
           Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: value,
-                backgroundColor: isDark ? Colors.grey[800] : Colors.grey[200],
-                valueColor: const AlwaysStoppedAnimation(Colors.amber),
-                minHeight: 6,
+            child: Container(
+              height: 6,
+              decoration: BoxDecoration(
+                color: isDark ? Colors.grey[700] : Colors.grey[200],
+                borderRadius: BorderRadius.circular(3),
+              ),
+              child: FractionallySizedBox(
+                alignment: Alignment.centerLeft,
+                widthFactor: percentage,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.amber
+                        .withValues(alpha: percentage > 0.5 ? 1.0 : 0.6),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
               ),
             ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildReviewCard(Map<String, dynamic> review, bool isDark) {
+    final courierRating = review['courier_rating'] as int? ?? 0;
+    final serviceRating = review['service_rating'] as int? ?? 0;
+    final tasteRating = review['taste_rating'] as int? ?? 0;
+    final avgRating = (courierRating + serviceRating + tasteRating) / 3;
+    final comment = review['comment'] as String?;
+    final merchantReply = review['merchant_reply'] as String?;
+    final customerName = review['customer_name'] as String? ?? 'Anonim';
+    final createdAt =
+        DateTime.tryParse(review['created_at'] as String? ?? '') ??
+            DateTime.now();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.grey[900] : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border:
+            Border.all(color: isDark ? Colors.grey[800]! : Colors.grey[200]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                child: Text(
+                  customerName.isNotEmpty
+                      ? customerName[0].toUpperCase()
+                      : 'A',
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      customerName,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : Colors.grey[800],
+                      ),
+                    ),
+                    Text(
+                      _formatReviewDate(createdAt),
+                      style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                    ),
+                  ],
+                ),
+              ),
+              // Rating badge
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: _getRatingColor(avgRating).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.star,
+                        size: 14, color: _getRatingColor(avgRating)),
+                    const SizedBox(width: 2),
+                    Text(
+                      avgRating.toStringAsFixed(1),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        color: _getRatingColor(avgRating),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          // Rating breakdown
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              _buildMiniRatingChip('Kargo', courierRating, isDark),
+              const SizedBox(width: 6),
+              _buildMiniRatingChip('Paketleme', serviceRating, isDark),
+              const SizedBox(width: 6),
+              _buildMiniRatingChip('Ürün', tasteRating, isDark),
+            ],
+          ),
+
+          // Comment
+          if (comment != null && comment.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              comment,
+              style: TextStyle(
+                color: isDark ? Colors.grey[300] : Colors.grey[700],
+                fontSize: 13,
+              ),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+
+          // Merchant reply
+          if (merchantReply != null && merchantReply.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.2)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.reply, size: 14, color: AppColors.primary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Mağaza Yanıtı',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          merchantReply,
+                          style: TextStyle(
+                            color:
+                                isDark ? Colors.grey[300] : Colors.grey[700],
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMiniRatingChip(String label, int rating, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.grey[800] : Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+          ),
+          const SizedBox(width: 4),
+          const Icon(Icons.star, size: 10, color: Colors.amber),
+          Text(
+            rating.toString(),
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : Colors.grey[800],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getRatingColor(double rating) {
+    if (rating >= 4) return const Color(0xFF22C55E);
+    if (rating >= 3) return const Color(0xFFF59E0B);
+    return const Color(0xFFEF4444);
+  }
+
+  String _formatReviewDate(DateTime date) {
+    final now = DateTime.now();
+    final diff = now.difference(date);
+    if (diff.inDays == 0) {
+      if (diff.inHours == 0) return '${diff.inMinutes} dk önce';
+      return '${diff.inHours} saat önce';
+    }
+    if (diff.inDays == 1) return 'Dün';
+    if (diff.inDays < 7) return '${diff.inDays} gün önce';
+    return '${date.day}.${date.month}.${date.year}';
   }
 }
 

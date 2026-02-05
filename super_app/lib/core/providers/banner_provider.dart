@@ -150,3 +150,8 @@ final emlakBannersProvider = FutureProvider<List<AppBanner>>((ref) async {
 final carSalesBannersProvider = FutureProvider<List<AppBanner>>((ref) async {
   return ref.watch(bannersByCategoryProvider('car_sales').future);
 });
+
+/// Market (Grocery) banner'ları
+final marketBannersProvider = FutureProvider<List<AppBanner>>((ref) async {
+  return ref.watch(bannersByCategoryProvider('market').future);
+});

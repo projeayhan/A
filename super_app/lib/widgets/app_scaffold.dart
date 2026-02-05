@@ -5,6 +5,7 @@ import '../core/theme/app_theme.dart';
 import '../core/theme/app_responsive.dart';
 import '../core/router/app_router.dart';
 import '../core/providers/navigation_provider.dart';
+import '../core/providers/ai_context_provider.dart';
 import 'floating_ai_assistant.dart';
 
 class AppScaffold extends ConsumerWidget {
@@ -47,6 +48,9 @@ class AppScaffold extends ConsumerWidget {
     final routerState = GoRouterState.of(context);
     final location = routerState.uri.path;
     final showBottomNav = _shouldShowBottomNav(location);
+
+    // Route-based AI context update
+    _updateAiContext(ref, location);
 
     return Scaffold(
       body: Stack(
@@ -129,6 +133,57 @@ class AppScaffold extends ConsumerWidget {
         ),
       ) : null,
     );
+  }
+
+  void _updateAiContext(WidgetRef ref, String location) {
+    AiScreenContext ctx;
+
+    if (location.startsWith('/food/restaurant/')) {
+      // Restaurant detail - entity context set by the screen itself
+      return;
+    } else if (location.startsWith('/store/detail/')) {
+      // Store detail - entity context set by the screen itself
+      return;
+    } else if (location.startsWith('/grocery/market/')) {
+      // Market detail - entity context set by the screen itself
+      return;
+    } else if (location == '/food' || location == '/food/') {
+      ctx = const AiScreenContext(screenType: 'food_home');
+    } else if (location == '/market' || location == '/market/') {
+      ctx = const AiScreenContext(screenType: 'store_home');
+    } else if (location == '/grocery' || location == '/grocery/') {
+      ctx = const AiScreenContext(screenType: 'grocery_home');
+    } else if (location.startsWith('/store/cart')) {
+      ctx = const AiScreenContext(screenType: 'store_cart');
+    } else if (location.startsWith('/food/cart')) {
+      ctx = const AiScreenContext(screenType: 'food_cart');
+    } else if (location == '/' || location.isEmpty) {
+      ctx = const AiScreenContext.home();
+    } else if (location.startsWith('/favorites')) {
+      ctx = const AiScreenContext(screenType: 'favorites');
+    } else if (location.startsWith('/orders')) {
+      ctx = const AiScreenContext(screenType: 'orders');
+    } else if (location.startsWith('/profile')) {
+      ctx = const AiScreenContext(screenType: 'profile');
+    } else if (location.startsWith('/emlak')) {
+      ctx = const AiScreenContext(screenType: 'emlak');
+    } else if (location.startsWith('/car-sales')) {
+      ctx = const AiScreenContext(screenType: 'car_sales');
+    } else if (location.startsWith('/jobs')) {
+      ctx = const AiScreenContext(screenType: 'jobs');
+    } else {
+      ctx = AiScreenContext(screenType: 'other', extra: {'path': location});
+    }
+
+    // Only update if changed to avoid unnecessary rebuilds
+    final current = ref.read(aiScreenContextProvider);
+    if (current.screenType != ctx.screenType ||
+        current.entityId != ctx.entityId) {
+      // Use Future.microtask to avoid updating provider during build
+      Future.microtask(() {
+        ref.read(aiScreenContextProvider.notifier).state = ctx;
+      });
+    }
   }
 
   Widget _buildNavItem({

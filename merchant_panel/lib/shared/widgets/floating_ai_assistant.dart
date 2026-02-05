@@ -1,6 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/services/ai_chat_service.dart';
+import '../../core/services/voice_input_service.dart';
+import '../../core/services/voice_output_service.dart';
 
 class FloatingAIAssistant extends StatefulWidget {
   const FloatingAIAssistant({super.key});
@@ -29,6 +33,19 @@ class _FloatingAIAssistantState extends State<FloatingAIAssistant>
   Offset _position = const Offset(30, 80);
   bool _isManualPosition = false;
   bool _isChatOpen = false;
+
+  // Voice mode state (long-press on robot)
+  bool _isVoiceMode = false;
+  bool _isVoicePreparing = false;
+  bool _isStoppingVoice = false;
+  bool _pendingRelease = false;
+  String _voicePartialText = '';
+  String _voiceResponseText = '';
+  bool _isVoiceProcessing = false;
+  bool _showVoiceResponse = false;
+  Timer? _longPressTimer;
+  Timer? _voiceResponseDismissTimer;
+  String? _voiceSessionId;
 
   @override
   void initState() {
@@ -97,10 +114,22 @@ class _FloatingAIAssistantState extends State<FloatingAIAssistant>
     _glowController.dispose();
     _moveController.dispose();
     _hoverController.dispose();
+    _longPressTimer?.cancel();
+    _voiceResponseDismissTimer?.cancel();
+    voiceInputService.stopListening();
+    voiceOutputService.stop();
     super.dispose();
   }
 
   void _onTap() {
+    if (_isVoiceMode || _isVoicePreparing) return;
+
+    // Ses yanıtı gösteriliyorsa kapat
+    if (_showVoiceResponse) {
+      _dismissVoiceResponse();
+      return;
+    }
+
     setState(() => _isChatOpen = true);
     _walkController.stop();
     _moveController.stop();
@@ -134,6 +163,231 @@ class _FloatingAIAssistantState extends State<FloatingAIAssistant>
     _hoverController.reverse();
   }
 
+  // ==================== VOICE MODE (Long-press) ====================
+
+  void _onLongPressStart() {
+    if (_isChatOpen) return;
+
+    _isStoppingVoice = false;
+    _pendingRelease = false;
+
+    // Varolan ses yanıtını kapat
+    if (_showVoiceResponse) _dismissVoiceResponse();
+
+    setState(() {
+      _isVoicePreparing = true;
+    });
+
+    // Kısa gecikme sonra ses modunu başlat
+    _longPressTimer = Timer(const Duration(milliseconds: 300), () {
+      if (mounted) _startVoiceMode();
+    });
+  }
+
+  void _onLongPressEnd() {
+    _longPressTimer?.cancel();
+
+    if (_isVoiceMode && !_isStoppingVoice) {
+      // Walkie-talkie: parmak kaldırıldı → dinlemeyi durdur ve gönder
+      _stopVoiceAndSend();
+    } else if (_isVoicePreparing) {
+      // Hazırlanma sırasında bıraktı
+      _pendingRelease = true;
+    }
+  }
+
+  Future<void> _startVoiceMode() async {
+    try {
+      HapticFeedback.heavyImpact();
+    } catch (_) {}
+
+    // Animasyonları durdur
+    _walkController.stop();
+    _moveController.stop();
+    await voiceOutputService.stop();
+
+    // Ses tanıma başlat
+    final initialized = await voiceInputService.initialize();
+    if (!mounted) return;
+
+    // Kullanıcı hazırlanma sırasında bıraktıysa iptal et
+    if (_pendingRelease) {
+      setState(() => _isVoicePreparing = false);
+      _resumeAnimations();
+      return;
+    }
+
+    if (!initialized) {
+      setState(() {
+        _isVoicePreparing = false;
+        _voiceResponseText = 'Ses tanima baslatilamadi. Mikrofon izni verdiginizden emin olun.';
+        _showVoiceResponse = true;
+      });
+      _voiceResponseDismissTimer?.cancel();
+      _voiceResponseDismissTimer = Timer(const Duration(seconds: 5), () {
+        if (mounted) _dismissVoiceResponse();
+      });
+      _resumeAnimations();
+      return;
+    }
+
+    setState(() {
+      _isVoicePreparing = false;
+      _isVoiceMode = true;
+      _voicePartialText = '';
+    });
+
+    final started = await voiceInputService.startListening(
+      onResult: (text, isFinal) {
+        if (!mounted) return;
+        setState(() => _voicePartialText = text);
+      },
+      onDone: () {
+        // Otomatik bitişte de gönder (guard ile)
+        if (mounted && _isVoiceMode && !_isStoppingVoice) {
+          _stopVoiceAndSend();
+        }
+      },
+    );
+
+    if (!started && mounted) {
+      setState(() {
+        _isVoiceMode = false;
+        _voiceResponseText = 'Ses dinleme baslatilamadi: ${voiceInputService.lastError}';
+        _showVoiceResponse = true;
+      });
+      _voiceResponseDismissTimer?.cancel();
+      _voiceResponseDismissTimer = Timer(const Duration(seconds: 5), () {
+        if (mounted) _dismissVoiceResponse();
+      });
+      _resumeAnimations();
+      return;
+    }
+
+    // Eğer startListening sırasında kullanıcı bıraktıysa hemen gönder
+    if (_pendingRelease && _isVoiceMode) {
+      _stopVoiceAndSend();
+    }
+  }
+
+  Future<void> _stopVoiceAndSend() async {
+    // Re-entry guard
+    if (_isStoppingVoice) return;
+    _isStoppingVoice = true;
+
+    setState(() => _isVoiceMode = false);
+
+    // Ses tanıyıcıya son sesleri işlemesi için kısa süre ver
+    await Future.delayed(const Duration(milliseconds: 600));
+    await voiceInputService.stopListening();
+
+    final text = _voicePartialText.trim();
+    setState(() {
+      _voicePartialText = '';
+    });
+
+    if (text.isEmpty) {
+      setState(() {
+        _voiceResponseText = 'Ses algilanamadi. Basili tutarken konusun.';
+        _showVoiceResponse = true;
+      });
+      _voiceResponseDismissTimer?.cancel();
+      _voiceResponseDismissTimer = Timer(const Duration(seconds: 3), () {
+        if (mounted) _dismissVoiceResponse();
+      });
+      _resumeAnimations();
+      _isStoppingVoice = false;
+      return;
+    }
+
+    // İşleniyor göster
+    setState(() => _isVoiceProcessing = true);
+
+    try {
+      final response = await AiChatService.sendMessage(
+        message: text,
+        sessionId: _voiceSessionId,
+        generateAudio: true,
+      );
+
+      if (!mounted) return;
+
+      if (response['success'] == true) {
+        _voiceSessionId = response['session_id'];
+        final aiMsg = response['message'] ?? '';
+
+        setState(() {
+          _isVoiceProcessing = false;
+          _voiceResponseText = aiMsg;
+          _showVoiceResponse = true;
+        });
+
+        // Inline audio varsa doğrudan çal, yoksa ayrı TTS çağrısı yap
+        voiceOutputService.setEnabled(true);
+        final inlineAudio = response['audio'] as String?;
+        void onAudioComplete() {
+          if (!mounted) return;
+          _voiceResponseDismissTimer?.cancel();
+          _voiceResponseDismissTimer = Timer(const Duration(seconds: 5), () {
+            if (mounted) _dismissVoiceResponse();
+          });
+        }
+        if (inlineAudio != null && inlineAudio.isNotEmpty) {
+          voiceOutputService.playBase64Audio(inlineAudio, onComplete: onAudioComplete);
+        } else {
+          voiceOutputService.speak(aiMsg, onComplete: onAudioComplete);
+        }
+
+        // Fallback: TTS hata verirse 60 sn sonra kapat
+        _voiceResponseDismissTimer?.cancel();
+        _voiceResponseDismissTimer = Timer(const Duration(seconds: 60), () {
+          if (mounted) _dismissVoiceResponse();
+        });
+      } else {
+        setState(() {
+          _isVoiceProcessing = false;
+          _voiceResponseText = 'Uzgunum, bir hata olustu.';
+          _showVoiceResponse = true;
+        });
+        _voiceResponseDismissTimer = Timer(const Duration(seconds: 5), () {
+          if (mounted) _dismissVoiceResponse();
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isVoiceProcessing = false;
+        _voiceResponseText = 'Baglanti hatasi.';
+        _showVoiceResponse = true;
+      });
+      _voiceResponseDismissTimer = Timer(const Duration(seconds: 5), () {
+        if (mounted) _dismissVoiceResponse();
+      });
+    }
+
+    _resumeAnimations();
+    _isStoppingVoice = false;
+  }
+
+  void _dismissVoiceResponse() {
+    _voiceResponseDismissTimer?.cancel();
+    voiceOutputService.stop();
+    setState(() {
+      _showVoiceResponse = false;
+      _isVoiceProcessing = false;
+      _voiceResponseText = '';
+    });
+  }
+
+  void _resumeAnimations() {
+    if (!_isManualPosition && !_isChatOpen) {
+      _moveController.repeat(reverse: true);
+    }
+    if (!_isChatOpen) {
+      _walkController.repeat(reverse: true);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -145,12 +399,12 @@ class _FloatingAIAssistantState extends State<FloatingAIAssistant>
           right: xPos,
           bottom: _position.dy,
           child: GestureDetector(
-            onPanStart: (_) {
+            onPanStart: _isVoiceMode || _isVoicePreparing ? null : (_) {
               setState(() => _isManualPosition = true);
               _walkController.stop();
               _moveController.stop();
             },
-            onPanUpdate: (details) {
+            onPanUpdate: _isVoiceMode || _isVoicePreparing ? null : (details) {
               setState(() {
                 _position = Offset(
                   _position.dx - details.delta.dx,
@@ -158,12 +412,14 @@ class _FloatingAIAssistantState extends State<FloatingAIAssistant>
                 );
               });
             },
-            onPanEnd: (_) {
+            onPanEnd: _isVoiceMode || _isVoicePreparing ? null : (_) {
               if (!_isChatOpen) {
                 _walkController.repeat(reverse: true);
               }
             },
             onTap: _onTap,
+            onLongPressStart: (_) => _onLongPressStart(),
+            onLongPressEnd: (_) => _onLongPressEnd(),
             child: MouseRegion(
               onEnter: (_) => _onHoverStart(),
               onExit: (_) => _onHoverEnd(),
@@ -214,13 +470,49 @@ class _FloatingAIAssistantState extends State<FloatingAIAssistant>
                         ),
                       ),
 
-                      // Hover balonu - robotun üstünde (overflow izinli)
-                      if (_isHovered && !_isChatOpen)
+                      // Hover balonu
+                      if (_isHovered && !_isChatOpen && !_isVoicePreparing && !_isVoiceMode && !_isVoiceProcessing && !_showVoiceResponse)
                         Positioned(
                           top: 0,
                           left: -50,
                           right: -50,
                           child: Center(child: _buildSpeechBubble()),
+                        ),
+
+                      // Voice preparing bubble
+                      if (_isVoicePreparing && !_isVoiceMode)
+                        Positioned(
+                          top: 0,
+                          left: -50,
+                          right: -50,
+                          child: Center(child: _buildVoicePreparingBubble()),
+                        ),
+
+                      // Voice listening bubble
+                      if (_isVoiceMode)
+                        Positioned(
+                          top: -10,
+                          left: -60,
+                          right: -60,
+                          child: Center(child: _buildVoiceListeningBubble()),
+                        ),
+
+                      // Voice processing bubble
+                      if (_isVoiceProcessing && !_isVoiceMode)
+                        Positioned(
+                          top: 0,
+                          left: -60,
+                          right: -60,
+                          child: Center(child: _buildVoiceProcessingBubble()),
+                        ),
+
+                      // Voice response bubble
+                      if (_showVoiceResponse && !_isVoiceProcessing)
+                        Positioned(
+                          top: -15,
+                          left: -80,
+                          right: -80,
+                          child: Center(child: _buildVoiceResponseBubble()),
                         ),
                     ],
                   ),
@@ -239,11 +531,12 @@ class _FloatingAIAssistantState extends State<FloatingAIAssistant>
       height: 140,
       child: CustomPaint(
         painter: _FuturisticRobotPainter(
-          walkAnimation: _isChatOpen ? 0 : _legAnimation.value,
-          armAnimation: _isChatOpen ? 0 : _armAnimation.value,
+          walkAnimation: (_isChatOpen || _isVoiceMode) ? 0 : _legAnimation.value,
+          armAnimation: (_isChatOpen || _isVoiceMode) ? 0 : _armAnimation.value,
           glowIntensity: _glowAnimation.value,
           isHovered: _isHovered,
           isChatOpen: _isChatOpen,
+          isVoiceListening: _isVoiceMode,
         ),
       ),
     );
@@ -330,6 +623,204 @@ class _FloatingAIAssistantState extends State<FloatingAIAssistant>
       ),
     );
   }
+
+  // ==================== VOICE BUBBLES ====================
+
+  Widget _buildVoicePreparingBubble() {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 300),
+      builder: (context, value, child) {
+        return Transform.scale(
+          scale: value,
+          alignment: Alignment.bottomCenter,
+          child: Opacity(opacity: value.clamp(0.0, 1.0), child: child),
+        );
+      },
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(colors: [Color(0xFF1a1a2e), Color(0xFF16213e)]),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFFF8800).withAlpha(180), width: 2),
+              boxShadow: [BoxShadow(color: const Color(0xFFFF8800).withAlpha(60), blurRadius: 12)],
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.mic, color: Color(0xFFFF8800), size: 16),
+                SizedBox(width: 6),
+                Text('Basili tutun...', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w500)),
+              ],
+            ),
+          ),
+          CustomPaint(size: const Size(12, 7), painter: _VoiceBubbleTailPainter(color: Color(0xFFFF8800))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVoiceListeningBubble() {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 300),
+      builder: (context, value, child) {
+        return Transform.scale(
+          scale: value,
+          alignment: Alignment.bottomCenter,
+          child: Opacity(opacity: value.clamp(0.0, 1.0), child: child),
+        );
+      },
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            constraints: const BoxConstraints(maxWidth: 220),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(colors: [Color(0xFF1a1a2e), Color(0xFF16213e)]),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFFF4444).withAlpha(200), width: 2),
+              boxShadow: [BoxShadow(color: const Color(0xFFFF4444).withAlpha(80), blurRadius: 16, spreadRadius: 2)],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.mic, color: Color(0xFFFF4444), size: 16),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    _voicePartialText.isEmpty ? 'Dinleniyor...' : _voicePartialText,
+                    style: TextStyle(
+                      color: _voicePartialText.isEmpty ? Colors.white70 : Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      fontStyle: _voicePartialText.isEmpty ? FontStyle.italic : FontStyle.normal,
+                    ),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          CustomPaint(size: const Size(12, 7), painter: _VoiceBubbleTailPainter(color: const Color(0xFFFF4444))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVoiceProcessingBubble() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(colors: [Color(0xFF1a1a2e), Color(0xFF16213e)]),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFF00D4FF).withAlpha(180), width: 2),
+            boxShadow: [BoxShadow(color: const Color(0xFF00D4FF).withAlpha(60), blurRadius: 12)],
+          ),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF00D4FF))),
+              SizedBox(width: 8),
+              Text('Dusunuyor...', style: TextStyle(color: Colors.white70, fontSize: 11, fontStyle: FontStyle.italic)),
+            ],
+          ),
+        ),
+        CustomPaint(size: const Size(12, 7), painter: _VoiceBubbleTailPainter(color: const Color(0xFF00D4FF))),
+      ],
+    );
+  }
+
+  Widget _buildVoiceResponseBubble() {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: const Duration(milliseconds: 400),
+      curve: Curves.elasticOut,
+      builder: (context, value, child) {
+        return Transform.scale(
+          scale: value,
+          alignment: Alignment.bottomCenter,
+          child: Opacity(opacity: value.clamp(0.0, 1.0), child: child),
+        );
+      },
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              GestureDetector(
+                onTap: () {
+                  _dismissVoiceResponse();
+                  _onTap(); // Chat dialog'u aç
+                },
+                child: Container(
+                  constraints: const BoxConstraints(maxWidth: 240),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: [Color(0xFF1a1a2e), Color(0xFF16213e)]),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFF00FF88).withAlpha(200), width: 2),
+                    boxShadow: [
+                      BoxShadow(color: const Color(0xFF00FF88).withAlpha(80), blurRadius: 16, spreadRadius: 2),
+                    ],
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.smart_toy, color: Color(0xFF00FF88), size: 14),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              _voiceResponseText,
+                              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w500),
+                              maxLines: 5,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Positioned(
+                top: 4,
+                right: 4,
+                child: GestureDetector(
+                  onTap: _dismissVoiceResponse,
+                  behavior: HitTestBehavior.opaque,
+                  child: Container(
+                    width: 18,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withAlpha(100),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.close, size: 10, color: Colors.white70),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          CustomPaint(size: const Size(12, 7), painter: _VoiceBubbleTailPainter(color: const Color(0xFF00FF88))),
+        ],
+      ),
+    );
+  }
 }
 
 // Konuşma balonu kuyruğu
@@ -368,6 +859,42 @@ class _BubbleTailPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
+// Voice bubble tail painter
+class _VoiceBubbleTailPainter extends CustomPainter {
+  final Color color;
+  const _VoiceBubbleTailPainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final path = Path();
+    path.moveTo(0, 0);
+    path.lineTo(size.width / 2, size.height);
+    path.lineTo(size.width, 0);
+    path.close();
+
+    final paint = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [Color(0xFF16213e), Color(0xFF0f0f23)],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+    canvas.drawPath(path, paint);
+
+    final borderPaint = Paint()
+      ..color = color.withAlpha(200)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    final borderPath = Path();
+    borderPath.moveTo(0, 0);
+    borderPath.lineTo(size.width / 2, size.height);
+    borderPath.lineTo(size.width, 0);
+    canvas.drawPath(borderPath, borderPaint);
+  }
+
+  @override
+  bool shouldRepaint(_VoiceBubbleTailPainter oldDelegate) => oldDelegate.color != color;
+}
+
 // ==================== FUTURISTIC ROBOT PAINTER ====================
 
 class _FuturisticRobotPainter extends CustomPainter {
@@ -376,6 +903,7 @@ class _FuturisticRobotPainter extends CustomPainter {
   final double glowIntensity;
   final bool isHovered;
   final bool isChatOpen;
+  final bool isVoiceListening;
 
   _FuturisticRobotPainter({
     required this.walkAnimation,
@@ -383,6 +911,7 @@ class _FuturisticRobotPainter extends CustomPainter {
     required this.glowIntensity,
     required this.isHovered,
     required this.isChatOpen,
+    this.isVoiceListening = false,
   });
 
   @override
@@ -393,7 +922,9 @@ class _FuturisticRobotPainter extends CustomPainter {
     final metalDark = const Color(0xFF2d3436);
     final metalMid = const Color(0xFF636e72);
     final metalLight = const Color(0xFFb2bec3);
-    final glowColor = isHovered ? const Color(0xFF00FF88) : const Color(0xFF00D4FF);
+    final glowColor = isVoiceListening
+        ? const Color(0xFFFF4444)
+        : isHovered ? const Color(0xFF00FF88) : const Color(0xFF00D4FF);
     final glowColorDim = glowColor.withAlpha((150 * glowIntensity).toInt());
 
     // === BACAKLAR ===
@@ -650,7 +1181,8 @@ class _FuturisticRobotPainter extends CustomPainter {
         oldDelegate.armAnimation != armAnimation ||
         oldDelegate.glowIntensity != glowIntensity ||
         oldDelegate.isHovered != isHovered ||
-        oldDelegate.isChatOpen != isChatOpen;
+        oldDelegate.isChatOpen != isChatOpen ||
+        oldDelegate.isVoiceListening != isVoiceListening;
   }
 }
 
@@ -673,17 +1205,37 @@ class _AIChatDialogState extends State<_AIChatDialog> {
   bool _isLoading = false;
   bool _isInitializing = true;
 
+  bool _ttsEnabled = false;
+
   @override
   void initState() {
     super.initState();
     _initChat();
+    _initTts();
   }
 
   @override
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
+    voiceOutputService.stop();
     super.dispose();
+  }
+
+  Future<void> _initTts() async {
+    await voiceOutputService.initialize();
+    if (mounted) {
+      setState(() {
+        _ttsEnabled = voiceOutputService.isEnabled;
+      });
+    }
+  }
+
+  void _toggleTts() {
+    setState(() {
+      _ttsEnabled = !_ttsEnabled;
+    });
+    voiceOutputService.setEnabled(_ttsEnabled);
   }
 
   Future<void> _initChat() async {
@@ -735,17 +1287,86 @@ class _AIChatDialogState extends State<_AIChatDialog> {
     });
     _scrollToBottom();
 
-    final response = await AiChatService.sendMessage(message: message, sessionId: _sessionId);
+    // Add placeholder assistant message for streaming
+    final assistantMessage = _ChatMessage(
+      role: 'assistant',
+      content: '',
+      timestamp: DateTime.now(),
+      isStreaming: true,
+    );
+    setState(() => _messages.add(assistantMessage));
+    _scrollToBottom();
 
-    setState(() {
-      _isLoading = false;
-      if (response['success'] == true) {
-        _sessionId = response['session_id'];
-        _messages.add(_ChatMessage(role: 'assistant', content: response['message'], timestamp: DateTime.now()));
-      } else {
-        _messages.add(_ChatMessage(role: 'assistant', content: 'Uzgunum, bir hata olustu.', timestamp: DateTime.now(), isError: true));
+    try {
+      final stream = AiChatService.sendMessageStream(
+        message: message,
+        sessionId: _sessionId,
+      );
+
+      await for (final event in stream) {
+        if (!mounted) return;
+
+        switch (event.type) {
+          case AiStreamEventType.session:
+            _sessionId = event.sessionId;
+            break;
+
+          case AiStreamEventType.chunk:
+            setState(() {
+              assistantMessage.content += event.text!;
+            });
+            _scrollToBottom();
+            break;
+
+          case AiStreamEventType.actions:
+            break;
+
+          case AiStreamEventType.done:
+            setState(() {
+              assistantMessage.isStreaming = false;
+              if (event.fullMessage != null && event.fullMessage!.isNotEmpty) {
+                assistantMessage.content = event.fullMessage!;
+              }
+              _isLoading = false;
+            });
+            // TTS after streaming completes
+            if (_ttsEnabled && assistantMessage.content.isNotEmpty) {
+              voiceOutputService.speak(assistantMessage.content);
+            }
+            break;
+
+          case AiStreamEventType.error:
+            setState(() {
+              assistantMessage.isStreaming = false;
+              _isLoading = false;
+              if (assistantMessage.content.isEmpty) {
+                assistantMessage.content = 'Üzgünüm, ${event.error}';
+              }
+            });
+            break;
+        }
       }
-    });
+
+      // If stream ended without a done event
+      if (mounted && assistantMessage.isStreaming) {
+        setState(() {
+          assistantMessage.isStreaming = false;
+          _isLoading = false;
+          if (assistantMessage.content.isEmpty) {
+            assistantMessage.content = 'Bağlantı kesildi.';
+          }
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        assistantMessage.isStreaming = false;
+        _isLoading = false;
+        if (assistantMessage.content.isEmpty) {
+          assistantMessage.content = 'Hata: $e';
+        }
+      });
+    }
     _scrollToBottom();
   }
 
@@ -795,9 +1416,8 @@ class _AIChatDialogState extends State<_AIChatDialog> {
                   : ListView.builder(
                       controller: _scrollController,
                       padding: const EdgeInsets.all(16),
-                      itemCount: _messages.length + (_isLoading ? 1 : 0),
+                      itemCount: _messages.length,
                       itemBuilder: (context, index) {
-                        if (index == _messages.length && _isLoading) return _buildTypingIndicator();
                         return _buildMessageBubble(_messages[index]);
                       },
                     ),
@@ -852,6 +1472,15 @@ class _AIChatDialogState extends State<_AIChatDialog> {
               ],
             ),
           ),
+          // TTS toggle
+          IconButton(
+            icon: Icon(
+              _ttsEnabled ? Icons.volume_up : Icons.volume_off,
+              color: _ttsEnabled ? const Color(0xFF00FF88) : Colors.white.withAlpha(150),
+            ),
+            onPressed: _toggleTts,
+            tooltip: _ttsEnabled ? 'Sesi kapat' : 'Sesi ac',
+          ),
           IconButton(icon: Icon(Icons.refresh, color: Colors.white.withAlpha(150)), onPressed: _startNewChat),
           IconButton(icon: Icon(Icons.close, color: Colors.white.withAlpha(150)), onPressed: widget.onClose),
         ],
@@ -897,44 +1526,21 @@ class _AIChatDialogState extends State<_AIChatDialog> {
                   ),
                   border: isUser ? null : Border.all(color: const Color(0xFF00D4FF).withAlpha(30)),
                 ),
-                child: Text(message.content, style: const TextStyle(color: Colors.white, fontSize: 14)),
+                child: message.isStreaming && message.content.isEmpty
+                    ? Row(mainAxisSize: MainAxisSize.min, children: List.generate(3, (i) => _TypingDot(delay: i * 150)))
+                    : Row(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Flexible(child: Text(message.content, style: const TextStyle(color: Colors.white, fontSize: 14))),
+                          if (message.isStreaming) const _StreamingCursor(),
+                        ],
+                      ),
               ),
             ),
             if (isUser) const SizedBox(width: 40),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildTypingIndicator() {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 30, height: 30,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [const Color(0xFF00D4FF), const Color(0xFF00FF88)]),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Icon(Icons.smart_toy, color: Colors.white, size: 18),
-          ),
-          const SizedBox(width: 10),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: const Color(0xFF252540),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: const Color(0xFF00D4FF).withAlpha(30)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: List.generate(3, (i) => _TypingDot(delay: i * 150)),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -1001,7 +1607,7 @@ class _AIChatDialogState extends State<_AIChatDialog> {
           const SizedBox(width: 10),
           Container(
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [const Color(0xFF00D4FF), const Color(0xFF00FF88)]),
+              gradient: const LinearGradient(colors: [Color(0xFF00D4FF), Color(0xFF00FF88)]),
               borderRadius: BorderRadius.circular(24),
               boxShadow: [BoxShadow(color: const Color(0xFF00D4FF).withAlpha(80), blurRadius: 10)],
             ),
@@ -1060,11 +1666,46 @@ class _TypingDotState extends State<_TypingDot> with SingleTickerProviderStateMi
   }
 }
 
+class _StreamingCursor extends StatefulWidget {
+  const _StreamingCursor();
+  @override
+  State<_StreamingCursor> createState() => _StreamingCursorState();
+}
+
+class _StreamingCursorState extends State<_StreamingCursor> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(duration: const Duration(milliseconds: 500), vsync: this)..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() { _controller.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) => Opacity(
+        opacity: _controller.value,
+        child: Container(
+          width: 2, height: 14,
+          margin: const EdgeInsets.only(left: 2),
+          color: const Color(0xFF00D4FF),
+        ),
+      ),
+    );
+  }
+}
+
 class _ChatMessage {
   final String role;
-  final String content;
+  String content;
   final DateTime? timestamp;
   final bool isError;
+  bool isStreaming;
 
-  _ChatMessage({required this.role, required this.content, this.timestamp, this.isError = false});
+  _ChatMessage({required this.role, required this.content, this.timestamp, this.isError = false, this.isStreaming = false});
 }

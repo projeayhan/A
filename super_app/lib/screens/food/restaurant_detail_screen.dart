@@ -8,6 +8,7 @@ import '../../core/providers/cart_provider.dart';
 import '../../core/services/restaurant_service.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/services/favorites_service.dart';
+import '../../core/providers/ai_context_provider.dart';
 import 'food_home_screen.dart';
 
 // Reviews provider for a merchant
@@ -66,6 +67,15 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
     _loadMenuItems();
     _loadMerchantDetails();
     _loadFavoriteStatus();
+    // Set AI context for this restaurant
+    Future.microtask(() {
+      ref.read(aiScreenContextProvider.notifier).state = AiScreenContext(
+        screenType: 'restaurant_detail',
+        entityId: widget.restaurantId,
+        entityName: widget.name,
+        entityType: 'restaurant',
+      );
+    });
   }
 
   Future<void> _loadFavoriteStatus() async {
@@ -919,47 +929,50 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Category Title - Compact styling
+        // Category Title - More prominent styling
         Container(
-          margin: const EdgeInsets.only(top: 4),
+          margin: const EdgeInsets.only(top: 8),
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1F2937) : const Color(0xFFF8F9FA),
+            gradient: LinearGradient(
+              colors: isDark
+                  ? [FoodColors.primary.withValues(alpha: 0.2), FoodColors.primary.withValues(alpha: 0.05)]
+                  : [FoodColors.primary.withValues(alpha: 0.15), FoodColors.primary.withValues(alpha: 0.03)],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
             border: Border(
               left: BorderSide(
                 color: FoodColors.primary,
-                width: 3,
-              ),
-              bottom: BorderSide(
-                color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
-                width: 0.5,
+                width: 4,
               ),
             ),
           ),
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: context.pagePaddingH, vertical: 10),
+            padding: EdgeInsets.symmetric(horizontal: context.pagePaddingH, vertical: 14),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   selectedCategory,
                   style: TextStyle(
-                    fontSize: context.heading3Size,
-                    fontWeight: FontWeight.w600,
+                    fontSize: context.heading2Size,
+                    fontWeight: FontWeight.w700,
                     color: isDark ? Colors.white : const Color(0xFF111827),
+                    letterSpacing: -0.3,
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: isDark ? Colors.grey[800] : Colors.grey[200],
-                    borderRadius: BorderRadius.circular(10),
+                    color: FoodColors.primary.withValues(alpha: isDark ? 0.3 : 0.15),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
                     '${filteredItems.length} ürün',
                     style: TextStyle(
-                      fontSize: context.captionSmallSize,
-                      fontWeight: FontWeight.w500,
-                      color: isDark ? Colors.grey[300] : Colors.grey[700],
+                      fontSize: context.captionSize,
+                      fontWeight: FontWeight.w600,
+                      color: FoodColors.primary,
                     ),
                   ),
                 ),
@@ -1072,27 +1085,31 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
     required bool isDark,
     bool isPopularSection = false,
   }) {
+    final headerColor = isPopularSection ? Colors.orange : FoodColors.primary;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Category Header - Compact styling
+        // Category Header - More prominent styling
         Container(
-          margin: const EdgeInsets.only(top: 4),
+          margin: const EdgeInsets.only(top: 8),
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1F2937) : const Color(0xFFF8F9FA),
+            gradient: LinearGradient(
+              colors: isDark
+                  ? [headerColor.withValues(alpha: 0.2), headerColor.withValues(alpha: 0.05)]
+                  : [headerColor.withValues(alpha: 0.15), headerColor.withValues(alpha: 0.03)],
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+            ),
             border: Border(
               left: BorderSide(
-                color: isPopularSection ? Colors.orange : FoodColors.primary,
-                width: 3,
-              ),
-              bottom: BorderSide(
-                color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
-                width: 0.5,
+                color: headerColor,
+                width: 4,
               ),
             ),
           ),
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: context.pagePaddingH, vertical: 10),
+            padding: EdgeInsets.symmetric(horizontal: context.pagePaddingH, vertical: 14),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -1100,30 +1117,31 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                   children: [
                     if (isPopularSection) ...[
                       Icon(Icons.local_fire_department, color: Colors.orange, size: context.iconMedium),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: 8),
                     ],
                     Text(
                       categoryName,
                       style: TextStyle(
-                        fontSize: context.heading3Size,
-                        fontWeight: FontWeight.w600,
+                        fontSize: context.heading2Size,
+                        fontWeight: FontWeight.w700,
                         color: isDark ? Colors.white : const Color(0xFF111827),
+                        letterSpacing: -0.3,
                       ),
                     ),
                   ],
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: isDark ? Colors.grey[800] : Colors.grey[200],
-                    borderRadius: BorderRadius.circular(10),
+                    color: headerColor.withValues(alpha: isDark ? 0.3 : 0.15),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
                     '${items.length} ürün',
                     style: TextStyle(
-                      fontSize: context.captionSmallSize,
-                      fontWeight: FontWeight.w500,
-                      color: isDark ? Colors.grey[300] : Colors.grey[700],
+                      fontSize: context.captionSize,
+                      fontWeight: FontWeight.w600,
+                      color: headerColor,
                     ),
                   ),
                 ),

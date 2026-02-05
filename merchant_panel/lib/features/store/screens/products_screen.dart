@@ -1313,9 +1313,9 @@ class _ImportDialogState extends State<_ImportDialog> {
         if (line.isEmpty) continue;
 
         final parts = line.split(';').map((e) => e.trim()).toList();
-        if (parts.length < 3) {
+        if (parts.length < 2) {
           setState(() {
-            _errorMessage = 'Satir ${i + 1}: En az 3 sutun gerekli (Urun Adi;Fiyat;Stok)';
+            _errorMessage = 'Satir ${i + 1}: En az 2 sutun gerekli (Urun Adi;Fiyat)';
             _isParsing = false;
           });
           return;
@@ -1323,27 +1323,28 @@ class _ImportDialogState extends State<_ImportDialog> {
 
         final name = parts[0];
         final price = double.tryParse(parts[1].replaceAll(',', '.'));
-        final stock = int.tryParse(parts[2]);
 
-        if (name.isEmpty || price == null || stock == null) {
+        if (name.isEmpty || price == null) {
           setState(() {
-            _errorMessage = 'Satir ${i + 1}: Gecersiz veri formati';
+            _errorMessage = 'Satir ${i + 1}: Gecersiz veri formati (Urun Adi ve Fiyat zorunlu)';
             _isParsing = false;
           });
           return;
         }
 
+        // Format: Urun Adi;Fiyat;Kategori;Aciklama;SKU;Barkod;Birim;Resim URL
         products.add(StoreProduct(
           id: DateTime.now().millisecondsSinceEpoch.toString() + i.toString(),
           storeId: '',
-          categoryId: parts.length > 3 && parts[3].isNotEmpty ? parts[3] : null,
+          categoryId: parts.length > 2 && parts[2].isNotEmpty ? parts[2] : null,
           name: name,
-          description: parts.length > 4 ? parts[4] : null,
+          description: parts.length > 3 && parts[3].isNotEmpty ? parts[3] : null,
           price: price,
-          stock: stock,
-          sku: parts.length > 5 ? parts[5] : null,
-          barcode: parts.length > 6 ? parts[6] : null,
-          unitType: parts.length > 7 ? UnitTypeExtension.fromString(parts[7]) : UnitType.adet,
+          stock: 0, // Stok sifir olarak baslar
+          sku: parts.length > 4 && parts[4].isNotEmpty ? parts[4] : null,
+          barcode: parts.length > 5 && parts[5].isNotEmpty ? parts[5] : null,
+          unitType: parts.length > 6 && parts[6].isNotEmpty ? UnitTypeExtension.fromString(parts[6]) : UnitType.adet,
+          imageUrl: parts.length > 7 && parts[7].isNotEmpty ? parts[7] : null,
           createdAt: DateTime.now(),
         ));
       }
@@ -1426,14 +1427,19 @@ class _ImportDialogState extends State<_ImportDialog> {
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      'Urun Adi;Fiyat;Stok;Kategori;Aciklama;SKU;Barkod;Birim\n'
-                      'Ornek Urun;99.90;50;Gida;Aciklama;SKU001;8691234567890;adet',
+                      'Urun Adi;Fiyat;Kategori;Aciklama;SKU;Barkod;Birim;Resim URL\n'
+                      'Ornek Urun;99.90;Gida;Aciklama;SKU001;8691234567890;adet;https://example.com/image.jpg',
                       style: TextStyle(
                         fontFamily: 'monospace',
                         fontSize: 12,
                         color: AppColors.textSecondary,
                       ),
                     ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Zorunlu alanlar: Urun Adi, Fiyat',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                   ),
                 ],
               ),
@@ -1545,9 +1551,34 @@ class _ImportDialogState extends State<_ImportDialog> {
                     final product = _parsedProducts[index];
                     return ListTile(
                       dense: true,
+                      leading: product.imageUrl != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: Image.network(
+                                product.imageUrl!,
+                                width: 40,
+                                height: 40,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stack) => Container(
+                                  width: 40,
+                                  height: 40,
+                                  color: AppColors.background,
+                                  child: const Icon(Icons.broken_image, size: 20),
+                                ),
+                              ),
+                            )
+                          : Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: AppColors.background,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Icon(Icons.image, size: 20, color: AppColors.textMuted),
+                            ),
                       title: Text(product.name),
                       subtitle: Text(
-                        '${product.price.toStringAsFixed(2)} TL | ${product.stock} ${product.unitType.shortName}',
+                        '${product.price.toStringAsFixed(2)} TL${product.categoryId != null ? ' | ${product.categoryId}' : ''}',
                       ),
                       trailing: product.sku != null
                         ? Text(product.sku!, style: TextStyle(color: AppColors.textMuted))

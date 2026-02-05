@@ -90,6 +90,8 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
   String? _selectedCuisine;
   double? _minRating;
   final bool _showFiltersPanel = false;
+  List<String> _availableCategories = []; // Veritabanından yüklenen kategoriler
+  Set<String> _cuisineMatchingIds = {}; // Seçilen kategoriye uyan restoran ID'leri
 
   // Address dropdown state
   bool _showAddressDropdown = false;
@@ -128,6 +130,32 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
     super.initState();
     _searchController.addListener(_onSearchChanged);
     _searchFocusNode.addListener(_onFocusChanged);
+    _loadAvailableCategories();
+  }
+
+  Future<void> _loadAvailableCategories() async {
+    final categories = await RestaurantService.getAvailableMenuCategories();
+    if (mounted) {
+      setState(() {
+        _availableCategories = categories;
+      });
+    }
+  }
+
+  Future<void> _onCuisineFilterChanged(String? cuisine) async {
+    setState(() {
+      _selectedCuisine = cuisine;
+      _cuisineMatchingIds = {}; // Reset
+    });
+
+    if (cuisine != null) {
+      final ids = await RestaurantService.getRestaurantIdsByMenuCategory(cuisine);
+      if (mounted) {
+        setState(() {
+          _cuisineMatchingIds = ids.toSet();
+        });
+      }
+    }
   }
 
   @override
@@ -1392,19 +1420,79 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
 
   List<Map<String, dynamic>> _applyFilters(List<Restaurant> restaurants) {
     var results = restaurants.map((r) => r.toCardData()).toList();
-    if (_selectedCategory != null && _selectedCategory != 'Tumu') {
+
+    // Category filter (from category tabs)
+    if (_selectedCategory != null && _selectedCategory != 'Tümü') {
       results = results.where((r) {
         final tags = r['categoryTags'] as List<String>;
         return tags.any((tag) => tag.toLowerCase().contains(_selectedCategory!.toLowerCase()));
       }).toList();
     }
+
+    // Cuisine filter (from filter bar) - menü kategorilerine göre filtrele
+    if (_selectedCuisine != null && _cuisineMatchingIds.isNotEmpty) {
+      results = results.where((r) {
+        final id = r['id'] as String;
+        return _cuisineMatchingIds.contains(id);
+      }).toList();
+    }
+
+    // Rating filter
     if (_minRating != null) {
       results = results.where((r) => (r['rating'] as double) >= _minRating!).toList();
     }
-    if (_selectedSorting == 'Puana Gore') {
-      results.sort((a, b) => (b['rating'] as double).compareTo(a['rating'] as double));
+
+    // Sorting
+    switch (_selectedSorting) {
+      case 'Puana Göre':
+        results.sort((a, b) => (b['rating'] as double).compareTo(a['rating'] as double));
+        break;
+      case 'En Yakın':
+        // TODO: Sort by distance when location is available
+        // For now, sort by delivery time as proxy
+        results.sort((a, b) {
+          final aTime = _parseDeliveryTime(a['deliveryTime'] as String);
+          final bTime = _parseDeliveryTime(b['deliveryTime'] as String);
+          return aTime.compareTo(bTime);
+        });
+        break;
+      case 'En Hızlı Teslimat':
+        results.sort((a, b) {
+          final aTime = _parseDeliveryTime(a['deliveryTime'] as String);
+          final bTime = _parseDeliveryTime(b['deliveryTime'] as String);
+          return aTime.compareTo(bTime);
+        });
+        break;
+      case 'Fiyat (Düşükten Yükseğe)':
+        results.sort((a, b) {
+          final aMin = (a['minOrder'] as String).replaceAll(RegExp(r'[^\d.]'), '');
+          final bMin = (b['minOrder'] as String).replaceAll(RegExp(r'[^\d.]'), '');
+          final aVal = double.tryParse(aMin) ?? 0;
+          final bVal = double.tryParse(bMin) ?? 0;
+          return aVal.compareTo(bVal);
+        });
+        break;
+      case 'Fiyat (Yüksekten Düşüğe)':
+        results.sort((a, b) {
+          final aMin = (a['minOrder'] as String).replaceAll(RegExp(r'[^\d.]'), '');
+          final bMin = (b['minOrder'] as String).replaceAll(RegExp(r'[^\d.]'), '');
+          final aVal = double.tryParse(aMin) ?? 0;
+          final bVal = double.tryParse(bMin) ?? 0;
+          return bVal.compareTo(aVal);
+        });
+        break;
+      default: // 'Önerilen'
+        // Keep default order (by popularity/rating mix)
+        break;
     }
+
     return results;
+  }
+
+  int _parseDeliveryTime(String time) {
+    // Parse "20-30 dk" format
+    final match = RegExp(r'(\d+)').firstMatch(time);
+    return match != null ? int.parse(match.group(1)!) : 999;
   }
 
   Widget _buildHomeContent(bool isDark, List<Restaurant> restaurants) {
@@ -1431,9 +1519,9 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
             onFilterTap: _showAdvancedFilters,
             onSortingChanged: (value) =>
                 setState(() => _selectedSorting = value),
-            onCuisineChanged: (value) =>
-                setState(() => _selectedCuisine = value),
+            onCuisineChanged: _onCuisineFilterChanged,
             onRatingChanged: (value) => setState(() => _minRating = value),
+            availableCategories: _availableCategories,
           ),
         ),
 
@@ -1813,28 +1901,11 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
       }).toList();
     }
 
-    // Mutfak filtresi
-    if (_selectedCuisine != null) {
+    // Mutfak filtresi - menü kategorilerine göre
+    if (_selectedCuisine != null && _cuisineMatchingIds.isNotEmpty) {
       results = results.where((r) {
-        final tags = r['categoryTags'] as List<String>;
-        final cuisineMap = {
-          'Türk': ['türk', 'kebap', 'döner', 'lahmacun', 'pide'],
-          'İtalyan': ['italyan', 'pizza', 'pasta', 'makarna'],
-          'Japon': ['japon', 'sushi', 'ramen'],
-          'Çin': ['çin', 'noodle', 'asya'],
-          'Meksika': ['meksika', 'taco', 'burrito'],
-          'Amerikan': ['amerikan', 'burger', 'steak'],
-          'Hint': ['hint', 'curry'],
-          'Akdeniz': ['akdeniz', 'yunan'],
-          'Fast Food': ['fast food', 'burger', 'pizza', 'tavuk'],
-          'Tatlı': ['tatlı', 'pasta', 'dondurma', 'waffle'],
-          'Kahvaltı': ['kahvaltı', 'brunch'],
-        };
-        final keywords =
-            cuisineMap[_selectedCuisine] ?? [_selectedCuisine!.toLowerCase()];
-        return tags.any(
-          (tag) => keywords.any((k) => tag.toLowerCase().contains(k)),
-        );
+        final id = r['id'] as String;
+        return _cuisineMatchingIds.contains(id);
       }).toList();
     }
 
@@ -2148,6 +2219,7 @@ class _FilterBarDelegate extends SliverPersistentHeaderDelegate {
   final Function(String) onSortingChanged;
   final Function(String?) onCuisineChanged;
   final Function(double?) onRatingChanged;
+  final List<String> availableCategories;
 
   _FilterBarDelegate({
     required this.isDark,
@@ -2158,6 +2230,7 @@ class _FilterBarDelegate extends SliverPersistentHeaderDelegate {
     required this.onSortingChanged,
     required this.onCuisineChanged,
     required this.onRatingChanged,
+    required this.availableCategories,
   });
 
   @override
@@ -2289,20 +2362,8 @@ class _FilterBarDelegate extends SliverPersistentHeaderDelegate {
   }
 
   void _showCuisineDialog(BuildContext context) {
-    final cuisineOptions = [
-      null, // Tümü
-      'Türk',
-      'İtalyan',
-      'Japon',
-      'Çin',
-      'Meksika',
-      'Amerikan',
-      'Hint',
-      'Akdeniz',
-      'Fast Food',
-      'Tatlı',
-      'Kahvaltı',
-    ];
+    // Dinamik kategoriler - null ilk sırada "Tümü" için
+    final cuisineOptions = <String?>[null, ...availableCategories];
 
     showModalBottomSheet(
       context: context,

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/providers/store_cart_provider.dart';
 import '../../core/providers/address_provider.dart';
+import '../../widgets/common/common_widgets.dart';
 
 class StoreColors {
   static const primary = Color(0xFF6366F1);
@@ -638,380 +639,86 @@ class _StoreCartScreenState extends ConsumerState<StoreCartScreen> {
   Widget _buildQuantityStepper(StoreCartItem item, bool isDark) {
     final cartNotifier = ref.read(storeCartProvider.notifier);
 
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.grey[700] : Colors.grey[50],
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: () => cartNotifier.decrementQuantity(item.id),
-            child: Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                color: isDark ? Colors.grey[600] : Colors.white,
-                borderRadius: BorderRadius.circular(6),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 4,
-                  ),
-                ],
-              ),
-              child: Icon(
-                Icons.remove,
-                size: 16,
-                color: isDark ? Colors.grey[200] : Colors.grey[600],
-              ),
-            ),
-          ),
-          SizedBox(
-            width: 32,
-            child: Center(
-              child: Text(
-                item.quantity.toString(),
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.white : Colors.grey[900],
-                ),
-              ),
-            ),
-          ),
-          GestureDetector(
-            onTap: () => cartNotifier.incrementQuantity(item.id),
-            child: Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                color: StoreColors.primary,
-                borderRadius: BorderRadius.circular(6),
-                boxShadow: [
-                  BoxShadow(
-                    color: StoreColors.primary.withValues(alpha: 0.2),
-                    blurRadius: 4,
-                  ),
-                ],
-              ),
-              child: const Icon(Icons.add, size: 16, color: Colors.white),
-            ),
-          ),
-        ],
-      ),
+    return QuantityStepper(
+      quantity: item.quantity,
+      onDecrement: () => cartNotifier.decrementQuantity(item.id),
+      onIncrement: () => cartNotifier.incrementQuantity(item.id),
+      primaryColor: StoreColors.primary,
+      isDark: isDark,
     );
   }
 
   Widget _buildPaymentSection(bool isDark) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Ödeme Yöntemi',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: isDark ? Colors.grey[200] : Colors.grey[800],
-              ),
-            ),
-            TextButton(
-              onPressed: () {},
-              child: const Text(
-                'Tümünü Gör',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: StoreColors.primary,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        _buildPaymentOption(
-          index: 0,
-          icon: Icons.credit_card,
-          title: 'Kredi Kartı',
-          subtitle: 'Mastercard •••• 4242',
-          isDark: isDark,
-        ),
-        const SizedBox(height: 12),
-        _buildPaymentOption(
-          index: 1,
-          icon: Icons.payments_outlined,
-          title: 'Kapıda Ödeme',
-          subtitle: 'Nakit veya Kart',
-          isDark: isDark,
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPaymentOption({
-    required int index,
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required bool isDark,
-  }) {
-    final isSelected = _selectedPaymentMethod == index;
-
-    return GestureDetector(
-      onTap: () => setState(() => _selectedPaymentMethod = index),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isDark ? Colors.grey[800] : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected
-                ? StoreColors.primary
-                : (isDark ? Colors.grey[700]! : Colors.grey[100]!),
-            width: isSelected ? 2 : 1,
-          ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: StoreColors.primary.withValues(alpha: 0.1),
-                    blurRadius: 8,
-                  ),
-                ]
-              : null,
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? (isDark
-                          ? StoreColors.primary.withValues(alpha: 0.2)
-                          : const Color(0xFFEEF2FF))
-                    : (isDark ? Colors.grey[700] : Colors.grey[50]),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                icon,
-                color: isSelected
-                    ? StoreColors.primary
-                    : (isDark ? Colors.grey[400] : Colors.grey[500]),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white : Colors.grey[900],
-                    ),
-                  ),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isDark ? Colors.grey[400] : Colors.grey[500],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              width: 20,
-              height: 20,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isSelected ? StoreColors.primary : Colors.grey[300]!,
-                  width: 2,
-                ),
-              ),
-              child: isSelected
-                  ? Center(
-                      child: Container(
-                        width: 10,
-                        height: 10,
-                        decoration: const BoxDecoration(
-                          color: StoreColors.primary,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    )
-                  : null,
-            ),
-          ],
-        ),
-      ),
+    return PaymentMethodSelector(
+      selectedIndex: _selectedPaymentMethod,
+      onChanged: (index) => setState(() => _selectedPaymentMethod = index),
+      primaryColor: StoreColors.primary,
+      isDark: isDark,
+      onViewAll: () {},
+      showAddNew: false,
     );
   }
 
   Widget _buildOrderSummary(bool isDark, StoreCartState cartState) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.grey[800] : Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: isDark
-              ? Colors.grey[700]!.withValues(alpha: 0.5)
-              : Colors.grey[100]!,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          _buildSummaryRow(
-            'Ara Toplam',
-            '₺${cartState.subtotal.toStringAsFixed(2)}',
-            isDark,
-          ),
-          const SizedBox(height: 12),
-          _buildSummaryRow(
-            'Kargo Ücreti',
-            '₺${cartState.deliveryFee.toStringAsFixed(2)}',
-            isDark,
-          ),
-          const SizedBox(height: 12),
-          if (cartState.subtotal >= 500)
-            _buildSummaryRow(
-              'Ücretsiz Kargo',
-              '-₺${cartState.deliveryFee.toStringAsFixed(2)}',
-              isDark,
-              isDiscount: true,
-            ),
-          Container(
-            margin: const EdgeInsets.symmetric(vertical: 8),
-            child: Row(
-              children: List.generate(
-                30,
-                (index) => Expanded(
-                  child: Container(
-                    height: 1,
-                    color: index % 2 == 0
-                        ? (isDark ? Colors.grey[700] : Colors.grey[200])
-                        : Colors.transparent,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Toplam Ödenecek Tutar',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[400]),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '₺${(cartState.subtotal >= 500 ? cartState.subtotal : cartState.total).toStringAsFixed(2)}',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.white : Colors.grey[900],
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          GestureDetector(
-            onTap: () {
-              context.push('/store/checkout');
-            },
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [StoreColors.primary, StoreColors.accent],
-                ),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: StoreColors.primary.withValues(alpha: 0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'Siparişi Tamamla',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  SizedBox(width: 8),
-                  Icon(
-                    Icons.arrow_forward_rounded,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+    final isFreeShipping = cartState.subtotal >= 500;
+    final total = isFreeShipping ? cartState.subtotal : cartState.total;
+
+    return OrderSummaryWidget(
+      subtotal: cartState.subtotal,
+      deliveryFee: cartState.deliveryFee,
+      total: total,
+      primaryColor: StoreColors.primary,
+      gradientColors: const [StoreColors.primary, StoreColors.accent],
+      isDark: isDark,
+      showFreeShippingNote: true,
+      freeShippingThreshold: 500,
+      buttonText: 'Siparişi Tamamla',
+      onConfirm: () => context.push('/store/checkout'),
+      customButton: _buildCheckoutButton(),
+      currencyPrefix: '₺',
+      currencySuffix: '',
     );
   }
 
-  Widget _buildSummaryRow(
-    String label,
-    String value,
-    bool isDark, {
-    bool isDiscount = false,
-  }) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 14,
-            color: isDiscount
-                ? Colors.green
-                : (isDark ? Colors.grey[400] : Colors.grey[500]),
-            fontWeight: isDiscount ? FontWeight.w500 : FontWeight.normal,
+  Widget _buildCheckoutButton() {
+    return GestureDetector(
+      onTap: () => context.push('/store/checkout'),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [StoreColors.primary, StoreColors.accent],
           ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: StoreColors.primary.withValues(alpha: 0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: isDiscount
-                ? Colors.green
-                : (isDark ? Colors.white : Colors.grey[900]),
-          ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'Siparişi Tamamla',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            SizedBox(width: 8),
+            Icon(
+              Icons.arrow_forward_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

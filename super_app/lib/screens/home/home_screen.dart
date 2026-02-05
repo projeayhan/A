@@ -915,6 +915,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ],
         ),
+
+        SizedBox(height: context.itemGap),
+
+        // Market Card - Grocery stores with delivery zones
+        ServiceCard(
+          title: 'Market',
+          subtitle: 'Taze ürünler kapında',
+          icon: Icons.shopping_cart,
+          gradientColors: const [Color(0xFF22C55E), Color(0xFF16A34A)],
+          height: context.isMobile ? 130 : 160,
+          onTap: () => context.push('/grocery'),
+        ),
       ],
     );
   }

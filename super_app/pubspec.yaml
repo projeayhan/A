@@ -52,6 +52,11 @@ dependencies:
   firebase_messaging: ^15.2.1
   flutter_local_notifications: ^18.0.1
 
+  # Voice (STT + TTS)
+  speech_to_text: ^7.0.0
+  audioplayers: ^6.1.0
+  permission_handler: ^11.3.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

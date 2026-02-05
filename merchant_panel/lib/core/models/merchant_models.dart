@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 // Merchant Types
 enum MerchantType {
   restaurant,
+  market,
   store,
 }
 
@@ -11,6 +12,8 @@ extension MerchantTypeExtension on MerchantType {
     switch (this) {
       case MerchantType.restaurant:
         return 'Restoran';
+      case MerchantType.market:
+        return 'Market';
       case MerchantType.store:
         return 'Magaza';
     }
@@ -20,6 +23,8 @@ extension MerchantTypeExtension on MerchantType {
     switch (this) {
       case MerchantType.restaurant:
         return Icons.restaurant;
+      case MerchantType.market:
+        return Icons.shopping_cart;
       case MerchantType.store:
         return Icons.store;
     }
@@ -200,7 +205,11 @@ class Merchant {
     return Merchant(
       id: json['id'],
       userId: json['user_id'] ?? '',
-      type: json['type'] == 'restaurant' ? MerchantType.restaurant : MerchantType.store,
+      type: json['type'] == 'restaurant'
+          ? MerchantType.restaurant
+          : json['type'] == 'market'
+              ? MerchantType.market
+              : MerchantType.store,
       businessId: json['business_id'],
       businessName: json['business_name'] ?? '',
       description: json['description'],

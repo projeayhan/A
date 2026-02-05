@@ -606,4 +606,66 @@ class RestaurantService {
       return (isOpen: true, message: null, openTime: null, closeTime: null);
     }
   }
+
+  // Tüm aktif menü kategorilerini getir (filtre seçenekleri için)
+  static Future<List<String>> getAvailableMenuCategories() async {
+    try {
+      final response = await _client
+          .from('menu_categories')
+          .select('name')
+          .eq('is_active', true)
+          .order('name');
+
+      final categories = (response as List)
+          .map((json) => json['name'] as String)
+          .toSet() // Tekrarları kaldır
+          .toList();
+
+      // Kategorileri düzenli sırala
+      categories.sort((a, b) => a.compareTo(b));
+
+      return categories;
+    } catch (e) {
+      if (kDebugMode) print('Error fetching menu categories: $e');
+      return [];
+    }
+  }
+
+  // Menü kategorisine göre restoran ID'lerini getir
+  static Future<List<String>> getRestaurantIdsByMenuCategory(
+    String categoryName, {
+    double? customerLat,
+    double? customerLon,
+  }) async {
+    try {
+      // Önce kategori adına göre merchant_id'leri bul
+      final categoryResponse = await _client
+          .from('menu_categories')
+          .select('merchant_id')
+          .ilike('name', '%$categoryName%')
+          .eq('is_active', true);
+
+      final merchantIds = (categoryResponse as List)
+          .map((json) => json['merchant_id'] as String)
+          .toSet()
+          .toList();
+
+      if (merchantIds.isEmpty) return [];
+
+      // Bu merchant'ların restoran ID'lerini bul
+      final restaurantResponse = await _client
+          .from('merchants')
+          .select('id')
+          .inFilter('id', merchantIds)
+          .eq('type', 'restaurant')
+          .eq('is_approved', true);
+
+      return (restaurantResponse as List)
+          .map((json) => json['id'] as String)
+          .toList();
+    } catch (e) {
+      if (kDebugMode) print('Error fetching restaurants by menu category: $e');
+      return [];
+    }
+  }
 }

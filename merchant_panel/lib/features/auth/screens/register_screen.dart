@@ -49,13 +49,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     try {
       final supabase = ref.read(supabaseClientProvider);
 
-      // Create auth user
+      // Create auth user with is_merchant flag to prevent customer record creation
       final authResponse = await supabase.auth.signUp(
         email: _emailController.text.trim(),
         password: _passwordController.text,
         data: {
           'full_name': _businessNameController.text.trim(),
           'phone': _phoneController.text.trim(),
+          'is_merchant': 'true',
         },
       );
 
@@ -192,7 +193,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         onTap: () => setState(() => _selectedType = MerchantType.restaurant),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _TypeCard(
+                        type: MerchantType.market,
+                        isSelected: _selectedType == MerchantType.market,
+                        onTap: () => setState(() => _selectedType = MerchantType.market),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: _TypeCard(
                         type: MerchantType.store,
@@ -217,7 +226,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           labelText: 'Isletme Adi',
                           hintText: _selectedType == MerchantType.restaurant
                               ? 'Restoran adiniz'
-                              : 'Magaza adiniz',
+                              : _selectedType == MerchantType.market
+                                  ? 'Market adiniz'
+                                  : 'Magaza adiniz',
                           prefixIcon: Icon(_selectedType.icon),
                         ),
                         validator: (value) {
@@ -386,6 +397,17 @@ class _TypeCard extends StatelessWidget {
     required this.onTap,
   });
 
+  Color get _typeColor {
+    switch (type) {
+      case MerchantType.restaurant:
+        return AppColors.restaurant;
+      case MerchantType.market:
+        return AppColors.market;
+      case MerchantType.store:
+        return AppColors.store;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return InkWell(
@@ -393,20 +415,14 @@ class _TypeCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(16),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: isSelected
-              ? (type == MerchantType.restaurant
-                  ? AppColors.restaurant.withValues(alpha:0.1)
-                  : AppColors.store.withValues(alpha:0.1))
+              ? _typeColor.withValues(alpha: 0.1)
               : AppColors.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected
-                ? (type == MerchantType.restaurant
-                    ? AppColors.restaurant
-                    : AppColors.store)
-                : AppColors.border,
+            color: isSelected ? _typeColor : AppColors.border,
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -414,23 +430,16 @@ class _TypeCard extends StatelessWidget {
           children: [
             Icon(
               type.icon,
-              size: 40,
-              color: isSelected
-                  ? (type == MerchantType.restaurant
-                      ? AppColors.restaurant
-                      : AppColors.store)
-                  : AppColors.textSecondary,
+              size: 32,
+              color: isSelected ? _typeColor : AppColors.textSecondary,
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text(
               type.displayName,
               style: TextStyle(
+                fontSize: 12,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                color: isSelected
-                    ? (type == MerchantType.restaurant
-                        ? AppColors.restaurant
-                        : AppColors.store)
-                    : AppColors.textSecondary,
+                color: isSelected ? _typeColor : AppColors.textSecondary,
               ),
             ),
           ],

@@ -45,7 +45,13 @@ final merchantApplicationsPageProvider = FutureProvider.family<List<Map<String, 
           .order('created_at', ascending: false)
           .range(from, to);
 
-      return List<Map<String, dynamic>>.from(response);
+      final result = List<Map<String, dynamic>>.from(response);
+      // Debug: Kaç merchant geldi?
+      print('Merchants fetched: ${result.length}');
+      for (var m in result) {
+        print('  - ${m['business_name']} (is_approved: ${m['is_approved']})');
+      }
+      return result;
     } catch (e) {
       rethrow;
     }
@@ -286,6 +292,25 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 5, vsync: this);
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) {
+        // Tab değiştiğinde verileri yenile
+        switch (_tabController.index) {
+          case 0:
+            ref.invalidate(partnerApplicationsProvider);
+            break;
+          case 1:
+            ref.invalidate(couriersApplicationsProvider);
+            break;
+          case 2:
+            ref.invalidate(merchantApplicationsProvider);
+            break;
+          case 3:
+            ref.invalidate(realtorApplicationsProvider);
+            break;
+        }
+      }
+    });
   }
 
   @override
@@ -1007,6 +1032,10 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (err, stack) => Center(child: Text('Hata: $err')),
       data: (merchants) {
+        // Debug
+        print('Total merchants received: ${merchants.length}');
+        print('Selected status filter: $_selectedStatus');
+
         var filtered = merchants;
         if (_selectedStatus != 'all') {
           filtered = merchants.where((m) {
@@ -1018,6 +1047,11 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
             }
             return true;
           }).toList();
+        }
+
+        print('Filtered merchants count: ${filtered.length}');
+        for (var m in filtered) {
+          print('  Showing: ${m['business_name']}');
         }
 
         return _buildApplicationsList(filtered, 'merchant');

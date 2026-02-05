@@ -5,6 +5,7 @@ import '../../core/providers/store_cart_provider.dart';
 import '../../core/providers/address_provider.dart';
 import '../../core/services/store_service.dart';
 import '../../core/utils/app_dialogs.dart';
+import '../../widgets/common/common_widgets.dart';
 
 class StoreColors {
   static const primary = Color(0xFF6366F1);
@@ -27,6 +28,7 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
   bool _isProcessing = false;
   bool _orderComplete = false;
   String? _orderId;
+  int _selectedPaymentMethod = 0;
 
   late AnimationController _progressController;
   late AnimationController _checkController;
@@ -695,132 +697,55 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
             style: TextStyle(fontSize: 14, color: Colors.grey[500]),
           ),
           const SizedBox(height: 20),
-          _buildPaymentOption(
-            icon: Icons.credit_card,
-            title: 'Kredi/Banka Kartı',
-            subtitle: '**** **** **** 4242',
-            isSelected: true,
+          PaymentMethodSelector(
+            selectedIndex: _selectedPaymentMethod,
+            onChanged: (index) => setState(() => _selectedPaymentMethod = index),
+            primaryColor: StoreColors.primary,
             isDark: isDark,
-          ),
-          const SizedBox(height: 12),
-          _buildPaymentOption(
-            icon: Icons.account_balance_wallet,
-            title: 'Dijital Cüzdan',
-            subtitle: 'Apple Pay, Google Pay',
-            isSelected: false,
-            isDark: isDark,
-          ),
-          const SizedBox(height: 12),
-          _buildPaymentOption(
-            icon: Icons.payments_outlined,
-            title: 'Kapıda Ödeme',
-            subtitle: 'Nakit veya Kart',
-            isSelected: false,
-            isDark: isDark,
+            options: PaymentOptions.storeOptions,
+            showAddNew: false,
           ),
           const SizedBox(height: 24),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.amber.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.security, color: Colors.amber[700], size: 24),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '3D Secure ile Güvenli Ödeme',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.amber[800],
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Ödemeniz SSL ile şifrelenerek korunmaktadır.',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.amber[700],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
+          _buildSecurityBadge(),
         ],
       ),
     );
   }
 
-  Widget _buildPaymentOption({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required bool isSelected,
-    required bool isDark,
-  }) {
+  Widget _buildSecurityBadge() {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? Colors.grey[800] : Colors.white,
+        color: Colors.amber.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isSelected
-              ? StoreColors.primary
-              : (isDark ? Colors.grey[700]! : Colors.grey[200]!),
-          width: isSelected ? 2 : 1,
-        ),
+        border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? StoreColors.primary.withValues(alpha: 0.1)
-                  : (isDark ? Colors.grey[700] : Colors.grey[100]),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(
-              icon,
-              color: isSelected ? StoreColors.primary : Colors.grey[500],
-            ),
-          ),
+          Icon(Icons.security, color: Colors.amber[700], size: 24),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
+                  '3D Secure ile Güvenli Ödeme',
                   style: TextStyle(
-                    fontSize: 15,
+                    fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : Colors.grey[900],
+                    color: Colors.amber[800],
                   ),
                 ),
+                const SizedBox(height: 2),
                 Text(
-                  subtitle,
-                  style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                  'Ödemeniz SSL ile şifrelenerek korunmaktadır.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.amber[700],
+                  ),
                 ),
               ],
             ),
-          ),
-          Radio<bool>(
-            value: true,
-            groupValue: isSelected,
-            onChanged: (_) {},
-            activeColor: StoreColors.primary,
           ),
         ],
       ),

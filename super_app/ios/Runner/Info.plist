@@ -41,6 +41,10 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Bu uygulama sesli komutları anlamak için konuşma tanıma özelliğini kullanır.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Bu uygulama sesli asistan için mikrofona erişim gerektirir.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>

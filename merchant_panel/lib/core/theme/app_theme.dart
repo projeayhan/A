@@ -12,10 +12,15 @@ class AppColors {
   static const Color restaurantLight = Color(0xFFFCA5A5);
   static const Color restaurantDark = Color(0xFFDC2626);
 
+  // Market Theme
+  static const Color market = Color(0xFF22C55E); // Green
+  static const Color marketLight = Color(0xFF86EFAC);
+  static const Color marketDark = Color(0xFF16A34A);
+
   // Store Theme
-  static const Color store = Color(0xFF10B981); // Emerald
-  static const Color storeLight = Color(0xFF6EE7B7);
-  static const Color storeDark = Color(0xFF059669);
+  static const Color store = Color(0xFF3B82F6); // Blue
+  static const Color storeLight = Color(0xFF93C5FD);
+  static const Color storeDark = Color(0xFF2563EB);
 
   // Status Colors
   static const Color success = Color(0xFF22C55E);
@@ -60,6 +65,12 @@ class AppColors {
 
   static const LinearGradient restaurantGradient = LinearGradient(
     colors: [restaurant, restaurantDark],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const LinearGradient marketGradient = LinearGradient(
+    colors: [market, marketDark],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
