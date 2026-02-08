@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -33,11 +33,13 @@ function cleanTextForTTS(text: string): string {
     .trim();
 }
 
+// ========== INTERFACES ==========
+
 interface ScreenContext {
   screen_type: string;
   entity_id?: string;
   entity_name?: string;
-  entity_type?: string; // restaurant, store, market
+  entity_type?: string;
   extra?: Record<string, unknown>;
 }
 
@@ -85,52 +87,6 @@ interface MerchantInfo {
   created_at: string;
 }
 
-// Keywords that indicate user is asking about order status
-const ORDER_QUERY_KEYWORDS = [
-  'sipariş', 'siparişim', 'siparişim nerede', 'nerede kaldı', 'ne zaman gelecek',
-  'kurye', 'kuryem', 'teslimat', 'kargo', 'order', 'where is my order',
-  'ne kadar sürer', 'geldi mi', 'yolda mı', 'ne zaman', 'tahmini',
-  'takip', 'tracking', 'eta', 'varış', 'teslim'
-];
-
-// Keywords for order cancellation
-const CANCEL_QUERY_KEYWORDS = [
-  'iptal', 'iptal et', 'siparişi iptal', 'siparişimi iptal', 'vazgeçtim', 'vazgectim',
-  'istemiyorum', 'cancel', 'cancellation', 'iptal edebilir miyim', 'iptal etmek istiyorum'
-];
-
-// Keywords for confirming cancellation
-const CANCEL_CONFIRM_KEYWORDS = [
-  'evet iptal', 'evet, iptal', 'iptal et', 'iptal istiyorum', 'evet', 'onaylıyorum', 'tamam iptal'
-];
-
-// Keywords for food recommendations
-const FOOD_QUERY_KEYWORDS = [
-  'ne yesem', 'ne yiyeyim', 'yemek öner', 'öneri', 'tavsiye', 'acıktım', 'aç', 'canım çekti',
-  'bugün ne', 'akşam ne', 'öğle ne', 'kahvaltı', 'yemek istiyorum', 'sipariş ver',
-  'güzel bir şey', 'lezzetli', 'farklı bir şey', 'yeni bir şey', 'ne söylesem',
-  'food', 'hungry', 'recommendation', 'suggest', 'what should i eat'
-];
-
-// Keywords for saving preferences
-const PREFERENCE_KEYWORDS = [
-  'tercih', 'sevmiyorum', 'seviyorum', 'alerji', 'alerjim', 'yemiyorum', 'vejeteryan',
-  'vegan', 'acılı sevmem', 'acısız', 'glutensiz', 'laktozsuz', 'helal', 'budget', 'bütçe'
-];
-
-// Keywords for restaurant/food search queries
-const RESTAURANT_SEARCH_KEYWORDS = [
-  'hangi restoran', 'hangi mekan', 'nerede bulabilirim', 'nerede yenir', 'nerede satılır',
-  'en iyi', 'en çok satan', 'en popüler', 'en lezzetli', 'en güzel', 'en ucuz',
-  'tavsiye eder misin', 'nereden alsam', 'nereden söylesem', 'neresi iyi',
-  'yorumları', 'yorumu', 'puanı', 'değerlendirme', 'rating',
-  'kebap', 'pizza', 'burger', 'döner', 'lahmacun', 'pide', 'köfte', 'tavuk', 'balık',
-  'çin yemeği', 'japon', 'sushi', 'meksika', 'italyan', 'türk mutfağı',
-  'kahvaltı', 'tatlı', 'pasta', 'börek', 'makarna', 'salata', 'çorba',
-  'adana', 'urfa', 'iskender', 'tantuni', 'kokoreç', 'dürüm', 'wrap',
-  'best', 'popular', 'review', 'where can i find', 'recommend'
-];
-
 interface FoodRecommendation {
   meal_type: string;
   current_hour: number;
@@ -157,13 +113,6 @@ interface FoodRecommendation {
   }>;
 }
 
-interface ProactiveMessage {
-  message: string;
-  emoji: string;
-  message_type: string;
-  context: Record<string, unknown>;
-}
-
 interface RestaurantSearchResult {
   success: boolean;
   search_query: string;
@@ -182,12 +131,14 @@ interface RestaurantSearchResult {
     discount_badge: string | null;
     category_tags: string[];
     matching_items: Array<{
+      id?: string;
       name: string;
       description: string;
       price: number;
       discounted_price: number | null;
       is_popular: boolean;
       rating: number;
+      image_url?: string;
     }>;
     recent_good_reviews: Array<{
       rating: number;
@@ -195,6 +146,92 @@ interface RestaurantSearchResult {
       customer_name: string;
       created_at: string;
     }>;
+  }>;
+}
+
+interface StoreSearchResult {
+  success: boolean;
+  search_query: string;
+  result_count: number;
+  stores: Array<{
+    merchant_id: string;
+    business_name: string;
+    merchant_type: string;
+    rating: number;
+    review_count: number;
+    total_orders: number;
+    address: string;
+    delivery_time: string;
+    delivery_fee: number;
+    min_order_amount: number;
+    is_open: boolean;
+    discount_badge: string | null;
+    category_tags: string[];
+    matching_products: Array<{
+      id?: string;
+      name: string;
+      description: string;
+      price: number;
+      original_price: number | null;
+      is_featured: boolean;
+      rating: number;
+      image_url?: string;
+      brand?: string;
+      sold_count?: number;
+      stock?: number;
+      category?: string;
+    }>;
+  }>;
+}
+
+interface RentalCarSearchResult {
+  success: boolean;
+  result_count: number;
+  cars: Array<{
+    car_id: string;
+    brand: string;
+    model: string;
+    year: number;
+    category: string;
+    transmission: string;
+    fuel_type: string;
+    seats: number;
+    doors: number;
+    daily_price: number;
+    deposit_amount: number;
+    has_ac: boolean;
+    has_gps: boolean;
+    has_bluetooth: boolean;
+    image_url: string;
+    company_name: string;
+    company_id: string;
+    company_city: string;
+    company_rating: number;
+    mileage_limit: number | null;
+    min_driver_age: number;
+  }>;
+}
+
+interface RentalBookingStatus {
+  has_bookings: boolean;
+  bookings: Array<{
+    booking_id: string;
+    booking_number: string;
+    status: string;
+    car_brand: string;
+    car_model: string;
+    car_year: number;
+    car_category: string;
+    company_name: string;
+    company_city: string;
+    pickup_date: string;
+    dropoff_date: string;
+    daily_rate: number;
+    rental_days: number;
+    total_amount: number;
+    deposit_amount: number;
+    payment_status: string;
+    package_name: string | null;
   }>;
 }
 
@@ -208,505 +245,886 @@ interface CancelResult {
   current_status?: string;
 }
 
-function isOrderQuery(message: string): boolean {
-  const lowerMessage = message.toLowerCase();
-  return ORDER_QUERY_KEYWORDS.some(keyword => lowerMessage.includes(keyword));
+interface ChatMessage {
+  role: 'user' | 'assistant' | 'system' | 'tool';
+  content: string;
+  tool_calls?: Array<{ id: string; type: string; function: { name: string; arguments: string } }>;
+  tool_call_id?: string;
 }
 
-function isCancelQuery(message: string): boolean {
-  const lowerMessage = message.toLowerCase();
-  return CANCEL_QUERY_KEYWORDS.some(keyword => lowerMessage.includes(keyword));
-}
-
-function isCancelConfirmation(message: string): boolean {
-  const lowerMessage = message.toLowerCase();
-  return CANCEL_CONFIRM_KEYWORDS.some(keyword => lowerMessage.includes(keyword));
-}
-
-function isFoodQuery(message: string): boolean {
-  const lowerMessage = message.toLowerCase();
-  return FOOD_QUERY_KEYWORDS.some(keyword => lowerMessage.includes(keyword));
-}
-
-function isPreferenceUpdate(message: string): boolean {
-  const lowerMessage = message.toLowerCase();
-  return PREFERENCE_KEYWORDS.some(keyword => lowerMessage.includes(keyword));
-}
-
-function isRestaurantSearchQuery(message: string): boolean {
-  const lowerMessage = message.toLowerCase();
-  // Need at least 2 keyword matches or a strong indicator
-  const matchCount = RESTAURANT_SEARCH_KEYWORDS.filter(keyword =>
-    lowerMessage.includes(keyword)
-  ).length;
-
-  // Strong indicators that definitely mean search
-  const strongIndicators = [
-    'hangi restoran', 'nerede yenir', 'en çok satan', 'en iyi', 'nereden',
-    'tavsiye', 'yorumları', 'puanı', 'değerlendirme'
-  ];
-  const hasStrongIndicator = strongIndicators.some(ind => lowerMessage.includes(ind));
-
-  return hasStrongIndicator || matchCount >= 2;
-}
-
-// All known food names for extraction
-const FOOD_NAMES = [
-  'adana kebap', 'adana kebabı', 'urfa kebap', 'urfa kebabı', 'iskender', 'döner', 'dürüm',
-  'lahmacun', 'pide', 'pizza', 'burger', 'hamburger', 'köfte', 'tantuni', 'kokoreç',
-  'makarna', 'sushi', 'kebap', 'kebab', 'tavuk', 'balık', 'çorba', 'salata', 'börek',
-  'tatlı', 'pasta', 'wrap', 'tost', 'sandviç', 'kahvaltı', 'waffle', 'krep', 'çiğ köfte',
-  'mantı', 'gözleme', 'kumpir', 'midye', 'kanat', 'ciğer', 'kuzu', 'biftek', 'steak',
-  'noodle', 'ramen', 'falafel', 'humus', 'karnıyarık', 'imam bayıldı', 'mercimek',
-  'pilav', 'sarma', 'dolma', 'künefe', 'baklava', 'profiterol', 'sufle', 'tiramisu',
-  'acılı', 'peynirli', 'etli', 'tavuklu', 'karışık', 'vejeteryan', 'vegan',
-];
-
-function extractFoodKeywords(message: string): string | null {
-  const lowerMessage = message.toLowerCase();
-  const found: string[] = [];
-
-  // Check multi-word food names first (longer matches take priority)
-  const sortedFoods = [...FOOD_NAMES].sort((a, b) => b.length - a.length);
-  for (const food of sortedFoods) {
-    if (lowerMessage.includes(food)) {
-      found.push(food);
-      if (found.length >= 3) break; // Max 3 keywords
-    }
-  }
-
-  return found.length > 0 ? found.join(' ') : null;
-}
-
-function extractSearchTerms(message: string): string {
-  // Remove common question words and extract the food/restaurant name
-  const lowerMessage = message.toLowerCase();
-
-  // Remove question patterns
-  const patterns = [
-    /hangi restoran(da|dan)?/gi,
-    /hangi mekan(da|dan)?/gi,
-    /nerede (yenir|bulabilirim|satılır)/gi,
-    /en (iyi|çok satan|popüler|lezzetli|güzel|ucuz)/gi,
-    /tavsiye eder misin/gi,
-    /nereden (alsam|söylesem)/gi,
-    /neresi iyi/gi,
-    /yorumları (en iyi olan|iyi)/gi,
-    /yorumu (nasıl|iyi)/gi,
-    /puanı (yüksek|iyi)/gi,
-    /\?/g
-  ];
-
-  let searchTerm = lowerMessage;
-  patterns.forEach(pattern => {
-    searchTerm = searchTerm.replace(pattern, ' ');
-  });
-
-  // Clean up and return
-  searchTerm = searchTerm.replace(/\s+/g, ' ').trim();
-
-  // If we have nothing meaningful, try to extract food names
-  const foodKeywords = extractFoodKeywords(message);
-  if (foodKeywords) return foodKeywords;
-
-  return searchTerm || message.substring(0, 50);
-}
+// ========== FORMAT FUNCTIONS ==========
 
 function formatFoodRecommendationForAI(recommendation: FoodRecommendation): string {
-  let info = `\n\n[SİSTEM BİLGİSİ - YEMEK ÖNERİSİ]:
-🍽️ ÖĞÜN: ${recommendation.meal_type.toUpperCase()} (Saat: ${recommendation.current_hour}:00)`;
+  let info = `🍽️ ÖĞÜN: ${recommendation.meal_type.toUpperCase()} (Saat: ${recommendation.current_hour}:00)`;
 
-  // Kullanıcı tercihleri
   if (recommendation.user_preferences) {
     const prefs = recommendation.user_preferences;
     info += `\n\n👤 KULLANICI TERCİHLERİ:`;
-    if (prefs.favorite_cuisines.length > 0) {
-      info += `\n- Favori Mutfaklar: ${prefs.favorite_cuisines.join(', ')}`;
-    }
-    if (prefs.dietary_restrictions.length > 0) {
-      info += `\n- Diyet Kısıtlamaları: ${prefs.dietary_restrictions.join(', ')}`;
-    }
-    if (prefs.allergies.length > 0) {
-      info += `\n- Alerjiler: ${prefs.allergies.join(', ')} ⚠️ DİKKAT!`;
-    }
-    if (prefs.disliked_ingredients.length > 0) {
-      info += `\n- Sevmediği Malzemeler: ${prefs.disliked_ingredients.join(', ')}`;
-    }
+    if (prefs.favorite_cuisines.length > 0) info += `\n- Favori Mutfaklar: ${prefs.favorite_cuisines.join(', ')}`;
+    if (prefs.dietary_restrictions.length > 0) info += `\n- Diyet Kısıtlamaları: ${prefs.dietary_restrictions.join(', ')}`;
+    if (prefs.allergies.length > 0) info += `\n- Alerjiler: ${prefs.allergies.join(', ')} ⚠️ DİKKAT!`;
+    if (prefs.disliked_ingredients.length > 0) info += `\n- Sevmediği Malzemeler: ${prefs.disliked_ingredients.join(', ')}`;
     info += `\n- Acı Seviyesi: ${prefs.spice_level}/5`;
     info += `\n- Bütçe: ${prefs.budget_range === 'low' ? 'Ekonomik' : prefs.budget_range === 'medium' ? 'Orta' : 'Yüksek'}`;
   } else {
-    info += `\n\n👤 KULLANICI TERCİHLERİ: Henüz kaydedilmemiş. Tercihleri sorabilirsin!`;
+    info += `\n\n👤 KULLANICI TERCİHLERİ: Henüz kaydedilmemiş.`;
   }
 
-  // Sipariş geçmişi
   if (recommendation.order_history) {
-    const history = recommendation.order_history;
+    const h = recommendation.order_history;
     info += `\n\n📊 SİPARİŞ GEÇMİŞİ:`;
-    info += `\n- Toplam Sipariş: ${history.total_orders}`;
-    info += `\n- Farklı Restoran: ${history.unique_merchants}`;
-    if (history.ordered_cuisines && history.ordered_cuisines.length > 0) {
-      info += `\n- Denenen Mutfaklar: ${history.ordered_cuisines.join(', ')}`;
-    }
-    info += `\n- Ortalama Sipariş: ${history.avg_order_amount} TL`;
-    info += `\n- En Sık Sipariş Saati: ${history.most_common_order_hour}:00`;
-    if (history.last_order_date) {
-      const lastOrderDate = new Date(history.last_order_date);
-      const daysSince = Math.floor((Date.now() - lastOrderDate.getTime()) / (1000 * 60 * 60 * 24));
+    info += `\n- Toplam Sipariş: ${h.total_orders} | Farklı Restoran: ${h.unique_merchants}`;
+    if (h.ordered_cuisines?.length > 0) info += `\n- Denenen Mutfaklar: ${h.ordered_cuisines.join(', ')}`;
+    info += `\n- Ortalama Sipariş: ${h.avg_order_amount} TL`;
+    if (h.last_order_date) {
+      const daysSince = Math.floor((Date.now() - new Date(h.last_order_date).getTime()) / (1000 * 60 * 60 * 24));
       info += `\n- Son Sipariş: ${daysSince === 0 ? 'Bugün' : daysSince === 1 ? 'Dün' : daysSince + ' gün önce'}`;
     }
   }
 
-  // Favori restoranlar
-  if (recommendation.favorite_restaurants && recommendation.favorite_restaurants.length > 0) {
+  if (recommendation.favorite_restaurants?.length > 0) {
     info += `\n\n⭐ FAVORİ RESTORANLAR:`;
     recommendation.favorite_restaurants.forEach((rest, i) => {
       info += `\n${i + 1}. ${rest.name} (${rest.order_count} sipariş)`;
     });
   }
 
-  // Öneri talimatları
-  info += `\n\n📋 ÖNERİ TALİMATLARI:
-- Kullanıcının tercihlerine ve geçmişine göre kişiselleştirilmiş öneriler ver
-- Alerjileri ve kısıtlamaları KESINLIKLE dikkate al
-- Öğün saatine uygun öneriler yap (${recommendation.meal_type})
-- Bütçeye uygun seçenekler sun
-- SADECE aşağıda [RESTORAN ARAMA SONUÇLARI] bölümünde verilen restoran ve ürün isimlerini kullan
-- Eğer restoran arama sonuçları boşsa veya yoksa, genel yemek türü öner (ör: "kebap", "pizza") ama ASLA belirli restoran veya menü adı uydurmayın
-- Samimi ve arkadaşça bir dil kullan`;
+  return info;
+}
+
+function formatRecentOrderItems(data: { recent_orders: Array<{ order_date: string; merchant_name: string; items: Array<{ name: string; quantity: number; price: string }> }>; most_ordered_items: Array<{ name: string; order_count: number }> }): string {
+  let info = '';
+
+  if (data.most_ordered_items?.length > 0) {
+    info += `\n🔄 EN ÇOK SİPARİŞ EDİLEN ÜRÜNLER:`;
+    data.most_ordered_items.slice(0, 5).forEach((item, i) => {
+      info += `\n${i + 1}. ${item.name} (${item.order_count} kez)`;
+    });
+  }
+
+  if (data.recent_orders?.length > 0) {
+    info += `\n\n📋 SON SİPARİŞLER:`;
+    data.recent_orders.slice(0, 5).forEach((order) => {
+      const date = new Date(order.order_date);
+      const daysSince = Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60 * 24));
+      const dateStr = daysSince === 0 ? 'Bugün' : daysSince === 1 ? 'Dün' : `${daysSince} gün önce`;
+      const itemNames = order.items?.map(i => i.name).join(', ') || '';
+      info += `\n- ${dateStr} | ${order.merchant_name}: ${itemNames}`;
+    });
+  }
 
   return info;
 }
 
 function formatRestaurantSearchForAI(searchResult: RestaurantSearchResult): string {
   if (!searchResult.success || searchResult.result_count === 0) {
-    return `\n\n[SİSTEM BİLGİSİ - RESTORAN ARAMA]:
-🔍 Arama: "${searchResult.search_query}"
-❌ Sonuç bulunamadı.
-
-📋 TALİMAT: Kullanıcıya aradığı ürünü sunan restoran bulunamadığını belirt. Benzer ürünler veya farklı anahtar kelimelerle arama yapmasını öner.`;
+    return `"${searchResult.search_query}" araması için sonuç bulunamadı.`;
   }
 
-  let info = `\n\n[SİSTEM BİLGİSİ - RESTORAN ARAMA SONUÇLARI]:
-🔍 Arama: "${searchResult.search_query}"
-📊 Bulunan: ${searchResult.result_count} restoran
-
-🏆 EN İYİ SONUÇLAR:`;
+  let info = `🔍 "${searchResult.search_query}" araması: ${searchResult.result_count} restoran bulundu.\n`;
 
   searchResult.restaurants.slice(0, 5).forEach((rest, i) => {
-    info += `\n\n${i + 1}. ${rest.business_name}`;
-    info += `\n   ⭐ Puan: ${rest.rating?.toFixed(1) || 'Yeni'} (${rest.review_count || 0} değerlendirme)`;
-    info += `\n   📦 Toplam Sipariş: ${rest.total_orders || 0}`;
-    info += `\n   🚚 Teslimat: ${rest.delivery_time || '30-45 dk'} | ${rest.delivery_fee > 0 ? rest.delivery_fee + ' TL' : 'Ücretsiz'}`;
-    info += `\n   📍 ${rest.address || 'Adres bilgisi yok'}`;
+    info += `\n${i + 1}. ${rest.business_name}`;
+    info += ` | ⭐${rest.rating?.toFixed(1) || 'Yeni'} (${rest.review_count || 0} değerlendirme)`;
+    info += ` | 🚚 ${rest.delivery_time || '30-45 dk'} | ${rest.delivery_fee > 0 ? rest.delivery_fee + ' TL' : 'Ücretsiz'}`;
+    if (rest.discount_badge) info += ` | 🎉 ${rest.discount_badge}`;
+    if (!rest.is_open) info += ` | ⚠️KAPALI`;
 
-    if (rest.discount_badge) {
-      info += `\n   🎉 Kampanya: ${rest.discount_badge}`;
-    }
-
-    if (!rest.is_open) {
-      info += `\n   ⚠️ ŞU AN KAPALI`;
-    }
-
-    // Matching items
-    if (rest.matching_items && rest.matching_items.length > 0) {
-      info += `\n   🍽️ Eşleşen Ürünler:`;
-      rest.matching_items.slice(0, 3).forEach(item => {
+    if (rest.matching_items?.length > 0) {
+      info += `\n   Ürünler:`;
+      rest.matching_items.slice(0, 4).forEach(item => {
         const price = item.discounted_price || item.price;
-        const originalPrice = item.discounted_price ? ` (~~${item.price}~~)` : '';
-        info += `\n      - ${item.name}: ${price} TL${originalPrice}`;
-        if (item.is_popular) info += ' ⭐Popüler';
+        info += `\n   - ${item.name}: ${price} TL`;
+        if (item.discounted_price) info += ` (eski: ${item.price} TL)`;
+        if (item.is_popular) info += ' ⭐';
+        if (item.id) info += ` [ID:${item.id}]`;
       });
     }
 
-    // Recent reviews
-    if (rest.recent_good_reviews && rest.recent_good_reviews.length > 0) {
-      info += `\n   💬 Son İyi Yorumlar:`;
-      rest.recent_good_reviews.slice(0, 2).forEach(review => {
-        const shortComment = review.comment.length > 60
-          ? review.comment.substring(0, 60) + '...'
-          : review.comment;
-        info += `\n      "${shortComment}" - ${review.customer_name} (⭐${review.rating})`;
+    if (rest.recent_good_reviews?.length > 0) {
+      const review = rest.recent_good_reviews[0];
+      const shortComment = review.comment.length > 50 ? review.comment.substring(0, 50) + '...' : review.comment;
+      info += `\n   💬 "${shortComment}" - ${review.customer_name} (⭐${review.rating})`;
+    }
+  });
+
+  return info;
+}
+
+function formatStoreSearchForAI(searchResult: StoreSearchResult): string {
+  if (!searchResult.success || searchResult.result_count === 0) {
+    return `"${searchResult.search_query}" araması için mağaza/market sonucu bulunamadı.`;
+  }
+
+  let info = `🏪 "${searchResult.search_query}" araması: ${searchResult.result_count} mağaza/market bulundu.\n`;
+
+  searchResult.stores.slice(0, 5).forEach((store, i) => {
+    const typeLabel = store.merchant_type === 'market' ? 'Market' : 'Mağaza';
+    info += `\n${i + 1}. ${store.business_name} (${typeLabel})`;
+    info += ` | ⭐${store.rating ? Number(store.rating).toFixed(1) : 'Yeni'} (${store.review_count || 0} değerlendirme)`;
+    info += ` | 🚚 ${store.delivery_time || '30-45 dk'} | ${store.delivery_fee > 0 ? store.delivery_fee + ' TL' : 'Ücretsiz'}`;
+    if (store.discount_badge) info += ` | 🎉 ${store.discount_badge}`;
+    if (!store.is_open) info += ` | ⚠️KAPALI`;
+
+    if (store.matching_products?.length > 0) {
+      info += `\n   Ürünler:`;
+      store.matching_products.slice(0, 4).forEach(product => {
+        const price = product.price;
+        info += `\n   - ${product.name}: ${price} TL`;
+        if (product.original_price && product.original_price > product.price) info += ` (eski: ${product.original_price} TL)`;
+        if (product.brand) info += ` [${product.brand}]`;
+        if (product.is_featured) info += ' ⭐';
+        if (product.id) info += ` [ID:${product.id}]`;
       });
     }
   });
 
-  info += `\n\n📋 TALİMAT:
-- Bu arama sonuçlarını kullanarak kullanıcıya yardımcı ol
-- En yüksek puanlı ve en çok sipariş alan restoranları öner
-- Kullanıcının sorduğu ürünü sunan restoranları vurgula
-- Yorumlardan öne çıkan bilgileri paylaş
-- Açık/kapalı durumunu mutlaka belirt
-- Fiyat ve kampanya bilgilerini ver
-- Samimi ve yardımcı bir dil kullan`;
+  return info;
+}
 
+function formatRentalSearchForAI(result: RentalCarSearchResult): string {
+  if (!result.success || result.result_count === 0) {
+    return 'Arama kriterlerinize uygun kiralık araç bulunamadı.';
+  }
+  const catLabels: Record<string, string> = { economy: 'Ekonomi', compact: 'Kompakt', midsize: 'Orta', suv: 'SUV', luxury: 'Lüks', van: 'Van/Minibüs' };
+  const transLabels: Record<string, string> = { automatic: 'Otomatik', manual: 'Manuel' };
+  const fuelLabels: Record<string, string> = { gasoline: 'Benzin', diesel: 'Dizel', hybrid: 'Hibrit' };
+
+  let info = `🚗 ${result.result_count} kiralık araç bulundu:\n`;
+  result.cars.slice(0, 8).forEach((car, i) => {
+    info += `\n${i + 1}. ${car.brand} ${car.model} (${car.year}) - ${car.daily_price} TL/gün`;
+    info += `\n   ${catLabels[car.category] || car.category} | ${transLabels[car.transmission] || car.transmission} | ${fuelLabels[car.fuel_type] || car.fuel_type}`;
+    info += ` | ${car.seats} koltuk`;
+    const features: string[] = [];
+    if (car.has_ac) features.push('Klima');
+    if (car.has_gps) features.push('GPS');
+    if (car.has_bluetooth) features.push('Bluetooth');
+    if (features.length > 0) info += ` | ${features.join(', ')}`;
+    info += `\n   🏢 ${car.company_name} (${car.company_city}) ⭐${car.company_rating}`;
+    info += ` | Depozito: ${car.deposit_amount} TL`;
+    if (car.min_driver_age > 18) info += ` | Min yaş: ${car.min_driver_age}`;
+    info += ` [CID:${car.car_id}] [COMP:${car.company_id}]`;
+  });
+  return info;
+}
+
+function formatRentalBookingForAI(result: RentalBookingStatus): string {
+  if (!result.has_bookings || result.bookings.length === 0) {
+    return 'Aktif araç kiralama rezervasyonunuz bulunmuyor.';
+  }
+  const statusLabels: Record<string, string> = { pending: 'Onay Bekliyor', confirmed: 'Onaylandı', active: 'Aktif (Araç Teslim Alındı)', ready: 'Teslime Hazır' };
+  let info = `📋 ${result.bookings.length} aktif rezervasyonunuz var:\n`;
+  result.bookings.forEach((b, i) => {
+    const pickup = new Date(b.pickup_date);
+    const dropoff = new Date(b.dropoff_date);
+    const pickupStr = `${pickup.getDate()}.${pickup.getMonth() + 1}.${pickup.getFullYear()}`;
+    const dropoffStr = `${dropoff.getDate()}.${dropoff.getMonth() + 1}.${dropoff.getFullYear()}`;
+    info += `\n${i + 1}. #${b.booking_number} - ${b.car_brand} ${b.car_model} (${b.car_year})`;
+    info += `\n   Durum: ${statusLabels[b.status] || b.status}`;
+    info += `\n   📅 ${pickupStr} → ${dropoffStr} (${b.rental_days} gün)`;
+    info += `\n   💰 ${b.daily_rate} TL/gün = Toplam: ${b.total_amount} TL`;
+    info += `\n   🏢 ${b.company_name} (${b.company_city})`;
+    if (b.package_name) info += ` | Paket: ${b.package_name}`;
+  });
   return info;
 }
 
 function formatCancelInfoForAI(cancelResult: CancelResult, wasConfirmed: boolean = false): string {
   if (wasConfirmed && cancelResult.success) {
-    return `\n\n[SİSTEM BİLGİSİ - SİPARİŞ İPTALİ]:
-✅ İPTAL BAŞARILI
-- Sipariş No: #${cancelResult.order_number}
-- Durum: Sipariş başarıyla iptal edildi.
-
-📋 TALİMAT: Müşteriye siparişinin iptal edildiğini samimi bir şekilde bildir. Tekrar sipariş vermek isterse yardımcı olabileceğini söyle.`;
+    return `✅ Sipariş #${cancelResult.order_number} başarıyla iptal edildi.`;
   }
-
   if (cancelResult.can_cancel) {
-    return `\n\n[SİSTEM BİLGİSİ - SİPARİŞ İPTAL KONTROLİ]:
-✅ İPTAL EDİLEBİLİR
-- Sipariş No: #${cancelResult.order_number}
-- Durum: Sipariş henüz işletme tarafından onaylanmadı, iptal edilebilir.
-
-📋 TALİMAT: Müşteriye siparişinin iptal edilebileceğini söyle. İptal etmek istediğinden emin olup olmadığını sor. "Evet, iptal et" derse işlemi gerçekleştir.`;
+    return `Sipariş #${cancelResult.order_number} iptal edilebilir durumda (henüz onaylanmadı). Kullanıcıdan onay iste.`;
   }
-
-  // Cannot cancel
-  let reason = '';
-  switch (cancelResult.reason) {
-    case 'already_confirmed':
-      reason = 'İşletme siparişi onayladığı için artık uygulama üzerinden iptal edilemez.';
-      break;
-    case 'already_cancelled':
-      reason = 'Sipariş zaten iptal edilmiş durumda.';
-      break;
-    case 'already_delivered':
-      reason = 'Sipariş teslim edilmiş, iptal edilemez.';
-      break;
-    case 'no_order':
-      reason = 'Aktif sipariş bulunamadı.';
-      break;
-    default:
-      reason = cancelResult.message;
-  }
-
-  return `\n\n[SİSTEM BİLGİSİ - SİPARİŞ İPTAL KONTROLİ]:
-❌ İPTAL EDİLEMEZ
-- Sipariş No: #${cancelResult.order_number || 'Yok'}
-- Mevcut Durum: ${cancelResult.current_status || 'Bilinmiyor'}
-- Sebep: ${reason}
-
-📋 KURAL: Siparişler sadece "beklemede" (pending) durumundayken, yani işletme onaylamadan önce iptal edilebilir. İşletme onayladıktan sonra sipariş hazırlanmaya başladığı için uygulama üzerinden iptal yapılamaz.
-
-📋 TALİMAT: Müşteriye kibarca siparişinin neden iptal edilemeyeceğini açıkla. İptal için işletmeyi aramasını veya müşteri hizmetleri ile iletişime geçmesini öner.`;
+  const reasons: Record<string, string> = {
+    'already_confirmed': 'İşletme siparişi onayladığı için artık iptal edilemez.',
+    'already_cancelled': 'Sipariş zaten iptal edilmiş.',
+    'already_delivered': 'Sipariş teslim edilmiş, iptal edilemez.',
+    'no_order': 'Aktif sipariş bulunamadı.',
+  };
+  return `❌ İptal edilemez. Sebep: ${reasons[cancelResult.reason] || cancelResult.message}`;
 }
 
 function formatOrderStatusForAI(orderStatus: OrderStatus): string {
   if (!orderStatus.has_active_order) {
-    return '\n\n[SİSTEM BİLGİSİ - SİPARİŞ DURUMU]: Kullanıcının aktif siparişi bulunmuyor. Geçmiş siparişleri kontrol etmek istiyorsa "Siparişlerim" bölümüne yönlendir.';
+    return 'Kullanıcının aktif siparişi bulunmuyor.';
   }
 
-  let info = `\n\n[SİSTEM BİLGİSİ - SİPARİŞ DURUMU]:
-- Sipariş No: #${orderStatus.order_number}
-- Durum: ${orderStatus.status_text}
-- Restoran/Mağaza: ${orderStatus.merchant_name || 'Bilinmiyor'}
-- Toplam Tutar: ${orderStatus.total_amount} TL
-- Teslimat Adresi: ${orderStatus.delivery_address || 'Belirtilmemiş'}`;
+  let info = `Sipariş #${orderStatus.order_number}:`;
+  info += `\n- Durum: ${orderStatus.status_text}`;
+  info += `\n- Restoran: ${orderStatus.merchant_name || 'Bilinmiyor'}`;
+  info += `\n- Tutar: ${orderStatus.total_amount} TL`;
+  info += `\n- Adres: ${orderStatus.delivery_address || 'Belirtilmemiş'}`;
 
   if (orderStatus.courier_assigned) {
-    info += `\n\n📍 KURYE BİLGİLERİ:`;
-    info += `\n- Kurye Adı: ${orderStatus.courier_name}`;
-
+    info += `\n- Kurye: ${orderStatus.courier_name}`;
     if (orderStatus.courier_vehicle_type) {
-      const vehicleText = orderStatus.courier_vehicle_type === 'motorcycle' ? 'Motosiklet' :
-                         orderStatus.courier_vehicle_type === 'car' ? 'Araba' :
-                         orderStatus.courier_vehicle_type === 'bicycle' ? 'Bisiklet' : orderStatus.courier_vehicle_type;
-      info += `\n- Araç: ${vehicleText}`;
+      const v = orderStatus.courier_vehicle_type === 'motorcycle' ? 'Motosiklet' : orderStatus.courier_vehicle_type === 'car' ? 'Araba' : orderStatus.courier_vehicle_type;
+      info += ` (${v}${orderStatus.courier_vehicle_plate ? ', ' + orderStatus.courier_vehicle_plate : ''})`;
     }
-
-    if (orderStatus.courier_vehicle_plate) {
-      info += `\n- Plaka: ${orderStatus.courier_vehicle_plate}`;
-    }
-
     if (orderStatus.has_location && orderStatus.distance_km !== null) {
-      info += `\n\n⏱️ TAHMİNİ TESLİMAT:`;
-      info += `\n- Kuryenin Mesafesi: ${orderStatus.distance_km} km`;
-      info += `\n- Tahmini Varış: Yaklaşık ${orderStatus.estimated_minutes} dakika`;
-      info += `\n- Tahmini Saat: ${orderStatus.estimated_arrival_time} civarı`;
-    } else if (orderStatus.status === 'picked_up' || orderStatus.status === 'on_the_way') {
-      info += `\n- Kurye yolda, konum bilgisi güncelleniyor...`;
-    } else if (orderStatus.status === 'preparing' || orderStatus.status === 'ready') {
-      info += `\n- Sipariş henüz kuryeye teslim edilmedi`;
+      info += `\n- Mesafe: ${orderStatus.distance_km} km | Tahmini: ~${orderStatus.estimated_minutes} dk (${orderStatus.estimated_arrival_time} civarı)`;
     }
   } else {
-    if (orderStatus.status === 'pending') {
-      info += `\n\n⏳ Sipariş onay bekliyor. Restoran onayladıktan sonra kurye atanacak.`;
-    } else if (orderStatus.status === 'confirmed' || orderStatus.status === 'preparing') {
-      info += `\n\n👨‍🍳 Sipariş hazırlanıyor. Hazır olunca kurye atanacak.`;
-    } else {
-      info += `\n\n🔍 Kurye henüz atanmadı, en kısa sürede atanacak.`;
-    }
+    if (orderStatus.status === 'pending') info += `\n- Sipariş onay bekliyor.`;
+    else if (orderStatus.status === 'confirmed' || orderStatus.status === 'preparing') info += `\n- Sipariş hazırlanıyor, kurye atanacak.`;
   }
-
-  info += `\n\n📋 TALİMAT: Bu bilgileri kullanarak müşteriye samimi ve yardımcı bir şekilde cevap ver. Kurye bilgileri varsa mutlaka paylaş. Tahmini süreyi belirt.`;
 
   return info;
 }
 
 function formatMerchantInfoForAI(merchant: MerchantInfo): string {
-  const typeText = merchant.type === 'restaurant' ? 'Restoran' : 'Mağaza';
-
-  return `\n\n[SİSTEM BİLGİSİ - İŞLETME BİLGİLERİ]:
-- İşletme Adı: ${merchant.business_name}
-- İşletme Türü: ${typeText}
-- Komisyon Oranı: %${merchant.commission_rate}
-- Hesap Durumu: ${merchant.is_active ? 'Aktif' : 'Pasif'}
-- Kayıt Tarihi: ${new Date(merchant.created_at).toLocaleDateString('tr-TR')}
-
-Bu işletme bilgilerini kullanarak sorulara yanıt ver. Komisyon oranı sorulduğunda kesin olarak %${merchant.commission_rate} olduğunu söyle.`;
+  return `İşletme: ${merchant.business_name} (${merchant.type === 'restaurant' ? 'Restoran' : 'Mağaza'}) | Komisyon: %${merchant.commission_rate} | Durum: ${merchant.is_active ? 'Aktif' : 'Pasif'}`;
 }
 
-interface ChatMessage {
-  role: 'user' | 'assistant' | 'system';
-  content: string;
+// ========== OPENAI TOOL DEFINITIONS (customer_app) ==========
+
+const CUSTOMER_TOOLS = [
+  {
+    type: "function" as const,
+    function: {
+      name: "search_food",
+      description: "Yemek, ürün, restoran, mağaza veya market ara. Kullanıcı herhangi bir şey istediğinde bu aracı kullan: yiyecek/içecek, elektronik, giyim, ev eşyası, market ürünleri vb. Hem restoranlarda hem mağaza/marketlerde arama yapar. Kavramsal aramalarda ilgili ürün türlerini anahtar kelimelere çevir. Örnekler: 'etli birşeyler' → ['kebap','köfte'], 'telefon istiyorum' → ['telefon','samsung'], 'tişört' → ['tişört'], 'marketten su' → ['su']",
+      parameters: {
+        type: "object",
+        properties: {
+          keywords: {
+            type: "array",
+            items: { type: "string" },
+            description: "Aranacak ürün anahtar kelimeleri. Yemek, elektronik, giyim, market ürünü vb. her türlü ürün olabilir."
+          }
+        },
+        required: ["keywords"]
+      }
+    }
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "get_recommendations",
+      description: "Kullanıcının sipariş geçmişine ve tercihlerine göre kişiselleştirilmiş yemek önerileri al. 'ne yesem', 'öner bana', 'geçen sefer ne yediysem onu', 'her zamankinden' gibi ifadelerde veya genel öneri istendiğinde kullan.",
+      parameters: {
+        type: "object",
+        properties: {},
+      }
+    }
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "get_order_status",
+      description: "Kullanıcının aktif siparişinin durumunu kontrol et. 'siparişim nerede', 'ne zaman gelecek', 'kuryem nerede', 'yolda mı' gibi sorularda kullan.",
+      parameters: {
+        type: "object",
+        properties: {},
+      }
+    }
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "cancel_order",
+      description: "Kullanıcının siparişini iptal et. İlk seferde confirmed=false ile kontrol yap, kullanıcı onaylarsa confirmed=true ile iptal et.",
+      parameters: {
+        type: "object",
+        properties: {
+          confirmed: {
+            type: "boolean",
+            description: "true: siparişi gerçekten iptal et, false: sadece iptal edilebilir mi kontrol et"
+          }
+        },
+        required: ["confirmed"]
+      }
+    }
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "save_preference",
+      description: "Kullanıcının yemek tercihini kaydet. 'acılı sevmem', 'fıstık alerjim var', 'vejetaryenim' gibi ifadelerde kullan.",
+      parameters: {
+        type: "object",
+        properties: {
+          preference_type: {
+            type: "string",
+            enum: ["allergy", "dislike", "like", "dietary_restriction"],
+            description: "allergy: alerji, dislike: sevmediği, like: sevdiği, dietary_restriction: diyet kısıtlaması"
+          },
+          value: {
+            type: "string",
+            description: "Tercih değeri (ör: 'fıstık', 'acılı', 'vejeteryan')"
+          }
+        },
+        required: ["preference_type", "value"]
+      }
+    }
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "search_rental_cars",
+      description: "Kiralık araç ara. Kullanıcı araç kiralamak istediğinde, araç aradığında veya kiralama fiyatlarını sorduğunda bu aracı kullan. Kategori, vites, yakıt tipi, fiyat, marka, şehir ve tarih aralığına göre filtre yapabilir. Örnekler: 'ekonomi sınıfı araç', 'otomatik SUV', 'Girne araç kiralama', '8-15 Şubat arası araç'",
+      parameters: {
+        type: "object",
+        properties: {
+          category: {
+            type: "string",
+            enum: ["economy", "compact", "midsize", "suv", "luxury", "van"],
+            description: "Araç kategorisi: economy=Ekonomi, compact=Kompakt, midsize=Orta sınıf, suv=SUV/Jeep, luxury=Lüks, van=Van/Minibüs"
+          },
+          transmission: {
+            type: "string",
+            enum: ["automatic", "manual"],
+            description: "Vites tipi: automatic=Otomatik, manual=Manuel"
+          },
+          fuel_type: {
+            type: "string",
+            enum: ["gasoline", "diesel", "hybrid"],
+            description: "Yakıt tipi: gasoline=Benzin, diesel=Dizel, hybrid=Hibrit"
+          },
+          max_daily_price: {
+            type: "number",
+            description: "Maksimum günlük fiyat (TL). Kullanıcı 'uygun fiyatlı', 'ucuz' derse düşük fiyat sınırı belirle."
+          },
+          brand: {
+            type: "string",
+            description: "Araç markası (ör: Toyota, Hyundai, Volkswagen)"
+          },
+          city: {
+            type: "string",
+            description: "Şehir (ör: Lefkoşa, Girne, Mağusa)"
+          },
+          pickup_date: {
+            type: "string",
+            description: "Teslim alma tarihi (ISO format, ör: 2026-02-08T10:00:00Z)"
+          },
+          dropoff_date: {
+            type: "string",
+            description: "Teslim etme tarihi (ISO format, ör: 2026-02-15T10:00:00Z)"
+          }
+        },
+      }
+    }
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "get_rental_booking_status",
+      description: "Kullanıcının aktif araç kiralama rezervasyonlarını getir. 'Rezervasyonum var mı', 'araç kiralama durumum', 'kiralama reservasyonum' gibi sorularda kullan.",
+      parameters: {
+        type: "object",
+        properties: {},
+      }
+    }
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "add_to_cart",
+      description: "Kullanıcının sepetine ürün ekle. Kullanıcı bir ürünü beğenip 'ekle', 'sepete at', 'onu istiyorum', 'tamam onu alayım' gibi onay verdiğinde bu aracı kullan. Ürün bilgilerini search_food sonuçlarından al. Kullanıcı onay vermeden ASLA çağırma.",
+      parameters: {
+        type: "object",
+        properties: {
+          product_id: {
+            type: "string",
+            description: "Ürün ID'si (search_food sonucundaki [ID:xxx] değeri)"
+          },
+          name: {
+            type: "string",
+            description: "Ürün adı"
+          },
+          price: {
+            type: "number",
+            description: "Ürün fiyatı (TL)"
+          },
+          image_url: {
+            type: "string",
+            description: "Ürün resim URL'si (varsa)"
+          },
+          merchant_id: {
+            type: "string",
+            description: "İşletme ID'si"
+          },
+          merchant_name: {
+            type: "string",
+            description: "İşletme adı"
+          },
+          merchant_type: {
+            type: "string",
+            enum: ["restaurant", "store", "market"],
+            description: "İşletme türü: restaurant (restoran), store (mağaza), market"
+          },
+          quantity: {
+            type: "number",
+            description: "Adet (varsayılan 1)"
+          }
+        },
+        required: ["product_id", "name", "price", "merchant_id", "merchant_name", "merchant_type"]
+      }
+    }
+  }
+];
+
+// ========== TOOL EXECUTION ==========
+
+interface ToolExecContext {
+  supabase: ReturnType<typeof createClient>;
+  userId: string;
+  addressData: { latitude: number; longitude: number } | null;
 }
+
+interface SearchResultProduct {
+  id: string;
+  name: string;
+  price: number;
+  original_price?: number | null;
+  image_url: string;
+  merchant_id: string;
+  merchant_name: string;
+  merchant_type: 'restaurant' | 'store' | 'market';
+  description?: string;
+  brand?: string;
+}
+
+interface RentalResultCar {
+  car_id: string;
+  brand: string;
+  model: string;
+  year: number;
+  category: string;
+  transmission: string;
+  fuel_type: string;
+  daily_price: number;
+  deposit_amount: number;
+  image_url: string;
+  company_name: string;
+  company_id: string;
+  company_city: string;
+  company_rating: number;
+  seats: number;
+  has_ac: boolean;
+  has_gps: boolean;
+  has_bluetooth: boolean;
+}
+
+async function executeToolCall(
+  toolName: string,
+  args: Record<string, unknown>,
+  ctx: ToolExecContext,
+  actions?: Array<{ type: string; payload: Record<string, unknown> }>,
+  searchResultsCollector?: SearchResultProduct[],
+  rentalResultsCollector?: RentalResultCar[]
+): Promise<string> {
+  const { supabase, userId, addressData } = ctx;
+
+  switch (toolName) {
+    case 'search_food': {
+      const rawKeywords = (args.keywords as string[]) || [];
+      if (rawKeywords.length === 0) return 'Arama yapılacak anahtar kelime belirtilmedi.';
+
+      // Expand keywords with Turkish/English aliases for better matching
+      const keywordAliases: Record<string, string[]> = {
+        'tişört': ['tişört', 't-shirt', 'tshirt'],
+        't-shirt': ['t-shirt', 'tişört'],
+        'tshirt': ['tshirt', 'tişört', 't-shirt'],
+        'şort': ['şort', 'short'],
+        'kazak': ['kazak', 'sweater', 'sweatshirt'],
+        'ceket': ['ceket', 'jacket', 'mont'],
+        'mont': ['mont', 'coat', 'ceket'],
+        'ayakkabı': ['ayakkabı', 'sneaker', 'shoe'],
+        'çanta': ['çanta', 'bag'],
+        'parfüm': ['parfüm', 'perfume', 'edt', 'edp'],
+        'telefon': ['telefon', 'phone', 'iphone', 'samsung'],
+        'bilgisayar': ['bilgisayar', 'laptop', 'notebook'],
+        'kulaklık': ['kulaklık', 'earphone', 'headphone', 'airpods'],
+      };
+
+      const keywords = new Set<string>();
+      for (const kw of rawKeywords) {
+        keywords.add(kw);
+        const lower = kw.toLowerCase();
+        if (keywordAliases[lower]) {
+          for (const alias of keywordAliases[lower]) keywords.add(alias);
+        }
+      }
+      const expandedKeywords = [...keywords];
+
+      // Search restaurants AND stores/markets in parallel for each keyword
+      const restaurantPromises = expandedKeywords.map(keyword => {
+        const rpcParams: Record<string, unknown> = { p_search_query: keyword };
+        if (addressData?.latitude && addressData?.longitude) {
+          rpcParams.p_customer_lat = addressData.latitude;
+          rpcParams.p_customer_lon = addressData.longitude;
+        }
+        return supabase.rpc('ai_search_restaurants', rpcParams);
+      });
+
+      const storePromises = expandedKeywords.map(keyword => {
+        const rpcParams: Record<string, unknown> = { p_search_query: keyword };
+        if (addressData?.latitude && addressData?.longitude) {
+          rpcParams.p_customer_lat = addressData.latitude;
+          rpcParams.p_customer_lon = addressData.longitude;
+        }
+        return supabase.rpc('ai_search_stores', rpcParams);
+      });
+
+      const [restaurantResults, storeResults] = await Promise.all([
+        Promise.allSettled(restaurantPromises),
+        Promise.allSettled(storePromises),
+      ]);
+
+      // Merge restaurant results
+      const seenMerchants = new Set<string>();
+      const allRestaurants: RestaurantSearchResult['restaurants'] = [];
+      for (const result of restaurantResults) {
+        if (result.status === 'fulfilled' && !result.value.error && result.value.data) {
+          const data = result.value.data as RestaurantSearchResult;
+          for (const rest of (data.restaurants || [])) {
+            if (!seenMerchants.has(rest.merchant_id)) {
+              seenMerchants.add(rest.merchant_id);
+              allRestaurants.push(rest);
+            }
+          }
+        }
+      }
+      allRestaurants.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+
+      // Merge store/market results
+      const allStores: StoreSearchResult['stores'] = [];
+      for (const result of storeResults) {
+        if (result.status === 'fulfilled' && !result.value.error && result.value.data) {
+          const data = result.value.data as StoreSearchResult;
+          for (const store of (data.stores || [])) {
+            if (!seenMerchants.has(store.merchant_id)) {
+              seenMerchants.add(store.merchant_id);
+              allStores.push(store);
+            }
+          }
+        }
+      }
+
+      // Collect structured product data for visual cards
+      if (searchResultsCollector) {
+        for (const rest of allRestaurants.slice(0, 5)) {
+          for (const item of (rest.matching_items || []).slice(0, 4)) {
+            searchResultsCollector.push({
+              id: item.id || '',
+              name: item.name,
+              price: item.discounted_price || item.price,
+              original_price: item.discounted_price ? item.price : null,
+              image_url: item.image_url || '',
+              merchant_id: rest.merchant_id,
+              merchant_name: rest.business_name,
+              merchant_type: 'restaurant',
+              description: item.description,
+            });
+          }
+        }
+        for (const store of allStores.slice(0, 5)) {
+          for (const product of (store.matching_products || []).slice(0, 4)) {
+            searchResultsCollector.push({
+              id: product.id || '',
+              name: product.name,
+              price: product.price,
+              original_price: product.original_price,
+              image_url: product.image_url || '',
+              merchant_id: store.merchant_id,
+              merchant_name: store.business_name,
+              merchant_type: store.merchant_type === 'market' ? 'market' : 'store',
+              description: product.description,
+              brand: product.brand,
+            });
+          }
+        }
+      }
+
+      let info = '';
+
+      if (allRestaurants.length > 0) {
+        info += formatRestaurantSearchForAI({
+          success: true,
+          search_query: expandedKeywords.join(', '),
+          result_count: allRestaurants.length,
+          restaurants: allRestaurants,
+        });
+      }
+
+      if (allStores.length > 0) {
+        if (info) info += '\n\n';
+        info += formatStoreSearchForAI({
+          success: true,
+          search_query: expandedKeywords.join(', '),
+          result_count: allStores.length,
+          stores: allStores,
+        });
+      }
+
+      if (!info) {
+        return `"${expandedKeywords.join(', ')}" araması için sonuç bulunamadı.`;
+      }
+
+      return info;
+    }
+
+    case 'get_recommendations': {
+      // Fetch recommendations + recent order items in parallel
+      const [recResult, recentResult, promoResult] = await Promise.allSettled([
+        supabase.rpc('ai_get_food_recommendations', { p_user_id: userId }),
+        supabase.rpc('ai_get_recent_order_items', { p_user_id: userId }),
+        supabase.rpc('ai_get_user_promotions', { p_user_id: userId }),
+      ]);
+
+      let info = '';
+
+      if (recResult.status === 'fulfilled' && !recResult.value.error && recResult.value.data) {
+        info += formatFoodRecommendationForAI(recResult.value.data as FoodRecommendation);
+      }
+
+      if (recentResult.status === 'fulfilled' && !recentResult.value.error && recentResult.value.data) {
+        info += formatRecentOrderItems(recentResult.value.data as { recent_orders: Array<{ order_date: string; merchant_name: string; items: Array<{ name: string; quantity: number; price: string }> }>; most_ordered_items: Array<{ name: string; order_count: number }> });
+      }
+
+      if (promoResult.status === 'fulfilled' && !promoResult.value.error) {
+        const promoData = promoResult.value.data as { has_promotions: boolean; active_promotions: Array<{ business_name: string; discount_badge: string }> };
+        if (promoData?.has_promotions) {
+          info += `\n\n🎉 AKTİF KAMPANYALAR:`;
+          promoData.active_promotions.forEach(p => {
+            info += `\n- ${p.business_name}: ${p.discount_badge}`;
+          });
+        }
+      }
+
+      return info || 'Kullanıcının henüz sipariş geçmişi bulunmuyor.';
+    }
+
+    case 'get_order_status': {
+      const { data, error } = await supabase.rpc('ai_get_order_status', { p_user_id: userId });
+      if (error) return 'Sipariş durumu kontrol edilemedi.';
+      return formatOrderStatusForAI(data as OrderStatus);
+    }
+
+    case 'cancel_order': {
+      const confirmed = args.confirmed as boolean;
+      if (confirmed) {
+        const { data, error } = await supabase.rpc('ai_cancel_order', { p_user_id: userId, p_order_id: null });
+        if (error) return 'İptal işlemi başarısız oldu.';
+        return formatCancelInfoForAI(data as CancelResult, true);
+      } else {
+        const { data, error } = await supabase.rpc('ai_check_cancel_eligibility', { p_user_id: userId });
+        if (error) return 'İptal durumu kontrol edilemedi.';
+        return formatCancelInfoForAI(data as CancelResult, false);
+      }
+    }
+
+    case 'save_preference': {
+      const prefType = args.preference_type as string;
+      const value = args.value as string;
+
+      // Get existing preferences
+      const { data: existing } = await supabase
+        .from('user_food_preferences')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      const updates: Record<string, unknown> = { user_id: userId, updated_at: new Date().toISOString() };
+
+      if (prefType === 'allergy') {
+        const current = existing?.allergies || [];
+        if (!current.includes(value)) current.push(value);
+        updates.allergies = current;
+      } else if (prefType === 'dislike') {
+        const current = existing?.disliked_ingredients || [];
+        if (!current.includes(value)) current.push(value);
+        updates.disliked_ingredients = current;
+      } else if (prefType === 'like') {
+        const current = existing?.favorite_cuisines || [];
+        if (!current.includes(value)) current.push(value);
+        updates.favorite_cuisines = current;
+      } else if (prefType === 'dietary_restriction') {
+        const current = existing?.dietary_restrictions || [];
+        if (!current.includes(value)) current.push(value);
+        updates.dietary_restrictions = current;
+      }
+
+      if (existing) {
+        await supabase.from('user_food_preferences').update(updates).eq('user_id', userId);
+      } else {
+        updates.created_at = new Date().toISOString();
+        await supabase.from('user_food_preferences').insert(updates);
+      }
+
+      return `✅ "${value}" tercihi (${prefType}) kaydedildi.`;
+    }
+
+    case 'search_rental_cars': {
+      const rpcParams: Record<string, unknown> = {};
+      if (args.category) rpcParams.p_category = args.category;
+      if (args.transmission) rpcParams.p_transmission = args.transmission;
+      if (args.fuel_type) rpcParams.p_fuel_type = args.fuel_type;
+      if (args.max_daily_price) rpcParams.p_max_daily_price = args.max_daily_price;
+      if (args.brand) rpcParams.p_brand = args.brand;
+      if (args.city) rpcParams.p_city = args.city;
+      if (args.pickup_date) rpcParams.p_pickup_date = args.pickup_date;
+      if (args.dropoff_date) rpcParams.p_dropoff_date = args.dropoff_date;
+
+      const { data, error } = await supabase.rpc('ai_search_rental_cars', rpcParams);
+      if (error) return 'Araç arama başarısız oldu: ' + error.message;
+      const result = data as RentalCarSearchResult;
+
+      // Collect for visual cards
+      if (rentalResultsCollector && result.cars) {
+        for (const car of result.cars.slice(0, 8)) {
+          rentalResultsCollector.push({
+            car_id: car.car_id,
+            brand: car.brand,
+            model: car.model,
+            year: car.year,
+            category: car.category,
+            transmission: car.transmission,
+            fuel_type: car.fuel_type,
+            daily_price: car.daily_price,
+            deposit_amount: car.deposit_amount,
+            image_url: car.image_url,
+            company_name: car.company_name,
+            company_id: car.company_id,
+            company_city: car.company_city,
+            company_rating: car.company_rating,
+            seats: car.seats,
+            has_ac: car.has_ac,
+            has_gps: car.has_gps,
+            has_bluetooth: car.has_bluetooth,
+          });
+        }
+      }
+
+      return formatRentalSearchForAI(result);
+    }
+
+    case 'get_rental_booking_status': {
+      const { data, error } = await supabase.rpc('ai_get_rental_booking_status', { p_user_id: userId });
+      if (error) return 'Rezervasyon durumu kontrol edilemedi.';
+      return formatRentalBookingForAI(data as RentalBookingStatus);
+    }
+
+    case 'add_to_cart': {
+      const productId = args.product_id as string;
+      const name = args.name as string;
+      const price = args.price as number;
+      const imageUrl = (args.image_url as string) || '';
+      const merchantId = args.merchant_id as string;
+      const merchantName = args.merchant_name as string;
+      const merchantType = (args.merchant_type as string) || 'restaurant';
+      const quantity = (args.quantity as number) || 1;
+
+      if (!productId || !name || !price || !merchantId) {
+        return 'Ürün bilgileri eksik, sepete eklenemedi.';
+      }
+
+      if (actions) {
+        actions.push({
+          type: 'add_to_cart',
+          payload: {
+            product_id: productId,
+            name,
+            price,
+            image_url: imageUrl,
+            merchant_id: merchantId,
+            merchant_name: merchantName,
+            merchant_type: merchantType,
+            quantity,
+          }
+        });
+      }
+
+      return `✅ ${name} (${quantity} adet, ${price} TL) sepete eklendi.`;
+    }
+
+    default:
+      return 'Bilinmeyen araç.';
+  }
+}
+
+// ========== MAIN HANDLER ==========
 
 Deno.serve(async (req: Request) => {
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
     const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
-    if (!OPENAI_API_KEY) {
-      throw new Error('OPENAI_API_KEY is not configured');
-    }
+    if (!OPENAI_API_KEY) throw new Error('OPENAI_API_KEY is not configured');
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get user from JWT
+    // ===== AUTH =====
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'Oturum bulunamadı. Lütfen tekrar giriş yapın.'
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 401,
-        }
-      );
+      return new Response(JSON.stringify({ success: false, error: 'Oturum bulunamadı. Lütfen tekrar giriş yapın.' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 });
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
+    const { data: { user }, error: authError } = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
     if (authError || !user) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'Oturum süresi dolmuş. Lütfen tekrar giriş yapın.'
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 401,
-        }
-      );
+      return new Response(JSON.stringify({ success: false, error: 'Oturum süresi dolmuş. Lütfen tekrar giriş yapın.' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 401 });
     }
 
     const body: ChatRequest = await req.json();
     const { message, session_id, app_source, user_type = 'customer', screen_context, generate_audio = false, stream = false } = body;
 
-    if (!message || !app_source) {
-      throw new Error('Message and app_source are required');
-    }
+    if (!message || !app_source) throw new Error('Message and app_source are required');
 
-    // Get or create session
+    // ===== SESSION =====
     let currentSessionId = session_id;
     if (!currentSessionId) {
       const { data: newSession, error: sessionError } = await supabase
         .from('support_chat_sessions')
-        .insert({
-          user_id: user.id,
-          app_source,
-          user_type,
-          status: 'active'
-        })
-        .select('id')
-        .single();
-
+        .insert({ user_id: user.id, app_source, user_type, status: 'active' })
+        .select('id').single();
       if (sessionError) throw sessionError;
       currentSessionId = newSession.id;
     }
 
-    // Save user message (don't await - fire and forget)
-    const saveUserMsg = supabase.from('support_chat_messages').insert({
-      session_id: currentSessionId,
-      role: 'user',
-      content: message
-    });
+    // Save user message (fire and forget)
+    supabase.from('support_chat_messages').insert({
+      session_id: currentSessionId, role: 'user', content: message
+    }).then(() => {});
 
-    // ========== PARALLEL DATA FETCHING ==========
-    // All these queries are independent - run them simultaneously
     const isCustomerApp = app_source === 'super_app' || app_source === 'customer_app';
     const isMerchant = app_source === 'merchant_panel';
-    const needsOrderCheck = isCustomerApp && isOrderQuery(message);
-    const needsCancelCheck = isCustomerApp && isCancelQuery(message);
-    const needsFoodRec = isCustomerApp && (isFoodQuery(message) || isPreferenceUpdate(message));
-    const needsExplicitRestSearch = isCustomerApp && isRestaurantSearchQuery(message);
-    // When user asks about food (e.g. "karnım acıktı kebap"), also search restaurants
-    // so we can provide REAL data instead of hallucinating
-    const foodKeywordsForSearch = isCustomerApp && needsFoodRec ? extractFoodKeywords(message) : null;
-    // Also search when user mentions a food name directly (e.g. "kebap", "pizza")
-    const directFoodNameSearch = isCustomerApp && !needsFoodRec && !needsExplicitRestSearch ? extractFoodKeywords(message) : null;
-    const needsRestSearch = needsExplicitRestSearch || (foodKeywordsForSearch !== null) || (directFoodNameSearch !== null);
 
-    // Build parallel promises
+    // ===== PARALLEL DATA FETCH (always needed) =====
     const parallelQueries: Record<string, Promise<unknown>> = {
-      // Always needed
-      systemPrompt: supabase
-        .from('ai_system_prompts')
+      systemPrompt: supabase.from('ai_system_prompts')
         .select('system_prompt, restrictions')
-        .eq('app_source', app_source)
-        .eq('is_active', true)
-        .single(),
+        .eq('app_source', app_source).eq('is_active', true).single(),
 
-      // Knowledge base - filter by message keywords for relevance
-      knowledgeBase: supabase
-        .from('ai_knowledge_base')
+      knowledgeBase: supabase.from('ai_knowledge_base')
         .select('question, answer, category')
         .or(`app_source.eq.${app_source},app_source.eq.all`)
-        .eq('is_active', true)
-        .order('priority', { ascending: false })
-        .limit(15),
+        .eq('is_active', true).order('priority', { ascending: false }).limit(15),
 
-      // Conversation history
-      history: supabase
-        .from('support_chat_messages')
+      history: supabase.from('support_chat_messages')
         .select('role, content')
         .eq('session_id', currentSessionId)
-        .order('created_at', { ascending: true })
-        .limit(8),
-
-      // User message save
-      saveMsg: saveUserMsg,
+        .order('created_at', { ascending: false }).limit(30),
     };
 
-    // Conditional queries - only add what's needed
-    if (needsOrderCheck) {
-      parallelQueries.orderStatus = supabase.rpc('ai_get_order_status', { p_user_id: user.id });
+    // Customer: always fetch user address & preferences
+    if (isCustomerApp) {
+      parallelQueries.userAddress = supabase.from('user_addresses')
+        .select('latitude, longitude')
+        .eq('user_id', user.id).eq('is_default', true).limit(1).maybeSingle();
+
+      parallelQueries.userPrefs = supabase.from('user_food_preferences')
+        .select('*').eq('user_id', user.id).limit(1).maybeSingle();
     }
 
-    if (needsCancelCheck) {
-      parallelQueries.cancelMessages = supabase
-        .from('support_chat_messages')
-        .select('role, content')
-        .eq('session_id', currentSessionId)
-        .order('created_at', { ascending: false })
-        .limit(4);
-    }
-
-    if (needsFoodRec) {
-      parallelQueries.foodRec = supabase.rpc('ai_get_food_recommendations', { p_user_id: user.id });
-      parallelQueries.promotions = supabase.rpc('ai_get_user_promotions', { p_user_id: user.id });
-    }
-
-    // NOTE: restSearch is deferred until after parallel batch to use userAddress lat/lon
-
+    // Screen context: merchant products when on detail page
     if (screen_context && app_source === 'super_app' && screen_context.entity_id && screen_context.screen_type?.endsWith('_detail')) {
       parallelQueries.merchantProducts = supabase.rpc('ai_search_merchant_products', {
         p_merchant_id: screen_context.entity_id,
@@ -715,57 +1133,47 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // Merchant panel: fetch merchant data
     if (isMerchant) {
-      parallelQueries.merchantData = supabase
-        .from('merchants')
+      parallelQueries.merchantData = supabase.from('merchants')
         .select('id, business_name, type, is_active, created_at')
-        .eq('user_id', user.id)
-        .single();
+        .eq('user_id', user.id).single();
     }
 
-    // Fetch user's default address for delivery zone filtering (customer only)
-    if (isCustomerApp && needsRestSearch) {
-      parallelQueries.userAddress = supabase
-        .from('user_addresses')
-        .select('latitude, longitude')
-        .eq('user_id', user.id)
-        .eq('is_default', true)
-        .limit(1)
-        .maybeSingle();
-    }
-
-    // Fetch user allergies for food safety awareness (customer only)
-    if (isCustomerApp && (needsRestSearch || needsFoodRec)) {
-      parallelQueries.userAllergies = supabase
-        .from('user_food_preferences')
-        .select('allergies')
-        .eq('user_id', user.id)
-        .limit(1)
-        .maybeSingle();
-    }
-
-    // Execute ALL queries in parallel
+    // Execute all
     const keys = Object.keys(parallelQueries);
     const results = await Promise.allSettled(Object.values(parallelQueries));
-
-    // Map results back to named keys
-    const queryResults: Record<string, { data?: unknown; error?: unknown }> = {};
+    const qr: Record<string, { data?: unknown; error?: unknown }> = {};
     keys.forEach((key, i) => {
-      const result = results[i];
-      if (result.status === 'fulfilled') {
-        queryResults[key] = result.value as { data?: unknown; error?: unknown };
-      } else {
-        queryResults[key] = { data: null, error: result.reason };
-        console.error(`Query ${key} failed:`, result.reason);
-      }
+      const r = results[i];
+      qr[key] = r.status === 'fulfilled' ? r.value as { data?: unknown; error?: unknown } : { data: null, error: r.reason };
     });
 
-    // ========== PROCESS RESULTS ==========
-    const promptData = queryResults.systemPrompt?.data as { system_prompt: string; restrictions: string } | null;
-    const allKnowledge = (queryResults.knowledgeBase?.data || []) as Array<{ question: string; answer: string; category: string }>;
-    const history = (queryResults.history?.data || []) as Array<{ role: string; content: string }>;
+    // ===== PROCESS BASE DATA =====
+    const promptData = qr.systemPrompt?.data as { system_prompt: string; restrictions: string } | null;
+    const allKnowledge = (qr.knowledgeBase?.data || []) as Array<{ question: string; answer: string; category: string }>;
+    // History comes descending (newest first), reverse to ascending order
+    const rawHistory = ((qr.history?.data || []) as Array<{ role: string; content: string }>).reverse();
+    // Separate internal context from conversation messages
+    let lastSearchContext = '';
+    let lastCartContext = '';
+    const conversationHistory: Array<{ role: string; content: string }> = [];
+    for (const msg of rawHistory) {
+      if (msg.role !== 'user' && msg.role !== 'assistant') continue;
+      if (msg.content?.startsWith('[ARAMA_SONUÇLARI]') || msg.content?.startsWith('[ARAMA_SONUCLARI]')) {
+        lastSearchContext = msg.content;
+        continue;
+      }
+      if (msg.content?.startsWith('[SEPETE_EKLENDİ]') || msg.content?.startsWith('[SEPETE_EKLENDI]')) {
+        lastCartContext = msg.content;
+        continue;
+      }
+      conversationHistory.push(msg);
+    }
+    const addressData = (qr.userAddress?.data || null) as { latitude: number; longitude: number } | null;
+    const userPrefs = qr.userPrefs?.data as Record<string, unknown> | null;
 
-    // Filter knowledge base by relevance to user message
+    // Filter knowledge base
     const lowerMessage = message.toLowerCase();
     const messageWords = lowerMessage.split(/\s+/).filter(w => w.length > 2);
     const relevantKnowledge = allKnowledge.filter(kb => {
@@ -773,324 +1181,341 @@ Deno.serve(async (req: Request) => {
       return messageWords.some(word => kbText.includes(word));
     }).slice(0, 3);
 
-    let contextInfo = '';
+    // ===== BUILD SYSTEM PROMPT =====
+    const systemPrompt = promptData?.system_prompt || 'Sen yardımcı bir asistansın.';
+    const restrictions = promptData?.restrictions || '';
+
+    let systemContent = `${systemPrompt}\n\nKISITLAMALAR:\n${restrictions}`;
+
+    systemContent += `\n\nKRİTİK KURALLAR:
+1. ⛔ ASLA veritabanında olmayan ürün UYDURMAYACAKSIN. SADECE search_food sonuçlarındaki ürünleri listele. Sonuçlarda olmayan bir ürünü ASLA ekleme, tahmin etme veya hayal etme.
+2. Yemek/ürün/mağaza bilgisi vermeden ÖNCE mutlaka search_food aracını çağır.
+3. Araç sonuçlarında dönen ürünleri birebir kullan. Ürün adı, fiyat, mağaza adı, ürün ID - hepsi sonuçlardan gelsin.
+4. Arama sonucu boşsa veya istenen ürün yoksa dürüstçe söyle. "Malesef tişört bulunamadı" de, uydurmak yerine.
+5. Kullanıcı kavramsal konuşabilir ("etli birşeyler", "tişört bakıyorum"). search_food aracına ilgili ürün türlerini anahtar kelime olarak ver.
+6. Türkçe ve samimi konuş, kısa ve öz yanıtlar ver.
+7. ⛔ SEPETE EKLEME KURALI: Kullanıcı "sepete at", "onu ekle", "istiyorum" dediğinde add_to_cart çağır. ANCAK: product_id, merchant_id, fiyat gibi bilgileri MUTLAKA önceki search_food sonuçlarından veya [ARAMA_SONUÇLARI] context'inden al. Bu bilgiler yoksa kullanıcıya "Hangi ürünü sepete ekleyeyim?" diye sor, ASLA bilgileri uydurup ekleme.
+8. ⛔ YANITLARDA ASLA ham ID, UUID, [ARAMA_SONUÇLARI], [SEPETE_EKLENDİ], [ID:...], [MID:...] gibi teknik etiketler veya veritabanı ID'leri GÖSTERME. Bunlar sadece dahili araç kullanımı içindir. Kullanıcıya sadece ürün adı, fiyat ve mağaza adı göster.
+9. Birden fazla ürün istenirse her biri için ayrı add_to_cart çağrısı yap.
+10. merchant_type'ı doğru belirle: restoran ürünü ise "restaurant", mağaza ürünü ise "store", market ürünü ise "market".
+11. ⚡ ARAMA SONUÇLARI GÖSTERME: Arama sonuçları kullanıcıya GÖRSEL KART olarak otomatik gösterilecek. Sen sadece KISA bir giriş yaz (ör: "3 tişört buldum:", "İşte pizza seçenekleri:"). Ürünleri tek tek listeleme, fiyat yazma, detay verme. Kartlar zaten resim, isim, fiyat ve sepete ekle butonu ile gösteriliyor. Sadece kısa giriş + varsa genel öneri yaz.
+12. ⛔ ONAY KONTEKST KURALI: Kullanıcı "Onaylıyorum", "Evet", "Tamam", "Ekle", "Olsun" gibi bir ONAY verdiğinde, MUTLAKA sohbetteki EN SON önerdiğin/bahsettiğin ürünü sepete ekle. Onaydan hemen önce hangi ürünü teklif ettin ise (isim, fiyat, ID) O ürünü add_to_cart'a gönder. ASLA başka bir ürünü gönderme. Emin değilsen kullanıcıya "Hangi ürünü ekleyeyim?" diye sor. ÖNEMLİ: Onay geldiğinde tekrar search_food ÇAĞIRMA - [ÖNCEKİ ARAMA SONUÇLARI]'ndaki ürün bilgilerini kullanarak doğrudan add_to_cart çağır.
+13. ⛔ ÜRÜN EŞLEŞME KURALI: add_to_cart çağırırken product_id, name, price, merchant_id bilgilerinin TUTARLI olduğundan emin ol. Ayran için onay verdiyse ayranın ID'sini gönder, Somon Izgara'nın değil. Sohbet geçmişindeki son assistant mesajında hangi ürünü önerdiysen SADECE onu ekle.
+14. ⛔ ASLA kullanıcı yerine seçim YAPMA. "Ben X'i seçiyorum", "X'i ekliyorum" gibi kendi kararını verme. Seçenekleri sun ve kullanıcının seçmesini bekle. Sadece kullanıcı açıkça bir ürün adı söylediğinde veya onay verdiğinde add_to_cart çağır.
+15. ⛔ BİLGİ TEKRARLAMA: Daha önce söylediğin bilgileri (sepete eklenen ürünler, fiyatlar) tekrar etme. Kısa ve yeni bilgi odaklı yanıtlar ver.
+16. 🚗 ARAÇ KİRALAMA: Kullanıcı araç kiralamak istediğinde search_rental_cars aracını kullan. Kategori eşleştirmeleri: ekonomi/ucuz→economy, kompakt→compact, orta/sedan→midsize, jeep/arazi→suv, lüks/premium→luxury, minibüs→van. Tarih belirtilmişse pickup_date ve dropoff_date parametrelerini ISO formatında gönder. "Uygun fiyatlı" derse max_daily_price=900 gibi makul bir sınır koy.
+17. ⚡ ARAÇ KİRALAMA SONUÇLARI GÖSTERME: Araç kiralama sonuçları kullanıcıya GÖRSEL KART olarak otomatik gösterilecek. Sen sadece KISA bir giriş yaz (ör: "3 araç buldum:", "İşte uygun araçlar:"). Araçları tek tek listeleme, fiyat yazma, detay verme. Kartlar zaten marka, model, fiyat ve kirala butonu ile gösteriliyor. Sadece kısa giriş + varsa genel öneri yaz.
+18. 📋 KİRALAMA REZERVASYONU: Kullanıcı "rezervasyonum var mı", "kiralama durumum" derse get_rental_booking_status aracını kullan.`;
+
+    // User preferences & allergies
+    if (userPrefs) {
+      const allergies = (userPrefs.allergies as string[] || []).filter(a => a?.trim());
+      const dislikes = (userPrefs.disliked_ingredients as string[] || []).filter(a => a?.trim());
+      const diets = (userPrefs.dietary_restrictions as string[] || []).filter(a => a?.trim());
+
+      if (allergies.length > 0) {
+        systemContent += `\n\n⚠️ KULLANICI ALERJİLERİ: ${allergies.join(', ')}
+- Yemek önerirken bu alerjenlere DİKKAT ET
+- İçerik bilgisi olmayan ürünlerde "içerebilir" şeklinde uyar`;
+      }
+      if (dislikes.length > 0) systemContent += `\n❌ SEVMEDİĞİ: ${dislikes.join(', ')}`;
+      if (diets.length > 0) systemContent += `\n🥗 DİYET: ${diets.join(', ')}`;
+    }
+
+    // Knowledge base
     if (relevantKnowledge.length > 0) {
-      contextInfo = '\n\nİLGİLİ BİLGİLER:\n';
+      systemContent += '\n\nİLGİLİ BİLGİLER:\n';
       relevantKnowledge.forEach((kb, i) => {
-        contextInfo += `${i + 1}. S: ${kb.question}\n   C: ${kb.answer}\n\n`;
+        systemContent += `${i + 1}. S: ${kb.question}\n   C: ${kb.answer}\n`;
       });
     }
 
-    // Process order status
-    let orderContext = '';
-    if (needsOrderCheck && queryResults.orderStatus?.data) {
-      orderContext = formatOrderStatusForAI(queryResults.orderStatus.data as OrderStatus);
-    }
-
-    // Process cancellation - may need a sequential follow-up
-    let cancelContext = '';
-    if (needsCancelCheck) {
-      const recentMessages = (queryResults.cancelMessages?.data || []) as Array<{ role: string; content: string }>;
-      const aiAskedForConfirmation = recentMessages.some(msg =>
-        msg.role === 'assistant' &&
-        (msg.content.includes('iptal etmek istediğinizden') ||
-         msg.content.includes('emin misiniz') ||
-         msg.content.includes('İptal etmek istiyor musunuz'))
-      );
-
-      if (aiAskedForConfirmation && isCancelConfirmation(message)) {
-        const { data: cancelResult, error: cancelError } = await supabase.rpc('ai_cancel_order', {
-          p_user_id: user.id,
-          p_order_id: null
-        });
-        if (!cancelError && cancelResult) {
-          cancelContext = formatCancelInfoForAI(cancelResult as CancelResult, true);
-        }
-      } else {
-        const { data: eligibility, error: eligError } = await supabase.rpc('ai_check_cancel_eligibility', {
-          p_user_id: user.id
-        });
-        if (!eligError && eligibility) {
-          cancelContext = formatCancelInfoForAI(eligibility as CancelResult, false);
-        }
-      }
-    }
-
-    // Process food recommendations
-    let foodContext = '';
-    if (needsFoodRec) {
-      const foodRec = queryResults.foodRec;
-      if (foodRec && !foodRec.error && foodRec.data) {
-        foodContext = formatFoodRecommendationForAI(foodRec.data as FoodRecommendation);
-      }
-      const promoResult = queryResults.promotions as { data?: { has_promotions: boolean; active_promotions: Array<{ business_name: string; discount_badge: string; category_tags: string[] }> } };
-      if (promoResult?.data?.has_promotions) {
-        foodContext += `\n\n🎉 AKTİF KAMPANYALAR:`;
-        promoResult.data.active_promotions.forEach(promo => {
-          foodContext += `\n- ${promo.business_name}: ${promo.discount_badge}`;
-        });
-      }
-    }
-
-    // Process restaurant search (deferred - needs userAddress from parallel batch)
-    let restaurantSearchContext = '';
-    if (needsRestSearch) {
-      const searchTerms = foodKeywordsForSearch || directFoodNameSearch || extractSearchTerms(message);
-      const addressData = queryResults.userAddress?.data as { latitude: number; longitude: number } | null;
-      const rpcParams: Record<string, unknown> = { p_search_query: searchTerms };
-      if (addressData?.latitude && addressData?.longitude) {
-        rpcParams.p_customer_lat = addressData.latitude;
-        rpcParams.p_customer_lon = addressData.longitude;
-      }
-      const { data: restSearchData, error: restSearchError } = await supabase.rpc('ai_search_restaurants', rpcParams);
-      if (!restSearchError && restSearchData) {
-        restaurantSearchContext = formatRestaurantSearchForAI(restSearchData as RestaurantSearchResult);
-      }
-    }
-
-    // Process screen context & merchant products
-    let screenContextInfo = '';
-    let merchantProductsContext = '';
-    const actions: Array<{type: string; payload: Record<string, unknown>}> = [];
-
+    // Screen context
     if (screen_context && app_source === 'super_app') {
       const { screen_type, entity_id, entity_name, entity_type } = screen_context;
-
       const screenNames: Record<string, string> = {
-        'home': 'Ana Sayfa',
-        'food_home': 'Yemek Siparişi Ana Sayfa',
-        'restaurant_detail': `${entity_name || 'Restoran'} Detay Sayfası`,
-        'store_detail': `${entity_name || 'Mağaza'} Detay Sayfası`,
-        'market_detail': `${entity_name || 'Market'} Detay Sayfası`,
-        'store_cart': 'Mağaza Sepeti',
-        'food_cart': 'Yemek Sepeti',
-        'grocery_home': 'Market Ana Sayfa',
-        'store_home': 'Mağaza Ana Sayfa',
-        'favorites': 'Favoriler',
-        'orders': 'Siparişlerim',
-        'profile': 'Profil',
+        'home': 'Ana Sayfa', 'food_home': 'Yemek Siparişi', 'restaurant_detail': `${entity_name || 'Restoran'} Detay`,
+        'store_detail': `${entity_name || 'Mağaza'} Detay`, 'market_detail': `${entity_name || 'Market'} Detay`,
+        'store_cart': 'Mağaza Sepeti', 'food_cart': 'Yemek Sepeti', 'grocery_home': 'Market',
+        'store_home': 'Mağaza', 'rental_home': 'Araç Kiralama', 'car_detail': 'Araç Detay',
+        'my_bookings': 'Rezervasyonlarım', 'booking_detail': 'Rezervasyon Detay',
+        'favorites': 'Favoriler', 'orders': 'Siparişlerim', 'profile': 'Profil',
       };
-      const screenLabel = screenNames[screen_type] || screen_type;
-      screenContextInfo = `\n\n[EKRAN BAĞLAMI]: Kullanıcı şu anda "${screenLabel}" sayfasında.`;
+      systemContent += `\n\n[EKRAN]: Kullanıcı "${screenNames[screen_type] || screen_type}" sayfasında.`;
 
-      // Process product results if available
-      const productResult = queryResults.merchantProducts?.data as { products?: Array<Record<string, unknown>>; total_count?: number } | null;
-      if (entity_id && screen_type?.endsWith('_detail') && productResult) {
-        const products = productResult.products || [];
-        const totalCount = productResult.total_count || 0;
+      // Merchant products on detail page
+      const productResult = qr.merchantProducts?.data as { products?: Array<Record<string, unknown>>; total_count?: number } | null;
+      if (entity_id && screen_type?.endsWith('_detail') && productResult?.products?.length) {
+        const products = productResult.products;
+        systemContent += `\n\n[${entity_name?.toUpperCase() || 'MAĞAZA'} ÜRÜNLERİ] (${productResult.total_count} ürün):`;
+        products.slice(0, 10).forEach((p, i) => {
+          systemContent += `\n${i + 1}. ${p.name} - ${p.discounted_price || p.price} TL`;
+          if (p.discounted_price && p.discounted_price !== p.price) systemContent += ` (eski: ${p.price} TL)`;
+          if (p.is_popular) systemContent += ' ⭐';
+          systemContent += ` | ID: ${p.id}`;
+        });
+        systemContent += `\nKullanıcı "sepete ekle" derse ürün bilgilerini action olarak döndür.`;
+      }
+    }
 
-        if (products.length > 0) {
-          const merchantType = entity_type || 'restaurant';
-          merchantProductsContext = `\n\n[SİSTEM BİLGİSİ - ${entity_name?.toUpperCase() || 'MAĞAZA'} ÜRÜNLERİ]:`;
-          merchantProductsContext += `\n📦 Toplam ${totalCount} ürün bulundu.`;
-          merchantProductsContext += `\n\n🛍️ ÜRÜNLER:`;
+    // Merchant panel context
+    let merchantContext = '';
+    if (isMerchant && qr.merchantData?.data) {
+      const md = qr.merchantData.data as { id: string; business_name: string; type: string; is_active: boolean; created_at: string };
+      const serviceType = md.type === 'restaurant' ? 'restaurant' : 'store';
+      const { data: cd } = await supabase.from('platform_commissions')
+        .select('platform_commission_rate').eq('service_type', serviceType).eq('is_active', true).maybeSingle();
+      const rate = cd?.platform_commission_rate ? parseFloat(cd.platform_commission_rate) : 15.0;
+      merchantContext = formatMerchantInfoForAI({ ...md, commission_rate: rate });
+      systemContent += `\n\n[İŞLETME]: ${merchantContext}`;
+    }
 
-          products.slice(0, 10).forEach((p: Record<string, unknown>, i: number) => {
-            const price = p.discounted_price || p.original_price ? p.price : p.price;
-            const originalPrice = (p.discounted_price && p.discounted_price !== p.price)
-              ? ` (İndirimli! Eski: ${p.price} TL)`
-              : (p.original_price && p.original_price !== p.price)
-                ? ` (İndirimli! Eski: ${p.original_price} TL)`
-                : '';
-            merchantProductsContext += `\n${i + 1}. ${p.name} - ${price} TL${originalPrice}`;
-            if (p.description) merchantProductsContext += `\n   ${(p.description as string).substring(0, 80)}`;
-            if (p.is_popular || p.is_featured) merchantProductsContext += ` ⭐Popüler`;
-            if (p.stock !== undefined && (p.stock as number) <= 5 && (p.stock as number) > 0) merchantProductsContext += ` ⚠️Son ${p.stock} adet`;
-            if (p.brand) merchantProductsContext += ` | Marka: ${p.brand}`;
-            merchantProductsContext += ` | ID: ${p.id}`;
-          });
+    // Include previous search results context so AI can use product IDs for add_to_cart
+    if (lastSearchContext) {
+      systemContent += `\n\n[ÖNCEKİ ARAMA SONUÇLARI - Kullanıcı onay verdiğinde add_to_cart için bu ürün bilgilerini kullan, tekrar arama YAPMA]:\n${lastSearchContext.substring(0, 2000)}`;
+    }
+    if (lastCartContext) {
+      systemContent += `\n\n[SEPET DURUMU]:\n${lastCartContext}`;
+    }
 
-          merchantProductsContext += `\n\n📋 TALİMAT:
-- Kullanıcı ürün sorarsa bu listeden bilgi ver
-- "Sepete ekle" denirse ürün bilgilerini action olarak döndür
-- Fiyatları ve indirimleri belirt
-- Stok durumunu paylaş`;
+    // ===== BUILD MESSAGES =====
+    const messages: ChatMessage[] = [{ role: 'system', content: systemContent }];
 
-          // Detect add-to-cart intent
-          const addToCartKeywords = [
-            'sepete ekle', 'sepetime ekle', 'ekle', 'almak istiyorum', 'al', 'istiyorum',
-            'sipariş ver', 'sipariş et', 'cart', 'add to cart', 'buy', 'tane', 'adet'
-          ];
-          const lowerMsg = message.toLowerCase();
-          const wantsToAdd = addToCartKeywords.some(kw => lowerMsg.includes(kw));
+    // Include conversation history (internal context already separated above)
+    for (const msg of conversationHistory) {
+      messages.push({ role: msg.role as 'user' | 'assistant', content: msg.content });
+    }
 
-          if (wantsToAdd) {
-            const matchedProduct = products.find((p: Record<string, unknown>) => {
-              const productName = (p.name as string).toLowerCase();
-              return lowerMsg.includes(productName) || productName.includes(lowerMsg.replace(/sepete ekle|ekle|istiyorum|almak|sipariş|ver|et|tane|adet|\d+/gi, '').trim());
+    if (conversationHistory.length === 0 || conversationHistory[conversationHistory.length - 1].content !== message) {
+      messages.push({ role: 'user', content: message });
+    }
+
+    // ===== FIRST OPENAI CALL: TOOL DECISION =====
+    const useTools = isCustomerApp; // Only customer app uses tool calling
+    const actions: Array<{ type: string; payload: Record<string, unknown> }> = [];
+    let searchResultProducts: SearchResultProduct[] = [];
+    let rentalResultProducts: RentalResultCar[] = [];
+
+    let finalMessages = messages;
+
+    if (useTools) {
+      const toolCtx: ToolExecContext = { supabase, userId: user.id, addressData };
+      searchResultProducts = [];
+      rentalResultProducts = [];
+      const allToolContextParts: string[] = [];
+
+      // Multi-round tool calling loop (max 3 rounds to prevent infinite loops)
+      for (let round = 0; round < 3; round++) {
+        const currentMessages = round === 0 ? messages : finalMessages;
+        const toolResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: currentMessages,
+            tools: CUSTOMER_TOOLS,
+            tool_choice: 'auto',
+            max_tokens: 300,
+            temperature: 0.3,
+          }),
+        });
+
+        if (!toolResponse.ok) {
+          const errText = await toolResponse.text();
+          console.error(`OpenAI Tool Error (round ${round}):`, toolResponse.status, errText);
+          throw new Error(`OpenAI tool error (${toolResponse.status}): ${errText.substring(0, 200)}`);
+        }
+
+        const toolData = await toolResponse.json();
+        const assistantMsg = toolData.choices[0]?.message;
+
+        if (!assistantMsg?.tool_calls || assistantMsg.tool_calls.length === 0) {
+          // No tool calls - AI wants to respond directly
+          if (round === 0 && assistantMsg?.content) {
+            // First round, no tools needed - return early
+            const aiMessage = assistantMsg.content;
+            const tokensUsed = toolData.usage?.total_tokens || 0;
+
+            if (screen_context && app_source === 'super_app') {
+              detectNavigationAction(message, screen_context, qr.merchantProducts?.data, actions);
+            }
+
+            if (stream && !generate_audio) {
+              const encoder = new TextEncoder();
+              const sseStream = new ReadableStream({
+                async start(controller) {
+                  controller.enqueue(encoder.encode(`event: session\ndata: ${JSON.stringify({ session_id: currentSessionId })}\n\n`));
+                  controller.enqueue(encoder.encode(`event: chunk\ndata: ${JSON.stringify({ text: aiMessage })}\n\n`));
+                  if (actions.length > 0) {
+                    controller.enqueue(encoder.encode(`event: actions\ndata: ${JSON.stringify({ actions })}\n\n`));
+                  }
+                  controller.enqueue(encoder.encode(`event: done\ndata: ${JSON.stringify({ message: aiMessage, tokens_used: tokensUsed })}\n\n`));
+                  Promise.all([
+                    supabase.from('support_chat_messages').insert({ session_id: currentSessionId, role: 'assistant', content: aiMessage, tokens_used: tokensUsed }),
+                    supabase.from('support_chat_sessions').update({ updated_at: new Date().toISOString() }).eq('id', currentSessionId),
+                  ]).catch(err => console.error('DB save error:', err));
+                  controller.close();
+                }
+              });
+              return new Response(sseStream, {
+                headers: { ...corsHeaders, 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive' },
+              });
+            }
+
+            let audioBase64: string | null = null;
+            if (generate_audio) audioBase64 = await generateTTSAudio(aiMessage, OPENAI_API_KEY);
+
+            await Promise.all([
+              supabase.from('support_chat_messages').insert({ session_id: currentSessionId, role: 'assistant', content: aiMessage, tokens_used: tokensUsed }),
+              supabase.from('support_chat_sessions').update({ updated_at: new Date().toISOString() }).eq('id', currentSessionId),
+            ]);
+
+            return new Response(JSON.stringify({
+              success: true, session_id: currentSessionId, message: aiMessage, tokens_used: tokensUsed,
+              ...(actions.length > 0 && { actions }),
+              ...(audioBase64 && { audio: audioBase64, audio_format: 'mp3' }),
+            }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+          }
+          break; // Later rounds: no more tool calls, proceed to final response
+        }
+
+        // AI wants to call tools - build finalMessages
+        if (round === 0) {
+          finalMessages = [...messages];
+        }
+        finalMessages.push({ role: 'assistant' as const, content: assistantMsg.content || '', tool_calls: assistantMsg.tool_calls });
+
+        // Execute all tool calls in parallel
+        const toolResults = await Promise.allSettled(
+          assistantMsg.tool_calls.map(async (tc: { id: string; function: { name: string; arguments: string } }) => {
+            const args = JSON.parse(tc.function.arguments);
+            const result = await executeToolCall(tc.function.name, args, toolCtx, actions, searchResultProducts, rentalResultProducts);
+            return { id: tc.id, name: tc.function.name, args: tc.function.arguments, result };
+          })
+        );
+
+        // Build context for history saving
+        for (const tc of assistantMsg.tool_calls) {
+          const toolName = tc.function.name;
+          if (toolName === 'add_to_cart') {
+            try {
+              const cartArgs = JSON.parse(tc.function.arguments);
+              allToolContextParts.push(`[SEPETE_EKLENDİ] ${cartArgs.name} (${cartArgs.price} TL) - ${cartArgs.merchant_name} [ID:${cartArgs.product_id}]`);
+            } catch { /* skip */ }
+          } else if (toolName === 'search_food') {
+            try {
+              const searchArgs = JSON.parse(tc.function.arguments);
+              allToolContextParts.push(`[ARAMA: ${(searchArgs.keywords || []).join(', ')}]`);
+            } catch { /* skip */ }
+          }
+        }
+
+        // Add tool results to messages (must include ALL tool calls or OpenAI returns 400)
+        for (let ti = 0; ti < toolResults.length; ti++) {
+          const tr = toolResults[ti];
+          const tcId = assistantMsg.tool_calls[ti].id;
+          if (tr.status === 'fulfilled') {
+            finalMessages.push({
+              role: 'tool' as const,
+              content: tr.value.result,
+              tool_call_id: tr.value.id,
             });
+          } else {
+            finalMessages.push({
+              role: 'tool' as const,
+              content: 'Araç çalıştırılamadı, lütfen tekrar deneyin.',
+              tool_call_id: tcId,
+            });
+          }
+        }
+      } // end tool round loop
 
-            if (matchedProduct) {
-              const quantityMatch = lowerMsg.match(/(\d+)\s*(tane|adet)/);
-              const quantity = quantityMatch ? parseInt(quantityMatch[1]) : 1;
+      // Save tool results context for future turns
+      try {
+        if (searchResultProducts.length > 0) {
+          searchResultProducts.slice(0, 8).forEach((p, i) => {
+            allToolContextParts.push(`${i + 1}. ${p.name} - ${p.price} TL | ${p.merchant_name} [ID:${p.id}] [MID:${p.merchant_id}] [${p.merchant_type}]`);
+          });
+        }
+        if (allToolContextParts.length > 0) {
+          supabase.from('support_chat_messages').insert({
+            session_id: currentSessionId, role: 'assistant',
+            content: `[ARAMA_SONUÇLARI]\n${allToolContextParts.join('\n').substring(0, 2000)}`
+          }).then(() => {});
+        }
+      } catch (ctxErr) {
+        console.error('Tool context save error:', ctxErr);
+      }
 
+      // Handle add-to-cart from detail page context
+      if (screen_context?.entity_id && screen_context.screen_type?.endsWith('_detail')) {
+        const productResult = qr.merchantProducts?.data as { products?: Array<Record<string, unknown>> } | null;
+        if (productResult?.products) {
+          const lowerMsg = message.toLowerCase();
+          const addKeywords = ['sepete ekle', 'sepetime ekle', 'ekle', 'almak istiyorum', 'istiyorum', 'sipariş ver', 'tane', 'adet'];
+          if (addKeywords.some(kw => lowerMsg.includes(kw))) {
+            const matched = productResult.products.find((p) => {
+              const pName = (p.name as string).toLowerCase();
+              return lowerMsg.includes(pName) || pName.includes(lowerMsg.replace(/sepete ekle|ekle|istiyorum|almak|sipariş|ver|et|tane|adet|\d+/gi, '').trim());
+            });
+            if (matched) {
+              const qMatch = lowerMsg.match(/(\d+)\s*(tane|adet)/);
               actions.push({
                 type: 'add_to_cart',
                 payload: {
-                  product_id: matchedProduct.id,
-                  name: matchedProduct.name,
-                  price: matchedProduct.discounted_price || matchedProduct.price,
-                  image_url: matchedProduct.image_url || '',
-                  merchant_id: entity_id,
-                  merchant_name: entity_name || '',
-                  merchant_type: merchantType,
-                  quantity,
+                  product_id: matched.id, name: matched.name,
+                  price: matched.discounted_price || matched.price,
+                  image_url: matched.image_url || '',
+                  merchant_id: screen_context.entity_id,
+                  merchant_name: screen_context.entity_name || '',
+                  merchant_type: screen_context.entity_type || 'restaurant',
+                  quantity: qMatch ? parseInt(qMatch[1]) : 1,
                 }
               });
             }
           }
         }
       }
-
-      // Detect navigation intent
-      const lowerMsgNav = message.toLowerCase();
-      const navKeywords: Record<string, string> = {
-        'yemek sipariş': '/food',
-        'restoran': '/food',
-        'market': '/grocery',
-        'mağaza': '/market',
-        'sepet': merchantProductsContext ? '/store/cart' : '/food/cart',
-        'siparişlerim': '/orders-main',
-        'favoriler': '/favorites',
-        'profil': '/profile',
-        'ayarlar': '/settings',
-        'ana sayfa': '/',
-      };
-
-      for (const [keyword, route] of Object.entries(navKeywords)) {
-        if (lowerMsgNav.includes(keyword) && (lowerMsgNav.includes('git') || lowerMsgNav.includes('aç') || lowerMsgNav.includes('göster') || lowerMsgNav.includes('gitmek'))) {
-          actions.push({
-            type: 'navigate',
-            payload: { route }
-          });
-          break;
-        }
-      }
     }
 
-    // Process merchant info
-    let merchantContext = '';
-    if (isMerchant && queryResults.merchantData?.data) {
-      const merchantData = queryResults.merchantData.data as { id: string; business_name: string; type: string; is_active: boolean; created_at: string };
-      // Commission rate needs sequential query (depends on merchant type)
-      const serviceType = merchantData.type === 'restaurant' ? 'restaurant' : 'store';
-      const { data: commissionData } = await supabase
-        .from('platform_commissions')
-        .select('platform_commission_rate')
-        .eq('service_type', serviceType)
-        .eq('is_active', true)
-        .maybeSingle();
-
-      const commissionRate = commissionData?.platform_commission_rate
-        ? parseFloat(commissionData.platform_commission_rate)
-        : 15.0;
-
-      merchantContext = formatMerchantInfoForAI({
-        id: merchantData.id,
-        business_name: merchantData.business_name,
-        type: merchantData.type,
-        commission_rate: commissionRate,
-        is_active: merchantData.is_active,
-        created_at: merchantData.created_at
-      });
+    // Handle navigation for super_app
+    if (screen_context && app_source === 'super_app') {
+      detectNavigationAction(message, screen_context, qr.merchantProducts?.data, actions);
     }
 
-    // ========== BUILD AI REQUEST ==========
-    const systemPrompt = promptData?.system_prompt || 'Sen yardımcı bir asistansın.';
-    const restrictions = promptData?.restrictions || '';
-
-    // Build system message with ONLY relevant context
-    let systemContent = `${systemPrompt}\n\nKISITLAMALAR:\n${restrictions}`;
-    systemContent += `\n\nKRİTİK KURALLAR:
-1. ASLA veritabanında olmayan restoran adı, menü adı veya ürün ismi UYDURMAYACAKSIN. Bu en önemli kural.
-2. Restoran veya yemek önerisi yaparken SADECE [RESTORAN ARAMA SONUÇLARI] bölümünde sana verilen gerçek verileri kullan.
-3. Eğer arama sonuçları yoksa veya boşsa, "Maalesef şu an bu ürünü sunan aktif bir restoran bulamadım" de. Uydurma isim verme.
-4. Bilmediğin veya sana verilmeyen konularda bilgi uydurma. Emin olmadığın bilgileri kesin ifadelerle paylaşma.
-5. SADECE sana verilen sistem bilgileri doğrultusunda cevap ver.`;
-
-    // Allergy awareness block
-    const userAllergiesData = queryResults.userAllergies?.data as { allergies: string[] } | null;
-    const userAllergies = userAllergiesData?.allergies?.filter(a => a && a.trim()) || [];
-    if (userAllergies.length > 0) {
-      systemContent += `\n\n⚠️ KULLANICI ALERJİLERİ: ${userAllergies.join(', ')}
-ALERJI KURALLARI:
-- Yemek önerirken bu alerjenlere DİKKAT ET
-- Restoran ürün içeriği/malzeme bilgisi eklememişse, o yemeğin genel tarifinde bu alerjen varsa UYAR
-- Uyarı formatı: "Bu restoran içerik bilgisi eklememiş ama [yemek] genellikle [alerjen] içerebilir, dikkatli olmanızı öneririm"
-- KESİN ifade KULLANMA. "İçerebilir", "ihtimali var", "dikkatli olun" gibi ihtimal belirten ifadeler kullan
-- İçerik bilgisi olmayan ürünlerde HER ZAMAN uyar
-- Bilinen güvenli ürünleri (ör: fıstık alerjisi olan birine sade pilav) güvenle önerebilirsin`;
-    }
-
-    // Only append non-empty contexts
-    if (contextInfo) systemContent += contextInfo;
-    if (screenContextInfo) systemContent += screenContextInfo;
-    if (merchantProductsContext) systemContent += merchantProductsContext;
-    if (orderContext) systemContent += orderContext;
-    if (cancelContext) systemContent += cancelContext;
-    if (foodContext) systemContent += foodContext;
-    if (restaurantSearchContext) systemContent += restaurantSearchContext;
-    if (merchantContext) systemContent += merchantContext;
-
-    const messages: ChatMessage[] = [
-      { role: 'system', content: systemContent }
-    ];
-
-    // Add history (skip duplicates)
-    if (history) {
-      history.forEach(msg => {
-        if (msg.role === 'user' || msg.role === 'assistant') {
-          messages.push({ role: msg.role as 'user' | 'assistant', content: msg.content });
-        }
-      });
-    }
-
-    // Add current message if not already in history
-    if (!history || history.length === 0 || history[history.length - 1].content !== message) {
-      messages.push({ role: 'user', content: message });
-    }
-
-    // ========== STREAMING vs NON-STREAMING BRANCH ==========
+    // ===== FINAL OPENAI CALL (streaming or non-streaming) =====
     if (stream && !generate_audio) {
-      // STREAMING PATH: SSE response with word-by-word delivery
+      // STREAMING
       const encoder = new TextEncoder();
-
       const sseStream = new ReadableStream({
         async start(controller) {
           try {
-            // 1. Send session event immediately
-            controller.enqueue(encoder.encode(
-              `event: session\ndata: ${JSON.stringify({ session_id: currentSessionId })}\n\n`
-            ));
+            controller.enqueue(encoder.encode(`event: session\ndata: ${JSON.stringify({ session_id: currentSessionId })}\n\n`));
 
-            // 2. Call OpenAI with stream: true
+            // Emit search results as visual cards before AI text starts
+            if (searchResultProducts && searchResultProducts.length > 0) {
+              controller.enqueue(encoder.encode(`event: search_results\ndata: ${JSON.stringify({ products: searchResultProducts })}\n\n`));
+            }
+            if (rentalResultProducts && rentalResultProducts.length > 0) {
+              controller.enqueue(encoder.encode(`event: rental_results\ndata: ${JSON.stringify({ cars: rentalResultProducts })}\n\n`));
+            }
+
             const streamResponse = await fetch('https://api.openai.com/v1/chat/completions', {
               method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${OPENAI_API_KEY}`,
-                'Content-Type': 'application/json',
-              },
+              headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                model: 'gpt-4o-mini',
-                messages,
-                max_tokens: 500,
-                temperature: 0.3,
-                stream: true,
-                stream_options: { include_usage: true },
+                model: 'gpt-4o-mini', messages: finalMessages, max_tokens: 500, temperature: 0.3,
+                stream: true, stream_options: { include_usage: true },
               }),
             });
 
             if (!streamResponse.ok) {
-              const errorText = await streamResponse.text();
-              console.error('OpenAI Stream Error:', errorText);
-              controller.enqueue(encoder.encode(
-                `event: error\ndata: ${JSON.stringify({ error: 'AI servisi hatası' })}\n\n`
-              ));
+              console.error('OpenAI Stream Error:', await streamResponse.text());
+              controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: 'AI servisi hatası' })}\n\n`));
               controller.close();
               return;
             }
 
-            // 3. Read OpenAI SSE stream and forward chunks to client
             const reader = streamResponse.body!.getReader();
             const decoder = new TextDecoder();
             let fullMessage = '';
@@ -1100,7 +1525,6 @@ ALERJI KURALLARI:
             while (true) {
               const { done, value } = await reader.read();
               if (done) break;
-
               sseBuffer += decoder.decode(value, { stream: true });
               const lines = sseBuffer.split('\n');
               sseBuffer = lines.pop() || '';
@@ -1108,196 +1532,153 @@ ALERJI KURALLARI:
               for (const line of lines) {
                 const trimmed = line.trim();
                 if (!trimmed || !trimmed.startsWith('data: ')) continue;
-
                 const data = trimmed.slice(6);
                 if (data === '[DONE]') continue;
-
                 try {
                   const parsed = JSON.parse(data);
                   const delta = parsed.choices?.[0]?.delta?.content;
                   if (delta) {
                     fullMessage += delta;
-                    controller.enqueue(encoder.encode(
-                      `event: chunk\ndata: ${JSON.stringify({ text: delta })}\n\n`
-                    ));
+                    controller.enqueue(encoder.encode(`event: chunk\ndata: ${JSON.stringify({ text: delta })}\n\n`));
                   }
-                  if (parsed.usage) {
-                    totalTokens = parsed.usage.total_tokens || 0;
-                  }
-                } catch {
-                  // Skip malformed JSON
-                }
+                  if (parsed.usage) totalTokens = parsed.usage.total_tokens || 0;
+                } catch { /* skip */ }
               }
             }
 
             // Process remaining buffer
-            if (sseBuffer.trim()) {
-              const trimmed = sseBuffer.trim();
-              if (trimmed.startsWith('data: ') && trimmed.slice(6) !== '[DONE]') {
+            if (sseBuffer.trim()?.startsWith('data: ')) {
+              const data = sseBuffer.trim().slice(6);
+              if (data !== '[DONE]') {
                 try {
-                  const parsed = JSON.parse(trimmed.slice(6));
+                  const parsed = JSON.parse(data);
                   const delta = parsed.choices?.[0]?.delta?.content;
                   if (delta) {
                     fullMessage += delta;
-                    controller.enqueue(encoder.encode(
-                      `event: chunk\ndata: ${JSON.stringify({ text: delta })}\n\n`
-                    ));
+                    controller.enqueue(encoder.encode(`event: chunk\ndata: ${JSON.stringify({ text: delta })}\n\n`));
                   }
                 } catch { /* skip */ }
               }
             }
 
-            if (!fullMessage) {
-              fullMessage = 'Üzgünüm, yanıt oluşturulamadı.';
-            }
+            if (!fullMessage) fullMessage = 'Üzgünüm, yanıt oluşturulamadı.';
 
-            // 4. Send actions if any
             if (actions.length > 0) {
-              controller.enqueue(encoder.encode(
-                `event: actions\ndata: ${JSON.stringify({ actions })}\n\n`
-              ));
+              controller.enqueue(encoder.encode(`event: actions\ndata: ${JSON.stringify({ actions })}\n\n`));
             }
 
-            // 5. Send done event
-            controller.enqueue(encoder.encode(
-              `event: done\ndata: ${JSON.stringify({ message: fullMessage, tokens_used: totalTokens })}\n\n`
-            ));
+            controller.enqueue(encoder.encode(`event: done\ndata: ${JSON.stringify({ message: fullMessage, tokens_used: totalTokens })}\n\n`));
 
-            // 6. Save to DB after stream completes (fire and forget)
+            // Save to DB (fire and forget)
             Promise.all([
-              supabase.from('support_chat_messages').insert({
-                session_id: currentSessionId,
-                role: 'assistant',
-                content: fullMessage,
-                tokens_used: totalTokens,
-              }),
-              supabase
-                .from('support_chat_sessions')
-                .update({ updated_at: new Date().toISOString() })
-                .eq('id', currentSessionId),
+              supabase.from('support_chat_messages').insert({ session_id: currentSessionId, role: 'assistant', content: fullMessage, tokens_used: totalTokens }),
+              supabase.from('support_chat_sessions').update({ updated_at: new Date().toISOString() }).eq('id', currentSessionId),
             ]).catch(err => console.error('DB save error:', err));
 
             controller.close();
           } catch (error) {
             console.error('Streaming error:', error);
-            controller.enqueue(encoder.encode(
-              `event: error\ndata: ${JSON.stringify({ error: error instanceof Error ? error.message : 'Streaming hatası' })}\n\n`
-            ));
+            controller.enqueue(encoder.encode(`event: error\ndata: ${JSON.stringify({ error: error instanceof Error ? error.message : 'Streaming hatası' })}\n\n`));
             controller.close();
           }
         }
       });
 
       return new Response(sseStream, {
-        headers: {
-          ...corsHeaders,
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive',
-        },
+        headers: { ...corsHeaders, 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive' },
       });
     }
 
-    // ========== NON-STREAMING PATH (existing) ==========
-    // Call ChatGPT API
+    // NON-STREAMING
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages,
-        max_tokens: 500,
-        temperature: 0.3,
-      }),
+      headers: { 'Authorization': `Bearer ${OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'gpt-4o-mini', messages: finalMessages, max_tokens: 500, temperature: 0.3 }),
     });
 
     if (!openaiResponse.ok) {
-      const errorData = await openaiResponse.text();
-      console.error('OpenAI Error:', errorData);
-      throw new Error('AI service error');
+      const errText = await openaiResponse.text();
+      console.error('OpenAI Error:', openaiResponse.status, errText);
+      throw new Error(`OpenAI error (${openaiResponse.status}): ${errText.substring(0, 200)}`);
     }
 
     const aiData = await openaiResponse.json();
     const aiMessage = aiData.choices[0]?.message?.content || 'Üzgünüm, yanıt oluşturulamadı.';
     const tokensUsed = aiData.usage?.total_tokens || 0;
 
-    // Generate TTS audio inline if requested (voice mode)
+    // TTS
     let audioBase64: string | null = null;
-    if (generate_audio && aiMessage) {
-      try {
-        const cleanText = cleanTextForTTS(aiMessage);
-        if (cleanText.length > 0) {
-          // Truncate to 500 chars for faster TTS
-          const ttsInput = cleanText.substring(0, 500);
-          const ttsResponse = await fetch('https://api.openai.com/v1/audio/speech', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${OPENAI_API_KEY}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              model: 'tts-1',
-              voice: 'nova',
-              input: ttsInput,
-              response_format: 'mp3',
-              speed: 1.1,
-            }),
-          });
-
-          if (ttsResponse.ok) {
-            const audioBuffer = await ttsResponse.arrayBuffer();
-            audioBase64 = uint8ArrayToBase64(new Uint8Array(audioBuffer));
-          }
-        }
-      } catch (ttsError) {
-        console.error('Inline TTS error:', ttsError);
-        // Continue without audio - text response still works
-      }
+    if (generate_audio) {
+      audioBase64 = await generateTTSAudio(aiMessage, OPENAI_API_KEY);
     }
 
-    // Save AI response & update session IN PARALLEL
+    // Save
     await Promise.all([
-      supabase.from('support_chat_messages').insert({
-        session_id: currentSessionId,
-        role: 'assistant',
-        content: aiMessage,
-        tokens_used: tokensUsed
-      }),
-      supabase
-        .from('support_chat_sessions')
-        .update({ updated_at: new Date().toISOString() })
-        .eq('id', currentSessionId)
+      supabase.from('support_chat_messages').insert({ session_id: currentSessionId, role: 'assistant', content: aiMessage, tokens_used: tokensUsed }),
+      supabase.from('support_chat_sessions').update({ updated_at: new Date().toISOString() }).eq('id', currentSessionId),
     ]);
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        session_id: currentSessionId,
-        message: aiMessage,
-        tokens_used: tokensUsed,
-        ...(actions.length > 0 && { actions }),
-        ...(audioBase64 && { audio: audioBase64, audio_format: 'mp3' }),
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      }
-    );
+    return new Response(JSON.stringify({
+      success: true, session_id: currentSessionId, message: aiMessage, tokens_used: tokensUsed,
+      ...(actions.length > 0 && { actions }),
+      ...(searchResultProducts.length > 0 && { search_results: searchResultProducts }),
+      ...(rentalResultProducts.length > 0 && { rental_results: rentalResultProducts }),
+      ...(audioBase64 && { audio: audioBase64, audio_format: 'mp3' }),
+    }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 
   } catch (error) {
-    console.error('Error:', error);
-    return new Response(
-      JSON.stringify({
-        success: false,
-        error: error instanceof Error ? error.message : 'Bilinmeyen bir hata oluştu'
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
-      }
-    );
+    const errMsg = error instanceof Error ? error.message : String(error);
+    const errStack = error instanceof Error ? error.stack : '';
+    console.error('Error:', errMsg);
+    console.error('Stack:', errStack);
+    return new Response(JSON.stringify({
+      success: false, error: errMsg || 'Bilinmeyen bir hata oluştu'
+    }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });
   }
 });
+
+// ========== HELPER FUNCTIONS ==========
+
+function detectNavigationAction(
+  message: string,
+  _screenContext: ScreenContext,
+  merchantProductsData: unknown,
+  actions: Array<{ type: string; payload: Record<string, unknown> }>
+) {
+  const lower = message.toLowerCase();
+  const navKeywords: Record<string, string> = {
+    'yemek sipariş': '/food', 'restoran': '/food', 'market': '/grocery', 'mağaza': '/market',
+    'araç kiralama': '/rental', 'araba kiralama': '/rental', 'rent a car': '/rental', 'kiralama': '/rental',
+    'sepet': merchantProductsData ? '/store/cart' : '/food/cart',
+    'siparişlerim': '/orders-main', 'favoriler': '/favorites', 'profil': '/profile',
+    'ayarlar': '/settings', 'ana sayfa': '/',
+  };
+
+  for (const [keyword, route] of Object.entries(navKeywords)) {
+    if (lower.includes(keyword) && (lower.includes('git') || lower.includes('aç') || lower.includes('göster') || lower.includes('gitmek'))) {
+      actions.push({ type: 'navigate', payload: { route } });
+      break;
+    }
+  }
+}
+
+async function generateTTSAudio(text: string, apiKey: string): Promise<string | null> {
+  try {
+    const cleanText = cleanTextForTTS(text);
+    if (cleanText.length === 0) return null;
+
+    const ttsResponse = await fetch('https://api.openai.com/v1/audio/speech', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'tts-1', voice: 'nova', input: cleanText.substring(0, 500), response_format: 'mp3', speed: 1.1 }),
+    });
+
+    if (ttsResponse.ok) {
+      const buf = await ttsResponse.arrayBuffer();
+      return uint8ArrayToBase64(new Uint8Array(buf));
+    }
+  } catch (e) {
+    console.error('TTS error:', e);
+  }
+  return null;
+}

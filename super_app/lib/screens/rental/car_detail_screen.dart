@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../core/theme/app_theme.dart';
 import '../../models/rental/rental_models.dart';
 import 'booking_screen.dart';
 import 'all_reviews_screen.dart';
@@ -10,7 +11,7 @@ class CarDetailScreen extends StatefulWidget {
   final RentalLocation? dropoffLocation;
   final DateTime? pickupDate;
   final DateTime? dropoffDate;
-  // Özel adres bilgileri
+  // \u00D6zel adres bilgileri
   final bool isPickupCustomAddress;
   final bool isDropoffCustomAddress;
   final String? pickupCustomAddress;
@@ -38,13 +39,11 @@ class CarDetailScreen extends StatefulWidget {
 }
 
 class _CarDetailScreenState extends State<CarDetailScreen>
-    with TickerProviderStateMixin {
+    with SingleTickerProviderStateMixin {
   late AnimationController _mainController;
-  late AnimationController _pulseController;
   late Animation<double> _fadeAnimation;
   late Animation<double> _slideAnimation;
   late Animation<double> _scaleAnimation;
-  late Animation<double> _pulseAnimation;
 
   final PageController _imageController = PageController();
   int _currentImageIndex = 0;
@@ -55,13 +54,6 @@ class _CarDetailScreenState extends State<CarDetailScreen>
   RatingsSummary? _ratingsSummary;
   bool _isLoadingReviews = true;
 
-  // Light theme colors
-  static const Color _primaryBlue = Color(0xFF1976D2);
-  static const Color _backgroundColor = Color(0xFFF5F5F5);
-  static const Color _cardColor = Colors.white;
-  static const Color _textPrimary = Color(0xFF1A1A2E);
-  static const Color _textSecondary = Color(0xFF6B7280);
-
   @override
   void initState() {
     super.initState();
@@ -70,11 +62,6 @@ class _CarDetailScreenState extends State<CarDetailScreen>
       duration: const Duration(milliseconds: 1200),
       vsync: this,
     );
-
-    _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
-      vsync: this,
-    )..repeat(reverse: true);
 
     _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(
@@ -97,10 +84,6 @@ class _CarDetailScreenState extends State<CarDetailScreen>
       ),
     );
 
-    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.02).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
-
     _mainController.forward();
     _loadReviews();
   }
@@ -109,7 +92,7 @@ class _CarDetailScreenState extends State<CarDetailScreen>
     try {
       final response = await Supabase.instance.client
           .from('rental_reviews')
-          .select('*, profiles:user_id(full_name, avatar_url)')
+          .select('*')
           .eq('company_id', widget.car.companyId)
           .eq('is_approved', true)
           .eq('is_hidden', false)
@@ -139,7 +122,6 @@ class _CarDetailScreenState extends State<CarDetailScreen>
   @override
   void dispose() {
     _mainController.dispose();
-    _pulseController.dispose();
     _imageController.dispose();
     super.dispose();
   }
@@ -148,9 +130,59 @@ class _CarDetailScreenState extends State<CarDetailScreen>
   Widget build(BuildContext context) {
     final car = widget.car;
     final size = MediaQuery.of(context).size;
+    final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: _backgroundColor,
+      backgroundColor: theme.scaffoldBackgroundColor,
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white),
+            style: IconButton.styleFrom(
+              backgroundColor: Colors.black.withValues(alpha: 0.4),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share, color: Colors.white),
+            style: IconButton.styleFrom(
+              backgroundColor: Colors.black.withValues(alpha: 0.4),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            onPressed: () {},
+          ),
+          const SizedBox(width: 8),
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: IconButton(
+              icon: Icon(
+                _isFavorite ? Icons.favorite : Icons.favorite_border,
+                color: _isFavorite ? const Color(0xFFE53935) : Colors.white,
+              ),
+              style: IconButton.styleFrom(
+                backgroundColor: Colors.black.withValues(alpha: 0.4),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              onPressed: () {
+                setState(() => _isFavorite = !_isFavorite);
+              },
+            ),
+          ),
+        ],
+      ),
       body: Stack(
         children: [
           // Main Content
@@ -159,27 +191,27 @@ class _CarDetailScreenState extends State<CarDetailScreen>
             slivers: [
               // Car Image Hero Section
               SliverToBoxAdapter(
-                child: _buildHeroSection(car, size),
+                child: _buildHeroSection(car, size, theme),
               ),
 
               // Car Info Section
               SliverToBoxAdapter(
-                child: _buildCarInfoSection(car),
+                child: _buildCarInfoSection(car, theme),
               ),
 
               // Features Section
               SliverToBoxAdapter(
-                child: _buildFeaturesSection(car),
+                child: _buildFeaturesSection(car, theme),
               ),
 
               // Specifications Section
               SliverToBoxAdapter(
-                child: _buildSpecificationsSection(car),
+                child: _buildSpecificationsSection(car, theme),
               ),
 
               // Reviews Section
               SliverToBoxAdapter(
-                child: _buildReviewsSection(car),
+                child: _buildReviewsSection(car, theme),
               ),
 
               // Bottom Padding for Book Button
@@ -189,17 +221,14 @@ class _CarDetailScreenState extends State<CarDetailScreen>
             ],
           ),
 
-          // Top Navigation
-          _buildTopNavigation(),
-
           // Bottom Book Button
-          _buildBottomBookButton(car),
+          _buildBottomBookButton(car, theme),
         ],
       ),
     );
   }
 
-  Widget _buildHeroSection(RentalCar car, Size size) {
+  Widget _buildHeroSection(RentalCar car, Size size, ThemeData theme) {
     return AnimatedBuilder(
       animation: _mainController,
       builder: (context, child) {
@@ -219,24 +248,16 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                     },
                     itemCount: car.imageUrls.length,
                     itemBuilder: (context, index) {
-                      return AnimatedBuilder(
-                        animation: _pulseController,
-                        builder: (context, child) {
-                          return Transform.scale(
-                            scale: _pulseAnimation.value,
-                            child: Image.network(
-                              car.imageUrls[index],
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  color: Colors.grey[300],
-                                  child: const Icon(
-                                    Icons.directions_car,
-                                    size: 120,
-                                    color: Colors.grey,
-                                  ),
-                                );
-                              },
+                      return Image.network(
+                        car.imageUrls[index],
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: Colors.grey[300],
+                            child: const Icon(
+                              Icons.directions_car,
+                              size: 120,
+                              color: Colors.grey,
                             ),
                           );
                         },
@@ -254,8 +275,8 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                           colors: [
                             Colors.black.withValues(alpha: 0.4),
                             Colors.transparent,
-                            _backgroundColor.withValues(alpha: 0.8),
-                            _backgroundColor,
+                            theme.scaffoldBackgroundColor.withValues(alpha: 0.8),
+                            theme.scaffoldBackgroundColor,
                           ],
                           stops: const [0.0, 0.3, 0.8, 1.0],
                         ),
@@ -274,13 +295,16 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                           vertical: 8,
                         ),
                         decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF1976D2), Color(0xFF42A5F5)],
+                          gradient: LinearGradient(
+                            colors: [
+                              theme.colorScheme.primary,
+                              theme.colorScheme.primary.withValues(alpha: 0.7),
+                            ],
                           ),
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: _primaryBlue.withValues(alpha: 0.4),
+                              color: theme.colorScheme.primary.withValues(alpha: 0.4),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),
@@ -322,7 +346,7 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                             height: 8,
                             decoration: BoxDecoration(
                               color: _currentImageIndex == index
-                                  ? _primaryBlue
+                                  ? theme.colorScheme.primary
                                   : Colors.grey.withValues(alpha: 0.4),
                               borderRadius: BorderRadius.circular(4),
                             ),
@@ -339,7 +363,7 @@ class _CarDetailScreenState extends State<CarDetailScreen>
     );
   }
 
-  Widget _buildCarInfoSection(RentalCar car) {
+  Widget _buildCarInfoSection(RentalCar car, ThemeData theme) {
     return AnimatedBuilder(
       animation: _mainController,
       builder: (context, child) {
@@ -360,21 +384,73 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            // Company badge
+                            if (car.companyName != null)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: theme.colorScheme.primary.withValues(alpha: 0.2),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      if (car.companyLogo != null && car.companyLogo!.isNotEmpty)
+                                        Padding(
+                                          padding: const EdgeInsets.only(right: 6),
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(4),
+                                            child: Image.network(
+                                              car.companyLogo!,
+                                              width: 18,
+                                              height: 18,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (_, __, ___) =>
+                                                  Icon(Icons.business, size: 14,
+                                                      color: theme.colorScheme.primary),
+                                            ),
+                                          ),
+                                        )
+                                      else
+                                        Padding(
+                                          padding: const EdgeInsets.only(right: 6),
+                                          child: Icon(Icons.business, size: 14,
+                                              color: theme.colorScheme.primary),
+                                        ),
+                                      Text(
+                                        car.companyName!,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: theme.colorScheme.primary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
                             Text(
                               car.brandName,
                               style: TextStyle(
                                 fontSize: 14,
-                                color: _textSecondary,
+                                color: theme.colorScheme.onSurfaceVariant,
                                 letterSpacing: 1,
                               ),
                             ),
                             const SizedBox(height: 4),
                             Text(
                               car.model,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 32,
                                 fontWeight: FontWeight.bold,
-                                color: _textPrimary,
+                                color: theme.colorScheme.onSurface,
                                 letterSpacing: -0.5,
                               ),
                             ),
@@ -393,7 +469,7 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                                   child: Text(
                                     car.year.toString(),
                                     style: TextStyle(
-                                      color: _textSecondary,
+                                      color: theme.colorScheme.onSurfaceVariant,
                                       fontSize: 12,
                                     ),
                                   ),
@@ -424,43 +500,38 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                         ),
                       ),
                       // Rating
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: _cardColor,
+                      Card(
+                        elevation: 2,
+                        shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.08),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
                         ),
-                        child: Column(
-                          children: [
-                            const Icon(
-                              Icons.star,
-                              color: _primaryBlue,
-                              size: 28,
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              car.rating.toString(),
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                color: _textPrimary,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.star,
+                                color: theme.colorScheme.primary,
+                                size: 28,
                               ),
-                            ),
-                            Text(
-                              '${car.reviewCount} yorum',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: _textSecondary,
+                              const SizedBox(height: 4),
+                              Text(
+                                car.rating.toString(),
+                                style: TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.colorScheme.onSurface,
+                                ),
                               ),
-                            ),
-                          ],
+                              Text(
+                                '${car.reviewCount} yorum',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
@@ -469,46 +540,45 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                   const SizedBox(height: 24),
 
                   // Quick Specs
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: _cardColor,
+                  Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.06),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        _buildQuickSpec(
-                          Icons.speed,
-                          car.transmissionName,
-                          'Şanzıman',
-                        ),
-                        _buildVerticalDivider(),
-                        _buildQuickSpec(
-                          Icons.local_gas_station,
-                          car.fuelTypeName,
-                          'Yakıt',
-                        ),
-                        _buildVerticalDivider(),
-                        _buildQuickSpec(
-                          Icons.event_seat,
-                          '${car.seats}',
-                          'Koltuk',
-                        ),
-                        _buildVerticalDivider(),
-                        _buildQuickSpec(
-                          Icons.luggage,
-                          '${car.luggage}',
-                          'Bavul',
-                        ),
-                      ],
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          _buildQuickSpec(
+                            Icons.speed,
+                            car.transmissionName,
+                            '\u015Eanz\u0131man',
+                            theme,
+                          ),
+                          _buildVerticalDivider(),
+                          _buildQuickSpec(
+                            Icons.local_gas_station,
+                            car.fuelTypeName,
+                            'Yak\u0131t',
+                            theme,
+                          ),
+                          _buildVerticalDivider(),
+                          _buildQuickSpec(
+                            Icons.event_seat,
+                            '${car.seats}',
+                            'Koltuk',
+                            theme,
+                          ),
+                          _buildVerticalDivider(),
+                          _buildQuickSpec(
+                            Icons.luggage,
+                            '${car.luggage}',
+                            'Bavul',
+                            theme,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -520,17 +590,17 @@ class _CarDetailScreenState extends State<CarDetailScreen>
     );
   }
 
-  Widget _buildQuickSpec(IconData icon, String value, String label) {
+  Widget _buildQuickSpec(IconData icon, String value, String label, ThemeData theme) {
     return Column(
       children: [
-        Icon(icon, color: _primaryBlue, size: 24),
+        Icon(icon, color: theme.colorScheme.primary, size: 24),
         const SizedBox(height: 8),
         Text(
           value,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
-            color: _textPrimary,
+            color: theme.colorScheme.onSurface,
           ),
         ),
         const SizedBox(height: 2),
@@ -538,7 +608,7 @@ class _CarDetailScreenState extends State<CarDetailScreen>
           label,
           style: TextStyle(
             fontSize: 11,
-            color: _textSecondary,
+            color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
       ],
@@ -553,7 +623,7 @@ class _CarDetailScreenState extends State<CarDetailScreen>
     );
   }
 
-  Widget _buildFeaturesSection(RentalCar car) {
+  Widget _buildFeaturesSection(RentalCar car, ThemeData theme) {
     final features = CarFeature.allFeatures
         .where((f) => car.featureIds.contains(f.id))
         .toList();
@@ -570,49 +640,38 @@ class _CarDetailScreenState extends State<CarDetailScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Özellikler',
+                  Text(
+                    '\u00D6zellikler',
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: _textPrimary,
+                      color: theme.colorScheme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 16),
                   Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
+                    spacing: 8,
+                    runSpacing: 8,
                     children: features.map((feature) {
-                      return Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
+                      return Chip(
+                        avatar: Icon(
+                          _getFeatureIcon(feature.icon),
+                          color: theme.colorScheme.primary,
+                          size: 18,
                         ),
-                        decoration: BoxDecoration(
-                          color: _cardColor,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: Colors.grey.shade200,
+                        label: Text(
+                          feature.name,
+                          style: TextStyle(
+                            color: theme.colorScheme.onSurface,
+                            fontSize: 13,
                           ),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              _getFeatureIcon(feature.icon),
-                              color: _primaryBlue,
-                              size: 18,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              feature.name,
-                              style: const TextStyle(
-                                color: _textPrimary,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ],
+                        backgroundColor: theme.cardColor,
+                        side: BorderSide(color: AppColors.borderLight),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
                       );
                     }).toList(),
                   ),
@@ -625,7 +684,7 @@ class _CarDetailScreenState extends State<CarDetailScreen>
     );
   }
 
-  Widget _buildSpecificationsSection(RentalCar car) {
+  Widget _buildSpecificationsSection(RentalCar car, ThemeData theme) {
     return AnimatedBuilder(
       animation: _mainController,
       builder: (context, child) {
@@ -638,47 +697,43 @@ class _CarDetailScreenState extends State<CarDetailScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Teknik Özellikler',
+                  Text(
+                    'Teknik \u00D6zellikler',
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: _textPrimary,
+                      color: theme.colorScheme.onSurface,
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: _cardColor,
+                  Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.06),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
                     ),
-                    child: Column(
-                      children: [
-                        _buildSpecRow('Marka', car.brandName),
-                        _buildSpecDivider(),
-                        _buildSpecRow('Model', car.model),
-                        _buildSpecDivider(),
-                        _buildSpecRow('Yıl', car.year.toString()),
-                        _buildSpecDivider(),
-                        _buildSpecRow('Renk', car.color),
-                        _buildSpecDivider(),
-                        _buildSpecRow('Kapı Sayısı', '${car.doors} kapı'),
-                        _buildSpecDivider(),
-                        _buildSpecRow('Kilometre', '${car.mileage} km'),
-                        _buildSpecDivider(),
-                        _buildSpecRow(
-                          'Sınırsız Km',
-                          car.hasUnlimitedMileage ? 'Evet' : 'Hayır',
-                        ),
-                      ],
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        children: [
+                          _buildSpecRow('Marka', car.brandName, theme),
+                          _buildSpecDivider(),
+                          _buildSpecRow('Model', car.model, theme),
+                          _buildSpecDivider(),
+                          _buildSpecRow('Y\u0131l', car.year.toString(), theme),
+                          _buildSpecDivider(),
+                          _buildSpecRow('Renk', car.color, theme),
+                          _buildSpecDivider(),
+                          _buildSpecRow('Kap\u0131 Say\u0131s\u0131', '${car.doors} kap\u0131', theme),
+                          _buildSpecDivider(),
+                          _buildSpecRow('Kilometre', '${car.mileage} km', theme),
+                          _buildSpecDivider(),
+                          _buildSpecRow(
+                            'S\u0131n\u0131rs\u0131z Km',
+                            car.hasUnlimitedMileage ? 'Evet' : 'Hay\u0131r',
+                            theme,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -690,7 +745,7 @@ class _CarDetailScreenState extends State<CarDetailScreen>
     );
   }
 
-  Widget _buildSpecRow(String label, String value) {
+  Widget _buildSpecRow(String label, String value, ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
@@ -699,14 +754,14 @@ class _CarDetailScreenState extends State<CarDetailScreen>
           Text(
             label,
             style: TextStyle(
-              color: _textSecondary,
+              color: theme.colorScheme.onSurfaceVariant,
               fontSize: 14,
             ),
           ),
           Text(
             value,
-            style: const TextStyle(
-              color: _textPrimary,
+            style: TextStyle(
+              color: theme.colorScheme.onSurface,
               fontSize: 14,
               fontWeight: FontWeight.w600,
             ),
@@ -723,7 +778,7 @@ class _CarDetailScreenState extends State<CarDetailScreen>
     );
   }
 
-  Widget _buildReviewsSection(RentalCar car) {
+  Widget _buildReviewsSection(RentalCar car, ThemeData theme) {
     return AnimatedBuilder(
       animation: _mainController,
       builder: (context, child) {
@@ -739,12 +794,12 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
+                      Text(
                         'Yorumlar & Puanlar',
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: _textPrimary,
+                          color: theme.colorScheme.onSurface,
                         ),
                       ),
                       TextButton(
@@ -759,10 +814,10 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                             ),
                           );
                         },
-                        child: const Text(
-                          'Tümünü Gör',
+                        child: Text(
+                          'T\u00FCm\u00FCn\u00FC G\u00F6r',
                           style: TextStyle(
-                            color: _primaryBlue,
+                            color: theme.colorScheme.primary,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -773,22 +828,22 @@ class _CarDetailScreenState extends State<CarDetailScreen>
 
                   // Rating summary card
                   _isLoadingReviews
-                      ? _buildLoadingRatingSummary()
-                      : _buildRatingSummaryCard(),
+                      ? _buildLoadingRatingSummary(theme)
+                      : _buildRatingSummaryCard(theme),
 
                   // Recent reviews
                   if (!_isLoadingReviews && _reviews.isNotEmpty) ...[
                     const SizedBox(height: 24),
-                    const Text(
+                    Text(
                       'Son Yorumlar',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
-                        color: _textPrimary,
+                        color: theme.colorScheme.onSurface,
                       ),
                     ),
                     const SizedBox(height: 12),
-                    ..._reviews.take(3).map((review) => _buildReviewCard(review)),
+                    ..._reviews.take(3).map((review) => _buildReviewCard(review, theme)),
                   ],
                 ],
               ),
@@ -799,214 +854,208 @@ class _CarDetailScreenState extends State<CarDetailScreen>
     );
   }
 
-  Widget _buildLoadingRatingSummary() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: _cardColor,
+  Widget _buildLoadingRatingSummary(ThemeData theme) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
-      child: const Center(
-        child: CircularProgressIndicator(color: _primaryBlue),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Center(
+          child: CircularProgressIndicator(color: theme.colorScheme.primary),
+        ),
       ),
     );
   }
 
-  Widget _buildRatingSummaryCard() {
+  Widget _buildRatingSummaryCard(ThemeData theme) {
     final summary = _ratingsSummary;
     final rating = summary?.averageRating ?? widget.car.rating;
     final reviewCount = summary?.totalReviews ?? widget.car.reviewCount;
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: _cardColor,
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
       ),
-      child: Row(
-        children: [
-          Column(
-            children: [
-              Text(
-                rating.toStringAsFixed(1),
-                style: const TextStyle(
-                  fontSize: 48,
-                  fontWeight: FontWeight.bold,
-                  color: _textPrimary,
-                ),
-              ),
-              Row(
-                children: List.generate(5, (index) {
-                  final starValue = index + 1;
-                  if (rating >= starValue) {
-                    return const Icon(Icons.star, color: _primaryBlue, size: 16);
-                  } else if (rating >= starValue - 0.5) {
-                    return const Icon(Icons.star_half, color: _primaryBlue, size: 16);
-                  } else {
-                    return const Icon(Icons.star_border, color: _primaryBlue, size: 16);
-                  }
-                }),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '$reviewCount yorum',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: _textSecondary,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 24),
-          Expanded(
-            child: Column(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Row(
+          children: [
+            Column(
               children: [
-                _buildRatingBar('5', summary?.getPercentage(5) ?? 0),
-                _buildRatingBar('4', summary?.getPercentage(4) ?? 0),
-                _buildRatingBar('3', summary?.getPercentage(3) ?? 0),
-                _buildRatingBar('2', summary?.getPercentage(2) ?? 0),
-                _buildRatingBar('1', summary?.getPercentage(1) ?? 0),
+                Text(
+                  rating.toStringAsFixed(1),
+                  style: TextStyle(
+                    fontSize: 48,
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+                Row(
+                  children: List.generate(5, (index) {
+                    final starValue = index + 1;
+                    if (rating >= starValue) {
+                      return Icon(Icons.star, color: theme.colorScheme.primary, size: 16);
+                    } else if (rating >= starValue - 0.5) {
+                      return Icon(Icons.star_half, color: theme.colorScheme.primary, size: 16);
+                    } else {
+                      return Icon(Icons.star_border, color: theme.colorScheme.primary, size: 16);
+                    }
+                  }),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$reviewCount yorum',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
               ],
             ),
-          ),
-        ],
+            const SizedBox(width: 24),
+            Expanded(
+              child: Column(
+                children: [
+                  _buildRatingBar('5', summary?.getPercentage(5) ?? 0, theme),
+                  _buildRatingBar('4', summary?.getPercentage(4) ?? 0, theme),
+                  _buildRatingBar('3', summary?.getPercentage(3) ?? 0, theme),
+                  _buildRatingBar('2', summary?.getPercentage(2) ?? 0, theme),
+                  _buildRatingBar('1', summary?.getPercentage(1) ?? 0, theme),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildReviewCard(RentalReview review) {
-    return Container(
+  Widget _buildReviewCard(RentalReview review, ThemeData theme) {
+    return Card(
+      elevation: 0,
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _cardColor,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
+        side: BorderSide(color: AppColors.borderLight),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: _primaryBlue.withValues(alpha: 0.1),
-                backgroundImage: review.userAvatar != null
-                    ? NetworkImage(review.userAvatar!)
-                    : null,
-                child: review.userAvatar == null
-                    ? Text(
-                        (review.userName ?? 'A')[0].toUpperCase(),
-                        style: const TextStyle(
-                          color: _primaryBlue,
-                          fontWeight: FontWeight.bold,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
+                  backgroundImage: review.userAvatar != null
+                      ? NetworkImage(review.userAvatar!)
+                      : null,
+                  child: review.userAvatar == null
+                      ? Text(
+                          (review.userName ?? 'A')[0].toUpperCase(),
+                          style: TextStyle(
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
+                      : null,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        review.userName ?? 'Anonim',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurface,
                         ),
-                      )
-                    : null,
+                      ),
+                      Text(
+                        review.timeAgo,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Row(
+                  children: List.generate(5, (index) {
+                    return Icon(
+                      index < review.overallRating ? Icons.star : Icons.star_border,
+                      color: theme.colorScheme.primary,
+                      size: 16,
+                    );
+                  }),
+                ),
+              ],
+            ),
+            if (review.comment != null && review.comment!.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(
+                review.comment!,
+                style: TextStyle(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  height: 1.4,
+                ),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(width: 12),
-              Expanded(
+            ],
+            if (review.companyReply != null && review.companyReply!.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.2),
+                  ),
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      review.userName ?? 'Anonim',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: _textPrimary,
-                      ),
+                    Row(
+                      children: [
+                        Icon(Icons.store, size: 16, color: theme.colorScheme.primary),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Firma Yan\u0131t\u0131',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                      ],
                     ),
+                    const SizedBox(height: 6),
                     Text(
-                      review.timeAgo,
+                      review.companyReply!,
                       style: TextStyle(
-                        fontSize: 12,
-                        color: _textSecondary,
+                        fontSize: 13,
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
                 ),
               ),
-              Row(
-                children: List.generate(5, (index) {
-                  return Icon(
-                    index < review.overallRating ? Icons.star : Icons.star_border,
-                    color: _primaryBlue,
-                    size: 16,
-                  );
-                }),
-              ),
             ],
-          ),
-          if (review.comment != null && review.comment!.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Text(
-              review.comment!,
-              style: TextStyle(
-                color: _textSecondary,
-                height: 1.4,
-              ),
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
-            ),
           ],
-          if (review.companyReply != null && review.companyReply!.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: _primaryBlue.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: _primaryBlue.withValues(alpha: 0.2)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.store, size: 16, color: _primaryBlue),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Firma Yanıtı',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: _primaryBlue,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    review.companyReply!,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: _textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildRatingBar(String label, double percentage) {
+  Widget _buildRatingBar(String label, double percentage, ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
@@ -1015,7 +1064,7 @@ class _CarDetailScreenState extends State<CarDetailScreen>
             label,
             style: TextStyle(
               fontSize: 12,
-              color: _textSecondary,
+              color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
           const SizedBox(width: 8),
@@ -1031,7 +1080,7 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                 widthFactor: percentage,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: _primaryBlue,
+                    color: theme.colorScheme.primary,
                     borderRadius: BorderRadius.circular(3),
                   ),
                 ),
@@ -1043,67 +1092,7 @@ class _CarDetailScreenState extends State<CarDetailScreen>
     );
   }
 
-  Widget _buildTopNavigation() {
-    return Positioned(
-      top: 0,
-      left: 0,
-      right: 0,
-      child: Container(
-        padding: EdgeInsets.only(
-          top: MediaQuery.of(context).padding.top + 8,
-          left: 8,
-          right: 8,
-          bottom: 8,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _buildNavButton(
-              Icons.arrow_back_ios_new,
-              () => Navigator.pop(context),
-            ),
-            Row(
-              children: [
-                _buildNavButton(Icons.share, () {}),
-                const SizedBox(width: 8),
-                _buildNavButton(
-                  _isFavorite ? Icons.favorite : Icons.favorite_border,
-                  () {
-                    setState(() => _isFavorite = !_isFavorite);
-                  },
-                  isActive: _isFavorite,
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNavButton(IconData icon, VoidCallback onTap,
-      {bool isActive = false}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.4),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.1),
-          ),
-        ),
-        child: Icon(
-          icon,
-          color: isActive ? const Color(0xFFE53935) : Colors.white,
-          size: 22,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBottomBookButton(RentalCar car) {
+  Widget _buildBottomBookButton(RentalCar car, ThemeData theme) {
     return Positioned(
       bottom: 0,
       left: 0,
@@ -1116,7 +1105,7 @@ class _CarDetailScreenState extends State<CarDetailScreen>
           bottom: MediaQuery.of(context).padding.bottom + 20,
         ),
         decoration: BoxDecoration(
-          color: _cardColor,
+          color: theme.cardColor,
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.1),
@@ -1136,10 +1125,10 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                   if (car.discountPercentage != null &&
                       car.discountPercentage! > 0)
                     Text(
-                      '₺${car.dailyPrice.toInt()}',
+                      '\u20BA${car.dailyPrice.toInt()}',
                       style: TextStyle(
                         fontSize: 14,
-                        color: _textSecondary,
+                        color: theme.colorScheme.onSurfaceVariant,
                         decoration: TextDecoration.lineThrough,
                       ),
                     ),
@@ -1147,21 +1136,21 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        '₺${car.discountedDailyPrice.toInt()}',
-                        style: const TextStyle(
+                        '\u20BA${car.discountedDailyPrice.toInt()}',
+                        style: TextStyle(
                           fontSize: 28,
                           fontWeight: FontWeight.bold,
-                          color: _primaryBlue,
+                          color: theme.colorScheme.primary,
                         ),
                       ),
                       const SizedBox(width: 4),
                       Padding(
                         padding: const EdgeInsets.only(bottom: 4),
                         child: Text(
-                          '/gün',
+                          '/g\u00FCn',
                           style: TextStyle(
                             fontSize: 14,
-                            color: _textSecondary,
+                            color: theme.colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ),
@@ -1172,40 +1161,34 @@ class _CarDetailScreenState extends State<CarDetailScreen>
             ),
 
             // Book Button
-            GestureDetector(
-              onTap: () => _navigateToBooking(car),
-              child: Container(
+            ElevatedButton(
+              onPressed: () => _navigateToBooking(car),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: theme.colorScheme.primary,
+                foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 32,
                   vertical: 16,
                 ),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF1976D2), Color(0xFF42A5F5)],
-                  ),
+                shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: _primaryBlue.withValues(alpha: 0.4),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
                 ),
-                child: const Row(
-                  children: [
-                    Text(
-                      'Şimdi Kirala',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
+                elevation: 4,
+                shadowColor: theme.colorScheme.primary.withValues(alpha: 0.4),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '\u015Eimdi Kirala',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
                     ),
-                    SizedBox(width: 8),
-                    Icon(Icons.arrow_forward, color: Colors.white, size: 20),
-                  ],
-                ),
+                  ),
+                  SizedBox(width: 8),
+                  Icon(Icons.arrow_forward, size: 20),
+                ],
               ),
             ),
           ],
@@ -1260,7 +1243,7 @@ class _CarDetailScreenState extends State<CarDetailScreen>
       case CarCategory.suv:
         return const Color(0xFF2196F3);
       default:
-        return _textSecondary;
+        return AppColors.textSecondaryLight;
     }
   }
 

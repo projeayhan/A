@@ -53,14 +53,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
         // OAuth ile giriş yapıldıysa rol kontrolü yap
         if (authState.event == AuthChangeEvent.signedIn) {
           final roleCheck = await _checkUserRole(user.id);
-          final role = roleCheck['role'] as String?;
+          final roles = List<String>.from(roleCheck['roles'] ?? []);
 
-          // Eğer başka bir rol varsa, giriş yapmasına izin verme
-          if (role != null && role != 'none' && role != 'customer' && role != 'admin') {
+          // Kullanıcının rolleri var ama customer veya admin değilse engelle
+          if (roles.isNotEmpty && !roles.contains('customer') && !roles.contains('admin')) {
             await SupabaseService.signOut();
             state = AuthState(
               status: AuthStatus.error,
-              errorMessage: roleCheck['message'] as String? ?? 'Bu hesapla müşteri uygulamasına giriş yapamazsınız.',
+              errorMessage: 'Bu hesapla müşteri uygulamasına giriş yapamazsınız.',
             );
             return;
           }
@@ -183,16 +183,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
 
       if (response.user != null) {
-        // Kullanıcının rolünü kontrol et
+        // Kullanıcının rollerini kontrol et
         final roleCheck = await _checkUserRole(response.user!.id);
-        final role = roleCheck['role'] as String?;
+        final roles = List<String>.from(roleCheck['roles'] ?? []);
 
-        // Eğer başka bir rol varsa (müşteri veya yeni kullanıcı değilse), giriş yapmasına izin verme
-        if (role != null && role != 'none' && role != 'customer' && role != 'admin') {
+        // Kullanıcının rolleri var ama customer veya admin değilse engelle
+        if (roles.isNotEmpty && !roles.contains('customer') && !roles.contains('admin')) {
           await SupabaseService.signOut();
           state = AuthState(
             status: AuthStatus.error,
-            errorMessage: roleCheck['message'] as String? ?? 'Bu hesapla müşteri uygulamasına giriş yapamazsınız.',
+            errorMessage: 'Bu hesapla müşteri uygulamasına giriş yapamazsınız.',
           );
           return false;
         }

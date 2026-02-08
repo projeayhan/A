@@ -68,15 +68,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       );
 
       if (response.user != null) {
-        // Kullanıcının rolünü kontrol et
+        // Kullanıcının rollerini kontrol et
         final roleCheck = await _checkUserRole(supabase, response.user!.id);
-        final role = roleCheck['role'] as String?;
+        final roles = List<String>.from(roleCheck['roles'] ?? []);
 
-        // Eğer başka bir rol varsa, giriş yapmasına izin verme
-        if (role != null && role != 'none' && role != 'merchant' && role != 'admin') {
+        // Kullanıcının rolleri var ama merchant veya admin değilse engelle
+        if (roles.isNotEmpty && !roles.contains('merchant') && !roles.contains('admin')) {
           await supabase.auth.signOut();
           setState(() {
-            _errorMessage = roleCheck['message'] as String? ?? 'Bu hesapla işletme paneline giriş yapamazsınız.';
+            _errorMessage = 'Bu hesapla işletme paneline giriş yapamazsınız.';
             _isLoading = false;
           });
           return;

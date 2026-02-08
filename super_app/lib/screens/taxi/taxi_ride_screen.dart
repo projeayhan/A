@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../models/taxi/taxi_models.dart';
 import '../../core/services/taxi_service.dart';
 import '../../core/services/communication_service.dart';
@@ -64,6 +64,8 @@ class _TaxiRideScreenState extends ConsumerState<TaxiRideScreen>
 
   // Kamera takip modu
   bool _followDriver = true;
+  bool _isProgrammaticCameraMove = false;
+  int _routeRefreshCounter = 0;
 
   @override
   void initState() {
@@ -264,6 +266,68 @@ class _TaxiRideScreenState extends ConsumerState<TaxiRideScreen>
     }
   }
 
+  Future<void> _loadRouteFromDriver() async {
+    if (_driverLat == null || _driverLng == null) return;
+    try {
+      final destLat = _ride.status == RideStatus.inProgress
+          ? _ride.dropoff.latitude
+          : _ride.pickup.latitude;
+      final destLng = _ride.status == RideStatus.inProgress
+          ? _ride.dropoff.longitude
+          : _ride.pickup.longitude;
+
+      final result = await GooglePlacesService.getDirections(
+        originLat: _driverLat!,
+        originLng: _driverLng!,
+        destLat: destLat,
+        destLng: destLng,
+      );
+      if (result != null && mounted) {
+        setState(() {
+          _routePoints = result.routePoints
+              .map((p) => gmaps.LatLng(p.latitude, p.longitude))
+              .toList();
+          _estimatedArrivalMinutes = result.durationMinutes;
+        });
+        _taxiTracker?.setRoutePoints(_routePoints);
+      }
+    } catch (e) {
+      debugPrint('Error refreshing route from driver: $e');
+    }
+  }
+
+  Future<void> _shareLocation() async {
+    try {
+      final link = await CommunicationService.createShareLink(rideId: _ride.id);
+      if (link != null && mounted) {
+        await SharePlus.instance.share(
+          ShareParams(text: 'Yolculugumu canli takip et: ${link.shareUrl}'),
+        );
+      } else if (mounted) {
+        await AppDialogs.showError(context, 'Paylaşım linki oluşturulamadı');
+      }
+    } catch (e) {
+      debugPrint('Share location error: $e');
+      if (mounted) {
+        await AppDialogs.showError(context, 'Hata: $e');
+      }
+    }
+  }
+
+  Future<void> _sendSos() async {
+    await CommunicationService.sendSosToEmergencyContacts(
+      context: context,
+      rideId: _ride.id,
+      driverName: _ride.driver?.fullName,
+      vehicleInfo: _ride.driver != null
+          ? '${_ride.driver!.vehicleBrand ?? ''} ${_ride.driver!.vehicleModel ?? ''}'.trim()
+          : null,
+      vehiclePlate: _ride.driver?.vehiclePlate,
+      latitude: _ride.pickup.latitude,
+      longitude: _ride.pickup.longitude,
+    );
+  }
+
   @override
   void dispose() {
     _slideController.dispose();
@@ -364,6 +428,13 @@ class _TaxiRideScreenState extends ConsumerState<TaxiRideScreen>
             _driverLng = lng;
           });
 
+          // Periyodik rota yenileme (~30sn)
+          _routeRefreshCounter++;
+          if (_routeRefreshCounter >= 10) {
+            _routeRefreshCounter = 0;
+            _loadRouteFromDriver();
+          }
+
           _updateMapCamera();
           _updateTaxiMarkerRotation();
         },
@@ -382,7 +453,9 @@ class _TaxiRideScreenState extends ConsumerState<TaxiRideScreen>
   }
 
   void _updateMapCamera() {
-    if (_mapController == null) return;
+    if (_mapController == null || !_followDriver) return;
+
+    _isProgrammaticCameraMove = true;
 
     // Premium Smart Camera Logic
     if (_driverLat != null && _driverLng != null) {
@@ -409,6 +482,10 @@ class _TaxiRideScreenState extends ConsumerState<TaxiRideScreen>
         ),
       );
     }
+
+    Future.delayed(const Duration(milliseconds: 500), () {
+      _isProgrammaticCameraMove = false;
+    });
   }
 
   void _onRideCompleted() {
@@ -549,7 +626,7 @@ class _TaxiRideScreenState extends ConsumerState<TaxiRideScreen>
               mapToolbarEnabled: false,
               onCameraMove: (_) {
                 // Kullanıcı haritayı hareket ettirdiğinde takibi kapat
-                if (_followDriver) {
+                if (!_isProgrammaticCameraMove && _followDriver) {
                   setState(() => _followDriver = false);
                 }
               },
@@ -1029,8 +1106,8 @@ class _TaxiRideScreenState extends ConsumerState<TaxiRideScreen>
               const SizedBox(width: 12),
               Expanded(
                 child: _buildContactButtonLarge(
-                  icon: Icons.navigation_rounded,
-                  label: 'Navigasyon',
+                  icon: Icons.my_location_rounded,
+                  label: 'Takip Et',
                   color: Colors.orange,
                   onTap: _openNavigation,
                   theme: theme,
@@ -1106,21 +1183,10 @@ class _TaxiRideScreenState extends ConsumerState<TaxiRideScreen>
     );
   }
 
-  Future<void> _openNavigation() async {
-    final targetLat = _ride.status == RideStatus.inProgress
-        ? _ride.dropoff.latitude
-        : _ride.pickup.latitude;
-    final targetLng = _ride.status == RideStatus.inProgress
-        ? _ride.dropoff.longitude
-        : _ride.pickup.longitude;
-
-    final googleMapsUrl = Uri.parse(
-      'https://www.google.com/maps/dir/?api=1&destination=$targetLat,$targetLng&travelmode=driving',
-    );
-
-    if (await canLaunchUrl(googleMapsUrl)) {
-      await launchUrl(googleMapsUrl, mode: LaunchMode.externalApplication);
-    }
+  void _openNavigation() {
+    // Haritada takip modunu aç ve kamerayı sürücüye odakla
+    setState(() => _followDriver = true);
+    _updateMapCamera();
   }
 
   Widget _buildRideDetails(ThemeData theme, ColorScheme colorScheme) {
@@ -1276,17 +1342,29 @@ class _TaxiRideScreenState extends ConsumerState<TaxiRideScreen>
           // Share location button
           Expanded(
             child: FilledButton.icon(
-              onPressed: () async {
-                // TODO: Share location
-                await AppDialogs.showInfo(context, 'Konum paylaşma özelliği yakında');
-              },
+              onPressed: _shareLocation,
               icon: const Icon(Icons.share_location_rounded),
               label: const Text('Konum Paylaş'),
               style: FilledButton.styleFrom(
+                backgroundColor: Colors.blue,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          // SOS button
+          FilledButton.icon(
+            onPressed: _sendSos,
+            icon: const Icon(Icons.sos_rounded),
+            label: const Text('SOS'),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red,
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
               ),
             ),
           ),

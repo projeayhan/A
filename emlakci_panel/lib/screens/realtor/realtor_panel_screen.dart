@@ -255,12 +255,13 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
               border: isSelected ? Border.all(color: const Color(0xFF3B82F6).withValues(alpha: 0.3)) : null,
             ),
             child: Row(
+              mainAxisSize: isCollapsed ? MainAxisSize.min : MainAxisSize.max,
               mainAxisAlignment: isCollapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
               children: [
                 Icon(
                   icon,
                   color: isSelected ? const Color(0xFF3B82F6) : Colors.white60,
-                  size: 22,
+                  size: 20,
                 ),
                 if (!isCollapsed) ...[
                   const SizedBox(width: 12),
@@ -317,8 +318,14 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
           const Spacer(),
 
           // Quick Actions
-          _buildTopBarButton(Icons.add_home_rounded, 'Yeni İlan', () => context.push('/add-property')),
-          const SizedBox(width: 8),
+          if (!isMobile)
+            _buildTopBarButton(Icons.add_home_rounded, 'Yeni İlan', () => context.push('/add-property'))
+          else
+            IconButton(
+              icon: const Icon(Icons.add_home_rounded, color: Color(0xFF3B82F6)),
+              onPressed: () => context.push('/add-property'),
+            ),
+          const SizedBox(width: 4),
 
           // Notifications
           Stack(
@@ -342,48 +349,57 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
             ],
           ),
 
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
 
           // Profile
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 16,
-                  backgroundColor: const Color(0xFF3B82F6),
-                  child: Text(
-                    (profile?['company_name'] as String? ?? 'E')[0].toUpperCase(),
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      profile?['company_name'] ?? 'Emlakçı',
-                      style: const TextStyle(
-                        color: Color(0xFF1E293B),
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                      ),
+          Flexible(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircleAvatar(
+                    radius: 16,
+                    backgroundColor: const Color(0xFF3B82F6),
+                    child: Text(
+                      (profile?['company_name'] as String? ?? 'E')[0].toUpperCase(),
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
                     ),
-                    Text(
-                      profile?['city'] ?? '',
-                      style: const TextStyle(
-                        color: Color(0xFF64748B),
-                        fontSize: 11,
+                  ),
+                  if (!isMobile) ...[
+                    const SizedBox(width: 8),
+                    Flexible(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            profile?['company_name'] ?? 'Emlakçı',
+                            style: const TextStyle(
+                              color: Color(0xFF1E293B),
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            profile?['city'] ?? '',
+                            style: const TextStyle(
+                              color: Color(0xFF64748B),
+                              fontSize: 11,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
                     ),
                   ],
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
@@ -406,6 +422,7 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
             borderRadius: BorderRadius.circular(8),
           ),
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Icon(icon, color: Colors.white, size: 18),
               const SizedBox(width: 8),

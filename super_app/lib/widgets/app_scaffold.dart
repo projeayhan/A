@@ -78,8 +78,9 @@ class AppScaffold extends ConsumerWidget {
           ],
         ),
         child: SafeArea(
+          top: false,
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: context.isMobile ? 8 : 16, vertical: 8),
+            padding: EdgeInsets.symmetric(horizontal: context.isMobile ? 8 : 16, vertical: 2),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
@@ -217,18 +218,18 @@ class AppScaffold extends ConsumerWidget {
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               icon,
-              size: context.isMobile ? 24 : 28,
+              size: context.isMobile ? 22 : 26,
               color: isSelected
                   ? AppColors.primary
                   : (isDark ? Colors.grey[500] : Colors.grey[400]),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             Text(
               label,
               style: TextStyle(

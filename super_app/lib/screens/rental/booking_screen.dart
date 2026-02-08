@@ -1,22 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/rental/rental_models.dart';
 import '../../services/rental_service.dart';
 import '../../core/services/rental_service.dart' as core_rental;
-
-// Booking screen theme colors - Light theme for better readability
-class _BookingColors {
-  static const Color primary = Color(0xFF256AF4);
-  static const Color primaryLight = Color(0xFF5B8DEF);
-  static const Color background = Color(0xFFF8F9FC);
-  static const Color cardBg = Colors.white;
-  static const Color textPrimary = Color(0xFF1A1A2E);
-  static const Color textSecondary = Color(0xFF6B7280);
-  static const Color border = Color(0xFFE5E7EB);
-  static const Color success = Color(0xFF10B981);
-  static const Color error = Color(0xFFEF4444);
-}
+import '../../core/theme/app_theme.dart';
 
 class BookingScreen extends StatefulWidget {
   final RentalCar car;
@@ -24,7 +11,7 @@ class BookingScreen extends StatefulWidget {
   final RentalLocation? initialDropoffLocation;
   final DateTime? initialPickupDate;
   final DateTime? initialDropoffDate;
-  // Özel adres bilgileri (rental_home_screen'den gelen)
+  // Ozel adres bilgileri (rental_home_screen'den gelen)
   final bool initialIsPickupCustomAddress;
   final bool initialIsDropoffCustomAddress;
   final String? initialPickupCustomAddress;
@@ -64,11 +51,14 @@ class _BookingScreenState extends State<BookingScreen>
   DateTime? _dropoffDate;
   TimeOfDay? _pickupTime;
   TimeOfDay? _dropoffTime;
-  RentalPackage _selectedPackage = RentalPackage.packages[1]; // Comfort default
+  List<RentalPackage> _packages = [];
+  List<AdditionalService> _availableServices = [];
+  RentalPackage? _selectedPackage;
   final Set<String> _selectedServices = {};
+  bool _isLoadingPackages = true;
   bool _sameDropoffLocation = true;
   bool _agreeTerms = false;
-  bool _isLoadingLocations = true;
+
 
   // Custom address delivery
   bool _isPickupCustomAddress = false;
@@ -84,10 +74,11 @@ class _BookingScreenState extends State<BookingScreen>
   void initState() {
     super.initState();
 
-    // Lokasyonları yükle
+    // Lokasyonlari ve paketleri yukle
     _loadLocations();
+    _loadPackagesAndServices();
 
-    // Tarih ve saat değerlerini ayarla
+    // Tarih ve saat degerlerini ayarla
     _pickupDate = widget.initialPickupDate ?? DateTime.now().add(const Duration(days: 1));
     _dropoffDate = widget.initialDropoffDate ?? DateTime.now().add(const Duration(days: 4));
     _pickupTime = const TimeOfDay(hour: 10, minute: 0);
@@ -115,14 +106,45 @@ class _BookingScreenState extends State<BookingScreen>
     _mainController.forward();
   }
 
+  Future<void> _loadPackagesAndServices() async {
+    try {
+      final rentalService = RentalService();
+      final companyId = widget.car.companyId;
+
+      final packagesData = await rentalService.getCompanyPackages(companyId);
+      final servicesData = await rentalService.getCompanyServices(companyId);
+
+      if (mounted) {
+        setState(() {
+          _packages = packagesData.map((p) => RentalPackage.fromJson(p)).toList();
+          _availableServices = servicesData.map((s) => AdditionalService.fromJson(s)).toList();
+          if (_packages.isNotEmpty) {
+            _selectedPackage = _packages.firstWhere(
+              (p) => p.tier == 'comfort',
+              orElse: () => _packages.first,
+            );
+          }
+          _isLoadingPackages = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading packages/services: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingPackages = false;
+        });
+      }
+    }
+  }
+
   Future<void> _loadLocations() async {
     try {
       final locations = await core_rental.RentalService.getLocations();
       if (mounted) {
         setState(() {
-          _locations = locations.isNotEmpty ? locations : RentalDemoData.locations;
+          _locations = locations;
 
-          // Ana ekrandan gelen özel adres bilgilerini kullan
+          // Ana ekrandan gelen ozel adres bilgilerini kullan
           _isPickupCustomAddress = widget.initialIsPickupCustomAddress;
           _isDropoffCustomAddress = widget.initialIsDropoffCustomAddress;
 
@@ -133,7 +155,7 @@ class _BookingScreenState extends State<BookingScreen>
             }
             _pickupLocation = null;
           } else {
-            _pickupLocation = widget.initialPickupLocation ?? _locations.first;
+            _pickupLocation = widget.initialPickupLocation ?? (_locations.isNotEmpty ? _locations.first : null);
           }
 
           if (widget.initialIsDropoffCustomAddress && widget.initialDropoffCustomAddress != null) {
@@ -143,25 +165,24 @@ class _BookingScreenState extends State<BookingScreen>
             }
             _dropoffLocation = null;
           } else {
-            _dropoffLocation = widget.initialDropoffLocation ?? _locations.first;
+            _dropoffLocation = widget.initialDropoffLocation ?? (_locations.isNotEmpty ? _locations.first : null);
           }
 
-          // Aynı lokasyon mu kontrol et (sadece her ikisi de özel adres değilse)
+          // Ayni lokasyon mu kontrol et (sadece her ikisi de ozel adres degilse)
           if (!_isPickupCustomAddress && !_isDropoffCustomAddress) {
             _sameDropoffLocation = _pickupLocation?.id == _dropoffLocation?.id;
           } else {
             _sameDropoffLocation = false;
           }
-          _isLoadingLocations = false;
         });
       }
     } catch (e) {
       debugPrint('Error loading locations: $e');
       if (mounted) {
         setState(() {
-          _locations = RentalDemoData.locations;
+          _locations = [];
 
-          // Hata durumunda da özel adres bilgilerini kullan
+          // Hata durumunda da ozel adres bilgilerini kullan
           _isPickupCustomAddress = widget.initialIsPickupCustomAddress;
           _isDropoffCustomAddress = widget.initialIsDropoffCustomAddress;
 
@@ -172,7 +193,7 @@ class _BookingScreenState extends State<BookingScreen>
             }
             _pickupLocation = null;
           } else {
-            _pickupLocation = widget.initialPickupLocation ?? _locations.first;
+            _pickupLocation = widget.initialPickupLocation;
           }
 
           if (widget.initialIsDropoffCustomAddress && widget.initialDropoffCustomAddress != null) {
@@ -182,7 +203,7 @@ class _BookingScreenState extends State<BookingScreen>
             }
             _dropoffLocation = null;
           } else {
-            _dropoffLocation = widget.initialDropoffLocation ?? _locations.first;
+            _dropoffLocation = widget.initialDropoffLocation;
           }
 
           if (!_isPickupCustomAddress && !_isDropoffCustomAddress) {
@@ -190,7 +211,6 @@ class _BookingScreenState extends State<BookingScreen>
           } else {
             _sameDropoffLocation = false;
           }
-          _isLoadingLocations = false;
         });
       }
     }
@@ -216,14 +236,16 @@ class _BookingScreenState extends State<BookingScreen>
   double get _carTotalPrice => _carDailyPrice * _rentalDays;
 
   double get _packagePrice =>
-      _carTotalPrice * (_selectedPackage.priceMultiplier - 1);
+      (_selectedPackage?.dailyPrice ?? 0) * _rentalDays;
 
   double get _servicesPrice {
     double total = 0;
     for (final serviceId in _selectedServices) {
-      final service =
-          AdditionalService.services.firstWhere((s) => s.id == serviceId);
-      total += service.dailyPrice * _rentalDays;
+      try {
+        final service =
+            _availableServices.firstWhere((s) => s.id == serviceId);
+        total += service.dailyPrice * _rentalDays;
+      } catch (_) {}
     }
     return total;
   }
@@ -232,105 +254,69 @@ class _BookingScreenState extends State<BookingScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: _BookingColors.background,
-      body: Stack(
-        children: [
-          // Background
-          _buildBackground(),
-
-          // Main Content
-          SafeArea(
-            child: Column(
-              children: [
-                // App Bar
-                _buildAppBar(),
-
-                // Progress Indicator
-                _buildProgressIndicator(),
-
-                // Content
-                Expanded(
-                  child: AnimatedBuilder(
-                    animation: _mainController,
-                    builder: (context, child) {
-                      return Transform.translate(
-                        offset: Offset(0, _slideAnimation.value),
-                        child: Opacity(
-                          opacity: _fadeAnimation.value,
-                          child: _buildCurrentStep(),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-
-                // Bottom Navigation
-                _buildBottomNavigation(),
-              ],
+      backgroundColor: AppColors.surfaceLight,
+      appBar: AppBar(
+        backgroundColor: AppColors.surfaceLight,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new),
+          onPressed: () {
+            if (_currentStep > 0) {
+              _previousStep();
+            } else {
+              Navigator.pop(context);
+            }
+          },
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Rezervasyon',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: colorScheme.onSurface,
+              ),
             ),
-          ),
-        ],
+            Text(
+              widget.car.fullName,
+              style: TextStyle(
+                fontSize: 14,
+                color: AppColors.textSecondaryLight,
+              ),
+            ),
+          ],
+        ),
       ),
-    );
-  }
-
-  Widget _buildBackground() {
-    return Container(
-      color: _BookingColors.background,
-    );
-  }
-
-  Widget _buildAppBar() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
+      body: Column(
         children: [
-          GestureDetector(
-            onTap: () {
-              if (_currentStep > 0) {
-                _previousStep();
-              } else {
-                Navigator.pop(context);
-              }
-            },
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: _BookingColors.cardBg,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _BookingColors.border),
-              ),
-              child: Icon(
-                Icons.arrow_back_ios_new,
-                color: _BookingColors.textPrimary,
-                size: 20,
-              ),
-            ),
-          ),
-          const SizedBox(width: 16),
+          // Progress Indicator
+          _buildProgressIndicator(),
+
+          // Content
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Rezervasyon',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: _BookingColors.textPrimary,
+            child: AnimatedBuilder(
+              animation: _mainController,
+              builder: (context, child) {
+                return Transform.translate(
+                  offset: Offset(0, _slideAnimation.value),
+                  child: Opacity(
+                    opacity: _fadeAnimation.value,
+                    child: _buildCurrentStep(),
                   ),
-                ),
-                Text(
-                  widget.car.fullName,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: _BookingColors.textSecondary,
-                  ),
-                ),
-              ],
+                );
+              },
             ),
           ),
+
+          // Bottom Navigation
+          _buildBottomNavigation(),
         ],
       ),
     );
@@ -358,19 +344,14 @@ class _BookingScreenState extends State<BookingScreen>
                         height: 32,
                         decoration: BoxDecoration(
                           gradient: isActive
-                              ? const LinearGradient(
-                                  colors: [
-                                    _BookingColors.primary,
-                                    _BookingColors.primaryLight
-                                  ],
-                                )
+                              ? AppColors.primaryGradient
                               : null,
-                          color: isActive ? null : _BookingColors.border,
+                          color: isActive ? null : AppColors.borderLight,
                           shape: BoxShape.circle,
                           boxShadow: isActive
                               ? [
                                   BoxShadow(
-                                    color: _BookingColors.primary
+                                    color: AppColors.primary
                                         .withValues(alpha: 0.3),
                                     blurRadius: 8,
                                   ),
@@ -386,7 +367,7 @@ class _BookingScreenState extends State<BookingScreen>
                                   style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.bold,
-                                    color: isActive ? Colors.white : _BookingColors.textSecondary,
+                                    color: isActive ? Colors.white : AppColors.textSecondaryLight,
                                   ),
                                 ),
                         ),
@@ -396,7 +377,7 @@ class _BookingScreenState extends State<BookingScreen>
                         steps[index],
                         style: TextStyle(
                           fontSize: 10,
-                          color: isActive ? _BookingColors.primary : _BookingColors.textSecondary,
+                          color: isActive ? AppColors.primary : AppColors.textSecondaryLight,
                           fontWeight:
                               isActive ? FontWeight.w600 : FontWeight.normal,
                         ),
@@ -412,13 +393,11 @@ class _BookingScreenState extends State<BookingScreen>
                       margin: const EdgeInsets.only(bottom: 24),
                       decoration: BoxDecoration(
                         gradient: index < _currentStep
-                            ? const LinearGradient(
-                                colors: [_BookingColors.primary, _BookingColors.primaryLight],
-                              )
+                            ? AppColors.primaryGradient
                             : null,
                         color: index < _currentStep
                             ? null
-                            : _BookingColors.border,
+                            : AppColors.borderLight,
                         borderRadius: BorderRadius.circular(1),
                       ),
                     ),
@@ -453,7 +432,7 @@ class _BookingScreenState extends State<BookingScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Pickup Location
-          _buildSectionTitle('Alış Noktası'),
+          _buildSectionTitle('Alis Noktasi'),
           const SizedBox(height: 12),
           _buildLocationSelector(
             value: _pickupLocation,
@@ -471,54 +450,53 @@ class _BookingScreenState extends State<BookingScreen>
           const SizedBox(height: 24),
 
           // Same Location Toggle
-          GestureDetector(
-            onTap: () {
-              setState(() {
-                _sameDropoffLocation = !_sameDropoffLocation;
-                if (_sameDropoffLocation) {
-                  _dropoffLocation = _pickupLocation;
-                }
-              });
-            },
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: _BookingColors.cardBg,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: _sameDropoffLocation ? _BookingColors.primary : _BookingColors.border,
-                ),
+          Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(
+                color: _sameDropoffLocation ? AppColors.primary : AppColors.borderLight,
               ),
-              child: Row(
-                children: [
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: 24,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      gradient: _sameDropoffLocation
-                          ? const LinearGradient(
-                              colors: [_BookingColors.primary, _BookingColors.primaryLight],
-                            )
-                          : null,
-                      color: _sameDropoffLocation
-                          ? null
-                          : _BookingColors.border,
-                      borderRadius: BorderRadius.circular(6),
+            ),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () {
+                setState(() {
+                  _sameDropoffLocation = !_sameDropoffLocation;
+                  if (_sameDropoffLocation) {
+                    _dropoffLocation = _pickupLocation;
+                  }
+                });
+              },
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Checkbox(
+                      value: _sameDropoffLocation,
+                      onChanged: (val) {
+                        setState(() {
+                          _sameDropoffLocation = val ?? false;
+                          if (_sameDropoffLocation) {
+                            _dropoffLocation = _pickupLocation;
+                          }
+                        });
+                      },
+                      activeColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
                     ),
-                    child: _sameDropoffLocation
-                        ? const Icon(Icons.check, color: Colors.white, size: 16)
-                        : null,
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Aynı noktaya teslim et',
-                    style: TextStyle(
-                      color: _BookingColors.textPrimary,
-                      fontSize: 14,
+                    const SizedBox(width: 8),
+                    Text(
+                      'Ayni noktaya teslim et',
+                      style: TextStyle(
+                        color: AppColors.textPrimaryLight,
+                        fontSize: 14,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -526,7 +504,7 @@ class _BookingScreenState extends State<BookingScreen>
           // Different Dropoff Location
           if (!_sameDropoffLocation) ...[
             const SizedBox(height: 24),
-            _buildSectionTitle('Teslim Noktası'),
+            _buildSectionTitle('Teslim Noktasi'),
             const SizedBox(height: 12),
             _buildLocationSelector(
               value: _dropoffLocation,
@@ -547,7 +525,7 @@ class _BookingScreenState extends State<BookingScreen>
             children: [
               Expanded(
                 child: _buildDateTimeCard(
-                  title: 'Alış',
+                  title: 'Alis',
                   date: _pickupDate,
                   time: _pickupTime,
                   onDateTap: () => _selectDate(true),
@@ -574,25 +552,25 @@ class _BookingScreenState extends State<BookingScreen>
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    _BookingColors.primary.withValues(alpha: 0.1),
-                    _BookingColors.primaryLight.withValues(alpha: 0.05),
+                    AppColors.primary.withValues(alpha: 0.1),
+                    const Color(0xFF5B8DEF).withValues(alpha: 0.05),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: _BookingColors.primary.withValues(alpha: 0.3),
+                  color: AppColors.primary.withValues(alpha: 0.3),
                 ),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Icon(Icons.calendar_today,
-                      color: _BookingColors.primary, size: 20),
+                      color: AppColors.primary, size: 20),
                   const SizedBox(width: 12),
                   Text(
-                    'Toplam $_rentalDays gün kiralama',
+                    'Toplam $_rentalDays gun kiralama',
                     style: const TextStyle(
-                      color: _BookingColors.primary,
+                      color: AppColors.primary,
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
@@ -612,7 +590,7 @@ class _BookingScreenState extends State<BookingScreen>
       style: TextStyle(
         fontSize: 16,
         fontWeight: FontWeight.bold,
-        color: _BookingColors.textPrimary,
+        color: AppColors.textPrimaryLight,
       ),
     );
   }
@@ -629,18 +607,17 @@ class _BookingScreenState extends State<BookingScreen>
     return Column(
       children: [
         // Standard locations
-        Container(
-          decoration: BoxDecoration(
-            color: _BookingColors.cardBg,
+        Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: _BookingColors.border,
-            ),
+            side: BorderSide(color: AppColors.borderLight),
           ),
+          clipBehavior: Clip.antiAlias,
           child: Column(
             children: _locations.map((location) {
               final isSelected = !isCustomAddress && value?.id == location.id;
-              return GestureDetector(
+              return InkWell(
                 onTap: () {
                   setState(() {
                     if (isPickup) {
@@ -655,12 +632,12 @@ class _BookingScreenState extends State<BookingScreen>
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: isSelected
-                        ? _BookingColors.primary.withValues(alpha: 0.1)
-                        : Colors.transparent,
+                        ? AppColors.primary.withValues(alpha: 0.1)
+                        : null,
                     border: Border(
                       bottom: BorderSide(
                         color: location != _locations.last
-                            ? _BookingColors.border
+                            ? AppColors.borderLight
                             : Colors.transparent,
                       ),
                     ),
@@ -691,7 +668,7 @@ class _BookingScreenState extends State<BookingScreen>
                             Text(
                               location.name,
                               style: TextStyle(
-                                color: _BookingColors.textPrimary,
+                                color: AppColors.textPrimaryLight,
                                 fontWeight: isSelected
                                     ? FontWeight.bold
                                     : FontWeight.normal,
@@ -702,7 +679,7 @@ class _BookingScreenState extends State<BookingScreen>
                               location.workingHours,
                               style: TextStyle(
                                 fontSize: 12,
-                                color: _BookingColors.textSecondary,
+                                color: AppColors.textSecondaryLight,
                               ),
                             ),
                           ],
@@ -712,9 +689,7 @@ class _BookingScreenState extends State<BookingScreen>
                         Container(
                           padding: const EdgeInsets.all(4),
                           decoration: const BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [_BookingColors.primary, _BookingColors.primaryLight],
-                            ),
+                            gradient: AppColors.primaryGradient,
                             shape: BoxShape.circle,
                           ),
                           child:
@@ -731,75 +706,76 @@ class _BookingScreenState extends State<BookingScreen>
         const SizedBox(height: 12),
 
         // Custom Address Option
-        GestureDetector(
-          onTap: () {
-            setState(() {
-              if (isPickup) {
-                _isPickupCustomAddress = !_isPickupCustomAddress;
-              } else {
-                _isDropoffCustomAddress = !_isDropoffCustomAddress;
-              }
-            });
-          },
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: _BookingColors.cardBg,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: isCustomAddress ? _BookingColors.primary : _BookingColors.border,
-                width: isCustomAddress ? 2 : 1,
-              ),
+        Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(
+              color: isCustomAddress ? AppColors.primary : AppColors.borderLight,
+              width: isCustomAddress ? 2 : 1,
             ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFF9800).withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
-                    Icons.home,
-                    color: Color(0xFFFF9800),
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Adrese Teslim',
-                        style: TextStyle(
-                          color: _BookingColors.textPrimary,
-                          fontWeight: isCustomAddress ? FontWeight.bold : FontWeight.normal,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Aracı istediğiniz adrese teslim edelim',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: _BookingColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                if (isCustomAddress)
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: () {
+              setState(() {
+                if (isPickup) {
+                  _isPickupCustomAddress = !_isPickupCustomAddress;
+                } else {
+                  _isDropoffCustomAddress = !_isDropoffCustomAddress;
+                }
+              });
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
                   Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [_BookingColors.primary, _BookingColors.primaryLight],
-                      ),
-                      shape: BoxShape.circle,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF9800).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.check, color: Colors.white, size: 16),
+                    child: const Icon(
+                      Icons.home,
+                      color: Color(0xFFFF9800),
+                      size: 20,
+                    ),
                   ),
-              ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Adrese Teslim',
+                          style: TextStyle(
+                            color: AppColors.textPrimaryLight,
+                            fontWeight: isCustomAddress ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Araci istediginiz adrese teslim edelim',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondaryLight,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (isCustomAddress)
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        gradient: AppColors.primaryGradient,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.check, color: Colors.white, size: 16),
+                    ),
+                ],
+              ),
             ),
           ),
         ),
@@ -807,82 +783,84 @@ class _BookingScreenState extends State<BookingScreen>
         // Custom Address Input Fields
         if (isCustomAddress) ...[
           const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: _BookingColors.cardBg,
+          Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: _BookingColors.border),
+              side: BorderSide(color: AppColors.borderLight),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                TextField(
-                  controller: addressController,
-                  decoration: InputDecoration(
-                    labelText: 'Adres *',
-                    hintText: 'Örn: Atatürk Cad. No:123, Kadıköy',
-                    prefixIcon: const Icon(Icons.location_on_outlined, color: _BookingColors.primary),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: _BookingColors.border),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: addressController,
+                    decoration: InputDecoration(
+                      labelText: 'Adres *',
+                      hintText: 'Orn: Ataturk Cad. No:123, Kadikoy',
+                      prefixIcon: const Icon(Icons.location_on_outlined, color: AppColors.primary),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppColors.borderLight),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppColors.borderLight),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                      ),
                     ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: _BookingColors.border),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: _BookingColors.primary, width: 2),
+                    maxLines: 2,
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: notesController,
+                    decoration: InputDecoration(
+                      labelText: 'Adres Tarifi (Opsiyonel)',
+                      hintText: 'Orn: Kapi kodu 1234, 3. kat',
+                      prefixIcon: const Icon(Icons.notes_outlined, color: AppColors.textSecondaryLight),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppColors.borderLight),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppColors.borderLight),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                      ),
                     ),
                   ),
-                  maxLines: 2,
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: notesController,
-                  decoration: InputDecoration(
-                    labelText: 'Adres Tarifi (Opsiyonel)',
-                    hintText: 'Örn: Kapı kodu 1234, 3. kat',
-                    prefixIcon: const Icon(Icons.notes_outlined, color: _BookingColors.textSecondary),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: _BookingColors.border),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF9800).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: _BookingColors.border),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: _BookingColors.primary, width: 2),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFF9800).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.info_outline, color: Color(0xFFFF9800), size: 18),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Adrese teslim için ek ücret uygulanabilir',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: _BookingColors.textSecondary,
+                    child: Row(
+                      children: [
+                        const Icon(Icons.info_outline, color: Color(0xFFFF9800), size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Adrese teslim icin ek ucret uygulanabilir',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textSecondaryLight,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ],
@@ -897,64 +875,72 @@ class _BookingScreenState extends State<BookingScreen>
     required VoidCallback onDateTap,
     required VoidCallback onTimeTap,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _BookingColors.cardBg,
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: _BookingColors.border,
-        ),
+        side: BorderSide(color: AppColors.borderLight),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: _BookingColors.primary,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                color: AppColors.primary,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          GestureDetector(
-            onTap: onDateTap,
-            child: Row(
-              children: [
-                Icon(Icons.calendar_today,
-                    color: _BookingColors.textSecondary, size: 18),
-                const SizedBox(width: 8),
-                Text(
-                  date != null
-                      ? '${date.day}/${date.month}/${date.year}'
-                      : 'Tarih seç',
-                  style: TextStyle(
-                    color: date != null ? _BookingColors.textPrimary : _BookingColors.textSecondary,
-                    fontSize: 14,
-                  ),
+            const SizedBox(height: 12),
+            InkWell(
+              onTap: onDateTap,
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    Icon(Icons.calendar_today,
+                        color: AppColors.textSecondaryLight, size: 18),
+                    const SizedBox(width: 8),
+                    Text(
+                      date != null
+                          ? '${date.day}/${date.month}/${date.year}'
+                          : 'Tarih sec',
+                      style: TextStyle(
+                        color: date != null ? AppColors.textPrimaryLight : AppColors.textSecondaryLight,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          GestureDetector(
-            onTap: onTimeTap,
-            child: Row(
-              children: [
-                Icon(Icons.access_time, color: _BookingColors.textSecondary, size: 18),
-                const SizedBox(width: 8),
-                Text(
-                  time != null ? time.format(context) : 'Saat seç',
-                  style: TextStyle(
-                    color: time != null ? _BookingColors.textPrimary : _BookingColors.textSecondary,
-                    fontSize: 14,
-                  ),
+            const SizedBox(height: 12),
+            InkWell(
+              onTap: onTimeTap,
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    Icon(Icons.access_time, color: AppColors.textSecondaryLight, size: 18),
+                    const SizedBox(width: 8),
+                    Text(
+                      time != null ? time.format(context) : 'Saat sec',
+                      style: TextStyle(
+                        color: time != null ? AppColors.textPrimaryLight : AppColors.textSecondaryLight,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -965,186 +951,189 @@ class _BookingScreenState extends State<BookingScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSectionTitle('Kiralama Paketi Seçin'),
+          _buildSectionTitle('Kiralama Paketi Secin'),
           const SizedBox(height: 8),
           Text(
-            'İhtiyacınıza uygun paketi seçin',
+            'Ihtiyaciniza uygun paketi secin',
             style: TextStyle(
-              color: _BookingColors.textSecondary,
+              color: AppColors.textSecondaryLight,
               fontSize: 14,
             ),
           ),
           const SizedBox(height: 24),
-          ...RentalPackage.packages.map((package) {
-            final isSelected = _selectedPackage.id == package.id;
-            return _buildPackageCard(package, isSelected);
-          }),
+          if (_isLoadingPackages)
+            const Center(child: CircularProgressIndicator())
+          else if (_packages.isEmpty)
+            const Center(child: Text('Paket bulunamadi'))
+          else
+            ..._packages.map((package) {
+              final isSelected = _selectedPackage?.id == package.id;
+              return _buildPackageCard(package, isSelected);
+            }),
         ],
       ),
     );
   }
 
   Widget _buildPackageCard(RentalPackage package, bool isSelected) {
-    final packagePrice = _carTotalPrice * (package.priceMultiplier - 1);
+    final packagePrice = package.dailyPrice * _rentalDays;
 
-    return GestureDetector(
-      onTap: () => setState(() => _selectedPackage = package),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        margin: const EdgeInsets.only(bottom: 16),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: _BookingColors.cardBg,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Card(
+        elevation: isSelected ? 2 : 0,
+        shadowColor: isSelected ? AppColors.primary.withValues(alpha: 0.3) : null,
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
+          side: BorderSide(
             color: isSelected
-                ? _BookingColors.primary
-                : _BookingColors.border,
+                ? AppColors.primary
+                : AppColors.borderLight,
             width: isSelected ? 2 : 1,
           ),
-          boxShadow: isSelected ? [
-            BoxShadow(
-              color: _BookingColors.primary.withValues(alpha: 0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ] : null,
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () => setState(() => _selectedPackage = package),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? _BookingColors.primary.withValues(alpha: 0.15)
-                        : _BookingColors.background,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    _getPackageIcon(package.iconName),
-                    color: isSelected ? _BookingColors.primary : _BookingColors.textSecondary,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppColors.primary.withValues(alpha: 0.15)
+                            : AppColors.surfaceLight,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        _getPackageIcon(package.iconName),
+                        color: isSelected ? AppColors.primary : AppColors.textSecondaryLight,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            package.name,
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: isSelected
-                                  ? _BookingColors.primary
-                                  : _BookingColors.textPrimary,
-                            ),
-                          ),
-                          if (package.isPopular) ...[
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF4CAF50),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Text(
-                                'Önerilen',
+                          Row(
+                            children: [
+                              Text(
+                                package.name,
                                 style: TextStyle(
-                                  fontSize: 10,
+                                  fontSize: 18,
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.white,
+                                  color: isSelected
+                                      ? AppColors.primary
+                                      : AppColors.textPrimaryLight,
                                 ),
                               ),
+                              if (package.isPopular) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.success,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Text(
+                                    'Onerilen',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            package.description,
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textSecondaryLight,
                             ),
-                          ],
+                          ),
                         ],
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        package.description,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: _BookingColors.textSecondary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    if (packagePrice > 0)
-                      Text(
-                        '+₺${packagePrice.toInt()}',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: isSelected
-                              ? _BookingColors.primary
-                              : _BookingColors.textPrimary,
-                        ),
-                      )
-                    else
-                      const Text(
-                        'Dahil',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF4CAF50),
-                        ),
-                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        if (packagePrice > 0)
+                          Text(
+                            '+\u20BA${packagePrice.toInt()}',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: isSelected
+                                  ? AppColors.primary
+                                  : AppColors.textPrimaryLight,
+                            ),
+                          )
+                        else
+                          Text(
+                            'Dahil',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.success,
+                            ),
+                          ),
+                      ],
+                    ),
                   ],
+                ),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: package.includedServices.map((service) {
+                    return Container(
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? AppColors.primary.withValues(alpha: 0.1)
+                            : AppColors.surfaceLight,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.check_circle,
+                            color: isSelected
+                                ? AppColors.primary
+                                : AppColors.success,
+                            size: 14,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            service,
+                            style: TextStyle(
+                              color: AppColors.textSecondaryLight,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: package.includedServices.map((service) {
-                return Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? _BookingColors.primary.withValues(alpha: 0.1)
-                        : _BookingColors.background,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.check_circle,
-                        color: isSelected
-                            ? _BookingColors.primary
-                            : const Color(0xFF4CAF50),
-                        size: 14,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        service,
-                        style: TextStyle(
-                          color: _BookingColors.textSecondary,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -1159,17 +1148,22 @@ class _BookingScreenState extends State<BookingScreen>
           _buildSectionTitle('Ek Hizmetler'),
           const SizedBox(height: 8),
           Text(
-            'İhtiyacınıza göre ekstra hizmetler ekleyin',
+            'Ihtiyaciniza gore ekstra hizmetler ekleyin',
             style: TextStyle(
-              color: _BookingColors.textSecondary,
+              color: AppColors.textSecondaryLight,
               fontSize: 14,
             ),
           ),
           const SizedBox(height: 24),
-          ...AdditionalService.services.map((service) {
-            final isSelected = _selectedServices.contains(service.id);
-            return _buildServiceCard(service, isSelected);
-          }),
+          if (_isLoadingPackages)
+            const Center(child: CircularProgressIndicator())
+          else if (_availableServices.isEmpty)
+            const Center(child: Text('Ek hizmet bulunamadi'))
+          else
+            ..._availableServices.map((service) {
+              final isSelected = _selectedServices.contains(service.id);
+              return _buildServiceCard(service, isSelected);
+            }),
         ],
       ),
     );
@@ -1178,115 +1172,112 @@ class _BookingScreenState extends State<BookingScreen>
   Widget _buildServiceCard(AdditionalService service, bool isSelected) {
     final totalPrice = service.dailyPrice * _rentalDays;
 
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          if (isSelected) {
-            _selectedServices.remove(service.id);
-          } else {
-            _selectedServices.add(service.id);
-          }
-        });
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: _BookingColors.cardBg,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Card(
+        elevation: isSelected ? 2 : 0,
+        shadowColor: isSelected ? AppColors.primary.withValues(alpha: 0.3) : null,
+        shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
+          side: BorderSide(
             color: isSelected
-                ? _BookingColors.primary
-                : _BookingColors.border,
+                ? AppColors.primary
+                : AppColors.borderLight,
           ),
-          boxShadow: isSelected ? [
-            BoxShadow(
-              color: _BookingColors.primary.withValues(alpha: 0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ] : null,
         ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? _BookingColors.primary.withValues(alpha: 0.15)
-                    : _BookingColors.background,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                _getServiceIcon(service.iconName),
-                color: isSelected ? _BookingColors.primary : _BookingColors.textSecondary,
-                size: 22,
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    service.name,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: isSelected ? _BookingColors.primary : _BookingColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    service.description,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: _BookingColors.textSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () {
+            setState(() {
+              if (isSelected) {
+                _selectedServices.remove(service.id);
+              } else {
+                _selectedServices.add(service.id);
+              }
+            });
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
               children: [
-                Text(
-                  '₺${totalPrice.toInt()}',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: isSelected ? _BookingColors.primary : _BookingColors.textPrimary,
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? AppColors.primary.withValues(alpha: 0.15)
+                        : AppColors.surfaceLight,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    _getServiceIcon(service.iconName),
+                    color: isSelected ? AppColors.primary : AppColors.textSecondaryLight,
+                    size: 22,
                   ),
                 ),
-                Text(
-                  '₺${service.dailyPrice.toInt()}/gün',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: _BookingColors.textSecondary,
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        service.name,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: isSelected ? AppColors.primary : AppColors.textPrimaryLight,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        service.description,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondaryLight,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '\u20BA${totalPrice.toInt()}',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: isSelected ? AppColors.primary : AppColors.textPrimaryLight,
+                      ),
+                    ),
+                    Text(
+                      '\u20BA${service.dailyPrice.toInt()}/gun',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondaryLight,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 12),
+                Checkbox(
+                  value: isSelected,
+                  onChanged: (val) {
+                    setState(() {
+                      if (val == true) {
+                        _selectedServices.add(service.id);
+                      } else {
+                        _selectedServices.remove(service.id);
+                      }
+                    });
+                  },
+                  activeColor: AppColors.primary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(4),
                   ),
                 ),
               ],
             ),
-            const SizedBox(width: 12),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                gradient: isSelected
-                    ? const LinearGradient(
-                        colors: [_BookingColors.primary, _BookingColors.primaryLight],
-                      )
-                    : null,
-                color: isSelected ? null : _BookingColors.border,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: isSelected
-                  ? const Icon(Icons.check, color: Colors.white, size: 16)
-                  : null,
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -1299,250 +1290,245 @@ class _BookingScreenState extends State<BookingScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Car Summary
-          _buildSectionTitle('Araç Bilgileri'),
+          _buildSectionTitle('Arac Bilgileri'),
           const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: _BookingColors.cardBg,
+          Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: _BookingColors.border,
-              ),
+              side: BorderSide(color: AppColors.borderLight),
             ),
-            child: Row(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.network(
-                    widget.car.thumbnailUrl,
-                    width: 80,
-                    height: 60,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        width: 80,
-                        height: 60,
-                        color: _BookingColors.background,
-                        child: Icon(Icons.directions_car,
-                            color: _BookingColors.textSecondary),
-                      );
-                    },
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.network(
+                      widget.car.thumbnailUrl,
+                      width: 80,
+                      height: 60,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          width: 80,
+                          height: 60,
+                          color: AppColors.surfaceLight,
+                          child: Icon(Icons.directions_car,
+                              color: AppColors.textSecondaryLight),
+                        );
+                      },
+                    ),
                   ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        widget.car.fullName,
-                        style: TextStyle(
-                          color: _BookingColors.textPrimary,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.car.fullName,
+                          style: TextStyle(
+                            color: AppColors.textPrimaryLight,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
                         ),
-                      ),
-                      Text(
-                        '${widget.car.transmissionName} • ${widget.car.fuelTypeName}',
-                        style: TextStyle(
-                          color: _BookingColors.textSecondary,
-                          fontSize: 12,
+                        Text(
+                          '${widget.car.transmissionName} \u2022 ${widget.car.fuelTypeName}',
+                          style: TextStyle(
+                            color: AppColors.textSecondaryLight,
+                            fontSize: 12,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
 
           const SizedBox(height: 24),
 
           // Booking Details
-          _buildSectionTitle('Rezervasyon Detayları'),
+          _buildSectionTitle('Rezervasyon Detaylari'),
           const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: _BookingColors.cardBg,
+          Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: _BookingColors.border,
-              ),
+              side: BorderSide(color: AppColors.borderLight),
             ),
-            child: Column(
-              children: [
-                _buildDetailRow(
-                  'Alış',
-                  _isPickupCustomAddress
-                      ? 'Adrese Teslim'
-                      : (_pickupLocation?.name ?? '-'),
-                  _isPickupCustomAddress ? Icons.home : Icons.location_on,
-                ),
-                if (_isPickupCustomAddress && _pickupCustomAddressController.text.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 30),
-                    child: Text(
-                      _pickupCustomAddressController.text,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: _BookingColors.textSecondary,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  _buildDetailRow(
+                    'Alis',
+                    _isPickupCustomAddress
+                        ? 'Adrese Teslim'
+                        : (_pickupLocation?.name ?? '-'),
+                    _isPickupCustomAddress ? Icons.home : Icons.location_on,
+                  ),
+                  if (_isPickupCustomAddress && _pickupCustomAddressController.text.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 30),
+                      child: Text(
+                        _pickupCustomAddressController.text,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondaryLight,
+                        ),
                       ),
                     ),
+                  ],
+                  const SizedBox(height: 12),
+                  _buildDetailRow(
+                    'Teslim',
+                    _isDropoffCustomAddress
+                        ? 'Adrese Teslim'
+                        : (_dropoffLocation?.name ?? '-'),
+                    _isDropoffCustomAddress ? Icons.home : Icons.flag,
                   ),
-                ],
-                const SizedBox(height: 12),
-                _buildDetailRow(
-                  'Teslim',
-                  _isDropoffCustomAddress
-                      ? 'Adrese Teslim'
-                      : (_dropoffLocation?.name ?? '-'),
-                  _isDropoffCustomAddress ? Icons.home : Icons.flag,
-                ),
-                if (_isDropoffCustomAddress && _dropoffCustomAddressController.text.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 30),
-                    child: Text(
-                      _dropoffCustomAddressController.text,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: _BookingColors.textSecondary,
+                  if (_isDropoffCustomAddress && _dropoffCustomAddressController.text.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 30),
+                      child: Text(
+                        _dropoffCustomAddressController.text,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondaryLight,
+                        ),
                       ),
                     ),
+                  ],
+                  const SizedBox(height: 12),
+                  _buildDetailRow(
+                    'Tarih',
+                    _pickupDate != null && _dropoffDate != null
+                        ? '${_pickupDate!.day}/${_pickupDate!.month} - ${_dropoffDate!.day}/${_dropoffDate!.month}'
+                        : '-',
+                    Icons.calendar_today,
                   ),
+                  const SizedBox(height: 12),
+                  _buildDetailRow('Sure', '$_rentalDays gun', Icons.access_time),
                 ],
-                const SizedBox(height: 12),
-                _buildDetailRow(
-                  'Tarih',
-                  _pickupDate != null && _dropoffDate != null
-                      ? '${_pickupDate!.day}/${_pickupDate!.month} - ${_dropoffDate!.day}/${_dropoffDate!.month}'
-                      : '-',
-                  Icons.calendar_today,
-                ),
-                const SizedBox(height: 12),
-                _buildDetailRow('Süre', '$_rentalDays gün', Icons.access_time),
-              ],
+              ),
             ),
           ),
 
           const SizedBox(height: 24),
 
           // Price Breakdown
-          _buildSectionTitle('Fiyat Detayı'),
+          _buildSectionTitle('Fiyat Detayi'),
           const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: _BookingColors.cardBg,
+          Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: _BookingColors.border,
-              ),
+              side: BorderSide(color: AppColors.borderLight),
             ),
-            child: Column(
-              children: [
-                _buildPriceRow(
-                    'Araç kirası ($_rentalDays gün)', _carTotalPrice),
-                if (_packagePrice > 0) ...[
-                  const SizedBox(height: 8),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
                   _buildPriceRow(
-                      '${_selectedPackage.name} paket', _packagePrice),
-                ],
-                if (_servicesPrice > 0) ...[
-                  const SizedBox(height: 8),
-                  _buildPriceRow('Ek hizmetler', _servicesPrice),
-                ],
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  child: Divider(color: _BookingColors.border),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Toplam',
-                      style: TextStyle(
-                        color: _BookingColors.textPrimary,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      '₺${_totalPrice.toInt()}',
-                      style: const TextStyle(
-                        color: _BookingColors.primary,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                      'Arac kirasi ($_rentalDays gun)', _carTotalPrice),
+                  if (_packagePrice > 0) ...[
+                    const SizedBox(height: 8),
+                    _buildPriceRow(
+                        '${_selectedPackage?.name ?? ''} paket', _packagePrice),
                   ],
-                ),
-              ],
+                  if (_servicesPrice > 0) ...[
+                    const SizedBox(height: 8),
+                    _buildPriceRow('Ek hizmetler', _servicesPrice),
+                  ],
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Divider(color: AppColors.borderLight),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Toplam',
+                        style: TextStyle(
+                          color: AppColors.textPrimaryLight,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '\u20BA${_totalPrice.toInt()}',
+                        style: const TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
 
           const SizedBox(height: 24),
 
           // Terms Agreement
-          GestureDetector(
-            onTap: () => setState(() => _agreeTerms = !_agreeTerms),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: _BookingColors.cardBg,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: _agreeTerms
-                      ? _BookingColors.primary
-                      : _BookingColors.border,
-                ),
+          Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(
+                color: _agreeTerms
+                    ? AppColors.primary
+                    : AppColors.borderLight,
               ),
-              child: Row(
-                children: [
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: 24,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      gradient: _agreeTerms
-                          ? const LinearGradient(
-                              colors: [_BookingColors.primary, _BookingColors.primaryLight],
-                            )
-                          : null,
-                      color:
-                          _agreeTerms ? null : _BookingColors.border,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: _agreeTerms
-                        ? const Icon(Icons.check, color: Colors.white, size: 16)
-                        : null,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: RichText(
-                      text: TextSpan(
-                        style: TextStyle(
-                          color: _BookingColors.textSecondary,
-                          fontSize: 13,
-                        ),
-                        children: const [
-                          TextSpan(text: 'Kiralama '),
-                          TextSpan(
-                            text: 'şartlar ve koşullarını',
-                            style: TextStyle(
-                              color: _BookingColors.primary,
-                              decoration: TextDecoration.underline,
-                            ),
-                          ),
-                          TextSpan(text: ' okudum ve kabul ediyorum.'),
-                        ],
+            ),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => setState(() => _agreeTerms = !_agreeTerms),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Checkbox(
+                      value: _agreeTerms,
+                      onChanged: (val) {
+                        setState(() => _agreeTerms = val ?? false);
+                      },
+                      activeColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: RichText(
+                        text: TextSpan(
+                          style: TextStyle(
+                            color: AppColors.textSecondaryLight,
+                            fontSize: 13,
+                          ),
+                          children: const [
+                            TextSpan(text: 'Kiralama '),
+                            TextSpan(
+                              text: 'sartlar ve kosullari',
+                              style: TextStyle(
+                                color: AppColors.primary,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                            TextSpan(text: ' okudum ve kabul ediyorum.'),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -1554,12 +1540,12 @@ class _BookingScreenState extends State<BookingScreen>
   Widget _buildDetailRow(String label, String value, IconData icon) {
     return Row(
       children: [
-        Icon(icon, color: _BookingColors.primary, size: 18),
+        Icon(icon, color: AppColors.primary, size: 18),
         const SizedBox(width: 12),
         Text(
           label,
           style: TextStyle(
-            color: _BookingColors.textSecondary,
+            color: AppColors.textSecondaryLight,
             fontSize: 14,
           ),
         ),
@@ -1567,7 +1553,7 @@ class _BookingScreenState extends State<BookingScreen>
         Text(
           value,
           style: TextStyle(
-            color: _BookingColors.textPrimary,
+            color: AppColors.textPrimaryLight,
             fontSize: 14,
             fontWeight: FontWeight.w600,
           ),
@@ -1583,14 +1569,14 @@ class _BookingScreenState extends State<BookingScreen>
         Text(
           label,
           style: TextStyle(
-            color: _BookingColors.textSecondary,
+            color: AppColors.textSecondaryLight,
             fontSize: 14,
           ),
         ),
         Text(
-          '₺${price.toInt()}',
+          '\u20BA${price.toInt()}',
           style: TextStyle(
-            color: _BookingColors.textPrimary,
+            color: AppColors.textPrimaryLight,
             fontSize: 14,
             fontWeight: FontWeight.w500,
           ),
@@ -1610,10 +1596,10 @@ class _BookingScreenState extends State<BookingScreen>
         bottom: MediaQuery.of(context).padding.bottom + 16,
       ),
       decoration: BoxDecoration(
-        color: _BookingColors.cardBg,
+        color: AppColors.backgroundLight,
         border: Border(
           top: BorderSide(
-            color: _BookingColors.border,
+            color: AppColors.borderLight,
           ),
         ),
         boxShadow: [
@@ -1635,14 +1621,14 @@ class _BookingScreenState extends State<BookingScreen>
                 Text(
                   'Toplam',
                   style: TextStyle(
-                    color: _BookingColors.textSecondary,
+                    color: AppColors.textSecondaryLight,
                     fontSize: 12,
                   ),
                 ),
                 Text(
-                  '₺${_totalPrice.toInt()}',
+                  '\u20BA${_totalPrice.toInt()}',
                   style: const TextStyle(
-                    color: _BookingColors.primary,
+                    color: AppColors.primary,
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                   ),
@@ -1652,47 +1638,36 @@ class _BookingScreenState extends State<BookingScreen>
           ),
 
           // Next Button
-          GestureDetector(
-            onTap: canProceed ? _nextStep : null,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
+          ElevatedButton(
+            onPressed: canProceed ? _nextStep : null,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              disabledBackgroundColor: AppColors.borderLight,
+              disabledForegroundColor: AppColors.textSecondaryLight,
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-              decoration: BoxDecoration(
-                gradient: canProceed
-                    ? const LinearGradient(
-                        colors: [_BookingColors.primary, _BookingColors.primaryLight],
-                      )
-                    : null,
-                color: canProceed ? null : _BookingColors.border,
+              shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: canProceed
-                    ? [
-                        BoxShadow(
-                          color: _BookingColors.primary.withValues(alpha: 0.3),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ]
-                    : null,
               ),
-              child: Row(
-                children: [
-                  Text(
-                    _currentStep == 3 ? 'Onayla' : 'Devam',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: canProceed ? Colors.white : _BookingColors.textSecondary,
-                    ),
+              elevation: canProceed ? 4 : 0,
+              shadowColor: AppColors.primary.withValues(alpha: 0.3),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _currentStep == 3 ? 'Onayla' : 'Devam',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
                   ),
-                  const SizedBox(width: 8),
-                  Icon(
-                    _currentStep == 3 ? Icons.check : Icons.arrow_forward,
-                    color: canProceed ? Colors.white : _BookingColors.textSecondary,
-                    size: 20,
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  _currentStep == 3 ? Icons.check : Icons.arrow_forward,
+                  size: 20,
+                ),
+              ],
             ),
           ),
         ],
@@ -1703,14 +1678,14 @@ class _BookingScreenState extends State<BookingScreen>
   bool _canProceedToNextStep() {
     switch (_currentStep) {
       case 0:
-        // Alış noktası kontrolü: ya lokasyon seçili ya da özel adres girilmiş olmalı
+        // Alis noktasi kontrolu: ya lokasyon secili ya da ozel adres girilmis olmali
         final pickupValid = _isPickupCustomAddress
             ? _pickupCustomAddressController.text.trim().isNotEmpty
             : _pickupLocation != null;
 
-        // Teslim noktası kontrolü: ya lokasyon seçili ya da özel adres girilmiş olmalı
+        // Teslim noktasi kontrolu: ya lokasyon secili ya da ozel adres girilmis olmali
         final dropoffValid = _sameDropoffLocation
-            ? pickupValid  // Aynı nokta ise alış geçerliyse teslim de geçerli
+            ? pickupValid  // Ayni nokta ise alis gecerliyse teslim de gecerli
             : (_isDropoffCustomAddress
                 ? _dropoffCustomAddressController.text.trim().isNotEmpty
                 : _dropoffLocation != null);
@@ -1720,7 +1695,7 @@ class _BookingScreenState extends State<BookingScreen>
             _pickupDate != null &&
             _dropoffDate != null;
       case 1:
-        return true; // Package is always selected
+        return _selectedPackage != null || _packages.isEmpty;
       case 2:
         return true; // Services are optional
       case 3:
@@ -1754,7 +1729,7 @@ class _BookingScreenState extends State<BookingScreen>
     // Check if user is logged in
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) {
-      _showErrorDialog('Rezervasyon yapmak için giriş yapmalısınız.');
+      _showErrorDialog('Rezervasyon yapmak icin giris yapmalisiniz.');
       return;
     }
 
@@ -1766,7 +1741,7 @@ class _BookingScreenState extends State<BookingScreen>
 
       // Prepare selected services data
       final selectedServicesData = _selectedServices.map((serviceId) {
-        final service = AdditionalService.services.firstWhere((s) => s.id == serviceId);
+        final service = _availableServices.firstWhere((s) => s.id == serviceId);
         return {
           'id': service.id,
           'name': service.name,
@@ -1797,12 +1772,16 @@ class _BookingScreenState extends State<BookingScreen>
         ),
         dailyRate: _carDailyPrice,
         rentalDays: _rentalDays,
-        customerName: user.userMetadata?['full_name'] ?? user.email?.split('@').first ?? 'Müşteri',
+        customerName: user.userMetadata?['full_name'] ?? user.email?.split('@').first ?? 'Musteri',
         customerPhone: user.userMetadata?['phone'] ?? '',
         customerEmail: user.email ?? '',
         selectedServices: selectedServicesData,
         servicesTotal: _servicesPrice,
         depositAmount: widget.car.depositAmount,
+        packageId: _selectedPackage?.id,
+        packageTier: _selectedPackage?.tier,
+        packageName: _selectedPackage?.name,
+        packageDailyPrice: _selectedPackage?.dailyPrice ?? 0,
         // Custom address fields
         isPickupCustomAddress: _isPickupCustomAddress,
         pickupCustomAddress: _isPickupCustomAddress ? _pickupCustomAddressController.text.trim() : null,
@@ -1824,16 +1803,20 @@ class _BookingScreenState extends State<BookingScreen>
             totalPrice: _totalPrice,
             bookingNumber: booking['booking_number'] ?? '',
             onClose: () {
-              // Dialog'u kapat ve rental sayfasına git
+              // Dialog'u kapat
               Navigator.of(dialogContext, rootNavigator: true).pop();
-              if (context.mounted) {
-                context.go('/rental');
-              }
+              // BookingScreen ve CarDetailScreen Navigator.push ile acilmis,
+              // GoRouter degil. popUntil ile RentalHomeScreen'e don.
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (context.mounted) {
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                }
+              });
             },
           ),
         );
       } else {
-        _showErrorDialog('Rezervasyon oluşturulurken bir hata oluştu.');
+        _showErrorDialog('Rezervasyon olusturulurken bir hata olustu.');
       }
     } catch (e) {
       if (!mounted) return;
@@ -1849,16 +1832,16 @@ class _BookingScreenState extends State<BookingScreen>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: _BookingColors.cardBg,
+        backgroundColor: AppColors.backgroundLight,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
           children: [
-            const Icon(Icons.error_outline, color: Colors.red),
+            const Icon(Icons.error_outline, color: AppColors.error),
             const SizedBox(width: 8),
-            Text('Hata', style: TextStyle(color: _BookingColors.textPrimary)),
+            Text('Hata', style: TextStyle(color: AppColors.textPrimaryLight)),
           ],
         ),
-        content: Text(message, style: TextStyle(color: _BookingColors.textSecondary)),
+        content: Text(message, style: TextStyle(color: AppColors.textSecondaryLight)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -1877,19 +1860,6 @@ class _BookingScreenState extends State<BookingScreen>
           : (_pickupDate ?? DateTime.now()).add(const Duration(days: 1)),
       firstDate: isPickup ? DateTime.now() : (_pickupDate ?? DateTime.now()),
       lastDate: DateTime.now().add(const Duration(days: 365)),
-      builder: (context, child) {
-        return Theme(
-          data: ThemeData.dark().copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: _BookingColors.primary,
-              onPrimary: Colors.black,
-              surface: Colors.white,
-              onSurface: Colors.white,
-            ),
-          ),
-          child: child!,
-        );
-      },
     );
 
     if (picked != null) {
@@ -1910,19 +1880,6 @@ class _BookingScreenState extends State<BookingScreen>
     final TimeOfDay? picked = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.now(),
-      builder: (context, child) {
-        return Theme(
-          data: ThemeData.dark().copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: _BookingColors.primary,
-              onPrimary: Colors.black,
-              surface: Colors.white,
-              onSurface: Colors.white,
-            ),
-          ),
-          child: child!,
-        );
-      },
     );
 
     if (picked != null) {
@@ -2031,7 +1988,7 @@ class _BookingSuccessDialogState extends State<_BookingSuccessDialog>
               child: Container(
                 padding: const EdgeInsets.all(32),
                 decoration: BoxDecoration(
-                  color: _BookingColors.cardBg,
+                  color: AppColors.backgroundLight,
                   borderRadius: BorderRadius.circular(28),
                   boxShadow: [
                     BoxShadow(
@@ -2047,13 +2004,11 @@ class _BookingSuccessDialogState extends State<_BookingSuccessDialog>
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [_BookingColors.primary, _BookingColors.primaryLight],
-                        ),
+                        gradient: AppColors.primaryGradient,
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: _BookingColors.primary.withValues(alpha: 0.4),
+                            color: AppColors.primary.withValues(alpha: 0.4),
                             blurRadius: 24,
                           ),
                         ],
@@ -2066,20 +2021,20 @@ class _BookingSuccessDialogState extends State<_BookingSuccessDialog>
                     ),
                     const SizedBox(height: 24),
                     Text(
-                      'Rezervasyon Başarılı!',
+                      'Rezervasyon Basarili!',
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
-                        color: _BookingColors.textPrimary,
+                        color: AppColors.textPrimaryLight,
                       ),
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      '${widget.car.fullName} için rezervasyonunuz alındı.',
+                      '${widget.car.fullName} icin rezervasyonunuz alindi.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 14,
-                        color: _BookingColors.textSecondary,
+                        color: AppColors.textSecondaryLight,
                       ),
                     ),
                     if (widget.bookingNumber.isNotEmpty) ...[
@@ -2087,13 +2042,13 @@ class _BookingSuccessDialogState extends State<_BookingSuccessDialog>
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         decoration: BoxDecoration(
-                          color: _BookingColors.primary.withValues(alpha: 0.1),
+                          color: AppColors.primary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           'Rezervasyon No: ${widget.bookingNumber}',
                           style: const TextStyle(
-                            color: _BookingColors.primary,
+                            color: AppColors.primary,
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                           ),
@@ -2104,7 +2059,7 @@ class _BookingSuccessDialogState extends State<_BookingSuccessDialog>
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: _BookingColors.background,
+                        color: AppColors.surfaceLight,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
@@ -2113,14 +2068,14 @@ class _BookingSuccessDialogState extends State<_BookingSuccessDialog>
                           Text(
                             'Toplam: ',
                             style: TextStyle(
-                              color: _BookingColors.textSecondary,
+                              color: AppColors.textSecondaryLight,
                               fontSize: 16,
                             ),
                           ),
                           Text(
-                            '₺${widget.totalPrice.toInt()}',
+                            '\u20BA${widget.totalPrice.toInt()}',
                             style: const TextStyle(
-                              color: _BookingColors.primary,
+                              color: AppColors.primary,
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
                             ),
@@ -2129,25 +2084,25 @@ class _BookingSuccessDialogState extends State<_BookingSuccessDialog>
                       ),
                     ),
                     const SizedBox(height: 24),
-                    GestureDetector(
-                      onTap: widget.onClose,
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [_BookingColors.primary, _BookingColors.primaryLight],
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: widget.onClose,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
                           ),
-                          borderRadius: BorderRadius.circular(16),
+                          elevation: 2,
+                          shadowColor: AppColors.primary.withValues(alpha: 0.3),
                         ),
-                        child: const Center(
-                          child: Text(
-                            'Tamam',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
+                        child: const Text(
+                          'Tamam',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),

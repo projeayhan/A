@@ -22,6 +22,7 @@ import '../../screens/profile/personal_info_screen.dart';
 import '../../screens/profile/addresses_screen.dart';
 import '../../screens/profile/payment_methods_screen.dart';
 import '../../screens/profile/security_screen.dart';
+import '../../screens/profile/emergency_contacts_screen.dart';
 import '../../screens/profile/notifications_screen.dart';
 import '../../screens/store/store_home_screen.dart';
 import '../../screens/store/store_search_screen.dart';
@@ -31,6 +32,7 @@ import '../../screens/store/store_cart_screen.dart';
 import '../../screens/store/store_checkout_screen.dart';
 import '../../screens/taxi/taxi_home_screen.dart';
 import '../../screens/rental/rental_home_screen.dart';
+import '../../screens/rental/my_bookings_screen.dart';
 import '../../screens/emlak/emlak_home_screen.dart';
 import '../../screens/emlak/property_detail_screen.dart';
 import '../../screens/emlak/property_search_screen.dart';
@@ -81,6 +83,7 @@ class AppRoutes {
   static const String grocery = '/grocery';
   static const String taxi = '/taxi';
   static const String rental = '/rental';
+  static const String rentalMyBookings = '/rental/my-bookings';
   static const String service = '/service';
   static const String appointment = '/appointment';
 
@@ -114,6 +117,7 @@ class AppRoutes {
   static const String addresses = '/settings/addresses';
   static const String paymentMethods = '/settings/payment-methods';
   static const String security = '/settings/security';
+  static const String emergencyContacts = '/settings/emergency-contacts';
   static const String notifications = '/notifications';
 
   // Support Routes
@@ -357,6 +361,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const RentalHomeScreen(),
           ),
           GoRoute(
+            path: AppRoutes.rentalMyBookings,
+            name: 'rentalMyBookings',
+            builder: (context, state) => const MyBookingsScreen(),
+          ),
+          GoRoute(
             path: AppRoutes.service,
             name: 'service',
             builder: (context, state) =>
@@ -536,6 +545,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: AppRoutes.security,
             name: 'security',
             builder: (context, state) => const SecurityScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.emergencyContacts,
+            name: 'emergencyContacts',
+            builder: (context, state) => const EmergencyContactsScreen(),
           ),
           GoRoute(
             path: AppRoutes.notifications,

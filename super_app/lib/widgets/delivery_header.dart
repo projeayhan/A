@@ -309,7 +309,7 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
               borderRadius: BorderRadius.circular(16),
               color: isDark ? AppColors.surfaceDark : Colors.white,
               child: Container(
-                constraints: const BoxConstraints(maxHeight: 500),
+                constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.4),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
@@ -445,27 +445,27 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
         // context.push('/store/${notification.storeId}');
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 4),
-        padding: const EdgeInsets.all(12),
+        margin: const EdgeInsets.only(bottom: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
           color: notification.isRead
               ? Colors.transparent
               : notification.iconColor.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Store Logo veya Icon
             Container(
-              width: 44,
-              height: 44,
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
                 color: notification.iconColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(8),
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(8),
                 child: notification.storeLogoUrl.isNotEmpty
                     ? Image.network(
                         notification.storeLogoUrl,
@@ -473,17 +473,17 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
                         errorBuilder: (_, __, ___) => Icon(
                           notification.icon,
                           color: notification.iconColor,
-                          size: 22,
+                          size: 18,
                         ),
                       )
                     : Icon(
                         notification.icon,
                         color: notification.iconColor,
-                        size: 22,
+                        size: 18,
                       ),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -494,7 +494,7 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
                         child: Text(
                           notification.title,
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 13,
                             fontWeight: notification.isRead ? FontWeight.w500 : FontWeight.bold,
                             color: isDark ? Colors.white : const Color(0xFF1F2937),
                           ),
@@ -502,8 +502,8 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
                       ),
                       if (!notification.isRead)
                         Container(
-                          width: 8,
-                          height: 8,
+                          width: 7,
+                          height: 7,
                           decoration: BoxDecoration(
                             color: notification.iconColor,
                             shape: BoxShape.circle,
@@ -511,21 +511,21 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
                         ),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
                     notification.message,
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 11,
                       color: Colors.grey[500],
                     ),
-                    maxLines: 2,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                         decoration: BoxDecoration(
                           color: notification.iconColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(4),
@@ -533,17 +533,17 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
                         child: Text(
                           notification.storeName,
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 9,
                             fontWeight: FontWeight.w600,
                             color: notification.iconColor,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       Text(
                         notification.timeAgo,
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 10,
                           color: Colors.grey[400],
                         ),
                       ),
@@ -573,27 +573,27 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
         _handleNotificationTap(notification);
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 4),
-        padding: const EdgeInsets.all(12),
+        margin: const EdgeInsets.only(bottom: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
           color: notification.isRead
               ? Colors.transparent
               : iconColor.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 40,
-              height: 40,
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
                 color: iconColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(icon, color: iconColor, size: 20),
+              child: Icon(icon, color: iconColor, size: 18),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -604,7 +604,7 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
                         child: Text(
                           notification.title,
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 13,
                             fontWeight: notification.isRead ? FontWeight.w500 : FontWeight.bold,
                             color: isDark ? Colors.white : const Color(0xFF1F2937),
                           ),
@@ -612,8 +612,8 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
                       ),
                       if (!notification.isRead)
                         Container(
-                          width: 8,
-                          height: 8,
+                          width: 7,
+                          height: 7,
                           decoration: BoxDecoration(
                             color: iconColor,
                             shape: BoxShape.circle,
@@ -621,21 +621,21 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
                         ),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
                     notification.body,
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 11,
                       color: Colors.grey[500],
                     ),
-                    maxLines: 2,
+                    maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
                     timeAgo,
                     style: TextStyle(
-                      fontSize: 11,
+                      fontSize: 10,
                       color: Colors.grey[400],
                     ),
                   ),

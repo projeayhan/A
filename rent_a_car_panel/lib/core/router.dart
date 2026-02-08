@@ -15,6 +15,8 @@ import '../features/settings/settings_screen.dart';
 import '../features/shell/app_shell.dart';
 import '../features/calendar/calendar_screen.dart';
 import '../features/reviews/reviews_screen.dart';
+import '../features/packages/packages_screen.dart';
+import '../features/services/services_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -90,6 +92,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/reviews',
             builder: (context, state) => const ReviewsScreen(),
+          ),
+          GoRoute(
+            path: '/packages',
+            builder: (context, state) => const PackagesScreen(),
+          ),
+          GoRoute(
+            path: '/services',
+            builder: (context, state) => const ServicesScreen(),
           ),
         ],
       ),

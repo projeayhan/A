@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'dart:math' as math;
 import '../../core/theme/app_responsive.dart';
 import '../../models/jobs/job_models.dart';
-import '../../models/jobs/job_data_models.dart';
 import '../../models/jobs/job_model_extensions.dart';
 import '../../core/providers/jobs_provider.dart';
 import '../../core/providers/banner_provider.dart';
@@ -22,57 +20,29 @@ class JobsHomeScreen extends ConsumerStatefulWidget {
 }
 
 class _JobsHomeScreenState extends ConsumerState<JobsHomeScreen>
-    with TickerProviderStateMixin {
+    with SingleTickerProviderStateMixin {
   late AnimationController _headerController;
-  late AnimationController _pulseController;
-  late AnimationController _shimmerController;
   late Animation<double> _headerAnimation;
-  late Animation<double> _pulseAnimation;
 
   final ScrollController _scrollController = ScrollController();
   String? _selectedCategoryId; // null = Tümü
   int _currentShowcaseIndex = 0;
-  double _scrollOffset = 0;
 
   @override
   void initState() {
     super.initState();
 
     _headerController = AnimationController(
-      duration: const Duration(milliseconds: 1200),
+      duration: const Duration(milliseconds: 600),
       vsync: this,
     );
-
-    _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
-      vsync: this,
-    )..repeat(reverse: true);
-
-    _shimmerController = AnimationController(
-      duration: const Duration(seconds: 3),
-      vsync: this,
-    )..repeat();
 
     _headerAnimation = CurvedAnimation(
       parent: _headerController,
-      curve: Curves.easeOutBack,
+      curve: Curves.easeOut,
     );
 
-    _pulseAnimation = Tween<double>(
-      begin: 1.0,
-      end: 1.05,
-    ).animate(CurvedAnimation(
-      parent: _pulseController,
-      curve: Curves.easeInOut,
-    ));
-
     _headerController.forward();
-
-    _scrollController.addListener(() {
-      setState(() {
-        _scrollOffset = _scrollController.offset;
-      });
-    });
 
     // Auto-scroll showcase
     Future.delayed(const Duration(seconds: 5), _autoScrollShowcase);
@@ -94,8 +64,6 @@ class _JobsHomeScreenState extends ConsumerState<JobsHomeScreen>
   @override
   void dispose() {
     _headerController.dispose();
-    _pulseController.dispose();
-    _shimmerController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -111,9 +79,6 @@ class _JobsHomeScreenState extends ConsumerState<JobsHomeScreen>
         backgroundColor: JobsColors.background(isDark),
         body: Stack(
           children: [
-            // Background gradient animation
-            _buildAnimatedBackground(isDark, size),
-
             // Main content
             CustomScrollView(
               controller: _scrollController,
@@ -130,10 +95,10 @@ class _JobsHomeScreenState extends ConsumerState<JobsHomeScreen>
                 // Banner Carousel
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
                     child: GenericBannerCarousel(
                       bannerProvider: jobsBannersProvider,
-                      height: 160,
+                      height: 130,
                       primaryColor: Colors.indigo,
                       defaultTitle: 'Kariyer Fırsatları',
                       defaultSubtitle: 'Hayalinizdeki işe ulaşın!',
@@ -183,7 +148,7 @@ class _JobsHomeScreenState extends ConsumerState<JobsHomeScreen>
                 ),
 
                 SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
                   sliver: _buildRecentJobs(isDark),
                 ),
 
@@ -198,23 +163,6 @@ class _JobsHomeScreenState extends ConsumerState<JobsHomeScreen>
             _buildFloatingAddButton(isDark),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildAnimatedBackground(bool isDark, Size size) {
-    return Positioned.fill(
-      child: AnimatedBuilder(
-        animation: _shimmerController,
-        builder: (context, child) {
-          return CustomPaint(
-            painter: _BackgroundPainter(
-              isDark: isDark,
-              animationValue: _shimmerController.value,
-              scrollOffset: _scrollOffset,
-            ),
-          );
-        },
       ),
     );
   }
@@ -276,9 +224,9 @@ class _JobsHomeScreenState extends ConsumerState<JobsHomeScreen>
                               'İş İlanları',
                               style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 22,
+                                fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                letterSpacing: -0.5,
+                                letterSpacing: -0.3,
                               ),
                             ),
                             Consumer(
@@ -345,8 +293,8 @@ class _JobsHomeScreenState extends ConsumerState<JobsHomeScreen>
     final statsAsync = ref.watch(jobsDashboardStatsProvider);
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -440,7 +388,7 @@ class _JobsHomeScreenState extends ConsumerState<JobsHomeScreen>
             value,
             style: TextStyle(
               color: JobsColors.textPrimary(isDark),
-              fontSize: 18,
+              fontSize: 15,
               fontWeight: FontWeight.bold,
             ),
           ),
@@ -466,8 +414,8 @@ class _JobsHomeScreenState extends ConsumerState<JobsHomeScreen>
         final featuredJobs = featuredJobsData.toUIModels();
 
         return Container(
-          height: 310,
-          margin: const EdgeInsets.only(top: 16),
+          height: 260,
+          margin: const EdgeInsets.only(top: 10),
           child: Stack(
             children: [
               PageView.builder(
@@ -510,8 +458,8 @@ class _JobsHomeScreenState extends ConsumerState<JobsHomeScreen>
         );
       },
       loading: () => Container(
-        height: 310,
-        margin: const EdgeInsets.only(top: 16),
+        height: 260,
+        margin: const EdgeInsets.only(top: 10),
         child: const Center(child: CircularProgressIndicator()),
       ),
       error: (_, __) => const SizedBox.shrink(),
@@ -519,301 +467,114 @@ class _JobsHomeScreenState extends ConsumerState<JobsHomeScreen>
   }
 
   Widget _buildShowcaseCard(JobListing job, bool isDark, int index) {
-    return AnimatedBuilder(
-      animation: _pulseController,
-      builder: (context, child) {
-        final scale = index == _currentShowcaseIndex
-            ? _pulseAnimation.value
-            : 1.0;
-
-        return Transform.scale(
-          scale: scale * 0.95,
-          child: GestureDetector(
-            onTap: () => _navigateToDetail(job),
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: job.isPremiumListing
-                      ? JobsColors.premiumGradient
-                      : JobsColors.primaryGradient,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: (job.isPremiumListing
-                        ? const Color(0xFF1E1B4B)
-                        : JobsColors.primary).withValues(alpha: 0.4),
-                    blurRadius: 30,
-                    offset: const Offset(0, 15),
-                  ),
-                ],
-              ),
-              child: Stack(
+    return GestureDetector(
+      onTap: () => _navigateToDetail(job),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: job.isPremiumListing
+                ? JobsColors.premiumGradient
+                : JobsColors.primaryGradient,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: (job.isPremiumListing
+                  ? const Color(0xFF1E1B4B)
+                  : JobsColors.primary).withValues(alpha: 0.25),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header badges
+              Row(
                 children: [
-                  // Background Pattern
-                  Positioned.fill(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(24),
-                      child: CustomPaint(
-                        painter: _CardPatternPainter(),
+                  if (job.isPremiumListing)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(colors: JobsColors.featuredGradient),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.star, color: Colors.white, size: 12),
+                          SizedBox(width: 3),
+                          Text('PREMIUM', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                        ],
                       ),
                     ),
+                  if (job.isUrgent) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(colors: JobsColors.urgentGradient),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.bolt, color: Colors.white, size: 12),
+                          SizedBox(width: 3),
+                          Text('ACİL', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ),
+                  ],
+                  const Spacer(),
+                  Icon(Icons.bookmark_border, color: Colors.white.withValues(alpha: 0.8), size: 20),
+                ],
+              ),
+              const SizedBox(height: 10),
+              // Company Info
+              Row(
+                children: [
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: job.companyLogo != null
+                          ? Image.network(job.companyLogo!, fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Center(
+                                child: Text(job.companyName.substring(0, 1),
+                                  style: TextStyle(color: JobsColors.primary, fontSize: 16, fontWeight: FontWeight.bold)),
+                              ))
+                          : Center(
+                              child: Text(job.companyName.substring(0, 1),
+                                style: TextStyle(color: JobsColors.primary, fontSize: 16, fontWeight: FontWeight.bold)),
+                            ),
+                    ),
                   ),
-
-                  // Content
-                  Padding(
-                    padding: const EdgeInsets.all(16),
+                  const SizedBox(width: 10),
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Header
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            // Badges
-                            Row(
-                              children: [
-                                if (job.isPremiumListing)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      gradient: const LinearGradient(
-                                        colors: JobsColors.featuredGradient,
-                                      ),
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: const Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(Icons.star,
-                                          color: Colors.white,
-                                          size: 14,
-                                        ),
-                                        SizedBox(width: 4),
-                                        Text(
-                                          'PREMIUM',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.bold,
-                                            letterSpacing: 0.5,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                if (job.isUrgent) ...[
-                                  const SizedBox(width: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 10,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      gradient: const LinearGradient(
-                                        colors: JobsColors.urgentGradient,
-                                      ),
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: const Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(Icons.bolt,
-                                          color: Colors.white,
-                                          size: 14,
-                                        ),
-                                        SizedBox(width: 4),
-                                        Text(
-                                          'ACİL',
-                                          style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.bold,
-                                            letterSpacing: 0.5,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                            // Save Button
-                            Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.2),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                Icons.bookmark_border,
-                                color: Colors.white.withValues(alpha: 0.9),
-                                size: 18,
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 10),
-
-                        // Company Info
+                        Text(job.companyName,
+                          style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 13),
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
                         Row(
                           children: [
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: job.companyLogo != null
-                                    ? Image.network(
-                                        job.companyLogo!,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => Center(
-                                          child: Text(
-                                            job.companyName.substring(0, 1),
-                                            style: TextStyle(
-                                              color: JobsColors.primary,
-                                              fontSize: 20,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                        ),
-                                      )
-                                    : Center(
-                                        child: Text(
-                                          job.companyName.substring(0, 1),
-                                          style: TextStyle(
-                                            color: JobsColors.primary,
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    job.companyName,
-                                    style: TextStyle(
-                                      color: Colors.white.withValues(alpha: 0.8),
-                                      fontSize: 14,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        Icons.location_on,
-                                        color: Colors.white.withValues(alpha: 0.7),
-                                        size: 14,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        job.location,
-                                        style: TextStyle(
-                                          color: Colors.white.withValues(alpha: 0.7),
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 8),
-
-                        // Job Title
-                        Text(
-                          job.title,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: -0.5,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-
-                        const SizedBox(height: 8),
-
-                        // Tags
-                        Wrap(
-                          spacing: 6,
-                          runSpacing: 4,
-                          children: [
-                            _buildShowcaseTag(job.jobType.label, job.jobType.icon),
-                            _buildShowcaseTag(job.workArrangement.label, job.workArrangement.icon),
-                            _buildShowcaseTag(job.experienceLevel.label, Icons.trending_up),
-                          ],
-                        ),
-
-                        const SizedBox(height: 10),
-
-                        // Salary & Apply
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                job.salary.formatted,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 10,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.send,
-                                    color: JobsColors.primary,
-                                    size: 16,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    'Başvur',
-                                    style: TextStyle(
-                                      color: JobsColors.primary,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                            Icon(Icons.location_on, color: Colors.white.withValues(alpha: 0.7), size: 12),
+                            const SizedBox(width: 3),
+                            Text(job.location, style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 11)),
                           ],
                         ),
                       ],
@@ -821,10 +582,52 @@ class _JobsHomeScreenState extends ConsumerState<JobsHomeScreen>
                   ),
                 ],
               ),
-            ),
+              const SizedBox(height: 8),
+              // Job Title
+              Text(job.title,
+                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                maxLines: 1, overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 6),
+              // Tags
+              Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: [
+                  _buildShowcaseTag(job.jobType.label, job.jobType.icon),
+                  _buildShowcaseTag(job.workArrangement.label, job.workArrangement.icon),
+                  _buildShowcaseTag(job.experienceLevel.label, Icons.trending_up),
+                ],
+              ),
+              const SizedBox(height: 8),
+              // Salary & Apply
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(job.salary.formatted,
+                      style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.send, color: JobsColors.primary, size: 14),
+                        const SizedBox(width: 4),
+                        Text('Başvur', style: TextStyle(color: JobsColors.primary, fontWeight: FontWeight.bold, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -855,7 +658,7 @@ class _JobsHomeScreenState extends ConsumerState<JobsHomeScreen>
 
   Widget _buildQuickActions(bool isDark) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
       child: Row(
         children: [
           Expanded(
@@ -906,32 +709,32 @@ class _JobsHomeScreenState extends ConsumerState<JobsHomeScreen>
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: gradientColors,
           ),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: gradientColors.first.withValues(alpha: 0.3),
-              blurRadius: 12,
-              offset: const Offset(0, 6),
+              color: gradientColors.first.withValues(alpha: 0.2),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: Colors.white, size: 28),
-            const SizedBox(height: 12),
+            Icon(icon, color: Colors.white, size: 22),
+            const SizedBox(height: 8),
             Text(
               title,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -939,7 +742,7 @@ class _JobsHomeScreenState extends ConsumerState<JobsHomeScreen>
               subtitle,
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.8),
-                fontSize: 11,
+                fontSize: 10,
               ),
             ),
           ],
@@ -955,18 +758,18 @@ class _JobsHomeScreenState extends ConsumerState<JobsHomeScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
           child: Text(
             'Kategoriler',
             style: TextStyle(
               color: JobsColors.textPrimary(isDark),
-              fontSize: 18,
+              fontSize: 15,
               fontWeight: FontWeight.bold,
             ),
           ),
         ),
         SizedBox(
-          height: 100,
+          height: 86,
           child: categoriesAsync.when(
             data: (dbCategories) {
               return ListView.builder(
@@ -1155,7 +958,7 @@ class _JobsHomeScreenState extends ConsumerState<JobsHomeScreen>
     Color? iconColor,
   }) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -1173,7 +976,7 @@ class _JobsHomeScreenState extends ConsumerState<JobsHomeScreen>
                 title,
                 style: TextStyle(
                   color: JobsColors.textPrimary(isDark),
-                  fontSize: 18,
+                  fontSize: 15,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -1226,7 +1029,7 @@ class _JobsHomeScreenState extends ConsumerState<JobsHomeScreen>
         final urgentJobs = urgentJobsData.toUIModels();
 
         return SizedBox(
-          height: 180,
+          height: 160,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1239,7 +1042,7 @@ class _JobsHomeScreenState extends ConsumerState<JobsHomeScreen>
         );
       },
       loading: () => const SizedBox(
-        height: 180,
+        height: 160,
         child: Center(child: CircularProgressIndicator()),
       ),
       error: (_, __) => const SizedBox.shrink(),
@@ -1250,20 +1053,20 @@ class _JobsHomeScreenState extends ConsumerState<JobsHomeScreen>
     return GestureDetector(
       onTap: () => _navigateToDetail(job),
       child: Container(
-        width: 280,
-        margin: const EdgeInsets.symmetric(horizontal: 8),
+        width: 260,
+        margin: const EdgeInsets.symmetric(horizontal: 6),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: JobsColors.urgentGradient,
           ),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: JobsColors.accent.withValues(alpha: 0.3),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
+              color: JobsColors.accent.withValues(alpha: 0.2),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
@@ -1474,10 +1277,10 @@ class _JobsHomeScreenState extends ConsumerState<JobsHomeScreen>
     return GestureDetector(
       onTap: () => _navigateToDetail(job),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
+        margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
           color: JobsColors.card(isDark),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(14),
           border: job.isPremiumListing
               ? Border.all(
                   color: JobsColors.secondary.withValues(alpha: 0.3),
@@ -1486,16 +1289,16 @@ class _JobsHomeScreenState extends ConsumerState<JobsHomeScreen>
               : null,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1505,11 +1308,11 @@ class _JobsHomeScreenState extends ConsumerState<JobsHomeScreen>
                     children: [
                       // Company Logo
                       Container(
-                        width: 56,
-                        height: 56,
+                        width: 44,
+                        height: 44,
                         decoration: BoxDecoration(
                           color: JobsColors.surface(isDark),
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(10),
                           border: Border.all(
                             color: JobsColors.border(isDark),
                           ),
@@ -1765,42 +1568,13 @@ class _JobsHomeScreenState extends ConsumerState<JobsHomeScreen>
 
   Widget _buildFloatingAddButton(bool isDark) {
     return Positioned(
-      right: 20,
+      right: 16,
       bottom: 100,
-      child: AnimatedBuilder(
-        animation: _pulseController,
-        builder: (context, child) {
-          return Transform.scale(
-            scale: _pulseAnimation.value,
-            child: GestureDetector(
-              onTap: _navigateToAddListing,
-              child: Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: JobsColors.primaryGradient,
-                  ),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: JobsColors.primary.withValues(alpha: 0.4),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.add,
-                  color: Colors.white,
-                  size: 32,
-                ),
-              ),
-            ),
-          );
-        },
+      child: FloatingActionButton(
+        onPressed: _navigateToAddListing,
+        backgroundColor: JobsColors.primary,
+        elevation: 4,
+        child: const Icon(Icons.add, color: Colors.white, size: 28),
       ),
     );
   }
@@ -1919,45 +1693,6 @@ class _JobsHomeScreenState extends ConsumerState<JobsHomeScreen>
         );
       },
     );
-  }
-}
-
-// Custom painters
-class _BackgroundPainter extends CustomPainter {
-  final bool isDark;
-  final double animationValue;
-  final double scrollOffset;
-
-  _BackgroundPainter({
-    required this.isDark,
-    required this.animationValue,
-    required this.scrollOffset,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..style = PaintingStyle.fill;
-
-    // Animated circles in background
-    for (int i = 0; i < 3; i++) {
-      final progress = (animationValue + i * 0.33) % 1.0;
-      final x = size.width * (0.1 + 0.8 * math.sin(progress * math.pi * 2 + i));
-      final y = (size.height * 0.2 - scrollOffset * 0.1).clamp(0, size.height * 0.5);
-      final radius = 100.0 + 50 * math.sin(progress * math.pi * 2);
-
-      paint.color = (isDark
-          ? JobsColors.primary
-          : JobsColors.primaryLight).withValues(alpha: 0.05);
-
-      canvas.drawCircle(Offset(x, y + i * 100), radius, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _BackgroundPainter oldDelegate) {
-    return animationValue != oldDelegate.animationValue ||
-        scrollOffset != oldDelegate.scrollOffset;
   }
 }
 

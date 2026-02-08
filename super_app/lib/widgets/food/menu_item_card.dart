@@ -113,7 +113,7 @@ class _MenuItemCardState extends State<MenuItemCard> {
                   Text(
                     widget.name,
                     style: TextStyle(
-                      fontSize: context.bodySize,
+                      fontSize: context.priceSize,
                       fontWeight: FontWeight.w600,
                       color: widget.isDark ? Colors.white : const Color(0xFF111827),
                     ),
@@ -126,7 +126,7 @@ class _MenuItemCardState extends State<MenuItemCard> {
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
-                      fontSize: context.captionSize,
+                      fontSize: context.bodySmallSize,
                       color: widget.isDark ? Colors.grey[400] : Colors.grey[500],
                       height: 1.3,
                     ),
@@ -137,7 +137,7 @@ class _MenuItemCardState extends State<MenuItemCard> {
                       Text(
                         '${widget.price.toStringAsFixed(2)} TL',
                         style: TextStyle(
-                          fontSize: context.priceSize,
+                          fontSize: context.bodySize,
                           fontWeight: FontWeight.bold,
                           color: widget.isDark ? Colors.white : const Color(0xFF111827),
                         ),

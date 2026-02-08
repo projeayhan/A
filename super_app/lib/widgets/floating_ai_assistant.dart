@@ -9,6 +9,8 @@ import '../core/services/ai_chat_service.dart';
 import '../core/services/voice_input_service.dart';
 import '../core/services/voice_output_service.dart';
 import '../core/providers/ai_context_provider.dart';
+import '../core/providers/cart_provider.dart';
+import '../core/providers/store_cart_provider.dart';
 import '../core/router/app_router.dart';
 
 class FloatingAIAssistant extends ConsumerStatefulWidget {
@@ -383,6 +385,8 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
                   GoRouter.of(navContext).go(payload!['route'] as String);
                 }
               });
+            } else if (type == 'add_to_cart' && payload != null) {
+              _addToCart(payload);
             }
           }
         }
@@ -395,7 +399,7 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
       } else {
         setState(() {
           _isVoiceProcessing = false;
-          _voiceResponseText = 'Üzgünüm, bir hata oluştu.';
+          _voiceResponseText = response['error'] as String? ?? 'Üzgünüm, bir hata oluştu.';
           _showVoiceResponse = true;
         });
         _voiceResponseDismissTimer = Timer(const Duration(seconds: 5), () {
@@ -416,6 +420,42 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
 
     _resumeAnimations();
     _isStoppingVoice = false;
+  }
+
+  void _addToCart(Map<String, dynamic> payload) {
+    final productId = payload['product_id'] as String? ?? '';
+    final name = payload['name'] as String? ?? 'Ürün';
+    final price = (payload['price'] is int)
+        ? (payload['price'] as int).toDouble()
+        : (payload['price'] as num?)?.toDouble() ?? 0.0;
+    final imageUrl = payload['image_url'] as String? ?? '';
+    final merchantId = payload['merchant_id'] as String? ?? '';
+    final merchantName = payload['merchant_name'] as String? ?? '';
+    final quantity = (payload['quantity'] as num?)?.toInt() ?? 1;
+    final merchantType = payload['merchant_type'] as String? ?? 'restaurant';
+
+    if (merchantType == 'store' || merchantType == 'market') {
+      ref.read(storeCartProvider.notifier).addItem(StoreCartItem(
+        id: productId,
+        productId: productId,
+        name: name,
+        price: price,
+        quantity: quantity,
+        imageUrl: imageUrl,
+        storeId: merchantId,
+        storeName: merchantName,
+      ));
+    } else {
+      ref.read(cartProvider.notifier).addItem(CartItem(
+        id: productId,
+        name: name,
+        price: price,
+        quantity: quantity,
+        imageUrl: imageUrl,
+        merchantId: merchantId,
+        merchantName: merchantName,
+      ));
+    }
   }
 
   void _dismissVoiceResponse() {
@@ -531,6 +571,7 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
           child: _AIChatDialog(
             onClose: _closeChat,
             screenContext: screenContext,
+            onAddToCart: _addToCart,
           ),
         ),
       ),
@@ -602,8 +643,8 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
                 child: Transform.rotate(
                   angle: _showNotificationBubble ? _shakeAnimation.value : 0,
                   child: SizedBox(
-                    width: 60,
-                    height: 130,
+                    width: 80,
+                    height: 175,
                     child: Stack(
                       clipBehavior: Clip.none,
                       children: [
@@ -613,8 +654,8 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
                           right: 0,
                           child: Center(
                             child: Container(
-                              width: 40,
-                              height: 10,
+                              width: 55,
+                              height: 13,
                               decoration: BoxDecoration(
                                 gradient: RadialGradient(
                                   colors: [
@@ -628,7 +669,7 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
                           ),
                         ),
                         Positioned(
-                          bottom: 6,
+                          bottom: 8,
                           left: 0,
                           right: 0,
                           child: Center(
@@ -710,8 +751,8 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
 
   Widget _buildFuturisticRobot() {
     return SizedBox(
-      width: 55,
-      height: 85,
+      width: 75,
+      height: 115,
       child: CustomPaint(
         painter: _FuturisticRobotPainter(
           walkAnimation: (_isChatOpen || _isVoiceMode) ? 0 : _legAnimation.value,
@@ -1514,7 +1555,8 @@ class _FuturisticRobotPainter extends CustomPainter {
 class _AIChatDialog extends StatefulWidget {
   final VoidCallback onClose;
   final AiScreenContext screenContext;
-  const _AIChatDialog({required this.onClose, required this.screenContext});
+  final void Function(Map<String, dynamic> payload)? onAddToCart;
+  const _AIChatDialog({required this.onClose, required this.screenContext, this.onAddToCart});
 
   @override
   State<_AIChatDialog> createState() => _AIChatDialogState();
@@ -1570,11 +1612,17 @@ class _AIChatDialogState extends State<_AIChatDialog> {
       final history = await AiChatService.getChatHistory(existingSessionId);
       if (!mounted) return;
       setState(() {
-        _messages.addAll(history.map((msg) => _ChatMessage(
-          role: msg['role'],
-          content: msg['content'],
-          timestamp: DateTime.tryParse(msg['created_at'] ?? ''),
-        )));
+        _messages.addAll(history
+          .where((msg) {
+            // Filter out internal context messages (not meant for display)
+            final content = msg['content'] as String? ?? '';
+            return !_isInternalMessage(content);
+          })
+          .map((msg) => _ChatMessage(
+            role: msg['role'],
+            content: msg['content'],
+            timestamp: DateTime.tryParse(msg['created_at'] ?? ''),
+          )));
       });
     } else {
       _messages.add(_ChatMessage(role: 'assistant', content: 'Merhaba! Size nasil yardimci olabilirim?', timestamp: DateTime.now()));
@@ -1582,6 +1630,22 @@ class _AIChatDialogState extends State<_AIChatDialog> {
 
     setState(() => _isInitializing = false);
     _scrollToBottom();
+  }
+
+  /// Check if a message is internal context (not meant for display)
+  bool _isInternalMessage(String content) {
+    return content.startsWith('[ARAMA_SONUÇLARI]') ||
+           content.startsWith('[ARAMA_SONUCLARI]') ||
+           content.startsWith('[SEPETE_EKLENDİ]') ||
+           content.startsWith('[SEPETE_EKLENDI]');
+  }
+
+  /// Strip internal tags from AI response text
+  String _cleanInternalTags(String text) {
+    // Remove lines starting with internal tags
+    final lines = text.split('\n');
+    final cleaned = lines.where((line) => !_isInternalMessage(line.trim())).join('\n').trim();
+    return cleaned.isEmpty ? text : cleaned;
   }
 
   void _scrollToBottom() {
@@ -1635,6 +1699,20 @@ class _AIChatDialogState extends State<_AIChatDialog> {
             _scrollToBottom();
             break;
 
+          case AiStreamEventType.searchResults:
+            setState(() {
+              assistantMessage.products = event.searchResults;
+            });
+            _scrollToBottom();
+            break;
+
+          case AiStreamEventType.rentalResults:
+            setState(() {
+              assistantMessage.rentalCars = event.rentalResults;
+            });
+            _scrollToBottom();
+            break;
+
           case AiStreamEventType.actions:
             if (event.actions != null) {
               for (final action in event.actions!) {
@@ -1647,7 +1725,7 @@ class _AIChatDialogState extends State<_AIChatDialog> {
             setState(() {
               assistantMessage.isStreaming = false;
               if (event.fullMessage != null && event.fullMessage!.isNotEmpty) {
-                assistantMessage.content = event.fullMessage!;
+                assistantMessage.content = _cleanInternalTags(event.fullMessage!);
               }
               _isLoading = false;
             });
@@ -1708,10 +1786,13 @@ class _AIChatDialogState extends State<_AIChatDialog> {
   }
 
   void _handleAddToCart(Map<String, dynamic> payload) {
-    // Show confirmation in chat
     final name = payload['name'] ?? 'Ürün';
     final price = payload['price'] ?? 0;
     final quantity = payload['quantity'] ?? 1;
+
+    // Actually add to cart via parent callback
+    widget.onAddToCart?.call(payload);
+
     setState(() {
       _messages.add(_ChatMessage(
         role: 'assistant',
@@ -1720,7 +1801,6 @@ class _AIChatDialogState extends State<_AIChatDialog> {
       ));
     });
     _scrollToBottom();
-    // Note: Actual cart integration will be done via callback from parent
   }
 
   void _handleNavigate(Map<String, dynamic> payload) {
@@ -1841,6 +1921,8 @@ class _AIChatDialogState extends State<_AIChatDialog> {
 
   Widget _buildMessageBubble(_ChatMessage message) {
     final isUser = message.role == 'user';
+    final hasProducts = !isUser && message.products != null && message.products!.isNotEmpty;
+    final hasRentalCars = !isUser && message.rentalCars != null && message.rentalCars!.isNotEmpty;
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -1848,31 +1930,52 @@ class _AIChatDialogState extends State<_AIChatDialog> {
         constraints: const BoxConstraints(maxWidth: 280),
         child: Row(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (!isUser) ...[
               Container(width: 26, height: 26, decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF00D4FF), Color(0xFF00FF88)]), borderRadius: BorderRadius.circular(7)), child: const Icon(Icons.smart_toy, color: Colors.white, size: 16)),
               const SizedBox(width: 8),
             ],
             Flexible(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  gradient: isUser ? const LinearGradient(colors: [Color(0xFF00D4FF), Color(0xFF0099CC)]) : null,
-                  color: isUser ? null : const Color(0xFF252540),
-                  borderRadius: BorderRadius.only(topLeft: const Radius.circular(16), topRight: const Radius.circular(16), bottomLeft: Radius.circular(isUser ? 16 : 4), bottomRight: Radius.circular(isUser ? 4 : 16)),
-                  border: isUser ? null : Border.all(color: const Color(0xFF00D4FF).withAlpha(30)),
-                ),
-                child: message.isStreaming && message.content.isEmpty
-                    ? Row(mainAxisSize: MainAxisSize.min, children: List.generate(3, (i) => _TypingDot(delay: i * 150)))
-                    : Row(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Flexible(child: Text(message.content, style: const TextStyle(color: Colors.white, fontSize: 13))),
-                          if (message.isStreaming) const _StreamingCursor(),
-                        ],
-                      ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      gradient: isUser ? const LinearGradient(colors: [Color(0xFF00D4FF), Color(0xFF0099CC)]) : null,
+                      color: isUser ? null : const Color(0xFF252540),
+                      borderRadius: BorderRadius.only(topLeft: const Radius.circular(16), topRight: const Radius.circular(16), bottomLeft: Radius.circular(isUser ? 16 : 4), bottomRight: Radius.circular(isUser ? 4 : 16)),
+                      border: isUser ? null : Border.all(color: const Color(0xFF00D4FF).withAlpha(30)),
+                    ),
+                    child: message.isStreaming && message.content.isEmpty
+                        ? Row(mainAxisSize: MainAxisSize.min, children: List.generate(3, (i) => _TypingDot(delay: i * 150)))
+                        : Row(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Flexible(child: Text(message.content, style: const TextStyle(color: Colors.white, fontSize: 13))),
+                              if (message.isStreaming) const _StreamingCursor(),
+                            ],
+                          ),
+                  ),
+                  if (hasProducts)
+                    _AiProductCardList(
+                      products: message.products!,
+                      onAddToCart: (payload) => _handleAddToCart(payload),
+                    ),
+                  if (hasRentalCars)
+                    _AiRentalCardList(
+                      cars: message.rentalCars!,
+                      onBookNow: (car) {
+                        final carId = car['car_id'] as String? ?? '';
+                        if (carId.isNotEmpty) {
+                          context.push('/rental/car/$carId');
+                        }
+                      },
+                    ),
+                ],
               ),
             ),
             if (isUser) const SizedBox(width: 34),
@@ -2024,6 +2127,237 @@ class _ChatMessage {
   final DateTime? timestamp;
   final bool isError;
   bool isStreaming;
+  List<Map<String, dynamic>>? products;
+  List<Map<String, dynamic>>? rentalCars;
 
-  _ChatMessage({required this.role, required this.content, this.timestamp, this.isError = false, this.isStreaming = false});
+  _ChatMessage({required this.role, required this.content, this.timestamp, this.isError = false, this.isStreaming = false, this.products, this.rentalCars});
+}
+
+class _AiProductCardList extends StatelessWidget {
+  final List<Map<String, dynamic>> products;
+  final void Function(Map<String, dynamic> payload) onAddToCart;
+
+  const _AiProductCardList({required this.products, required this.onAddToCart});
+
+  @override
+  Widget build(BuildContext context) {
+    final displayProducts = products.length > 8 ? products.sublist(0, 8) : products;
+    return Container(
+      margin: const EdgeInsets.only(top: 6),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: displayProducts.map((product) {
+          return _AiProductCard(
+            product: product,
+            onAddToCart: () {
+              onAddToCart({
+                'product_id': product['id'] ?? '',
+                'name': product['name'] ?? '',
+                'price': product['price'] ?? 0,
+                'image_url': product['image_url'] ?? '',
+                'merchant_id': product['merchant_id'] ?? '',
+                'merchant_name': product['merchant_name'] ?? '',
+                'merchant_type': product['merchant_type'] ?? 'restaurant',
+                'quantity': 1,
+              });
+            },
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
+class _AiProductCard extends StatelessWidget {
+  final Map<String, dynamic> product;
+  final VoidCallback onAddToCart;
+
+  const _AiProductCard({required this.product, required this.onAddToCart});
+
+  @override
+  Widget build(BuildContext context) {
+    final name = product['name'] as String? ?? '';
+    final price = (product['price'] as num?)?.toDouble() ?? 0;
+    final originalPrice = (product['original_price'] as num?)?.toDouble();
+    final imageUrl = product['image_url'] as String? ?? '';
+    final merchantName = product['merchant_name'] as String? ?? '';
+    final hasDiscount = originalPrice != null && originalPrice > price;
+    final hasId = (product['id'] as String? ?? '').isNotEmpty;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 5),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF252540),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFF00D4FF).withAlpha(40)),
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              width: 48, height: 48,
+              color: const Color(0xFF1a1a2e),
+              child: imageUrl.isNotEmpty
+                  ? Image.network(imageUrl, fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const Icon(Icons.fastfood, color: Color(0xFF555577), size: 22))
+                  : const Icon(Icons.fastfood, color: Color(0xFF555577), size: 22),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 2),
+                Text(merchantName, style: TextStyle(color: Colors.white.withAlpha(120), fontSize: 10), maxLines: 1, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 3),
+                Row(
+                  children: [
+                    Text('${price.toStringAsFixed(2)} TL', style: const TextStyle(color: Color(0xFF00FF88), fontSize: 12, fontWeight: FontWeight.bold)),
+                    if (hasDiscount) ...[
+                      const SizedBox(width: 4),
+                      Text('${originalPrice.toStringAsFixed(2)} TL', style: TextStyle(color: Colors.white.withAlpha(80), fontSize: 10, decoration: TextDecoration.lineThrough)),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
+          if (hasId)
+            GestureDetector(
+              onTap: onAddToCart,
+              child: Container(
+                width: 32, height: 32,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [Color(0xFF00D4FF), Color(0xFF00FF88)]),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.add, color: Colors.white, size: 18),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AiRentalCardList extends StatelessWidget {
+  final List<Map<String, dynamic>> cars;
+  final void Function(Map<String, dynamic> car) onBookNow;
+
+  const _AiRentalCardList({required this.cars, required this.onBookNow});
+
+  @override
+  Widget build(BuildContext context) {
+    final displayCars = cars.length > 8 ? cars.sublist(0, 8) : cars;
+    return Container(
+      margin: const EdgeInsets.only(top: 6),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: displayCars.map((car) {
+          return _AiRentalCard(car: car, onBookNow: () => onBookNow(car));
+        }).toList(),
+      ),
+    );
+  }
+}
+
+class _AiRentalCard extends StatelessWidget {
+  final Map<String, dynamic> car;
+  final VoidCallback onBookNow;
+
+  const _AiRentalCard({required this.car, required this.onBookNow});
+
+  @override
+  Widget build(BuildContext context) {
+    final brand = car['brand'] as String? ?? '';
+    final model = car['model'] as String? ?? '';
+    final dailyPrice = (car['daily_price'] as num?)?.toDouble() ?? 0;
+    final category = car['category'] as String? ?? '';
+    final transmission = car['transmission'] as String? ?? '';
+    final fuelType = car['fuel_type'] as String? ?? '';
+    final companyName = car['company_name'] as String? ?? '';
+    final imageUrl = car['image_url'] as String? ?? '';
+    final hasId = (car['car_id'] as String? ?? '').isNotEmpty;
+
+    String categoryLabel = category;
+    if (category == 'economy') categoryLabel = 'Ekonomi';
+    else if (category == 'compact') categoryLabel = 'Kompakt';
+    else if (category == 'midsize') categoryLabel = 'Orta';
+    else if (category == 'fullsize') categoryLabel = 'Büyük';
+    else if (category == 'suv') categoryLabel = 'SUV';
+    else if (category == 'luxury') categoryLabel = 'Lüks';
+    else if (category == 'van') categoryLabel = 'Van';
+
+    String transLabel = transmission;
+    if (transmission == 'automatic') transLabel = 'Otomatik';
+    else if (transmission == 'manual') transLabel = 'Manuel';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 5),
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF252540),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFF7C4DFF).withAlpha(50)),
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              width: 52, height: 52,
+              color: const Color(0xFF1a1a2e),
+              child: imageUrl.isNotEmpty
+                  ? Image.network(imageUrl, fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const Icon(Icons.directions_car, color: Color(0xFF555577), size: 24))
+                  : const Icon(Icons.directions_car, color: Color(0xFF555577), size: 24),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('$brand $model', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 2),
+                Text(companyName, style: TextStyle(color: Colors.white.withAlpha(120), fontSize: 10), maxLines: 1, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 3),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(color: const Color(0xFF7C4DFF).withAlpha(40), borderRadius: BorderRadius.circular(4)),
+                      child: Text(categoryLabel, style: const TextStyle(color: Color(0xFF7C4DFF), fontSize: 9, fontWeight: FontWeight.w500)),
+                    ),
+                    const SizedBox(width: 4),
+                    Text('$transLabel · $fuelType', style: TextStyle(color: Colors.white.withAlpha(100), fontSize: 9)),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text('${dailyPrice.toStringAsFixed(0)} TL/gün', style: const TextStyle(color: Color(0xFF00FF88), fontSize: 12, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
+          if (hasId)
+            GestureDetector(
+              onTap: onBookNow,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: [Color(0xFF7C4DFF), Color(0xFFAB47BC)]),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text('Kirala', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }

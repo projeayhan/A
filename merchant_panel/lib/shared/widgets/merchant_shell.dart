@@ -8,7 +8,6 @@ import '../../core/models/merchant_models.dart';
 import '../../core/providers/merchant_provider.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/services/notification_sound_service.dart';
-import '../../core/utils/app_dialogs.dart';
 import '../screens/couriers_screen.dart';
 import 'floating_ai_assistant.dart';
 
@@ -23,7 +22,6 @@ class MerchantShell extends ConsumerStatefulWidget {
 
 class _MerchantShellState extends ConsumerState<MerchantShell> {
   bool _isExpanded = true;
-  int _lastNotificationCount = 0;
 
   @override
   void initState() {
@@ -68,8 +66,11 @@ class _MerchantShellState extends ConsumerState<MerchantShell> {
     final merchant = ref.watch(currentMerchantProvider);
     final pendingOrdersCount = ref.watch(pendingOrdersProvider).length;
     final unreadNotifications = ref.watch(unreadNotificationsCountProvider);
-    final notifications = ref.watch(notificationsProvider);
-    final courierRequests = ref.watch(courierRequestsProvider);
+    final merchantId = merchant.valueOrNull?.id;
+    final unreadMessages = merchantId != null
+        ? ref.watch(unreadMessagesCountProvider(merchantId)).valueOrNull ?? 0
+        : 0;
+final courierRequests = ref.watch(courierRequestsProvider);
     final pendingCourierRequests = courierRequests.valueOrNull?.length ?? 0;
     final currentRoute = GoRouterState.of(context).matchedLocation;
 
@@ -94,22 +95,6 @@ class _MerchantShellState extends ConsumerState<MerchantShell> {
         });
       }
     }
-
-    // Check for new cancelled order notifications and show snackbar
-    if (notifications.isNotEmpty && notifications.length > _lastNotificationCount) {
-      final latestNotification = notifications.first;
-      if (latestNotification.type == 'order_cancelled' && !latestNotification.isRead) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            AppDialogs.showError(
-              context,
-              '${latestNotification.title}\n${latestNotification.message}',
-            );
-          }
-        });
-      }
-    }
-    _lastNotificationCount = notifications.length;
 
     // Determine merchant type for conditional menu items
     final merchantType = merchant.valueOrNull?.type ?? MerchantType.restaurant;
@@ -137,6 +122,7 @@ class _MerchantShellState extends ConsumerState<MerchantShell> {
                   pendingOrdersCount,
                   unreadNotifications,
                   pendingCourierRequests,
+                  unreadMessages,
                   merchant.valueOrNull,
                 ),
               ),
@@ -176,6 +162,7 @@ class _MerchantShellState extends ConsumerState<MerchantShell> {
     int pendingOrders,
     int notifications,
     int pendingCourierRequests,
+    int unreadMessages,
     Merchant? merchant,
   ) {
     return Container(
@@ -268,6 +255,15 @@ class _MerchantShellState extends ConsumerState<MerchantShell> {
                   currentRoute: currentRoute,
                   isExpanded: _isExpanded,
                   badge: pendingOrders > 0 ? pendingOrders : null,
+                ),
+                _NavItem(
+                  icon: Icons.chat_outlined,
+                  activeIcon: Icons.chat,
+                  label: 'Mesajlar',
+                  route: '/messages',
+                  currentRoute: currentRoute,
+                  isExpanded: _isExpanded,
+                  badge: unreadMessages > 0 ? unreadMessages : null,
                 ),
 
                 // Restaurant specific
@@ -572,6 +568,8 @@ class _MerchantShellState extends ConsumerState<MerchantShell> {
         return 'Dashboard';
       case '/orders':
         return 'Siparisler';
+      case '/messages':
+        return 'Mesajlar';
       case '/menu':
         return 'Menu Yonetimi';
       case '/products':

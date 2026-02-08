@@ -145,9 +145,9 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.15),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
+              color: Colors.black.withValues(alpha: 0.10),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
@@ -169,9 +169,9 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.15),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
+              color: Colors.black.withValues(alpha: 0.10),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
         ),
@@ -527,7 +527,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
             slivers: [
               // App Bar
               SliverAppBar(
-                expandedHeight: 155,
+                expandedHeight: 120,
                 floating: true,
                 pinned: true,
                 backgroundColor: isDark ? Colors.grey[900] : Colors.white,
@@ -554,10 +554,10 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                                   Text(
                                     'Mağazalar',
                                     style: TextStyle(
-                                      fontSize: 26,
+                                      fontSize: 20,
                                       fontWeight: FontWeight.w800,
                                       color: isDark ? Colors.white : Colors.black87,
-                                      letterSpacing: -0.5,
+                                      letterSpacing: -0.3,
                                     ),
                                   ),
                                   const SizedBox(height: 4),
@@ -573,33 +573,14 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                                 ],
                               ),
                             ),
-                            // Notification Button - PopupMenu
-                            PopupMenuButton<String>(
-                              offset: const Offset(0, 50),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              color: isDark ? Colors.grey[900] : Colors.white,
-                              elevation: 8,
-                              constraints: const BoxConstraints(
-                                minWidth: 320,
-                                maxWidth: 350,
-                              ),
-                              itemBuilder: (context) => [
-                                PopupMenuItem<String>(
-                                  enabled: false,
-                                  padding: EdgeInsets.zero,
-                                  child: _buildNotificationPopup(isDark),
-                                ),
-                              ],
-                              child: Badge(
+                            // Notification Button - BottomSheet
+                            IconButton(
+                              onPressed: () => _showNotificationsSheet(isDark),
+                              icon: Badge(
                                 label: const Text('2'),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8),
-                                  child: Icon(
-                                    Icons.notifications_outlined,
-                                    color: isDark ? Colors.white : Colors.black87,
-                                  ),
+                                child: Icon(
+                                  Icons.notifications_outlined,
+                                  color: isDark ? Colors.white : Colors.black87,
                                 ),
                               ),
                             ),
@@ -687,11 +668,11 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 10),
 
                     // Categories with "All" option
                     SizedBox(
-                      height: 110,
+                      height: 96,
                       child: ListView.separated(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         scrollDirection: Axis.horizontal,
@@ -758,18 +739,18 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                         ),
                       ),
 
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
 
                     // DB Banner Carousel (only when no filter)
                     if (_selectedCategoryId == null) ...[
                       GenericBannerCarousel(
                         bannerProvider: storeBannersProvider,
-                        height: 160,
+                        height: 130,
                         primaryColor: Colors.teal,
                         defaultTitle: 'Market Fırsatları',
                         defaultSubtitle: 'En iyi fiyatlar burada!',
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 10),
                     ],
 
                     // Campaign Carousel (only when no filter and campaigns exist)
@@ -785,7 +766,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                           );
                         },
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 10),
                     ],
 
                     // Flash Deals Banner (only when no filter)
@@ -800,7 +781,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                           );
                         },
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 10),
                     ],
 
                     // Flash Deal Products
@@ -813,18 +794,18 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                         actionText: 'Tümü',
                         onActionTap: () {},
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
                       SizedBox(
-                        height: 320,
+                        height: 210,
                         child: ListView.separated(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           scrollDirection: Axis.horizontal,
                           itemCount: filteredFlashDeals.length,
-                          separatorBuilder: (_, __) => const SizedBox(width: 12),
+                          separatorBuilder: (_, __) => const SizedBox(width: 8),
                           itemBuilder: (context, index) {
                             final product = filteredFlashDeals[index];
                             return SizedBox(
-                              width: 180,
+                              width: 150,
                               child: ProductCard(
                                 product: product,
                                 isFavorite: ref.watch(isProductFavoriteProvider(product.id)),
@@ -850,7 +831,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                           },
                         ),
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 10),
                     ],
 
                     // Featured Stores
@@ -863,14 +844,14 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                         actionText: 'Tümü',
                         onActionTap: () {},
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
                       SizedBox(
-                        height: 180,
+                        height: 140,
                         child: ListView.separated(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           scrollDirection: Axis.horizontal,
                           itemCount: filteredFeaturedStores.length,
-                          separatorBuilder: (_, __) => const SizedBox(width: 12),
+                          separatorBuilder: (_, __) => const SizedBox(width: 8),
                           itemBuilder: (context, index) {
                             return StoreCard(
                               store: filteredFeaturedStores[index],
@@ -882,7 +863,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                           },
                         ),
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 10),
                     ],
 
                     // Best Sellers
@@ -895,18 +876,18 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                         actionText: 'Tümü',
                         onActionTap: () {},
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
                       SizedBox(
-                        height: 320,
+                        height: 210,
                         child: ListView.separated(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           scrollDirection: Axis.horizontal,
                           itemCount: filteredBestSellers.length,
-                          separatorBuilder: (_, __) => const SizedBox(width: 12),
+                          separatorBuilder: (_, __) => const SizedBox(width: 8),
                           itemBuilder: (context, index) {
                             final product = filteredBestSellers[index];
                             return SizedBox(
-                              width: 180,
+                              width: 150,
                               child: ProductCard(
                                 product: product,
                                 isFavorite: ref.watch(isProductFavoriteProvider(product.id)),
@@ -932,7 +913,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                           },
                         ),
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 10),
                     ],
 
                     // All Stores
@@ -943,7 +924,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                             : 'Tüm Mağazalar',
                         icon: Icons.apps_rounded,
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 8),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Column(
@@ -1122,85 +1103,94 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
     );
   }
 
-  Widget _buildNotificationPopup(bool isDark) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-          child: Row(
+  void _showNotificationsSheet(bool isDark) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? Colors.grey[900] : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                'Bildirimler',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.white : Colors.black87,
+              const SizedBox(height: 8),
+              Container(
+                width: 36,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[400],
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const Spacer(),
-              Text(
-                'Tümünü Gör',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w600,
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Row(
+                  children: [
+                    Text(
+                      'Bildirimler',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      'Tümünü Gör',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
               ),
+              const Divider(height: 1),
+              _buildNotificationItem(
+                icon: Icons.local_offer_rounded,
+                color: Colors.orange,
+                title: 'Flash İndirim Başladı!',
+                message: '%50\'ye varan indirimler',
+                time: '5 dk önce',
+                isDark: isDark,
+              ),
+              _buildNotificationItem(
+                icon: Icons.local_shipping_rounded,
+                color: Colors.green,
+                title: 'Siparişiniz Yola Çıktı',
+                message: 'TechZone kargoya verdi',
+                time: '1 saat önce',
+                isDark: isDark,
+              ),
+              _buildNotificationItem(
+                icon: Icons.favorite_rounded,
+                color: Colors.red,
+                title: 'Favori Mağazanızda İndirim',
+                message: 'Fashion House %30 indirim',
+                time: '3 saat önce',
+                isDark: isDark,
+              ),
+              const SizedBox(height: 8),
             ],
           ),
-        ),
-        const Divider(height: 1),
-        _buildNotificationPopupItem(
-          icon: Icons.local_offer_rounded,
-          color: Colors.orange,
-          title: 'Flash İndirim Başladı!',
-          message: '%50\'ye varan indirimler',
-          time: '5 dk önce',
-          isDark: isDark,
-        ),
-        _buildNotificationPopupItem(
-          icon: Icons.local_shipping_rounded,
-          color: Colors.green,
-          title: 'Siparişiniz Yola Çıktı',
-          message: 'TechZone kargoya verdi',
-          time: '1 saat önce',
-          isDark: isDark,
-        ),
-        _buildNotificationPopupItem(
-          icon: Icons.favorite_rounded,
-          color: Colors.red,
-          title: 'Favori Mağazanızda İndirim',
-          message: 'Fashion House %30 indirim',
-          time: '3 saat önce',
-          isDark: isDark,
-          isLast: true,
-        ),
-      ],
+        );
+      },
     );
   }
 
-  Widget _buildNotificationPopupItem({
+  Widget _buildNotificationItem({
     required IconData icon,
     required Color color,
     required String title,
     required String message,
     required String time,
     required bool isDark,
-    bool isLast = false,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        border: isLast
-            ? null
-            : Border(
-                bottom: BorderSide(
-                  color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
-                  width: 1,
-                ),
-              ),
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Row(
         children: [
           Container(

@@ -90,7 +90,7 @@ class _GroceryHomeScreenState extends ConsumerState<GroceryHomeScreen> {
         // Banner Carousel
         SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsets.only(top: 16),
+            padding: const EdgeInsets.only(top: 12),
             child: GenericBannerCarousel(
               bannerProvider: marketBannersProvider,
               height: 160,
@@ -114,21 +114,21 @@ class _GroceryHomeScreenState extends ConsumerState<GroceryHomeScreen> {
         // Markets Header
         SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            padding: EdgeInsets.fromLTRB(context.pagePaddingH, 12, context.pagePaddingH, 6),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   'Marketler',
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: context.heading2Size,
                     fontWeight: FontWeight.bold,
                     color: isDark ? Colors.white : const Color(0xFF111827),
                   ),
                 ),
                 Text(
                   '${sortedMarkets.length} market',
-                  style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                  style: TextStyle(fontSize: context.captionSize, color: Colors.grey[500]),
                 ),
               ],
             ),
@@ -139,14 +139,14 @@ class _GroceryHomeScreenState extends ConsumerState<GroceryHomeScreen> {
         sortedMarkets.isEmpty
             ? SliverToBoxAdapter(child: _buildEmptyState(isDark))
             : SliverPadding(
-                padding: EdgeInsets.fromLTRB(16, 0, 16, context.bottomNavPadding),
+                padding: EdgeInsets.fromLTRB(context.pagePaddingH, 0, context.pagePaddingH, context.bottomNavPadding),
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
                       final market = sortedMarkets[index];
                       return Padding(
                         padding: EdgeInsets.only(
-                          bottom: index < sortedMarkets.length - 1 ? 16 : 0,
+                          bottom: index < sortedMarkets.length - 1 ? 10 : 0,
                         ),
                         child: StoreCard(
                           store: market,
@@ -205,7 +205,7 @@ class _GroceryHomeScreenState extends ConsumerState<GroceryHomeScreen> {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(context.pagePaddingH),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -251,7 +251,7 @@ class _GroceryHomeScreenState extends ConsumerState<GroceryHomeScreen> {
                           Text(
                             'Market',
                             style: TextStyle(
-                              fontSize: 24,
+                              fontSize: context.heading1Size,
                               fontWeight: FontWeight.bold,
                               color: isDark ? Colors.white : const Color(0xFF111827),
                             ),
@@ -318,11 +318,11 @@ class _GroceryHomeScreenState extends ConsumerState<GroceryHomeScreen> {
 
   Widget _buildSearchBar(bool isDark) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      padding: EdgeInsets.fromLTRB(context.pagePaddingH, 12, context.pagePaddingH, 0),
       child: Container(
         decoration: BoxDecoration(
           color: isDark ? MarketColors.surfaceDark : Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.05),
@@ -335,7 +335,7 @@ class _GroceryHomeScreenState extends ConsumerState<GroceryHomeScreen> {
           focusNode: _searchFocusNode,
           decoration: InputDecoration(
             hintText: 'Market ara...',
-            hintStyle: TextStyle(color: Colors.grey[400], fontSize: 15),
+            hintStyle: TextStyle(color: Colors.grey[400], fontSize: context.bodySize),
             prefixIcon: Icon(
               Icons.search_rounded,
               color: _searchFocusNode.hasFocus ? MarketColors.primary : Colors.grey[400],
@@ -472,9 +472,10 @@ class _MarketFilterBarDelegate extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return Container(
+    return SizedBox.expand(
+      child: Container(
       color: isDark ? MarketColors.backgroundDark : MarketColors.backgroundLight,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Row(
         children: [
           // Sort Button
@@ -520,6 +521,7 @@ class _MarketFilterBarDelegate extends SliverPersistentHeaderDelegate {
           ),
         ],
       ),
+    ),
     );
   }
 
@@ -641,10 +643,10 @@ class _MarketFilterBarDelegate extends SliverPersistentHeaderDelegate {
   }
 
   @override
-  double get maxExtent => 60;
+  double get maxExtent => 56;
 
   @override
-  double get minExtent => 60;
+  double get minExtent => 56;
 
   @override
   bool shouldRebuild(covariant _MarketFilterBarDelegate oldDelegate) {

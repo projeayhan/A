@@ -1,5 +1,6 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supabase_service.dart';
 
@@ -434,6 +435,176 @@ class CommunicationService {
     } catch (e) {
       debugPrint('updatePreferences error: $e');
       return false;
+    }
+  }
+
+  // ==================== SOS ====================
+
+  /// Telefon numarasını WhatsApp formatına çevir (90XXXXXXXXXX)
+  static String _normalizePhone(String phone) {
+    String digits = phone.replaceAll(RegExp(r'[^\d]'), '');
+    if (digits.startsWith('0')) {
+      digits = '90${digits.substring(1)}';
+    } else if (!digits.startsWith('90')) {
+      digits = '90$digits';
+    }
+    return digits;
+  }
+
+  /// Acil durum kişilerine WhatsApp ile SOS mesajı gönder
+  static Future<void> sendSosToEmergencyContacts({
+    required BuildContext context,
+    required String rideId,
+    String? userName,
+    String? driverName,
+    String? vehicleInfo,
+    String? vehiclePlate,
+    double? latitude,
+    double? longitude,
+  }) async {
+    // 1. Kişileri al
+    final contacts = await getEmergencyContacts();
+    if (contacts.isEmpty) {
+      if (!context.mounted) return;
+      final goToSettings = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444)),
+              SizedBox(width: 8),
+              Text('Acil Durum Kişisi Yok'),
+            ],
+          ),
+          content: const Text(
+            'SOS mesajı göndermek için önce acil durum kişisi eklemelisiniz.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('İptal'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFFEF4444),
+              ),
+              child: const Text('Kişi Ekle'),
+            ),
+          ],
+        ),
+      );
+      if (goToSettings == true && context.mounted) {
+        Navigator.of(context).pushNamed('/emergency-contacts');
+      }
+      return;
+    }
+
+    // 2. Onay dialogu
+    if (!context.mounted) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.sos_rounded, color: Color(0xFFEF4444), size: 28),
+            SizedBox(width: 8),
+            Text('SOS Gönder'),
+          ],
+        ),
+        content: Text(
+          '${contacts.length} acil durum kişisine WhatsApp üzerinden konum ve bilgileriniz gönderilecek.\n\nDevam etmek istiyor musunuz?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('İptal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+            ),
+            child: const Text('SOS Gönder'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    // 3. Canlı takip linki oluştur
+    final link = await createShareLink(rideId: rideId);
+
+    // 4. DB'ye acil durum kaydı yaz
+    if (latitude != null && longitude != null) {
+      await createEmergencyAlert(
+        rideId: rideId,
+        alertType: 'sos',
+        latitude: latitude,
+        longitude: longitude,
+      );
+    }
+
+    // 5. Mesaj oluştur
+    final trackingUrl = link?.shareUrl ?? '';
+    final buffer = StringBuffer();
+    buffer.writeln('\u{1F198} ACİL DURUM${userName != null ? ' - $userName' : ''}');
+    buffer.writeln();
+    buffer.writeln('Sürüşüm sırasında acil durum bildirdim.');
+    if (trackingUrl.isNotEmpty) {
+      buffer.writeln();
+      buffer.writeln('\u{1F4CD} Canlı konum takibi: $trackingUrl');
+    }
+    if (driverName != null) {
+      buffer.writeln();
+      buffer.writeln('\u{1F697} Sürücü: $driverName');
+      if (vehicleInfo != null || vehiclePlate != null) {
+        buffer.writeln('\u{1F698} Araç: ${vehicleInfo ?? ''} ${vehiclePlate != null ? '- $vehiclePlate' : ''}'.trim());
+      }
+    }
+    buffer.writeln();
+    buffer.writeln('Bu mesaj otomatik olarak gönderilmiştir.');
+
+    final message = buffer.toString();
+    final encodedMessage = Uri.encodeComponent(message);
+
+    // 6. Her kişi için WhatsApp aç
+    int sentCount = 0;
+    for (final contact in contacts) {
+      final normalizedPhone = _normalizePhone(contact.phone);
+      final waUri = Uri.parse('https://wa.me/$normalizedPhone?text=$encodedMessage');
+
+      try {
+        final launched = await launchUrl(waUri, mode: LaunchMode.externalApplication);
+        if (launched) {
+          sentCount++;
+          if (contacts.length > 1) {
+            await Future.delayed(const Duration(milliseconds: 500));
+          }
+        } else {
+          final smsUri = Uri.parse('sms:${contact.phone}?body=$encodedMessage');
+          await launchUrl(smsUri);
+          sentCount++;
+        }
+      } catch (e) {
+        debugPrint('SOS send error for ${contact.name}: $e');
+      }
+    }
+
+    // 7. Sonuç bildirimi
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            sentCount > 0
+                ? '$sentCount kişiye SOS mesajı gönderildi'
+                : 'Mesaj gönderilemedi',
+          ),
+          backgroundColor:
+              sentCount > 0 ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+        ),
+      );
     }
   }
 }

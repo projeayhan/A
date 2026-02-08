@@ -16,6 +16,7 @@ class PendingApplicationCounts {
   final int merchants;
   final int realtors;
   final int carDealers;
+  final int rentalCompanies;
   final int pendingCarListings;
 
   PendingApplicationCounts({
@@ -24,10 +25,11 @@ class PendingApplicationCounts {
     this.merchants = 0,
     this.realtors = 0,
     this.carDealers = 0,
+    this.rentalCompanies = 0,
     this.pendingCarListings = 0,
   });
 
-  int get total => taxiDrivers + couriers + merchants + realtors + carDealers + pendingCarListings;
+  int get total => taxiDrivers + couriers + merchants + realtors + carDealers + rentalCompanies + pendingCarListings;
 
   PendingApplicationCounts copyWith({
     int? taxiDrivers,
@@ -35,6 +37,7 @@ class PendingApplicationCounts {
     int? merchants,
     int? realtors,
     int? carDealers,
+    int? rentalCompanies,
     int? pendingCarListings,
   }) {
     return PendingApplicationCounts(
@@ -43,6 +46,7 @@ class PendingApplicationCounts {
       merchants: merchants ?? this.merchants,
       realtors: realtors ?? this.realtors,
       carDealers: carDealers ?? this.carDealers,
+      rentalCompanies: rentalCompanies ?? this.rentalCompanies,
       pendingCarListings: pendingCarListings ?? this.pendingCarListings,
     );
   }
@@ -56,6 +60,7 @@ class NotificationService extends StateNotifier<PendingApplicationCounts> {
   RealtimeChannel? _courierChannel;
   RealtimeChannel? _merchantChannel;
   RealtimeChannel? _carDealerChannel;
+  RealtimeChannel? _rentalCompanyChannel;
   RealtimeChannel? _carListingsChannel;
   int _previousTotal = 0;
   bool _isInitialized = false;
@@ -141,6 +146,19 @@ class NotificationService extends StateNotifier<PendingApplicationCounts> {
         )
         .subscribe();
 
+    // Rental Company başvuruları için realtime
+    _rentalCompanyChannel = _supabase
+        .channel('rental_companies_changes')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'rental_companies',
+          callback: (payload) {
+            _onNewApplication('rental_company', payload);
+          },
+        )
+        .subscribe();
+
     // Araç ilanları için realtime (yeni ilan geldiğinde)
     _carListingsChannel = _supabase
         .channel('car_listings_admin_changes')
@@ -195,6 +213,7 @@ class NotificationService extends StateNotifier<PendingApplicationCounts> {
         _getMerchantPendingCount(),
         _getRealtorPendingCount(),
         _getCarDealerPendingCount(),
+        _getRentalCompanyPendingCount(),
         _getPendingCarListingsCount(),
       ]);
 
@@ -204,7 +223,8 @@ class NotificationService extends StateNotifier<PendingApplicationCounts> {
         merchants: results[2],
         realtors: results[3],
         carDealers: results[4],
-        pendingCarListings: results[5],
+        rentalCompanies: results[5],
+        pendingCarListings: results[6],
       );
 
       // Yeni başvuru geldiyse ses çal
@@ -280,6 +300,18 @@ class NotificationService extends StateNotifier<PendingApplicationCounts> {
     }
   }
 
+  Future<int> _getRentalCompanyPendingCount() async {
+    try {
+      final response = await _supabase
+          .from('rental_companies')
+          .select('id')
+          .eq('is_approved', false);
+      return (response as List).length;
+    } catch (e) {
+      return 0;
+    }
+  }
+
   Future<int> _getPendingCarListingsCount() async {
     try {
       final response = await _supabase
@@ -310,6 +342,7 @@ class NotificationService extends StateNotifier<PendingApplicationCounts> {
     _courierChannel?.unsubscribe();
     _merchantChannel?.unsubscribe();
     _carDealerChannel?.unsubscribe();
+    _rentalCompanyChannel?.unsubscribe();
     _carListingsChannel?.unsubscribe();
     super.dispose();
   }

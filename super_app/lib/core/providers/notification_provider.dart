@@ -62,6 +62,8 @@ class AppNotification {
       case 'taxi_ride':
         return 'local_taxi';
       case 'rental_reservation':
+      case 'rental_review_reply':
+      case 'rental_review_received':
         return 'directions_car';
       case 'job_application':
       case 'job_application_status':
@@ -94,6 +96,8 @@ class AppNotification {
       case 'taxi_ride':
         return 0xFFFFC107; // Sarı
       case 'rental_reservation':
+      case 'rental_review_reply':
+      case 'rental_review_received':
         return 0xFF3B82F6; // Mavi
       case 'job_application':
       case 'job_application_status':

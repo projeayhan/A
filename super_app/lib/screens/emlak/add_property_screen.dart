@@ -664,7 +664,7 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
     ];
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
       child: Row(
         children: [
           GestureDetector(
@@ -751,7 +751,7 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
 
   Widget _buildStep1TypeSelection(bool isDark) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -846,10 +846,10 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 4,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 0.9,
+              crossAxisCount: 3,
+              mainAxisSpacing: 10,
+              crossAxisSpacing: 10,
+              childAspectRatio: 1.0,
             ),
             itemCount: ref.watch(propertyTypesProvider).when(
               data: (types) => types.length,
@@ -920,7 +920,7 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
 
   Widget _buildStep2BasicInfo(bool isDark) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1132,7 +1132,7 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
 
   Widget _buildStep3Location(bool isDark) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1367,7 +1367,7 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
 
           // Harita
           Container(
-            height: 250,
+            height: 200,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
@@ -1476,7 +1476,7 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
   }
 
   Widget _buildStep4Features(bool isDark) {
-    final features = [
+    final features = <Map<String, dynamic>>[
       {'key': 'parking', 'icon': Icons.local_parking_rounded, 'label': 'Otopark', 'value': _hasParking},
       {'key': 'balcony', 'icon': Icons.balcony_rounded, 'label': 'Balkon', 'value': _hasBalcony},
       {'key': 'furniture', 'icon': Icons.chair_rounded, 'label': 'Eşyalı', 'value': _hasFurniture},
@@ -1488,7 +1488,7 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
     ];
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1616,7 +1616,7 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
 
   Widget _buildStep5Photos(bool isDark) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2015,7 +2015,7 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
     final isLastStep = _currentStep == _totalSteps - 1;
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
         boxShadow: [

@@ -189,7 +189,7 @@ class _SuperAppState extends ConsumerState<SuperApp> {
         }
         break;
       case 'rental_reservation':
-        router.push('/rental');
+        router.push('/rental/my-bookings');
         break;
       default:
         // Open notifications screen

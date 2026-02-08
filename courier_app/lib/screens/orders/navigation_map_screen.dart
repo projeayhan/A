@@ -44,7 +44,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
   Set<Polyline> _polylines = {};
   List<LatLng> _routePoints = [];
   bool _isLoading = true;
+  bool _locationUnavailable = false;
   int _routeUpdateCounter = 0;
+  bool _followCourier = true; // Kameranın kuryeyi takip etmesi
 
   @override
   void initState() {
@@ -97,11 +99,27 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     if (mounted) setState(() => _isLoading = false);
   }
 
-  // Widget'tan gelen hedef koordinatlarına göre tahmini mesafe
+  // Konum alınamadığında hedef marker'ı göster ve durumu güncelle
   void _setFallbackDistanceFromWidget() {
-    // Varsayılan başlangıç noktası yoksa yaklaşık mesafe göster
-    _distance = 0;
-    _duration = '-- dk';
+    _locationUnavailable = true;
+    _distance = null;
+    _duration = null;
+
+    // Konum yoksa bile hedef marker'ı göster
+    _markers = {
+      Marker(
+        markerId: const MarkerId('destination'),
+        position: LatLng(widget.destinationLat, widget.destinationLng),
+        icon: BitmapDescriptor.defaultMarkerWithHue(
+          widget.isCustomer ? BitmapDescriptor.hueRed : BitmapDescriptor.hueOrange,
+        ),
+        infoWindow: InfoWindow(
+          title: widget.destinationName,
+          snippet: widget.destinationAddress,
+        ),
+      ),
+    };
+
     if (mounted) setState(() {});
   }
 
@@ -128,7 +146,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
   }
 
   void _startLocationUpdates() {
-    _locationTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
+    _locationTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
       if (!mounted) {
         timer.cancel();
         return;
@@ -190,8 +208,15 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       ),
     };
 
-    // Kamerayı her iki noktayı gösterecek şekilde ayarla
-    _fitBounds(courierLatLng, destinationLatLng);
+    // Takip modunda kamera kuryeyi izler, değilse ilk seferde fit bounds
+    if (_followCourier && _mapController != null) {
+      _mapController!.animateCamera(
+        CameraUpdate.newLatLngZoom(courierLatLng, 16),
+      );
+    } else if (_routeUpdateCounter == 0 && _routePoints.isNotEmpty) {
+      // İlk rota yüklendiğinde her iki noktayı göster
+      _fitBounds(courierLatLng, destinationLatLng);
+    }
   }
 
   // Supabase Edge Function üzerinden Google Directions API'den gerçek rota, mesafe ve süre al
@@ -411,12 +436,32 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     );
   }
 
-  Future<void> _openExternalNavigation() async {
-    final uri = Uri.parse(
-      'https://www.google.com/maps/dir/?api=1&destination=${widget.destinationLat},${widget.destinationLng}',
+  String get _distanceText {
+    if (_distance != null && _distance! > 0) return '${_distance!.toStringAsFixed(1)} km';
+    if (_locationUnavailable) return 'Konum alınamadı';
+    return 'Hesaplanıyor...';
+  }
+
+  String get _durationText {
+    if (_duration != null) return _duration!;
+    if (_locationUnavailable) return '--';
+    return 'Hesaplanıyor...';
+  }
+
+  Future<void> _openGoogleMapsNavigation() async {
+    final url = Uri.parse(
+      'google.navigation:q=${widget.destinationLat},${widget.destinationLng}&mode=d',
     );
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    // Google Maps yüklü değilse web URL dene
+    final webUrl = Uri.parse(
+      'https://www.google.com/maps/dir/?api=1&destination=${widget.destinationLat},${widget.destinationLng}&travelmode=driving',
+    );
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url);
+    } else if (await canLaunchUrl(webUrl)) {
+      await launchUrl(webUrl, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) AppDialogs.showInfo(context, 'Harita uygulaması bulunamadı');
     }
   }
 
@@ -446,6 +491,15 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
               _mapController = controller;
               if (_currentPosition != null) {
                 _updateMarkersAndRoute();
+              }
+            },
+            onCameraMoveStarted: () {
+              // Kullanıcı haritayı elle hareket ettirirse takip modu kapansın
+            },
+            onCameraMove: (_) {
+              // Kullanıcı haritayı sürüklediğinde takip modunu kapat
+              if (_followCourier) {
+                setState(() => _followCourier = false);
               }
             },
             markers: _markers,
@@ -524,9 +578,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                                 const Icon(Icons.directions, color: Colors.white, size: 18),
                                 const SizedBox(width: 6),
                                 Text(
-                                  _distance != null && _distance! > 0
-                                      ? '${_distance!.toStringAsFixed(1)} km'
-                                      : 'Hesaplanıyor...',
+                                  _distanceText,
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
@@ -579,12 +631,35 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
             bottom: 180,
             child: Column(
               children: [
-                // Konumuma git
+                // Konum alınamadıysa yeniden dene
+                if (_locationUnavailable)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: FloatingActionButton.small(
+                      heroTag: 'retryLocation',
+                      onPressed: () {
+                        setState(() {
+                          _isLoading = true;
+                          _locationUnavailable = false;
+                        });
+                        _initLocation();
+                      },
+                      backgroundColor: AppColors.warning,
+                      child: const Icon(Icons.refresh, color: Colors.white),
+                    ),
+                  ),
+                // Konumuma git / Takip modu
                 FloatingActionButton.small(
                   heroTag: 'myLocation',
-                  onPressed: _centerOnCourier,
-                  backgroundColor: AppColors.surface,
-                  child: Icon(Icons.my_location, color: AppColors.primary),
+                  onPressed: () {
+                    setState(() => _followCourier = true);
+                    _centerOnCourier();
+                  },
+                  backgroundColor: _followCourier ? AppColors.primary : AppColors.surface,
+                  child: Icon(
+                    _followCourier ? Icons.navigation : Icons.my_location,
+                    color: _followCourier ? Colors.white : AppColors.primary,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 // Hedefe git
@@ -639,57 +714,56 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                 children: [
                   // Mesafe ve süre bilgisi
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.only(bottom: 12),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
                         _buildInfoChip(
                           icon: Icons.directions,
-                          label: _distance != null && _distance! > 0
-                              ? '${_distance!.toStringAsFixed(1)} km'
-                              : 'Hesaplanıyor...',
+                          label: _distanceText,
                           color: AppColors.primary,
                         ),
                         _buildInfoChip(
                           icon: Icons.access_time,
-                          label: _duration ?? 'Hesaplanıyor...',
+                          label: _durationText,
                           color: AppColors.warning,
                         ),
                       ],
                     ),
                   ),
-                  // Aksiyon butonları
-                  Row(
-                    children: [
-                      // Telefon butonu
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: _callPhone,
-                          icon: const Icon(Icons.phone),
-                          label: const Text('Ara'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: AppColors.success,
-                            side: BorderSide(color: AppColors.success),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
+                  // Google Maps Navigasyon butonu
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _openGoogleMapsNavigation,
+                        icon: const Icon(Icons.navigation),
+                        label: const Text('Navigasyonu Başlat'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      // Google Maps'te aç
-                      Expanded(
-                        flex: 2,
-                        child: ElevatedButton.icon(
-                          onPressed: _openExternalNavigation,
-                          icon: const Icon(Icons.navigation),
-                          label: const Text('Google Maps\'te Aç'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: widget.isCustomer ? AppColors.error : AppColors.primary,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                          ),
-                        ),
+                    ),
+                  ),
+                  // Telefon butonu
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _callPhone,
+                      icon: const Icon(Icons.phone),
+                      label: const Text('Ara'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.success,
+                        side: BorderSide(color: AppColors.success),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
-                    ],
+                    ),
                   ),
                 ],
               ),

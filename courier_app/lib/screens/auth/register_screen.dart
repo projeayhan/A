@@ -46,19 +46,19 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     {
       'value': 'platform',
       'label': 'Platform Kuryesi',
-      'description': 'Tüm restoranlardan sipariş alırsınız',
+      'description': 'Tüm restoran, market ve mağazalardan sipariş alırsınız',
       'icon': 'public',
     },
     {
       'value': 'restaurant',
-      'label': 'Restoran Kuryesi',
-      'description': 'Sadece belirli bir restorana çalışırsınız',
+      'label': 'İşletme Kuryesi',
+      'description': 'Sadece belirli bir işletmeye (restoran, market veya mağaza) çalışırsınız',
       'icon': 'store',
     },
     {
       'value': 'both',
       'label': 'Her İkisi',
-      'description': 'Hem platform hem de bir restorana çalışırsınız',
+      'description': 'Hem platform hem de belirli bir işletmeye çalışırsınız',
       'icon': 'all_inclusive',
     },
   ];
@@ -131,7 +131,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   Future<void> _searchMerchant() async {
     final email = _merchantEmailController.text.trim();
     if (email.isEmpty) {
-      _showError('Restoran e-posta adresi girin');
+      _showError('İşletme e-posta adresi girin');
       return;
     }
 
@@ -140,12 +140,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     try {
       final response = await SupabaseService.client
           .from('merchants')
-          .select('id, business_name, address, logo_url')
+          .select('id, business_name, type, address, logo_url')
           .eq('email', email)
           .maybeSingle();
 
       if (response == null) {
-        _showError('Bu e-posta adresine ait restoran bulunamadı');
+        _showError('Bu e-posta adresine ait işletme bulunamadı');
         setState(() => _selectedMerchant = null);
       } else {
         setState(() => _selectedMerchant = response);
@@ -161,7 +161,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     // Çalışma modu validasyonu
     if (_selectedWorkMode == 'restaurant' || _selectedWorkMode == 'both') {
       if (_selectedMerchant == null) {
-        _showError('Lütfen bir restoran seçin');
+        _showError('Lütfen bir işletme seçin');
         return;
       }
     }
@@ -515,12 +515,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             const Divider(),
             const SizedBox(height: 24),
             Text(
-              'Hangi restorana çalışacaksınız?',
+              'Hangi işletmeye çalışacaksınız?',
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
             Text(
-              'Restoranın kayıtlı e-posta adresini girin',
+              'İşletmenin kayıtlı e-posta adresini girin',
               style: Theme.of(
                 context,
               ).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
@@ -536,9 +536,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     enabled: !isLoading && !_isSearchingMerchant,
                     keyboardType: TextInputType.emailAddress,
                     decoration: const InputDecoration(
-                      labelText: 'Restoran E-posta',
+                      labelText: 'İşletme E-posta',
                       prefixIcon: Icon(Icons.store_outlined),
-                      hintText: 'restoran@email.com',
+                      hintText: 'isletme@email.com',
                     ),
                   ),
                 ),
@@ -602,17 +602,39 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            _selectedMerchant!['business_name'] ?? 'Restoran',
+                            _selectedMerchant!['business_name'] ?? 'İşletme',
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
-                          Text(
-                            _selectedMerchant!['address'] ?? '',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textSecondary,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  _getMerchantTypeLabel(_selectedMerchant!['type']),
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _selectedMerchant!['address'] ?? '',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -623,7 +645,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Kayıt sonrası bu restorana bağlantı isteği gönderilecek. Restoran onayladığında bağlantınız tamamlanır.',
+                'Kayıt sonrası bu işletmeye bağlantı isteği gönderilecek. İşletme onayladığında bağlantınız tamamlanır.',
                 style: TextStyle(
                   fontSize: 12,
                   color: AppColors.textSecondary,
@@ -679,6 +701,19 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         ],
       ),
     );
+  }
+
+  String _getMerchantTypeLabel(String? type) {
+    switch (type) {
+      case 'restaurant':
+        return 'Restoran';
+      case 'market':
+        return 'Market';
+      case 'store':
+        return 'Mağaza';
+      default:
+        return 'İşletme';
+    }
   }
 
   Widget _buildWorkModeOption(Map<String, String> mode) {

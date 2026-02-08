@@ -1,6 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../core/utils/app_dialogs.dart';
+import '../../core/theme/app_theme.dart';
 import '../../services/rental_service.dart';
 
 class MyBookingsScreen extends StatefulWidget {
@@ -14,6 +15,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final RentalService _rentalService = RentalService();
+  StreamSubscription<List<Map<String, dynamic>>>? _realtimeSubscription;
 
   List<Map<String, dynamic>> _activeBookings = [];
   List<Map<String, dynamic>> _pastBookings = [];
@@ -25,66 +27,72 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _loadBookings();
+    _subscribeToBookings();
   }
 
   @override
   void dispose() {
+    _realtimeSubscription?.cancel();
     _tabController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadBookings() async {
-    setState(() {
-      _isLoading = true;
-      _error = null;
+  void _subscribeToBookings() {
+    _realtimeSubscription = _rentalService.subscribeToUserBookings().listen((_) {
+      if (!mounted) return;
+      // Realtime only returns basic columns, reload full data with joins
+      _loadBookings(silent: true);
     });
+  }
+
+  Future<void> _loadBookings({bool silent = false}) async {
+    if (!silent) {
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+    }
 
     try {
       final bookings = await _rentalService.getUserBookings();
 
-      _activeBookings = bookings.where((b) {
+      final active = bookings.where((b) {
         final status = b['status'] as String?;
         return status == 'pending' || status == 'confirmed' || status == 'active';
       }).toList();
 
-      _pastBookings = bookings.where((b) {
+      final past = bookings.where((b) {
         final status = b['status'] as String?;
         return status == 'completed' || status == 'cancelled' || status == 'no_show';
       }).toList();
 
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() {
+          _activeBookings = active;
+          _pastBookings = past;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _error = e.toString();
-      });
+      if (mounted && !silent) {
+        setState(() {
+          _isLoading = false;
+          _error = e.toString();
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0F),
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: const Text(
-          'Rezervasyonlarım',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
+        title: const Text('Rezervasyonlarım'),
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: const Color(0xFF1976D2),
-          indicatorWeight: 3,
-          labelColor: const Color(0xFF1976D2),
-          unselectedLabelColor: Colors.white54,
           tabs: [
             Tab(text: 'Aktif (${_activeBookings.length})'),
             Tab(text: 'Geçmiş (${_pastBookings.length})'),
@@ -92,51 +100,48 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
         ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF1976D2)))
+          ? Center(child: CircularProgressIndicator(color: colors.primary))
           : _error != null
-              ? _buildErrorView()
+              ? _buildErrorView(theme)
               : TabBarView(
                   controller: _tabController,
                   children: [
-                    _buildBookingsList(_activeBookings, isActive: true),
-                    _buildBookingsList(_pastBookings, isActive: false),
+                    _buildBookingsList(_activeBookings, isActive: true, theme: theme),
+                    _buildBookingsList(_pastBookings, isActive: false, theme: theme),
                   ],
                 ),
     );
   }
 
-  Widget _buildErrorView() {
+  Widget _buildErrorView(ThemeData theme) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.error_outline, color: Colors.red, size: 64),
+          const Icon(Icons.error_outline, color: AppColors.error, size: 64),
           const SizedBox(height: 16),
-          Text(
-            'Bir hata oluştu',
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 18),
-          ),
+          Text('Bir hata oluştu', style: theme.textTheme.titleMedium),
           const SizedBox(height: 8),
-          Text(
-            _error!,
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 14),
-            textAlign: TextAlign.center,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 32),
+            child: Text(_error!,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant),
+                textAlign: TextAlign.center),
           ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
             onPressed: _loadBookings,
             icon: const Icon(Icons.refresh),
             label: const Text('Tekrar Dene'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1976D2),
-            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildBookingsList(List<Map<String, dynamic>> bookings, {required bool isActive}) {
+  Widget _buildBookingsList(List<Map<String, dynamic>> bookings,
+      {required bool isActive, required ThemeData theme}) {
     if (bookings.isEmpty) {
       return Center(
         child: Column(
@@ -144,16 +149,14 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
           children: [
             Icon(
               isActive ? Icons.car_rental : Icons.history,
-              color: Colors.white24,
+              color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
               size: 80,
             ),
             const SizedBox(height: 16),
             Text(
               isActive ? 'Aktif rezervasyonunuz yok' : 'Geçmiş rezervasyonunuz yok',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.5),
-                fontSize: 16,
-              ),
+              style: theme.textTheme.bodyLarge?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant),
             ),
           ],
         ),
@@ -162,18 +165,20 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
 
     return RefreshIndicator(
       onRefresh: _loadBookings,
-      color: const Color(0xFF1976D2),
+      color: theme.colorScheme.primary,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: bookings.length,
         itemBuilder: (context, index) {
-          return _buildBookingCard(bookings[index], isActive: isActive);
+          return _buildBookingCard(bookings[index], isActive: isActive, theme: theme);
         },
       ),
     );
   }
 
-  Widget _buildBookingCard(Map<String, dynamic> booking, {required bool isActive}) {
+  Widget _buildBookingCard(Map<String, dynamic> booking,
+      {required bool isActive, required ThemeData theme}) {
+    final colors = theme.colorScheme;
     final car = booking['rental_cars'] as Map<String, dynamic>?;
     final company = booking['rental_companies'] as Map<String, dynamic>?;
     final pickupLocation = booking['pickup_location'] as Map<String, dynamic>?;
@@ -186,31 +191,25 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
     final totalAmount = (booking['total_amount'] as num?)?.toDouble() ?? 0;
 
     final dateFormat = DateFormat('dd MMM yyyy, HH:mm', 'tr_TR');
+    final statusColor = _getStatusColor(status);
 
-    return Container(
+    return Card(
       margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: _getStatusColor(status).withValues(alpha: 0.3),
-        ),
-      ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
-          // Header
+          // Header with status
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: _getStatusColor(status).withValues(alpha: 0.1),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              color: statusColor.withValues(alpha: 0.08),
             ),
             child: Row(
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: _getStatusColor(status),
+                    color: statusColor,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -223,14 +222,9 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                   ),
                 ),
                 const Spacer(),
-                Text(
-                  bookingNumber,
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.7),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+                Text(bookingNumber,
+                    style: theme.textTheme.labelLarge?.copyWith(
+                        color: colors.onSurfaceVariant)),
               ],
             ),
           ),
@@ -241,16 +235,17 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
             child: Row(
               children: [
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                   child: car?['image_url'] != null
                       ? Image.network(
                           car!['image_url'],
                           width: 100,
                           height: 70,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => _buildCarPlaceholder(),
+                          errorBuilder: (context, error, stackTrace) =>
+                              _buildCarPlaceholder(theme),
                         )
-                      : _buildCarPlaceholder(),
+                      : _buildCarPlaceholder(theme),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -259,28 +254,19 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                     children: [
                       Text(
                         '${car?['brand'] ?? ''} ${car?['model'] ?? ''}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: theme.textTheme.titleMedium,
                       ),
                       const SizedBox(height: 4),
                       Text(
                         company?['company_name'] ?? '',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.5),
-                          fontSize: 13,
-                        ),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                            color: colors.onSurfaceVariant),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         '₺${totalAmount.toStringAsFixed(0)}',
-                        style: const TextStyle(
-                          color: Color(0xFF1976D2),
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: theme.textTheme.titleLarge?.copyWith(
+                            color: colors.primary, fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
@@ -290,77 +276,71 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
           ),
 
           // Dates
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.03),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    children: [
-                      const Icon(Icons.login, color: Color(0xFF4CAF50), size: 20),
-                      const SizedBox(height: 4),
-                      const Text(
-                        'Alış',
-                        style: TextStyle(color: Colors.white54, fontSize: 11),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        pickupDate != null ? dateFormat.format(pickupDate) : '-',
-                        style: const TextStyle(color: Colors.white, fontSize: 12),
-                        textAlign: TextAlign.center,
-                      ),
-                      Text(
-                        pickupLocation?['name'] ?? '',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.5),
-                          fontSize: 11,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: colors.surfaceContainerHighest.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Icon(Icons.login, color: AppColors.success, size: 20),
+                        const SizedBox(height: 4),
+                        Text('Alış', style: theme.textTheme.labelSmall?.copyWith(
+                            color: colors.onSurfaceVariant)),
+                        const SizedBox(height: 2),
+                        Text(
+                          pickupDate != null ? dateFormat.format(pickupDate) : '-',
+                          style: theme.textTheme.bodySmall,
+                          textAlign: TextAlign.center,
                         ),
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  width: 1,
-                  height: 60,
-                  color: Colors.white12,
-                ),
-                Expanded(
-                  child: Column(
-                    children: [
-                      const Icon(Icons.logout, color: Color(0xFFF44336), size: 20),
-                      const SizedBox(height: 4),
-                      const Text(
-                        'Teslim',
-                        style: TextStyle(color: Colors.white54, fontSize: 11),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        dropoffDate != null ? dateFormat.format(dropoffDate) : '-',
-                        style: const TextStyle(color: Colors.white, fontSize: 12),
-                        textAlign: TextAlign.center,
-                      ),
-                      Text(
-                        dropoffLocation?['name'] ?? '',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.5),
-                          fontSize: 11,
+                        Text(
+                          pickupLocation?['name'] ?? '',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                              color: colors.onSurfaceVariant),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                  Container(
+                    width: 1,
+                    height: 60,
+                    color: colors.outlineVariant,
+                  ),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Icon(Icons.logout, color: AppColors.error, size: 20),
+                        const SizedBox(height: 4),
+                        Text('Teslim', style: theme.textTheme.labelSmall?.copyWith(
+                            color: colors.onSurfaceVariant)),
+                        const SizedBox(height: 2),
+                        Text(
+                          dropoffDate != null ? dateFormat.format(dropoffDate) : '-',
+                          style: theme.textTheme.bodySmall,
+                          textAlign: TextAlign.center,
+                        ),
+                        Text(
+                          dropoffLocation?['name'] ?? '',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                              color: colors.onSurfaceVariant),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
 
@@ -376,8 +356,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                       icon: const Icon(Icons.close, size: 18),
                       label: const Text('İptal Et'),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red,
-                        side: const BorderSide(color: Colors.red),
+                        foregroundColor: AppColors.error,
+                        side: const BorderSide(color: AppColors.error),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
@@ -389,8 +369,6 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                       icon: const Icon(Icons.phone, size: 18),
                       label: const Text('Ara'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1976D2),
-                        foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
@@ -408,7 +386,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                   icon: const Icon(Icons.star, size: 18),
                   label: const Text('Değerlendir'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFFC107),
+                    backgroundColor: AppColors.warning,
                     foregroundColor: Colors.black,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
@@ -422,34 +400,35 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
     );
   }
 
-  Widget _buildCarPlaceholder() {
+  Widget _buildCarPlaceholder(ThemeData theme) {
     return Container(
       width: 100,
       height: 70,
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
+        color: theme.colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(10),
       ),
-      child: const Icon(Icons.directions_car, color: Colors.white24, size: 32),
+      child: Icon(Icons.directions_car,
+          color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.3), size: 32),
     );
   }
 
   Color _getStatusColor(String status) {
     switch (status) {
       case 'pending':
-        return Colors.orange;
+        return AppColors.warning;
       case 'confirmed':
-        return const Color(0xFF1976D2);
+        return AppColors.primary;
       case 'active':
-        return const Color(0xFF4CAF50);
+        return AppColors.success;
       case 'completed':
-        return Colors.grey;
+        return AppColors.textSecondaryLight;
       case 'cancelled':
-        return Colors.red;
+        return AppColors.error;
       case 'no_show':
         return Colors.purple;
       default:
-        return Colors.grey;
+        return AppColors.textSecondaryLight;
     }
   }
 
@@ -478,33 +457,17 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A2E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          'Rezervasyonu İptal Et',
-          style: TextStyle(color: Colors.white),
-        ),
+        title: const Text('Rezervasyonu İptal Et'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              'Bu rezervasyonu iptal etmek istediğinizden emin misiniz?',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
-            ),
+            const Text('Bu rezervasyonu iptal etmek istediğinizden emin misiniz?'),
             const SizedBox(height: 16),
             TextField(
               controller: reasonController,
               maxLines: 3,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 hintText: 'İptal sebebi (opsiyonel)',
-                hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
-                filled: true,
-                fillColor: Colors.white.withValues(alpha: 0.05),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
               ),
             ),
           ],
@@ -524,7 +487,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                     : 'Kullanıcı tarafından iptal edildi',
               );
             },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error, foregroundColor: Colors.white),
             child: const Text('İptal Et'),
           ),
         ],
@@ -540,7 +504,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Rezervasyon iptal edildi'),
-            backgroundColor: Color(0xFF4CAF50),
+            backgroundColor: AppColors.success,
           ),
         );
         _loadBookings();
@@ -548,7 +512,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Rezervasyon iptal edilemedi'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -557,7 +521,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Hata: $e'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.error,
         ),
       );
     }
@@ -570,7 +534,6 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
       );
       return;
     }
-    // TODO: Implement phone call using url_launcher
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Aranıyor: $phone')),
     );
@@ -583,19 +546,19 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
     int serviceRating = 5;
     int valueRating = 5;
     final commentController = TextEditingController();
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
       builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => Container(
-          height: MediaQuery.of(context).size.height * 0.85,
-          decoration: const BoxDecoration(
-            color: Color(0xFF1A1A2E),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
+        builder: (context, setDialogState) => DraggableScrollableSheet(
+          initialChildSize: 0.85,
+          maxChildSize: 0.95,
+          minChildSize: 0.5,
+          expand: false,
+          builder: (context, scrollController) => Column(
             children: [
               // Handle
               Container(
@@ -603,7 +566,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.white24,
+                  color: colors.outlineVariant,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -613,19 +576,13 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                 padding: const EdgeInsets.all(20),
                 child: Row(
                   children: [
-                    const Expanded(
-                      child: Text(
-                        'Değerlendirme',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                    Expanded(
+                      child: Text('Değerlendirme',
+                          style: theme.textTheme.titleLarge),
                     ),
                     IconButton(
                       onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close, color: Colors.white54),
+                      icon: Icon(Icons.close, color: colors.onSurfaceVariant),
                     ),
                   ],
                 ),
@@ -633,80 +590,41 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
 
               Expanded(
                 child: SingleChildScrollView(
+                  controller: scrollController,
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Overall Rating
                       _buildRatingSection(
-                        'Genel Değerlendirme',
-                        overallRating,
+                        'Genel Değerlendirme', overallRating,
                         (rating) => setDialogState(() => overallRating = rating),
-                        isMain: true,
+                        isMain: true, theme: theme,
                       ),
-
                       const SizedBox(height: 24),
-
-                      // Detailed Ratings
-                      Text(
-                        'Detaylı Değerlendirme',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.7),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      Text('Detaylı Değerlendirme',
+                          style: theme.textTheme.titleSmall?.copyWith(
+                              color: colors.onSurfaceVariant)),
                       const SizedBox(height: 16),
-
-                      _buildRatingSection(
-                        'Araç Durumu',
-                        carConditionRating,
-                        (rating) => setDialogState(() => carConditionRating = rating),
-                      ),
-                      _buildRatingSection(
-                        'Temizlik',
-                        cleanlinessRating,
-                        (rating) => setDialogState(() => cleanlinessRating = rating),
-                      ),
-                      _buildRatingSection(
-                        'Hizmet Kalitesi',
-                        serviceRating,
-                        (rating) => setDialogState(() => serviceRating = rating),
-                      ),
-                      _buildRatingSection(
-                        'Fiyat/Performans',
-                        valueRating,
-                        (rating) => setDialogState(() => valueRating = rating),
-                      ),
-
+                      _buildRatingSection('Araç Durumu', carConditionRating,
+                          (r) => setDialogState(() => carConditionRating = r), theme: theme),
+                      _buildRatingSection('Temizlik', cleanlinessRating,
+                          (r) => setDialogState(() => cleanlinessRating = r), theme: theme),
+                      _buildRatingSection('Hizmet Kalitesi', serviceRating,
+                          (r) => setDialogState(() => serviceRating = r), theme: theme),
+                      _buildRatingSection('Fiyat/Performans', valueRating,
+                          (r) => setDialogState(() => valueRating = r), theme: theme),
                       const SizedBox(height: 24),
-
-                      // Comment
-                      Text(
-                        'Yorumunuz',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.7),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      Text('Yorumunuz',
+                          style: theme.textTheme.titleSmall?.copyWith(
+                              color: colors.onSurfaceVariant)),
                       const SizedBox(height: 12),
                       TextField(
                         controller: commentController,
                         maxLines: 4,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           hintText: 'Deneyiminizi paylaşın...',
-                          hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
-                          filled: true,
-                          fillColor: Colors.white.withValues(alpha: 0.05),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
                         ),
                       ),
-
                       const SizedBox(height: 32),
                     ],
                   ),
@@ -714,18 +632,11 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
               ),
 
               // Submit Button
-              Container(
+              Padding(
                 padding: EdgeInsets.only(
-                  left: 20,
-                  right: 20,
+                  left: 20, right: 20,
                   bottom: MediaQuery.of(context).padding.bottom + 20,
                   top: 16,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1A1A2E),
-                  border: Border(
-                    top: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
-                  ),
                 ),
                 child: SizedBox(
                   width: double.infinity,
@@ -733,29 +644,16 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                     onPressed: () async {
                       Navigator.pop(context);
                       await _submitDetailedReview(
-                        booking,
-                        overallRating,
-                        carConditionRating,
-                        cleanlinessRating,
-                        serviceRating,
-                        valueRating,
+                        booking, overallRating, carConditionRating,
+                        cleanlinessRating, serviceRating, valueRating,
                         commentController.text,
                       );
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1976D2),
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
                     ),
-                    child: const Text(
-                      'Değerlendirmeyi Gönder',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+                    child: const Text('Değerlendirmeyi Gönder',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                   ),
                 ),
               ),
@@ -767,34 +665,29 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
   }
 
   Widget _buildRatingSection(
-    String label,
-    int rating,
-    Function(int) onRatingChanged, {
-    bool isMain = false,
-  }) {
+    String label, int rating, Function(int) onRatingChanged,
+    {bool isMain = false, required ThemeData theme}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         children: [
           Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: isMain ? 1 : 0.7),
-                fontSize: isMain ? 16 : 14,
-                fontWeight: isMain ? FontWeight.w600 : FontWeight.normal,
-              ),
-            ),
+            child: Text(label,
+                style: isMain
+                    ? theme.textTheme.titleSmall
+                    : theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant)),
           ),
           Row(
             children: List.generate(5, (index) {
-              return GestureDetector(
+              return InkWell(
                 onTap: () => onRatingChanged(index + 1),
+                borderRadius: BorderRadius.circular(4),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 2),
                   child: Icon(
                     index < rating ? Icons.star : Icons.star_border,
-                    color: const Color(0xFFFFC107),
+                    color: AppColors.warning,
                     size: isMain ? 32 : 24,
                   ),
                 ),
@@ -808,12 +701,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
 
   Future<void> _submitDetailedReview(
     Map<String, dynamic> booking,
-    int overallRating,
-    int carConditionRating,
-    int cleanlinessRating,
-    int serviceRating,
-    int valueRating,
-    String comment,
+    int overallRating, int carConditionRating, int cleanlinessRating,
+    int serviceRating, int valueRating, String comment,
   ) async {
     try {
       final success = await _rentalService.createReview(
@@ -833,14 +722,14 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Değerlendirmeniz kaydedildi. Teşekkürler!'),
-            backgroundColor: Color(0xFF4CAF50),
+            backgroundColor: AppColors.success,
           ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Değerlendirme kaydedilemedi'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -849,7 +738,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Hata: $e'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.error,
         ),
       );
     }

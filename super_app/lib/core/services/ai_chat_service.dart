@@ -5,7 +5,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-enum AiStreamEventType { session, chunk, actions, done, error }
+enum AiStreamEventType { session, chunk, actions, searchResults, rentalResults, done, error }
 
 class AiStreamEvent {
   final AiStreamEventType type;
@@ -14,6 +14,8 @@ class AiStreamEvent {
   final String? fullMessage;
   final int? tokensUsed;
   final List<Map<String, dynamic>>? actions;
+  final List<Map<String, dynamic>>? searchResults;
+  final List<Map<String, dynamic>>? rentalResults;
   final String? error;
 
   const AiStreamEvent._({
@@ -23,6 +25,8 @@ class AiStreamEvent {
     this.fullMessage,
     this.tokensUsed,
     this.actions,
+    this.searchResults,
+    this.rentalResults,
     this.error,
   });
 
@@ -32,6 +36,10 @@ class AiStreamEvent {
       AiStreamEvent._(type: AiStreamEventType.chunk, text: text);
   factory AiStreamEvent.actions(List<Map<String, dynamic>> actions) =>
       AiStreamEvent._(type: AiStreamEventType.actions, actions: actions);
+  factory AiStreamEvent.searchResults(List<Map<String, dynamic>> products) =>
+      AiStreamEvent._(type: AiStreamEventType.searchResults, searchResults: products);
+  factory AiStreamEvent.rentalResults(List<Map<String, dynamic>> cars) =>
+      AiStreamEvent._(type: AiStreamEventType.rentalResults, rentalResults: cars);
   factory AiStreamEvent.done(String fullMessage, int tokensUsed) =>
       AiStreamEvent._(type: AiStreamEventType.done, fullMessage: fullMessage, tokensUsed: tokensUsed);
   factory AiStreamEvent.error(String error) =>
@@ -117,7 +125,7 @@ class AiChatService {
 
       return {
         'success': false,
-        'error': 'AI servisi hatası: ${e.details?['message'] ?? e.status}',
+        'error': 'AI servisi hatası: ${e.details?['error'] ?? e.details?['message'] ?? e.status}',
       };
     } catch (e) {
       print('AI Chat Error: $e');
@@ -269,6 +277,14 @@ class AiChatService {
         case 'actions':
           return AiStreamEvent.actions(
             (data['actions'] as List).cast<Map<String, dynamic>>(),
+          );
+        case 'search_results':
+          return AiStreamEvent.searchResults(
+            (data['products'] as List).cast<Map<String, dynamic>>(),
+          );
+        case 'rental_results':
+          return AiStreamEvent.rentalResults(
+            (data['cars'] as List).cast<Map<String, dynamic>>(),
           );
         case 'done':
           return AiStreamEvent.done(

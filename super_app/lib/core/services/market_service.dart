@@ -31,7 +31,7 @@ class MarketService {
 
         final response = await _client
             .from('merchants')
-            .select()
+            .select('*, products(count)')
             .inFilter('id', deliverableMarketIds)
             .eq('type', 'market')
             .eq('is_approved', true)
@@ -45,7 +45,7 @@ class MarketService {
       // Konum yoksa tüm marketleri getir
       final response = await _client
           .from('merchants')
-          .select()
+          .select('*, products(count)')
           .eq('type', 'market')
           .eq('is_approved', true)
           .order('rating', ascending: false);
@@ -80,7 +80,7 @@ class MarketService {
 
         final response = await _client
             .from('merchants')
-            .select()
+            .select('*, products(count)')
             .inFilter('id', deliverableMarketIds)
             .eq('type', 'market')
             .eq('is_approved', true)
@@ -94,7 +94,7 @@ class MarketService {
 
       final response = await _client
           .from('merchants')
-          .select()
+          .select('*, products(count)')
           .eq('type', 'market')
           .eq('is_approved', true)
           .order('rating', ascending: false)
@@ -200,7 +200,7 @@ class MarketService {
 
         final response = await _client
             .from('merchants')
-            .select()
+            .select('*, products(count)')
             .inFilter('id', deliverableMarketIds)
             .eq('type', 'market')
             .eq('is_approved', true)
@@ -215,7 +215,7 @@ class MarketService {
 
       final response = await _client
           .from('merchants')
-          .select()
+          .select('*, products(count)')
           .eq('type', 'market')
           .eq('is_approved', true)
           .ilike('business_name', '%$query%')

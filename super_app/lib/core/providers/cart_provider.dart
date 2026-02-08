@@ -1,4 +1,6 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../services/delivery_service.dart';
 
 class CartItem {
   final String id;
@@ -65,19 +67,51 @@ class CartItem {
 class CartState {
   final List<CartItem> items;
   final bool isLoading;
+  final double? dynamicDeliveryFee;
+  final double? deliveryDistanceKm;
+  final int? estimatedDeliveryMin;
+  final String? deliveryZoneName;
+  final bool deliveryFeeLoading;
+  final bool canDeliver;
+  final String? deliveryError;
+  final double? minOrderAmount;
 
   const CartState({
     this.items = const [],
     this.isLoading = false,
+    this.dynamicDeliveryFee,
+    this.deliveryDistanceKm,
+    this.estimatedDeliveryMin,
+    this.deliveryZoneName,
+    this.deliveryFeeLoading = false,
+    this.canDeliver = true,
+    this.deliveryError,
+    this.minOrderAmount,
   });
 
   CartState copyWith({
     List<CartItem>? items,
     bool? isLoading,
+    double? dynamicDeliveryFee,
+    double? deliveryDistanceKm,
+    int? estimatedDeliveryMin,
+    String? deliveryZoneName,
+    bool? deliveryFeeLoading,
+    bool? canDeliver,
+    String? deliveryError,
+    double? minOrderAmount,
   }) {
     return CartState(
       items: items ?? this.items,
       isLoading: isLoading ?? this.isLoading,
+      dynamicDeliveryFee: dynamicDeliveryFee ?? this.dynamicDeliveryFee,
+      deliveryDistanceKm: deliveryDistanceKm ?? this.deliveryDistanceKm,
+      estimatedDeliveryMin: estimatedDeliveryMin ?? this.estimatedDeliveryMin,
+      deliveryZoneName: deliveryZoneName ?? this.deliveryZoneName,
+      deliveryFeeLoading: deliveryFeeLoading ?? this.deliveryFeeLoading,
+      canDeliver: canDeliver ?? this.canDeliver,
+      deliveryError: deliveryError ?? this.deliveryError,
+      minOrderAmount: minOrderAmount ?? this.minOrderAmount,
     );
   }
 
@@ -85,7 +119,10 @@ class CartState {
 
   double get subtotal => items.fold(0, (sum, item) => sum + item.totalPrice);
 
-  double get deliveryFee => subtotal > 0 ? 15.0 : 0;
+  double get deliveryFee {
+    if (subtotal <= 0) return 0;
+    return dynamicDeliveryFee ?? 15.0;
+  }
 
   double get total => subtotal + deliveryFee;
 
@@ -102,7 +139,12 @@ class CartNotifier extends StateNotifier<CartState> {
   CartNotifier() : super(const CartState());
 
   void addItem(CartItem item) {
-    final existingIndex = state.items.indexWhere((i) => i.id == item.id);
+    // Match by id first, then by name+merchant to prevent duplicates from different searches
+    var existingIndex = state.items.indexWhere((i) => i.id == item.id);
+    if (existingIndex < 0) {
+      existingIndex = state.items.indexWhere((i) =>
+          i.name == item.name && i.merchantId == item.merchantId);
+    }
 
     if (existingIndex >= 0) {
       final updatedItems = [...state.items];
@@ -150,6 +192,45 @@ class CartNotifier extends StateNotifier<CartState> {
 
   void clearCart() {
     state = const CartState();
+  }
+
+  Future<void> calculateDeliveryFee({
+    required double customerLat,
+    required double customerLon,
+  }) async {
+    final merchantId = state.merchantId;
+    if (merchantId == null || state.items.isEmpty) return;
+
+    state = state.copyWith(deliveryFeeLoading: true);
+
+    try {
+      final estimate = await DeliveryService.getDeliveryEstimate(
+        merchantId: merchantId,
+        customerLat: customerLat,
+        customerLon: customerLon,
+        subtotal: state.subtotal,
+      );
+
+      if (estimate != null) {
+        state = CartState(
+          items: state.items,
+          isLoading: false,
+          dynamicDeliveryFee: estimate.deliveryFee,
+          deliveryDistanceKm: estimate.distanceKm,
+          estimatedDeliveryMin: estimate.estimatedMinutes,
+          deliveryZoneName: estimate.zoneName,
+          deliveryFeeLoading: false,
+          canDeliver: estimate.canDeliver,
+          deliveryError: estimate.errorMessage,
+          minOrderAmount: estimate.minOrderAmount,
+        );
+      } else {
+        state = state.copyWith(deliveryFeeLoading: false);
+      }
+    } catch (e) {
+      debugPrint('calculateDeliveryFee error: $e');
+      state = state.copyWith(deliveryFeeLoading: false);
+    }
   }
 }
 

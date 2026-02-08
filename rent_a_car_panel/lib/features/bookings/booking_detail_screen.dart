@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -50,6 +51,7 @@ class BookingDetailScreen extends ConsumerWidget {
           final dropoffLocation = booking['dropoff_location'] as Map<String, dynamic>?;
           final pickupDate = DateTime.tryParse(booking['pickup_date'] ?? '');
           final dropoffDate = DateTime.tryParse(booking['dropoff_date'] ?? '');
+          final status = booking['status'] as String? ?? '';
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(24),
@@ -82,11 +84,15 @@ class BookingDetailScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    _buildStatusBadge(booking['status'] ?? ''),
+                    _buildStatusBadge(status),
                     const SizedBox(width: 16),
                     _buildActionButtons(context, ref, booking),
                   ],
                 ),
+                const SizedBox(height: 16),
+
+                // Status Timeline
+                _buildStatusTimeline(status, booking),
                 const SizedBox(height: 24),
 
                 // Content
@@ -157,9 +163,36 @@ class BookingDetailScreen extends ConsumerWidget {
                                           ],
                                         ),
                                         const SizedBox(height: 8),
-                                        Text(
-                                          'Plaka: ${car?['plate_number'] ?? '-'}',
-                                          style: const TextStyle(color: AppColors.textSecondary),
+                                        Row(
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                              decoration: BoxDecoration(
+                                                color: AppColors.surfaceLight,
+                                                borderRadius: BorderRadius.circular(4),
+                                              ),
+                                              child: Text(
+                                                car?['plate'] ?? car?['plate_number'] ?? '-',
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 14,
+                                                  letterSpacing: 1.2,
+                                                ),
+                                              ),
+                                            ),
+                                            if (car?['id'] != null) ...[
+                                              const SizedBox(width: 12),
+                                              TextButton.icon(
+                                                onPressed: () => context.go('/cars/${car!['id']}'),
+                                                icon: const Icon(Icons.open_in_new, size: 14),
+                                                label: const Text('Araç Detayı', style: TextStyle(fontSize: 12)),
+                                                style: TextButton.styleFrom(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                                                  minimumSize: Size.zero,
+                                                ),
+                                              ),
+                                            ],
+                                          ],
                                         ),
                                       ],
                                     ),
@@ -226,26 +259,8 @@ class BookingDetailScreen extends ConsumerWidget {
                                     ],
                                   ),
                                   const SizedBox(height: 16),
-                                  Container(
-                                    padding: const EdgeInsets.all(12),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.surfaceLight,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        const Icon(Icons.access_time, size: 18, color: AppColors.textMuted),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          '${booking['rental_days'] ?? 0} Gün Kiralama',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+                                  // Duration & overdue warning
+                                  _buildDurationBar(booking, pickupDate, dropoffDate),
                                 ],
                               ),
                             ),
@@ -269,7 +284,6 @@ class BookingDetailScreen extends ConsumerWidget {
                                   const SizedBox(height: 20),
                                   Row(
                                     children: [
-                                      // Pickup details
                                       Expanded(
                                         child: _buildDeliveryDetailCard(
                                           title: booking['is_pickup_custom_address'] == true
@@ -282,6 +296,8 @@ class BookingDetailScreen extends ConsumerWidget {
                                           items: [
                                             _buildDetailItem('Tarih', pickupDate != null ? dateFormat.format(pickupDate) : '-'),
                                             _buildDetailItem('Saat', pickupDate != null ? timeFormat.format(pickupDate) : '-'),
+                                            if (booking['actual_pickup_date'] != null)
+                                              _buildDetailItem('Gerçek Alış', DateFormat('dd MMM HH:mm', 'tr_TR').format(DateTime.parse(booking['actual_pickup_date']))),
                                             if (booking['is_pickup_custom_address'] == true) ...[
                                               _buildDetailItem('Adres', booking['pickup_custom_address'] ?? '-'),
                                               if (booking['pickup_custom_address_notes'] != null &&
@@ -297,7 +313,6 @@ class BookingDetailScreen extends ConsumerWidget {
                                         ),
                                       ),
                                       const SizedBox(width: 16),
-                                      // Dropoff details
                                       Expanded(
                                         child: _buildDeliveryDetailCard(
                                           title: booking['is_dropoff_custom_address'] == true
@@ -310,6 +325,8 @@ class BookingDetailScreen extends ConsumerWidget {
                                           items: [
                                             _buildDetailItem('Tarih', dropoffDate != null ? dateFormat.format(dropoffDate) : '-'),
                                             _buildDetailItem('Saat', dropoffDate != null ? timeFormat.format(dropoffDate) : '-'),
+                                            if (booking['actual_dropoff_date'] != null)
+                                              _buildDetailItem('Gerçek İade', DateFormat('dd MMM HH:mm', 'tr_TR').format(DateTime.parse(booking['actual_dropoff_date']))),
                                             if (booking['is_dropoff_custom_address'] == true) ...[
                                               _buildDetailItem('Adres', booking['dropoff_custom_address'] ?? '-'),
                                               if (booking['dropoff_custom_address_notes'] != null &&
@@ -332,6 +349,137 @@ class BookingDetailScreen extends ConsumerWidget {
                           ),
                           const SizedBox(height: 16),
 
+                          // Package & Services card
+                          if (booking['package_name'] != null || (booking['selected_services'] is List && (booking['selected_services'] as List).isNotEmpty))
+                            Card(
+                              child: Padding(
+                                padding: const EdgeInsets.all(20),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Paket & Ek Hizmetler',
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    if (booking['package_name'] != null)
+                                      Container(
+                                        padding: const EdgeInsets.all(16),
+                                        decoration: BoxDecoration(
+                                          color: _getPackageColor(booking['package_tier']).withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(
+                                            color: _getPackageColor(booking['package_tier']).withValues(alpha: 0.3),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              _getPackageIcon(booking['package_tier']),
+                                              color: _getPackageColor(booking['package_tier']),
+                                              size: 28,
+                                            ),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    '${booking['package_name']} Paket',
+                                                    style: const TextStyle(
+                                                      fontWeight: FontWeight.bold,
+                                                      fontSize: 16,
+                                                    ),
+                                                  ),
+                                                  Text(
+                                                    (booking['package_tier'] ?? '').toString().toUpperCase(),
+                                                    style: TextStyle(
+                                                      color: _getPackageColor(booking['package_tier']),
+                                                      fontSize: 12,
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            if ((booking['package_daily_price'] ?? 0) > 0)
+                                              Text(
+                                                '${formatter.format(booking['package_daily_price'])}/gün',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                  color: _getPackageColor(booking['package_tier']),
+                                                ),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                    if (booking['selected_services'] is List && (booking['selected_services'] as List).isNotEmpty) ...[
+                                      const SizedBox(height: 16),
+                                      const Text(
+                                        'Seçilen Ek Hizmetler',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      ...(booking['selected_services'] as List).map((service) {
+                                        final s = service as Map<String, dynamic>;
+                                        return Padding(
+                                          padding: const EdgeInsets.only(bottom: 8),
+                                          child: Row(
+                                            children: [
+                                              const Icon(Icons.check_circle, size: 18, color: AppColors.success),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Text(
+                                                  s['name'] ?? '',
+                                                  style: const TextStyle(fontSize: 14),
+                                                ),
+                                              ),
+                                              Text(
+                                                formatter.format(s['total_price'] ?? 0),
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      }),
+                                      const Divider(height: 16),
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          const Text(
+                                            'Ek Hizmetler Toplamı',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              color: AppColors.textSecondary,
+                                            ),
+                                          ),
+                                          Text(
+                                            formatter.format(booking['services_total'] ?? 0),
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: AppColors.primary,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ),
+                          if (booking['package_name'] != null || (booking['selected_services'] is List && (booking['selected_services'] as List).isNotEmpty))
+                            const SizedBox(height: 16),
+
                           // Customer notes
                           if (booking['customer_notes'] != null && booking['customer_notes'].toString().isNotEmpty)
                             Card(
@@ -348,14 +496,64 @@ class BookingDetailScreen extends ConsumerWidget {
                                       ),
                                     ),
                                     const SizedBox(height: 12),
-                                    Text(
-                                      booking['customer_notes'].toString(),
-                                      style: const TextStyle(color: AppColors.textSecondary),
+                                    Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.surfaceLight,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        booking['customer_notes'].toString(),
+                                        style: const TextStyle(color: AppColors.textSecondary),
+                                      ),
                                     ),
                                   ],
                                 ),
                               ),
                             ),
+
+                          // Company notes
+                          if (booking['company_notes'] != null && booking['company_notes'].toString().isNotEmpty) ...[
+                            const SizedBox(height: 16),
+                            Card(
+                              child: Padding(
+                                padding: const EdgeInsets.all(20),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.note_alt, size: 20, color: AppColors.warning),
+                                        const SizedBox(width: 8),
+                                        const Text(
+                                          'Şirket Notları',
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+                                    Container(
+                                      width: double.infinity,
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.warning.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(color: AppColors.warning.withValues(alpha: 0.2)),
+                                      ),
+                                      child: Text(
+                                        booking['company_notes'].toString(),
+                                        style: const TextStyle(color: AppColors.textSecondary),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -382,9 +580,19 @@ class BookingDetailScreen extends ConsumerWidget {
                                   const SizedBox(height: 16),
                                   _buildInfoRow(Icons.person, 'Ad Soyad', booking['customer_name'] ?? '-'),
                                   const Divider(height: 24),
-                                  _buildInfoRow(Icons.phone, 'Telefon', booking['customer_phone'] ?? '-'),
+                                  _buildCopyableInfoRow(
+                                    context,
+                                    Icons.phone,
+                                    'Telefon',
+                                    booking['customer_phone'] ?? '-',
+                                  ),
                                   const Divider(height: 24),
-                                  _buildInfoRow(Icons.email, 'E-posta', booking['customer_email'] ?? '-'),
+                                  _buildCopyableInfoRow(
+                                    context,
+                                    Icons.email,
+                                    'E-posta',
+                                    booking['customer_email'] ?? '-',
+                                  ),
                                   if (booking['driver_license_no'] != null) ...[
                                     const Divider(height: 24),
                                     _buildInfoRow(Icons.badge, 'Ehliyet No', booking['driver_license_no']),
@@ -416,6 +624,27 @@ class BookingDetailScreen extends ConsumerWidget {
                                     ],
                                   ),
                                   const SizedBox(height: 16),
+                                  if (booking['payment_method'] != null)
+                                    Padding(
+                                      padding: const EdgeInsets.only(bottom: 12),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            _getPaymentMethodIcon(booking['payment_method']),
+                                            size: 18,
+                                            color: AppColors.textMuted,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            _getPaymentMethodLabel(booking['payment_method']),
+                                            style: const TextStyle(
+                                              color: AppColors.textSecondary,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   _buildPriceRow(
                                     'Günlük Ücret',
                                     '${formatter.format(booking['daily_rate'] ?? 0)} x ${booking['rental_days']} gün',
@@ -489,6 +718,165 @@ class BookingDetailScreen extends ConsumerWidget {
     );
   }
 
+  // Status Timeline Widget
+  Widget _buildStatusTimeline(String currentStatus, Map<String, dynamic> booking) {
+    final steps = [
+      {'key': 'pending', 'label': 'Oluşturuldu', 'icon': Icons.fiber_new},
+      {'key': 'confirmed', 'label': 'Onaylandı', 'icon': Icons.check_circle},
+      {'key': 'active', 'label': 'Teslim Edildi', 'icon': Icons.car_rental},
+      {'key': 'completed', 'label': 'Tamamlandı', 'icon': Icons.done_all},
+    ];
+
+    final statusOrder = ['pending', 'confirmed', 'active', 'completed'];
+    final currentIndex = statusOrder.indexOf(currentStatus);
+    final isCancelled = currentStatus == 'cancelled';
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        child: isCancelled
+            ? Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.cancel, color: AppColors.error, size: 24),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Bu rezervasyon iptal edildi',
+                    style: TextStyle(
+                      color: AppColors.error,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              )
+            : Row(
+                children: List.generate(steps.length * 2 - 1, (index) {
+                  if (index.isOdd) {
+                    // Connector line
+                    final stepIndex = index ~/ 2;
+                    final isCompleted = stepIndex < currentIndex;
+                    return Expanded(
+                      child: Container(
+                        height: 3,
+                        color: isCompleted
+                            ? AppColors.success
+                            : AppColors.surfaceLight,
+                      ),
+                    );
+                  }
+
+                  final stepIndex = index ~/ 2;
+                  final step = steps[stepIndex];
+                  final isCompleted = stepIndex < currentIndex;
+                  final isCurrent = stepIndex == currentIndex;
+
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: isCompleted
+                              ? AppColors.success
+                              : isCurrent
+                                  ? AppColors.primary
+                                  : AppColors.surfaceLight,
+                          shape: BoxShape.circle,
+                          border: isCurrent
+                              ? Border.all(color: AppColors.primary, width: 3)
+                              : null,
+                        ),
+                        child: Icon(
+                          isCompleted
+                              ? Icons.check
+                              : step['icon'] as IconData,
+                          color: isCompleted || isCurrent
+                              ? Colors.white
+                              : AppColors.textMuted,
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        step['label'] as String,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                          color: isCurrent
+                              ? AppColors.primary
+                              : isCompleted
+                                  ? AppColors.success
+                                  : AppColors.textMuted,
+                        ),
+                      ),
+                    ],
+                  );
+                }),
+              ),
+      ),
+    );
+  }
+
+  // Duration bar with overdue warning
+  Widget _buildDurationBar(Map<String, dynamic> booking, DateTime? pickupDate, DateTime? dropoffDate) {
+    final now = DateTime.now();
+    final status = booking['status'] as String? ?? '';
+    final isActive = status == 'active';
+    final isOverdue = isActive && dropoffDate != null && now.isAfter(dropoffDate);
+    final overdueDays = isOverdue ? now.difference(dropoffDate!).inDays : 0;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isOverdue
+            ? AppColors.error.withValues(alpha: 0.1)
+            : AppColors.surfaceLight,
+        borderRadius: BorderRadius.circular(8),
+        border: isOverdue
+            ? Border.all(color: AppColors.error.withValues(alpha: 0.3))
+            : null,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            isOverdue ? Icons.warning : Icons.access_time,
+            size: 18,
+            color: isOverdue ? AppColors.error : AppColors.textMuted,
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '${booking['rental_days'] ?? 0} Gün Kiralama',
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: isOverdue ? AppColors.error : null,
+            ),
+          ),
+          if (isOverdue) ...[
+            const SizedBox(width: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: AppColors.error,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                '$overdueDays GÜN GECİKME!',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _buildActionButtons(BuildContext context, WidgetRef ref, Map<String, dynamic> booking) {
     final status = booking['status'] as String?;
 
@@ -497,32 +885,38 @@ class BookingDetailScreen extends ConsumerWidget {
     if (status == 'pending') {
       buttons.addAll([
         OutlinedButton.icon(
-          onPressed: () => _updateStatus(ref, 'cancelled'),
+          onPressed: () => _updateStatus(context, ref, 'cancelled'),
           icon: const Icon(Icons.close, color: AppColors.error),
-          label: const Text('İptal Et', style: TextStyle(color: AppColors.error)),
+          label: const Text('Reddet', style: TextStyle(color: AppColors.error)),
         ),
         const SizedBox(width: 8),
         ElevatedButton.icon(
-          onPressed: () => _updateStatus(ref, 'confirmed'),
+          onPressed: () => _updateStatus(context, ref, 'confirmed'),
           icon: const Icon(Icons.check),
           label: const Text('Onayla'),
         ),
       ]);
     } else if (status == 'confirmed') {
-      buttons.add(
+      buttons.addAll([
+        OutlinedButton.icon(
+          onPressed: () => _updateStatus(context, ref, 'cancelled'),
+          icon: const Icon(Icons.close, size: 18, color: AppColors.error),
+          label: const Text('İptal', style: TextStyle(color: AppColors.error, fontSize: 13)),
+        ),
+        const SizedBox(width: 8),
         ElevatedButton.icon(
-          onPressed: () => _updateStatus(ref, 'active'),
+          onPressed: () => _updateStatus(context, ref, 'active'),
           icon: const Icon(Icons.car_rental),
           label: const Text('Teslim Et'),
         ),
-      );
+      ]);
     } else if (status == 'active') {
       buttons.add(
         ElevatedButton.icon(
-          onPressed: () => _updateStatus(ref, 'completed'),
+          onPressed: () => _updateStatus(context, ref, 'completed'),
           style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
           icon: const Icon(Icons.done_all),
-          label: const Text('Tamamla'),
+          label: const Text('Teslim Al'),
         ),
       );
     }
@@ -530,14 +924,21 @@ class BookingDetailScreen extends ConsumerWidget {
     return Row(children: buttons);
   }
 
-  Future<void> _updateStatus(WidgetRef ref, String newStatus) async {
+  Future<void> _updateStatus(BuildContext context, WidgetRef ref, String newStatus) async {
     try {
       final client = ref.read(supabaseClientProvider);
       final booking = await ref.read(bookingDetailProvider(bookingId).future);
 
+      final updateData = <String, dynamic>{'status': newStatus};
+      if (newStatus == 'active') {
+        updateData['actual_pickup_date'] = DateTime.now().toIso8601String();
+      } else if (newStatus == 'completed') {
+        updateData['actual_dropoff_date'] = DateTime.now().toIso8601String();
+      }
+
       await client
           .from('rental_bookings')
-          .update({'status': newStatus})
+          .update(updateData)
           .eq('id', bookingId);
 
       // Update car status
@@ -556,8 +957,32 @@ class BookingDetailScreen extends ConsumerWidget {
       }
 
       ref.invalidate(bookingDetailProvider(bookingId));
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Durum güncellendi: ${_getStatusLabel(newStatus)}'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
     } catch (e) {
-      debugPrint('Error updating status: $e');
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
+        );
+      }
+    }
+  }
+
+  String _getStatusLabel(String status) {
+    switch (status) {
+      case 'pending': return 'Beklemede';
+      case 'confirmed': return 'Onaylandı';
+      case 'active': return 'Aktif';
+      case 'completed': return 'Tamamlandı';
+      case 'cancelled': return 'İptal Edildi';
+      default: return status;
     }
   }
 
@@ -621,6 +1046,10 @@ class BookingDetailScreen extends ConsumerWidget {
       case 'paid':
         color = AppColors.success;
         label = 'Ödendi';
+        break;
+      case 'partial':
+        color = AppColors.info;
+        label = 'Kısmi Ödeme';
         break;
       case 'refunded':
         color = AppColors.info;
@@ -699,7 +1128,6 @@ class BookingDetailScreen extends ConsumerWidget {
             ),
           ],
           const SizedBox(height: 12),
-          // Date row
           Row(
             children: [
               Icon(Icons.calendar_today, size: 14, color: color),
@@ -717,7 +1145,6 @@ class BookingDetailScreen extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 6),
-          // Time row
           Row(
             children: [
               Icon(Icons.access_time, size: 14, color: color),
@@ -763,6 +1190,51 @@ class BookingDetailScreen extends ConsumerWidget {
     );
   }
 
+  // Copyable info row (for phone/email)
+  Widget _buildCopyableInfoRow(BuildContext context, IconData icon, String label, String value) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: AppColors.textMuted),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+        ),
+        if (value != '-')
+          IconButton(
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: value));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('$label kopyalandı'),
+                  duration: const Duration(seconds: 1),
+                ),
+              );
+            },
+            icon: const Icon(Icons.copy, size: 16, color: AppColors.textMuted),
+            tooltip: 'Kopyala',
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            padding: EdgeInsets.zero,
+          ),
+      ],
+    );
+  }
+
   Widget _buildPriceRow(String label, String value) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -779,6 +1251,24 @@ class BookingDetailScreen extends ConsumerWidget {
     );
   }
 
+  Color _getPackageColor(String? tier) {
+    switch (tier) {
+      case 'basic': return AppColors.info;
+      case 'comfort': return AppColors.warning;
+      case 'premium': return AppColors.primary;
+      default: return AppColors.textSecondary;
+    }
+  }
+
+  IconData _getPackageIcon(String? tier) {
+    switch (tier) {
+      case 'basic': return Icons.directions_car;
+      case 'comfort': return Icons.star;
+      case 'premium': return Icons.workspace_premium;
+      default: return Icons.inventory_2;
+    }
+  }
+
   String _getFuelLabel(String? fuel) {
     switch (fuel) {
       case 'gasoline': return 'Benzin';
@@ -787,6 +1277,24 @@ class BookingDetailScreen extends ConsumerWidget {
       case 'electric': return 'Elektrik';
       case 'lpg': return 'LPG';
       default: return fuel ?? '-';
+    }
+  }
+
+  IconData _getPaymentMethodIcon(String? method) {
+    switch (method) {
+      case 'cash': return Icons.payments;
+      case 'credit_card': return Icons.credit_card;
+      case 'bank_transfer': return Icons.account_balance;
+      default: return Icons.payment;
+    }
+  }
+
+  String _getPaymentMethodLabel(String? method) {
+    switch (method) {
+      case 'cash': return 'Nakit';
+      case 'credit_card': return 'Kredi Kartı';
+      case 'bank_transfer': return 'Havale/EFT';
+      default: return method ?? '-';
     }
   }
 

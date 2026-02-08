@@ -7,6 +7,7 @@ import 'food_home_screen.dart';
 import '../../core/providers/address_provider.dart';
 import '../../core/providers/cart_provider.dart';
 import '../../core/services/restaurant_service.dart';
+import '../../core/services/delivery_service.dart';
 
 class CartScreen extends ConsumerStatefulWidget {
   const CartScreen({super.key});
@@ -27,9 +28,10 @@ class _CartScreenState extends ConsumerState<CartScreen> {
   @override
   void initState() {
     super.initState();
-    // Load suggestions after build
+    // Load suggestions and calculate delivery fee after build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadSuggestions();
+      _calculateDeliveryFee();
     });
   }
 
@@ -110,6 +112,18 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         setState(() => _loadingSuggestions = false);
       }
     }
+  }
+
+  void _calculateDeliveryFee() {
+    final selectedAddress = ref.read(selectedAddressProvider);
+    final cartState = ref.read(cartProvider);
+    if (selectedAddress == null || cartState.items.isEmpty) return;
+    if (selectedAddress.latitude == null || selectedAddress.longitude == null) return;
+
+    ref.read(cartProvider.notifier).calculateDeliveryFee(
+      customerLat: selectedAddress.latitude!,
+      customerLon: selectedAddress.longitude!,
+    );
   }
 
   void _clearCart() {
@@ -480,6 +494,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                   onTap: () {
                     ref.read(addressProvider.notifier).setDefaultAddress(address.id);
                     Navigator.pop(ctx);
+                    // Recalculate delivery fee for new address
+                    Future.microtask(() => _calculateDeliveryFee());
                   },
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
@@ -554,6 +570,14 @@ class _CartScreenState extends ConsumerState<CartScreen> {
 
   Widget _buildDeliveryBanner(bool isDark, CartState cartState) {
     final merchantName = cartState.merchantName ?? 'Restoran';
+    final hasEstimate = cartState.estimatedDeliveryMin != null;
+    final estimateText = hasEstimate
+        ? '~${cartState.estimatedDeliveryMin} dk'
+        : '25-35 dk';
+    final distanceText = cartState.deliveryDistanceKm != null
+        ? '${cartState.deliveryDistanceKm!.toStringAsFixed(1)} km'
+        : null;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -589,7 +613,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Tahmini Teslimat: 25-35 dk',
+                  'Tahmini Teslimat: $estimateText',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -598,7 +622,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Siparişiniz $merchantName\'dan hazırlanacaktır.',
+                  distanceText != null
+                      ? '$distanceText • $merchantName'
+                      : 'Siparişiniz $merchantName\'dan hazırlanacaktır.',
                   style: TextStyle(
                     fontSize: 12,
                     color: isDark ? Colors.grey[400] : Colors.grey[500],
@@ -1199,6 +1225,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     final subtotal = cartState.subtotal;
     final deliveryFee = cartState.deliveryFee;
     final total = subtotal + deliveryFee - _discount;
+    final canOrder = cartState.canDeliver && !cartState.deliveryFeeLoading;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -1220,7 +1247,61 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         children: [
           _buildSummaryRow('Ara Toplam', '${subtotal.toStringAsFixed(2)} TL', isDark),
           const SizedBox(height: 12),
-          _buildSummaryRow('Teslimat Ücreti', '${deliveryFee.toStringAsFixed(2)} TL', isDark),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    'Teslimat Ücreti',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isDark ? Colors.grey[400] : Colors.grey[500],
+                    ),
+                  ),
+                  if (cartState.deliveryZoneName != null) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? FoodColors.primary.withValues(alpha: 0.15)
+                            : const Color(0xFFFFF7ED),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        cartState.deliveryZoneName!,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: FoodColors.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              cartState.deliveryFeeLoading
+                  ? SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: isDark ? Colors.grey[400] : Colors.grey[500],
+                      ),
+                    )
+                  : Text(
+                      deliveryFee <= 0 ? 'Ücretsiz' : '${deliveryFee.toStringAsFixed(2)} TL',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: deliveryFee <= 0
+                            ? Colors.green
+                            : (isDark ? Colors.white : Colors.grey[900]),
+                      ),
+                    ),
+            ],
+          ),
           if (_discount > 0) ...[
             const SizedBox(height: 12),
             _buildSummaryRow(
@@ -1228,6 +1309,55 @@ class _CartScreenState extends ConsumerState<CartScreen> {
               '-${_discount.toStringAsFixed(2)} TL',
               isDark,
               isDiscount: true,
+            ),
+          ],
+          // Delivery error/warning messages
+          if (!cartState.canDeliver && cartState.deliveryError != null) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.warning_amber_rounded, color: Colors.red[400], size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      cartState.deliveryError!,
+                      style: TextStyle(fontSize: 12, color: Colors.red[600]),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          if (cartState.canDeliver &&
+              cartState.deliveryError != null &&
+              cartState.minOrderAmount != null &&
+              cartState.minOrderAmount! > 0 &&
+              subtotal < cartState.minOrderAmount!) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.amber.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.amber[700], size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      cartState.deliveryError!,
+                      style: TextStyle(fontSize: 12, color: Colors.amber[800]),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
           const SizedBox(height: 12),
@@ -1278,22 +1408,27 @@ class _CartScreenState extends ConsumerState<CartScreen> {
 
           // Confirm Button
           GestureDetector(
-            onTap: () => _placeOrder(cartState, total),
+            onTap: canOrder ? () => _placeOrder(cartState, total) : null,
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 16),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [FoodColors.primary, Color(0xFFEA580C)],
-                ),
+                gradient: canOrder
+                    ? const LinearGradient(
+                        colors: [FoodColors.primary, Color(0xFFEA580C)],
+                      )
+                    : null,
+                color: canOrder ? null : Colors.grey[400],
                 borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: FoodColors.primary.withValues(alpha: 0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+                boxShadow: canOrder
+                    ? [
+                        BoxShadow(
+                          color: FoodColors.primary.withValues(alpha: 0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
+                    : null,
               ),
               child: _isPlacingOrder
                   ? const Center(
@@ -1306,20 +1441,20 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                         ),
                       ),
                     )
-                  : const Row(
+                  : Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          'Siparişi Onayla',
-                          style: TextStyle(
+                          canOrder ? 'Siparişi Onayla' : 'Teslimat Yapılamıyor',
+                          style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
                           ),
                         ),
-                        SizedBox(width: 8),
+                        const SizedBox(width: 8),
                         Icon(
-                          Icons.check_circle,
+                          canOrder ? Icons.check_circle : Icons.block,
                           color: Colors.white,
                           size: 20,
                         ),

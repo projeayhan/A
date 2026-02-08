@@ -84,117 +84,13 @@ class _MyPropertyListingsScreenState extends ConsumerState<MyPropertyListingsScr
             unselectedLabelColor: EmlakColors.textSecondary(isDark),
             indicatorColor: EmlakColors.primary,
             indicatorWeight: 3,
+            labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            unselectedLabelStyle: const TextStyle(fontSize: 13),
             tabs: [
-              Tab(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text('Aktif'),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: EmlakColors.success.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '${activeListings.length}',
-                        style: TextStyle(
-                          color: EmlakColors.success,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Tab(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text('Bekleyen'),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: EmlakColors.accent.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '${pendingListings.length}',
-                        style: TextStyle(
-                          color: EmlakColors.accent,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Tab(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text('Kapanan'),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: EmlakColors.textTertiary(
-                          isDark,
-                        ).withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '${closedListings.length}',
-                        style: TextStyle(
-                          color: EmlakColors.textTertiary(isDark),
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Tab(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text('Reddedilen'),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: EmlakColors.error.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '${rejectedListings.length}',
-                        style: TextStyle(
-                          color: EmlakColors.error,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              Tab(text: 'Aktif (${activeListings.length})'),
+              Tab(text: 'Bekleyen (${pendingListings.length})'),
+              Tab(text: 'Kapanan (${closedListings.length})'),
+              Tab(text: 'Red (${rejectedListings.length})'),
             ],
           ),
         ),
@@ -227,89 +123,11 @@ class _MyPropertyListingsScreenState extends ConsumerState<MyPropertyListingsScr
 
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: listings.length + 1, // +1 for stats card
+      itemCount: listings.length,
       itemBuilder: (context, index) {
-        if (index == 0) {
-          return _buildStatsCard(isDark, listings.length, status);
-        }
-        final property = listings[index - 1];
+        final property = listings[index];
         return _buildListingCard(property, isDark, status);
       },
-    );
-  }
-
-  Widget _buildStatsCard(bool isDark, int count, String status) {
-    final stats = _getStatsForStatus(status);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            EmlakColors.primary,
-            EmlakColors.primary.withValues(alpha: 0.8),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildStatItem(
-            'Görüntülenme',
-            stats['views'].toString(),
-            Icons.visibility,
-          ),
-          _buildStatItem('Mesaj', stats['messages'].toString(), Icons.message),
-          _buildStatItem(
-            'Favori',
-            stats['favorites'].toString(),
-            Icons.favorite,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Map<String, int> _getStatsForStatus(String status) {
-    switch (status) {
-      case 'active':
-        return {'views': 1234, 'messages': 28, 'favorites': 45};
-      case 'pending':
-        return {'views': 0, 'messages': 0, 'favorites': 0};
-      case 'closed':
-        return {'views': 856, 'messages': 12, 'favorites': 23};
-      case 'rejected':
-        return {'views': 0, 'messages': 0, 'favorites': 0};
-      default:
-        return {'views': 0, 'messages': 0, 'favorites': 0};
-    }
-  }
-
-  Widget _buildStatItem(String label, String value, IconData icon) {
-    return Column(
-      children: [
-        Icon(icon, color: Colors.white, size: 24),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.8),
-            fontSize: 12,
-          ),
-        ),
-      ],
     );
   }
 
@@ -434,43 +252,96 @@ class _MyPropertyListingsScreenState extends ConsumerState<MyPropertyListingsScr
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        Row(
-                          children: [
-                            _buildActionButton(
-                              Icons.edit,
-                              EmlakColors.primary,
-                              () => _editListing(property),
+                        PopupMenuButton<String>(
+                          icon: Icon(
+                            Icons.more_horiz_rounded,
+                            color: EmlakColors.textSecondary(isDark),
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          color: EmlakColors.card(isDark),
+                          onSelected: (value) {
+                            switch (value) {
+                              case 'edit':
+                                _editListing(property);
+                              case 'pause':
+                                _pauseListing(property);
+                              case 'activate':
+                                _approveListing(property);
+                              case 'reactivate':
+                                _reactivateListing(property);
+                              case 'moderation':
+                                _showModerationDetails(property, isDark);
+                              case 'delete':
+                                _deleteListing(property);
+                            }
+                          },
+                          itemBuilder: (context) => [
+                            PopupMenuItem(
+                              value: 'edit',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.edit_rounded, color: EmlakColors.primary, size: 20),
+                                  const SizedBox(width: 10),
+                                  const Text('Düzenle'),
+                                ],
+                              ),
                             ),
-                            const SizedBox(width: 8),
                             if (status == 'active')
-                              _buildActionButton(
-                                Icons.pause_circle_outline,
-                                EmlakColors.accent,
-                                () => _pauseListing(property),
+                              PopupMenuItem(
+                                value: 'pause',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.pause_circle_outline, color: EmlakColors.accent, size: 20),
+                                    const SizedBox(width: 10),
+                                    const Text('Duraklat'),
+                                  ],
+                                ),
                               ),
                             if (status == 'pending')
-                              _buildActionButton(
-                                Icons.check_circle_outline,
-                                EmlakColors.success,
-                                () => _approveListing(property),
+                              PopupMenuItem(
+                                value: 'activate',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.check_circle_outline, color: EmlakColors.success, size: 20),
+                                    const SizedBox(width: 10),
+                                    const Text('Aktifleştir'),
+                                  ],
+                                ),
                               ),
                             if (status == 'closed')
-                              _buildActionButton(
-                                Icons.refresh,
-                                EmlakColors.success,
-                                () => _reactivateListing(property),
+                              PopupMenuItem(
+                                value: 'reactivate',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.refresh_rounded, color: EmlakColors.success, size: 20),
+                                    const SizedBox(width: 10),
+                                    const Text('Yeniden Yayınla'),
+                                  ],
+                                ),
                               ),
                             if (status == 'rejected')
-                              _buildActionButton(
-                                Icons.info_outline,
-                                EmlakColors.error,
-                                () => _showModerationDetails(property, isDark),
+                              PopupMenuItem(
+                                value: 'moderation',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.info_outline_rounded, color: EmlakColors.error, size: 20),
+                                    const SizedBox(width: 10),
+                                    const Text('Red Detayı'),
+                                  ],
+                                ),
                               ),
-                            const SizedBox(width: 8),
-                            _buildActionButton(
-                              Icons.delete_outline,
-                              EmlakColors.error,
-                              () => _deleteListing(property),
+                            const PopupMenuDivider(),
+                            PopupMenuItem(
+                              value: 'delete',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.delete_outline_rounded, color: EmlakColors.error, size: 20),
+                                  const SizedBox(width: 10),
+                                  Text('Sil', style: TextStyle(color: EmlakColors.error)),
+                                ],
+                              ),
                             ),
                           ],
                         ),
@@ -568,20 +439,6 @@ class _MyPropertyListingsScreenState extends ConsumerState<MyPropertyListingsScr
           fontSize: 12,
           fontWeight: FontWeight.bold,
         ),
-      ),
-    );
-  }
-
-  Widget _buildActionButton(IconData icon, Color color, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(icon, color: color, size: 20),
       ),
     );
   }

@@ -25,6 +25,9 @@ class VoiceOutputService {
     if (_isInitialized) return;
 
     try {
+      // Ses seviyesini maksimuma ayarla
+      await _player.setVolume(1.0);
+
       _player.onPlayerComplete.listen((_) {
         _isSpeaking = false;
         _onComplete?.call();

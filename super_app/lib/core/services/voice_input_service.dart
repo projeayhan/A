@@ -61,7 +61,15 @@ class VoiceInputService {
       }
     }
 
-    if (_isListening) return true;
+    // Önceki oturum hala aktifse önce durdur (Web'de race condition önlemi)
+    if (_isListening || _speech.isListening) {
+      try {
+        await _speech.stop();
+        _isListening = false;
+        // Tarayıcının durmasını bekle
+        await Future.delayed(const Duration(milliseconds: 200));
+      } catch (_) {}
+    }
 
     _isListening = true;
     _lastError = '';
@@ -97,7 +105,7 @@ class VoiceInputService {
 
   /// Dinlemeyi durdur
   Future<void> stopListening() async {
-    if (!_isListening) return;
+    if (!_isListening && !_speech.isListening) return;
     try {
       await _speech.stop();
     } catch (e) {

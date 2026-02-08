@@ -1425,7 +1425,7 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen>
 
   Widget _buildPropertiesHeader(BuildContext context, bool isDark) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -1623,7 +1623,7 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen>
     Color? iconColor,
   }) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -1693,7 +1693,7 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen>
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(18),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withValues(alpha: 0.15),
@@ -1703,23 +1703,29 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen>
                 ],
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(18),
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
                     // Background Image
-                    Image.network(
-                      property.images.first,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: EmlakColors.primary.withValues(alpha: 0.3),
-                        child: const Icon(
-                          Icons.image,
-                          size: 60,
-                          color: Colors.white54,
+                    if (property.images.isNotEmpty)
+                      Image.network(
+                        property.images.first,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          color: EmlakColors.primary.withValues(alpha: 0.3),
+                          child: const Icon(
+                            Icons.image,
+                            size: 60,
+                            color: Colors.white54,
+                          ),
                         ),
+                      )
+                    else
+                      Container(
+                        color: EmlakColors.primary.withValues(alpha: 0.3),
+                        child: const Icon(Icons.home, size: 60, color: Colors.white54),
                       ),
-                    ),
 
                     // Gradient Overlay
                     Container(
@@ -1739,7 +1745,7 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen>
 
                     // Content
                     Padding(
-                      padding: const EdgeInsets.all(20),
+                      padding: const EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -1988,14 +1994,19 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen>
                       borderRadius: BorderRadius.vertical(
                         top: Radius.circular(property.isPremium || property.isFeatured ? 18 : 20),
                       ),
-                      child: Image.network(
-                        property.images.first,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          color: EmlakColors.primary.withValues(alpha: 0.2),
-                          child: const Icon(Icons.image, color: Colors.white54),
-                        ),
-                      ),
+                      child: property.images.isNotEmpty
+                          ? Image.network(
+                              property.images.first,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(
+                                color: EmlakColors.primary.withValues(alpha: 0.2),
+                                child: const Icon(Icons.image, color: Colors.white54),
+                              ),
+                            )
+                          : Container(
+                              color: EmlakColors.primary.withValues(alpha: 0.2),
+                              child: const Icon(Icons.home, color: Colors.white54),
+                            ),
                     ),
                     // Badges
                     Positioned(

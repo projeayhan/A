@@ -32,8 +32,8 @@ class ProductCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.06),
-              blurRadius: 6,
+              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.10),
+              blurRadius: 8,
               offset: const Offset(0, 2),
             ),
           ],
@@ -48,7 +48,7 @@ class ProductCard extends StatelessWidget {
                     top: Radius.circular(10),
                   ),
                   child: AspectRatio(
-                    aspectRatio: 1.1, // Slightly wider for compact look
+                    aspectRatio: 1.15, // Wider for compact mobile look
                     child: Image.network(
                       ImageUtils.getProductThumbnail(product.imageUrl),
                       fit: BoxFit.cover,
@@ -184,98 +184,105 @@ class ProductCard extends StatelessWidget {
                   ),
               ],
             ),
-            Padding(
-              padding: EdgeInsets.all(context.cardPaddingCompact),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (showStoreName)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 2),
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.all(context.cardPaddingCompact),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (showStoreName)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 2),
+                        child: Text(
+                          product.storeName,
+                          style: TextStyle(
+                            fontSize: context.captionSmallSize,
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    Flexible(
                       child: Text(
-                        product.storeName,
+                        product.name,
                         style: TextStyle(
-                          fontSize: context.captionSmallSize,
-                          color: AppColors.primary,
+                          fontSize: context.bodySmallSize,
                           fontWeight: FontWeight.w500,
+                          color: isDark ? Colors.white : Colors.black87,
+                          height: 1.2,
                         ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                  Text(
-                    product.name,
-                    style: TextStyle(
-                      fontSize: context.bodySmallSize,
-                      fontWeight: FontWeight.w500,
-                      color: isDark ? Colors.white : Colors.black87,
-                      height: 1.2,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  // Rating row
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.star_rounded,
-                        color: Colors.amber,
-                        size: context.captionSize,
-                      ),
-                      const SizedBox(width: 2),
-                      Text(
-                        product.rating.toStringAsFixed(1),
-                        style: TextStyle(
-                          fontSize: context.captionSize,
-                          fontWeight: FontWeight.w600,
-                          color: isDark ? Colors.white70 : Colors.black87,
+                    const SizedBox(height: 2),
+                    // Rating row
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.star_rounded,
+                          color: Colors.amber,
+                          size: context.captionSize,
                         ),
-                      ),
-                      Text(
-                        ' (${product.reviewCount})',
-                        style: TextStyle(
-                          fontSize: context.captionSmallSize,
-                          color: Colors.grey[500],
-                        ),
-                      ),
-                      if (product.formattedSoldCount.isNotEmpty) ...[
-                        const Spacer(),
+                        const SizedBox(width: 2),
                         Text(
-                          product.formattedSoldCount,
+                          product.rating.toStringAsFixed(1),
+                          style: TextStyle(
+                            fontSize: context.captionSize,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? Colors.white70 : Colors.black87,
+                          ),
+                        ),
+                        Text(
+                          ' (${product.reviewCount})',
                           style: TextStyle(
                             fontSize: context.captionSmallSize,
                             color: Colors.grey[500],
                           ),
                         ),
+                        if (product.formattedSoldCount.isNotEmpty) ...[
+                          const Spacer(),
+                          Text(
+                            product.formattedSoldCount,
+                            style: TextStyle(
+                              fontSize: context.captionSmallSize,
+                              color: Colors.grey[500],
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  // Price row
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        product.formattedPrice,
-                        style: TextStyle(
-                          fontSize: context.priceSize,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : Colors.black87,
-                        ),
-                      ),
-                      if (product.originalPrice != null) ...[
-                        const SizedBox(width: 6),
+                    ),
+                    const SizedBox(height: 2),
+                    // Price row
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
                         Text(
-                          product.formattedOriginalPrice,
+                          product.formattedPrice,
                           style: TextStyle(
-                            fontSize: context.captionSize,
-                            color: Colors.grey[500],
-                            decoration: TextDecoration.lineThrough,
+                            fontSize: context.priceSize,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white : Colors.black87,
                           ),
                         ),
+                        if (product.originalPrice != null) ...[
+                          const SizedBox(width: 6),
+                          Text(
+                            product.formattedOriginalPrice,
+                            style: TextStyle(
+                              fontSize: context.captionSize,
+                              color: Colors.grey[500],
+                              decoration: TextDecoration.lineThrough,
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ],

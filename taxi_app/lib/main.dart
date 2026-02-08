@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,14 +11,16 @@ import 'core/services/push_notification_service.dart';
 
 import 'package:intl/date_symbol_data_local.dart';
 
+bool get _isMobile => !kIsWeb && (Platform.isAndroid || Platform.isIOS);
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Load environment variables
   await dotenv.load(fileName: '.env');
 
-  // Initialize Firebase (only on mobile - web requires separate config)
-  if (!kIsWeb) {
+  // Initialize Firebase (only on mobile)
+  if (_isMobile) {
     await Firebase.initializeApp();
   }
 
@@ -31,7 +34,7 @@ void main() async {
   await initializeDateFormatting('tr_TR', null);
 
   // Initialize push notifications (only on mobile)
-  if (!kIsWeb) {
+  if (_isMobile) {
     await pushNotificationService.initialize();
   }
 

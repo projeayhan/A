@@ -112,7 +112,7 @@ class _OrderCardState extends ConsumerState<OrderCard>
 
         // Yeni okunmamış mesaj geldiyse ses çal
         if (unread > previousUnread) {
-          NotificationSoundService.playSound();
+          NotificationSoundService.playSound(type: NotificationSoundType.message);
         }
 
         setState(() {

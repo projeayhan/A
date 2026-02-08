@@ -4,10 +4,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
 import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../core/services/taxi_service.dart';
 import '../../core/services/supabase_service.dart';
+import '../../core/services/communication_service.dart';
 import '../../core/utils/app_dialogs.dart';
 import '../../services/location_service.dart';
+import '../../services/google_places_service.dart';
 import '../../widgets/taxi/animated_map_markers.dart';
 import '../../models/taxi/taxi_models.dart';
 import 'driver_reviews_screen.dart';
@@ -55,6 +58,14 @@ class _TaxiDriverScreenState extends ConsumerState<TaxiDriverScreen>
   dynamic _newRidesChannel;
   Timer? _locationUpdateTimer;
   Timer? _requestsRefreshTimer;
+
+  // Navigation & Route
+  bool _followDriver = true;
+  bool _isProgrammaticMove = false;
+  List<gmaps.LatLng> _routePoints = [];
+  double? _routeDistanceKm;
+  String? _routeDuration;
+  int _routeUpdateCounter = 0;
 
   @override
   void initState() {
@@ -141,12 +152,24 @@ class _TaxiDriverScreenState extends ConsumerState<TaxiDriverScreen>
     try {
       final ride = await TaxiService.getDriverActiveRide(_driverProfile!['id']);
       if (ride != null && mounted) {
+        final previousStatus = _currentRide?.status;
         setState(() {
           _activeRide = ride;
           _currentRide = TaxiRide.fromJson(ride);
         });
         _subscribeToRideUpdates(ride['id']);
-        _fitMapToRide();
+
+        // Durum değiştiyse rotayı yenile (pickup → dropoff geçişi)
+        if (previousStatus != _currentRide?.status) {
+          _routePoints.clear();
+          _fetchRoute();
+        } else if (_routePoints.isEmpty) {
+          _fetchRoute();
+        }
+
+        if (!_followDriver) {
+          _fitMapToRide();
+        }
       } else {
         _loadPendingRequests();
       }
@@ -343,6 +366,29 @@ class _TaxiDriverScreenState extends ConsumerState<TaxiDriverScreen>
           _currentLat = position.latitude;
           _currentLng = position.longitude;
         });
+
+        // Rota yenileme (her 6 güncellemede ~30sn)
+        if (_currentRide != null) {
+          _routeUpdateCounter++;
+          if (_routeUpdateCounter >= 6 || _routePoints.isEmpty) {
+            _routeUpdateCounter = 0;
+            _fetchRoute();
+          }
+        }
+
+        // Kamera takip modu
+        if (_followDriver && _mapController != null && _currentRide != null) {
+          _isProgrammaticMove = true;
+          _mapController!.animateCamera(
+            gmaps.CameraUpdate.newLatLngZoom(
+              gmaps.LatLng(_currentLat, _currentLng),
+              16,
+            ),
+          );
+          Future.delayed(const Duration(milliseconds: 500), () {
+            _isProgrammaticMove = false;
+          });
+        }
       }
     });
 
@@ -509,6 +555,10 @@ class _TaxiDriverScreenState extends ConsumerState<TaxiDriverScreen>
       setState(() {
         _activeRide = null;
         _currentRide = null;
+        _routePoints.clear();
+        _routeDistanceKm = null;
+        _routeDuration = null;
+        _followDriver = true;
       });
 
       if (_rideChannel != null) {
@@ -558,6 +608,10 @@ class _TaxiDriverScreenState extends ConsumerState<TaxiDriverScreen>
         setState(() {
           _activeRide = null;
           _currentRide = null;
+          _routePoints.clear();
+          _routeDistanceKm = null;
+          _routeDuration = null;
+          _followDriver = true;
         });
 
         if (_rideChannel != null) {
@@ -606,22 +660,100 @@ class _TaxiDriverScreenState extends ConsumerState<TaxiDriverScreen>
     );
   }
 
+  Future<void> _shareLocation() async {
+    if (_activeRide == null) return;
+    try {
+      final link = await CommunicationService.createShareLink(
+        rideId: _activeRide!['id'],
+      );
+      if (link != null && mounted) {
+        await SharePlus.instance.share(
+          ShareParams(text: 'Sürüşümü canlı takip et: ${link.shareUrl}'),
+        );
+      } else if (mounted) {
+        await AppDialogs.showError(context, 'Paylaşım linki oluşturulamadı');
+      }
+    } catch (e) {
+      debugPrint('Share location error: $e');
+      if (mounted) {
+        await AppDialogs.showError(context, 'Hata: $e');
+      }
+    }
+  }
+
+  Future<void> _sendSos() async {
+    if (_activeRide == null) return;
+    await CommunicationService.sendSosToEmergencyContacts(
+      context: context,
+      rideId: _activeRide!['id'],
+      latitude: _currentLat,
+      longitude: _currentLng,
+    );
+  }
+
+  Future<void> _fetchRoute() async {
+    if (_currentRide == null) return;
+
+    final bool goingToPickup = _currentRide!.status == RideStatus.accepted ||
+        _currentRide!.status == RideStatus.arrived;
+    final destLat = goingToPickup
+        ? _currentRide!.pickup.latitude
+        : _currentRide!.dropoff.latitude;
+    final destLng = goingToPickup
+        ? _currentRide!.pickup.longitude
+        : _currentRide!.dropoff.longitude;
+
+    try {
+      final result = await GooglePlacesService.getDirections(
+        originLat: _currentLat,
+        originLng: _currentLng,
+        destLat: destLat,
+        destLng: destLng,
+      );
+      if (result != null && mounted) {
+        setState(() {
+          _routePoints = result.routePoints
+              .map((p) => gmaps.LatLng(p.latitude, p.longitude))
+              .toList();
+          _routeDistanceKm = result.distanceKm;
+          _routeDuration = result.durationText;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching route: $e');
+      // Fallback: düz çizgi
+      if (mounted) {
+        setState(() {
+          _routePoints = [
+            gmaps.LatLng(_currentLat, _currentLng),
+            gmaps.LatLng(destLat, destLng),
+          ];
+        });
+      }
+    }
+  }
+
   Future<void> _openNavigation() async {
     if (_currentRide == null) return;
 
-    final targetLat = _currentRide!.status == RideStatus.inProgress
-        ? _currentRide!.dropoff.latitude
-        : _currentRide!.pickup.latitude;
-    final targetLng = _currentRide!.status == RideStatus.inProgress
-        ? _currentRide!.dropoff.longitude
-        : _currentRide!.pickup.longitude;
+    final bool goingToPickup = _currentRide!.status == RideStatus.accepted ||
+        _currentRide!.status == RideStatus.arrived;
+    final destLat = goingToPickup
+        ? _currentRide!.pickup.latitude
+        : _currentRide!.dropoff.latitude;
+    final destLng = goingToPickup
+        ? _currentRide!.pickup.longitude
+        : _currentRide!.dropoff.longitude;
 
-    final googleMapsUrl = Uri.parse(
-      'https://www.google.com/maps/dir/?api=1&destination=$targetLat,$targetLng&travelmode=driving',
+    final nativeUrl = Uri.parse('google.navigation:q=$destLat,$destLng&mode=d');
+    final webUrl = Uri.parse(
+      'https://www.google.com/maps/dir/?api=1&destination=$destLat,$destLng&travelmode=driving',
     );
 
-    if (await canLaunchUrl(googleMapsUrl)) {
-      await launchUrl(googleMapsUrl, mode: LaunchMode.externalApplication);
+    if (await canLaunchUrl(nativeUrl)) {
+      await launchUrl(nativeUrl);
+    } else if (await canLaunchUrl(webUrl)) {
+      await launchUrl(webUrl, mode: LaunchMode.externalApplication);
     }
   }
 
@@ -743,7 +875,15 @@ class _TaxiDriverScreenState extends ConsumerState<TaxiDriverScreen>
             ),
             onMapCreated: (controller) {
               _mapController = controller;
-              if (_currentRide != null) _fitMapToRide();
+              if (_currentRide != null) {
+                _fetchRoute();
+                _fitMapToRide();
+              }
+            },
+            onCameraMove: (_) {
+              if (!_isProgrammaticMove && _followDriver) {
+                setState(() => _followDriver = false);
+              }
             },
             markers: _buildMarkers(),
             polylines: _buildPolylines(),
@@ -755,6 +895,83 @@ class _TaxiDriverScreenState extends ConsumerState<TaxiDriverScreen>
               bottom: MediaQuery.of(context).size.height * 0.35,
             ),
           ),
+
+          // Map FABs (sağ taraf)
+          if (_activeRide != null)
+            Positioned(
+              right: 16,
+              bottom: MediaQuery.of(context).size.height * 0.38 + 16,
+              child: Column(
+                children: [
+                  // Konumum / Takip modu
+                  FloatingActionButton.small(
+                    heroTag: 'followDriver',
+                    onPressed: () {
+                      setState(() => _followDriver = true);
+                      if (_mapController != null) {
+                        _isProgrammaticMove = true;
+                        _mapController!.animateCamera(
+                          gmaps.CameraUpdate.newLatLngZoom(
+                            gmaps.LatLng(_currentLat, _currentLng),
+                            16,
+                          ),
+                        );
+                        Future.delayed(const Duration(milliseconds: 500), () {
+                          _isProgrammaticMove = false;
+                        });
+                      }
+                    },
+                    backgroundColor: _followDriver
+                        ? colorScheme.primary
+                        : colorScheme.surface,
+                    child: Icon(
+                      _followDriver ? Icons.navigation : Icons.my_location,
+                      color: _followDriver ? Colors.white : colorScheme.primary,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // Tüm rotayı göster
+                  FloatingActionButton.small(
+                    heroTag: 'fitBounds',
+                    onPressed: () {
+                      setState(() => _followDriver = false);
+                      _fitMapToRide();
+                    },
+                    backgroundColor: colorScheme.surface,
+                    child: Icon(
+                      Icons.zoom_out_map,
+                      color: colorScheme.onSurfaceVariant,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // Konum Paylaş
+                  FloatingActionButton.small(
+                    heroTag: 'share',
+                    onPressed: _shareLocation,
+                    backgroundColor: Colors.blue,
+                    child: const Icon(
+                      Icons.share_location_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // SOS
+                  FloatingActionButton.small(
+                    heroTag: 'sos',
+                    onPressed: _sendSos,
+                    backgroundColor: Colors.red,
+                    child: const Icon(
+                      Icons.sos_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                ],
+              ),
+            ),
 
           // Top bar
           _buildTopBar(theme, colorScheme),
@@ -1181,7 +1398,54 @@ class _TaxiDriverScreenState extends ConsumerState<TaxiDriverScreen>
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
+
+          // Mesafe & Süre bilgisi
+          if (_routeDistanceKm != null || _routeDuration != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: colorScheme.primaryContainer.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  if (_routeDistanceKm != null)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.route_rounded, color: colorScheme.primary, size: 18),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${_routeDistanceKm!.toStringAsFixed(1)} km',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: colorScheme.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  if (_routeDuration != null)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.access_time_rounded, color: Colors.orange, size: 18),
+                        const SizedBox(width: 6),
+                        Text(
+                          _routeDuration!,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.orange,
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+          if (_routeDistanceKm != null || _routeDuration != null)
+            const SizedBox(height: 12),
 
           // Customer info with pulse animation
           Container(
@@ -1318,7 +1582,7 @@ class _TaxiDriverScreenState extends ConsumerState<TaxiDriverScreen>
           // Action buttons
           Row(
             children: [
-              // Navigation button
+              // Rotayı göster butonu
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: _openNavigation,
@@ -1558,6 +1822,19 @@ class _TaxiDriverScreenState extends ConsumerState<TaxiDriverScreen>
   Set<gmaps.Polyline> _buildPolylines() {
     if (_currentRide == null) return {};
 
+    // Gerçek rota noktaları varsa kullan
+    if (_routePoints.isNotEmpty) {
+      return {
+        gmaps.Polyline(
+          polylineId: const gmaps.PolylineId('route'),
+          points: _routePoints,
+          color: Theme.of(context).colorScheme.primary,
+          width: 5,
+        ),
+      };
+    }
+
+    // Fallback: kesikli düz çizgi
     return {
       gmaps.Polyline(
         polylineId: const gmaps.PolylineId('route'),

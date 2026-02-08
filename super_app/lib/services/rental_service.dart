@@ -125,6 +125,18 @@ class RentalService {
 
   // ==================== SERVICES ====================
 
+  /// Get packages for a company
+  Future<List<Map<String, dynamic>>> getCompanyPackages(String companyId) async {
+    final response = await _client
+        .from('rental_packages')
+        .select('*')
+        .eq('company_id', companyId)
+        .eq('is_active', true)
+        .order('sort_order');
+
+    return List<Map<String, dynamic>>.from(response);
+  }
+
   /// Get additional services for a company
   Future<List<Map<String, dynamic>>> getCompanyServices(String companyId) async {
     final response = await _client
@@ -159,6 +171,11 @@ class RentalService {
     double? depositAmount,
     String? customerNotes,
     String? paymentMethod,
+    // Package fields
+    String? packageId,
+    String? packageTier,
+    String? packageName,
+    double? packageDailyPrice,
     // Custom address fields
     bool isPickupCustomAddress = false,
     String? pickupCustomAddress,
@@ -193,6 +210,10 @@ class RentalService {
       'deposit_amount': depositAmount ?? 0,
       'customer_notes': customerNotes,
       'payment_method': paymentMethod ?? 'card',
+      'package_id': packageId,
+      'package_tier': packageTier,
+      'package_name': packageName,
+      'package_daily_price': packageDailyPrice ?? 0,
       'status': 'pending',
       'payment_status': 'pending',
       // Custom address fields

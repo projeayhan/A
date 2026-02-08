@@ -15,7 +15,7 @@ class RentalService {
           .from('rental_cars')
           .select('''
             *,
-            rental_companies(id, company_name),
+            rental_companies(id, company_name, logo_url, rating, review_count),
             rental_locations(id, name, city)
           ''')
           .eq('is_active', true)
@@ -79,7 +79,7 @@ class RentalService {
           .from('rental_cars')
           .select('''
             *,
-            rental_companies(id, company_name),
+            rental_companies(id, company_name, logo_url, rating, review_count),
             rental_locations(id, name, city)
           ''')
           .eq('id', carId)
@@ -243,8 +243,8 @@ class RentalService {
       imageUrls: car['image_url'] != null ? [car['image_url']] : [],
       thumbnailUrl: car['image_url'] ?? '',
       featureIds: _parseFeatures(car['features']),
-      rating: (car['rating'] as num?)?.toDouble() ?? 4.5,
-      reviewCount: car['review_count'] ?? 0,
+      rating: (company?['rating'] as num?)?.toDouble() ?? 0,
+      reviewCount: (company?['review_count'] as num?)?.toInt() ?? 0,
       status: RentalStatus.available,
       color: car['color'] ?? 'Unknown',
       licensePlate: car['plate'] ?? '',
@@ -255,6 +255,7 @@ class RentalService {
       discountPercentage: (car['discount_percentage'] as num?)?.toDouble(),
       companyId: company?['id'] ?? '',
       companyName: company?['company_name'],
+      companyLogo: company?['logo_url'] as String?,
       depositAmount: (car['deposit_amount'] as num?)?.toDouble() ?? 0,
     );
   }
@@ -313,7 +314,8 @@ class RentalService {
 
   static FuelType _stringToFuelType(String? type) {
     switch (type) {
-      case 'petrol': return FuelType.petrol;
+      case 'petrol':
+      case 'gasoline': return FuelType.petrol;
       case 'diesel': return FuelType.diesel;
       case 'electric': return FuelType.electric;
       case 'hybrid': return FuelType.hybrid;

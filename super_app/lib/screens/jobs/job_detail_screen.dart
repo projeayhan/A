@@ -14,10 +14,8 @@ class JobDetailScreen extends ConsumerStatefulWidget {
 }
 
 class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
-    with TickerProviderStateMixin {
+    with SingleTickerProviderStateMixin {
   late AnimationController _fadeController;
-  late AnimationController _slideController;
-  late AnimationController _pulseController;
   late ScrollController _scrollController;
 
   double _scrollOffset = 0;
@@ -27,19 +25,9 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
     super.initState();
 
     _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 400),
       vsync: this,
     );
-
-    _slideController = AnimationController(
-      duration: const Duration(milliseconds: 600),
-      vsync: this,
-    );
-
-    _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
-    )..repeat(reverse: true);
 
     _scrollController = ScrollController()
       ..addListener(() {
@@ -47,14 +35,11 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
       });
 
     _fadeController.forward();
-    _slideController.forward();
   }
 
   @override
   void dispose() {
     _fadeController.dispose();
-    _slideController.dispose();
-    _pulseController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
@@ -117,7 +102,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                 // Bottom spacing
                 SliverToBoxAdapter(
                   child: SizedBox(
-                    height: 120 + MediaQuery.of(context).padding.bottom,
+                    height: 90 + MediaQuery.of(context).padding.bottom,
                   ),
                 ),
               ],
@@ -135,28 +120,23 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
   }
 
   Widget _buildHeroHeader(bool isDark, Size size, JobListing job) {
-    final parallaxOffset = _scrollOffset * 0.4;
-
     return SizedBox(
-      height: 320,
+      height: 240,
       child: Stack(
         children: [
           // Background Gradient
           Positioned.fill(
-            child: Transform.translate(
-              offset: Offset(0, parallaxOffset),
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: job.isPremiumListing
-                        ? JobsColors.premiumGradient
-                        : [
-                            job.category.color,
-                            job.category.color.withValues(alpha: 0.8),
-                          ],
-                  ),
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: job.isPremiumListing
+                      ? JobsColors.premiumGradient
+                      : [
+                          job.category.color,
+                          job.category.color.withValues(alpha: 0.8),
+                        ],
                 ),
               ),
             ),
@@ -170,12 +150,12 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
             child: FadeTransition(
               opacity: _fadeController,
               child: Padding(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Badges Row
-                    const SizedBox(height: 60),
+                    const SizedBox(height: 48),
                     Row(
                       children: [
                         if (job.isPremiumListing)
@@ -499,25 +479,17 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
   }
 
   Widget _buildJobInfo(bool isDark, JobListing job) {
-    return SlideTransition(
-      position: Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero)
-          .animate(
-            CurvedAnimation(
-              parent: _slideController,
-              curve: Curves.easeOutCubic,
-            ),
-          ),
-      child: Container(
-        margin: const EdgeInsets.all(20),
-        padding: const EdgeInsets.all(20),
+    return Container(
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: JobsColors.card(isDark),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 20,
-              offset: const Offset(0, 4),
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
@@ -542,7 +514,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                       job.salary.fullFormatted,
                       style: TextStyle(
                         color: JobsColors.primary,
-                        fontSize: 22,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -550,55 +522,34 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                 ),
                 GestureDetector(
                   onTap: _applyJob,
-                  child: AnimatedBuilder(
-                    animation: _pulseController,
-                    builder: (context, child) {
-                      return Transform.scale(
-                        scale: 1 + (_pulseController.value * 0.05),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 10,
-                          ),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: JobsColors.primaryGradient,
-                            ),
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: JobsColors.primary.withValues(
-                                  alpha: 0.3,
-                                ),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: const Row(
-                            children: [
-                              Icon(Icons.send, color: Colors.white, size: 18),
-                              SizedBox(width: 8),
-                              Text(
-                                'Hızlı Başvur',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: JobsColors.primaryGradient),
+                      borderRadius: BorderRadius.circular(10),
+                      boxShadow: [
+                        BoxShadow(
+                          color: JobsColors.primary.withValues(alpha: 0.2),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
                         ),
-                      );
-                    },
+                      ],
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.send, color: Colors.white, size: 16),
+                        SizedBox(width: 6),
+                        Text('Hızlı Başvur', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                      ],
+                    ),
                   ),
                 ),
               ],
             ),
 
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
             Divider(color: JobsColors.border(isDark)),
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
 
             // Info Grid
             Row(
@@ -653,7 +604,6 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
             ),
           ],
         ),
-      ),
     );
   }
 
@@ -711,8 +661,8 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
     return GestureDetector(
       onTap: () => _showCompanyDetails(company),
       child: Container(
-        margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-        padding: const EdgeInsets.all(20),
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: JobsColors.card(isDark),
           borderRadius: BorderRadius.circular(20),
@@ -1256,8 +1206,8 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
 
   Widget _buildDescriptionSection(bool isDark, JobListing job) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: JobsColors.card(isDark),
         borderRadius: BorderRadius.circular(20),
@@ -1307,8 +1257,8 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
     List<String> items,
   ) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: JobsColors.card(isDark),
         borderRadius: BorderRadius.circular(20),
@@ -1375,8 +1325,8 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
 
   Widget _buildSkillsSection(bool isDark, JobListing job) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: JobsColors.card(isDark),
         borderRadius: BorderRadius.circular(20),
@@ -1435,7 +1385,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
           ),
 
           if (job.preferredSkills.isNotEmpty) ...[
-            const SizedBox(height: 20),
+            const SizedBox(height: 12),
             Text(
               'Tercih Edilen',
               style: TextStyle(
@@ -1479,8 +1429,8 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
     if (job.benefitIds.isEmpty) return const SizedBox.shrink();
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: JobsColors.card(isDark),
         borderRadius: BorderRadius.circular(20),
@@ -1553,8 +1503,8 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
 
   Widget _buildContactSection(bool isDark, JobListing job) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: JobsColors.card(isDark),
         borderRadius: BorderRadius.circular(20),
@@ -2281,7 +2231,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                   size: 40,
                 ),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
               Text(
                 'CV Yükle',
                 style: TextStyle(

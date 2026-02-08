@@ -407,15 +407,15 @@ class CourierService {
           // Kurye istatistiklerini güncelle ve müsait yap
           final courier = await getCourierProfile();
           if (courier != null) {
-            // Sipariş ücretini al
+            // Kurye kazancını al (courier_earnings, delivery_fee değil)
             final order = await getOrderDetail(orderId);
-            final deliveryFee = (order?['delivery_fee'] as num?)?.toDouble() ?? 0;
+            final courierEarning = (order?['courier_earnings'] as num?)?.toDouble() ?? 0;
 
             await SupabaseService.client.from('couriers').update({
               'total_deliveries': (courier['total_deliveries'] ?? 0) + 1,
-              'total_earnings': (courier['total_earnings'] ?? 0) + deliveryFee,
-              'is_busy': false,  // Kurye artık müsait
-              'current_order_id': null,  // Aktif sipariş yok
+              'total_earnings': (courier['total_earnings'] ?? 0) + courierEarning,
+              'is_busy': false,
+              'current_order_id': null,
             }).eq('id', courier['id']);
           }
           break;
@@ -444,7 +444,7 @@ class CourierService {
       // Temel sorgu
       var query = SupabaseService.client
           .from('orders')
-          .select('id, order_number, delivery_fee, delivered_at, created_at, merchant_id')
+          .select('id, order_number, courier_earnings, delivered_at, created_at, merchant_id')
           .eq('courier_id', courier['id'])
           .eq('status', 'delivered');
 
@@ -461,7 +461,7 @@ class CourierService {
       return List<Map<String, dynamic>>.from(response).map((order) {
         return {
           'order_number': order['order_number'],
-          'amount': order['delivery_fee'],
+          'amount': order['courier_earnings'] ?? 0,
           'created_at': order['delivered_at'] ?? order['created_at'],
         };
       }).toList();
@@ -563,7 +563,7 @@ class CourierService {
       // Bugünkü kazanç - sadece dış siparişler
       var todayQuery = SupabaseService.client
           .from('orders')
-          .select('delivery_fee, merchant_id')
+          .select('courier_earnings, merchant_id')
           .eq('courier_id', courier['id'])
           .eq('status', 'delivered')
           .gte('delivered_at', today.toIso8601String());
@@ -575,7 +575,7 @@ class CourierService {
       // Haftalık kazanç - sadece dış siparişler
       var weekQuery = SupabaseService.client
           .from('orders')
-          .select('delivery_fee, merchant_id')
+          .select('courier_earnings, merchant_id')
           .eq('courier_id', courier['id'])
           .eq('status', 'delivered')
           .gte('delivered_at', weekStart.toIso8601String());
@@ -587,7 +587,7 @@ class CourierService {
       // Aylık kazanç ve istatistikler - sadece dış siparişler
       var monthQuery = SupabaseService.client
           .from('orders')
-          .select('delivery_fee, merchant_id')
+          .select('courier_earnings, merchant_id')
           .eq('courier_id', courier['id'])
           .eq('status', 'delivered')
           .gte('delivered_at', monthStart.toIso8601String());
@@ -598,8 +598,8 @@ class CourierService {
 
       double calculateTotal(List<dynamic> orders) {
         return orders.fold<double>(0, (sum, order) {
-          final fee = order['delivery_fee'];
-          return sum + (fee is num ? fee.toDouble() : 0.0);
+          final earning = order['courier_earnings'];
+          return sum + (earning is num ? earning.toDouble() : 0.0);
         });
       }
 
@@ -608,7 +608,7 @@ class CourierService {
         'week': calculateTotal(weekOrders),
         'month': calculateTotal(monthOrders),
         'total': (courier['total_earnings'] as num?)?.toDouble() ?? 0.0,
-        'total_deliveries': monthOrders.length, // Bu ay kaç dış teslimat yaptı
+        'total_deliveries': monthOrders.length,
         'avg_rating': (courier['avg_rating'] as num?)?.toDouble() ?? 0.0,
         'avg_delivery_time': courier['avg_delivery_time'] as int? ?? 0,
       };

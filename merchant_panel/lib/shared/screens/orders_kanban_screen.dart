@@ -640,7 +640,7 @@ class _KanbanOrderMessagesCardState extends State<_KanbanOrderMessagesCard> {
           final lastMessage = newMessages.last;
           if (lastMessage['sender_type'] == 'customer') {
             // Ses çal
-            NotificationSoundService.playSound();
+            NotificationSoundService.playSound(type: NotificationSoundType.message);
           }
         }
 

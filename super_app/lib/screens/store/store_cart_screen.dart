@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/providers/store_cart_provider.dart';
 import '../../core/providers/address_provider.dart';
 import '../../widgets/common/common_widgets.dart';
+import '../../core/services/delivery_service.dart';
 
 class StoreColors {
   static const primary = Color(0xFF6366F1);
@@ -21,6 +22,29 @@ class StoreCartScreen extends ConsumerStatefulWidget {
 
 class _StoreCartScreenState extends ConsumerState<StoreCartScreen> {
   int _selectedPaymentMethod = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _calculateDeliveryFee();
+    });
+  }
+
+  void _calculateDeliveryFee() {
+    final selectedAddress = ref.read(selectedAddressProvider);
+    final cartState = ref.read(storeCartProvider);
+    if (selectedAddress == null || cartState.items.isEmpty) return;
+    if (selectedAddress.latitude == null || selectedAddress.longitude == null) return;
+
+    // Use first store's ID for estimation
+    final firstStoreId = cartState.items.first.storeId;
+    ref.read(storeCartProvider.notifier).calculateDeliveryFee(
+      storeId: firstStoreId,
+      customerLat: selectedAddress.latitude!,
+      customerLon: selectedAddress.longitude!,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -196,6 +220,15 @@ class _StoreCartScreenState extends ConsumerState<StoreCartScreen> {
   }
 
   Widget _buildDeliveryBanner(bool isDark) {
+    final cartState = ref.watch(storeCartProvider);
+    final hasEstimate = cartState.estimatedDeliveryMin != null;
+    final estimateText = hasEstimate
+        ? '~${cartState.estimatedDeliveryMin} dk'
+        : '2-3 İş Günü';
+    final distanceText = cartState.deliveryDistanceKm != null
+        ? '${cartState.deliveryDistanceKm!.toStringAsFixed(1)} km'
+        : null;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -231,7 +264,7 @@ class _StoreCartScreenState extends ConsumerState<StoreCartScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Tahmini Teslimat: 2-3 İş Günü',
+                  'Tahmini Teslimat: $estimateText',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -240,7 +273,9 @@ class _StoreCartScreenState extends ConsumerState<StoreCartScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Siparişiniz kargoya verildiğinde bildirim alacaksınız.',
+                  distanceText != null
+                      ? '$distanceText • Siparişiniz hazırlandığında bildirim alacaksınız.'
+                      : 'Siparişiniz kargoya verildiğinde bildirim alacaksınız.',
                   style: TextStyle(
                     fontSize: 12,
                     color: isDark ? Colors.grey[400] : Colors.grey[500],
@@ -447,6 +482,7 @@ class _StoreCartScreenState extends ConsumerState<StoreCartScreen> {
                         .read(addressProvider.notifier)
                         .setDefaultAddress(address.id);
                     Navigator.pop(ctx);
+                    Future.microtask(() => _calculateDeliveryFee());
                   },
                   borderRadius: BorderRadius.circular(12),
                   child: Container(

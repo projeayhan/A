@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:excel/excel.dart' as exc;
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/models/merchant_models.dart';
@@ -114,7 +119,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                   ),
                   const SizedBox(width: 12),
                   ElevatedButton.icon(
-                    onPressed: () {},
+                    onPressed: () => _downloadReport(context),
                     icon: const Icon(Icons.download, size: 20),
                     label: const Text('Rapor Indir'),
                   ),
@@ -242,11 +247,18 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   }
 
   Widget _buildCategoryDistribution(List<StoreProduct> products) {
-    // Group by category
+    // Category name lookup
+    final categories = ref.watch(productCategoriesProvider).valueOrNull ?? [];
+    final categoryNames = <String, String>{};
+    for (final cat in categories) {
+      categoryNames[cat.id] = cat.name;
+    }
+
+    // Group by category name
     final categoryMap = <String, int>{};
     for (final product in products) {
-      final catId = product.categoryId ?? 'Kategorisiz';
-      categoryMap[catId] = (categoryMap[catId] ?? 0) + product.stock;
+      final catName = categoryNames[product.categoryId] ?? 'Kategorisiz';
+      categoryMap[catName] = (categoryMap[catName] ?? 0) + product.stock;
     }
 
     return Container(
@@ -650,26 +662,416 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   void _showBulkUpdateDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Toplu Stok Guncelleme'),
-        content: const Text(
-          'Excel dosyasi yukleyerek tum urunlerin stok bilgilerini toplu olarak guncelleyebilirsiniz.',
+        title: const Row(
+          children: [
+            Icon(Icons.edit_note, color: AppColors.primary),
+            SizedBox(width: 12),
+            Text('Toplu Stok Guncelleme'),
+          ],
+        ),
+        content: SizedBox(
+          width: 480,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Excel dosyasi yukleyerek urunlerin stok bilgilerini toplu olarak guncelleyebilirsiniz.',
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withAlpha(15),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.primary.withAlpha(40)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Beklenen Excel Formati:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _formatRow('A Sutunu:', 'Urun Adi (tam eslesmeli)'),
+                    _formatRow('B Sutunu:', 'Yeni Stok Miktari (sayi)'),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Ilk satir baslik olarak atlanir.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(ctx),
             child: const Text('Iptal'),
           ),
           ElevatedButton.icon(
             onPressed: () {
-              Navigator.pop(context);
-              // File picker logic
+              Navigator.pop(ctx);
+              _pickAndProcessExcel();
             },
             icon: const Icon(Icons.upload_file, size: 18),
             label: const Text('Dosya Sec'),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _formatRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(label, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
+          ),
+          Expanded(child: Text(value, style: TextStyle(fontSize: 13, color: AppColors.textSecondary))),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pickAndProcessExcel() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['xlsx', 'xls'],
+        withData: true,
+      );
+
+      if (result == null || result.files.isEmpty) return;
+
+      final bytes = result.files.first.bytes;
+      if (bytes == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Dosya okunamadi'), backgroundColor: Colors.red),
+          );
+        }
+        return;
+      }
+
+      final excel = exc.Excel.decodeBytes(bytes);
+      final sheet = excel.tables[excel.tables.keys.first];
+      if (sheet == null || sheet.rows.length < 2) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Excel dosyasi bos veya gecersiz'), backgroundColor: Colors.red),
+          );
+        }
+        return;
+      }
+
+      // Parse rows (skip header row)
+      final parsed = <String, int>{}; // productName -> newStock
+      for (int i = 1; i < sheet.rows.length; i++) {
+        final row = sheet.rows[i];
+        if (row.length < 2) continue;
+
+        final nameCell = row[0]?.value?.toString().trim();
+        final stockCell = row[1]?.value;
+        if (nameCell == null || nameCell.isEmpty) continue;
+
+        final stockVal = int.tryParse(stockCell?.toString() ?? '');
+        if (stockVal == null) continue;
+
+        parsed[nameCell] = stockVal;
+      }
+
+      if (parsed.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Dosyada gecerli veri bulunamadi'), backgroundColor: Colors.red),
+          );
+        }
+        return;
+      }
+
+      // Match parsed names with existing products
+      final products = ref.read(storeProductsProvider).valueOrNull ?? [];
+      final matches = <String, _BulkUpdateItem>{}; // productId -> update info
+      final unmatched = <String>[];
+
+      for (final entry in parsed.entries) {
+        final product = products.where(
+          (p) => p.name.trim().toLowerCase() == entry.key.toLowerCase(),
+        ).firstOrNull;
+
+        if (product != null) {
+          matches[product.id] = _BulkUpdateItem(
+            name: product.name,
+            currentStock: product.stock,
+            newStock: entry.value,
+          );
+        } else {
+          unmatched.add(entry.key);
+        }
+      }
+
+      if (matches.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Hicbir urun eslesmedi. Urun adlarini kontrol edin.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
+      if (mounted) _showBulkPreviewDialog(matches, unmatched);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Hata: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  void _showBulkPreviewDialog(Map<String, _BulkUpdateItem> matches, List<String> unmatched) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.preview, color: AppColors.primary),
+            const SizedBox(width: 12),
+            Text('Onizleme (${matches.length} urun)'),
+          ],
+        ),
+        content: SizedBox(
+          width: 560,
+          height: 400,
+          child: Column(
+            children: [
+              if (unmatched.isNotEmpty)
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withAlpha(20),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.warning.withAlpha(50)),
+                  ),
+                  child: Text(
+                    '${unmatched.length} urun eslesmedi: ${unmatched.take(5).join(", ")}${unmatched.length > 5 ? "..." : ""}',
+                    style: TextStyle(color: AppColors.warning, fontSize: 13),
+                  ),
+                ),
+              // Table header
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(flex: 3, child: Text('Urun', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textSecondary))),
+                    Expanded(child: Text('Mevcut', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textSecondary))),
+                    const SizedBox(width: 24, child: Center(child: Icon(Icons.arrow_forward, size: 14))),
+                    Expanded(child: Text('Yeni', textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textSecondary))),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  itemCount: matches.length,
+                  itemBuilder: (context, index) {
+                    final entry = matches.entries.elementAt(index);
+                    final item = entry.value;
+                    final diff = item.newStock - item.currentStock;
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      decoration: BoxDecoration(
+                        border: Border(bottom: BorderSide(color: AppColors.border.withAlpha(80))),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(flex: 3, child: Text(item.name, overflow: TextOverflow.ellipsis)),
+                          Expanded(child: Text('${item.currentStock}', textAlign: TextAlign.center)),
+                          SizedBox(
+                            width: 24,
+                            child: Icon(
+                              diff > 0 ? Icons.arrow_upward : diff < 0 ? Icons.arrow_downward : Icons.remove,
+                              size: 14,
+                              color: diff > 0 ? AppColors.success : diff < 0 ? AppColors.error : AppColors.textMuted,
+                            ),
+                          ),
+                          Expanded(
+                            child: Text(
+                              '${item.newStock}',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: diff > 0 ? AppColors.success : diff < 0 ? AppColors.error : AppColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Iptal'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final stockUpdates = <String, int>{};
+              for (final e in matches.entries) {
+                stockUpdates[e.key] = e.value.newStock;
+              }
+              final count = await ref.read(storeProductsProvider.notifier).bulkUpdateStock(stockUpdates);
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('$count urun stoku guncellendi'),
+                    backgroundColor: AppColors.success,
+                  ),
+                );
+              }
+            },
+            icon: const Icon(Icons.check, size: 18),
+            label: Text('${matches.length} Urunu Guncelle'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _downloadReport(BuildContext context) {
+    final products = ref.read(storeProductsProvider).valueOrNull ?? [];
+    if (products.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Rapor olusturmak icin urun bulunamadi'), backgroundColor: Colors.orange),
+      );
+      return;
+    }
+
+    final merchant = ref.read(currentMerchantProvider).valueOrNull;
+    final businessName = merchant?.businessName ?? 'Magaza';
+    final now = DateTime.now();
+    final dateStr = DateFormat('dd.MM.yyyy HH:mm').format(now);
+
+    final totalProducts = products.length;
+    final totalStockValue = products.fold(0.0, (sum, p) => sum + (p.price * p.stock));
+    final lowStockCount = products.where((p) => p.isLowStock).length;
+    final outOfStockCount = products.where((p) => p.isOutOfStock).length;
+    final normalCount = totalProducts - lowStockCount - outOfStockCount;
+
+    final pdf = pw.Document();
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(32),
+        header: (context) => pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text(businessName, style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+                pw.Text(dateStr, style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600)),
+              ],
+            ),
+            pw.SizedBox(height: 4),
+            pw.Text('Stok Yonetimi Raporu', style: const pw.TextStyle(fontSize: 14, color: PdfColors.grey700)),
+            pw.Divider(),
+            pw.SizedBox(height: 8),
+          ],
+        ),
+        build: (context) => [
+          // Summary stats
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              _pdfStatBox('Toplam Urun', '$totalProducts'),
+              _pdfStatBox('Stok Degeri', '${NumberFormat.compact().format(totalStockValue)} TL'),
+              _pdfStatBox('Normal', '$normalCount', PdfColors.green),
+              _pdfStatBox('Dusuk Stok', '$lowStockCount', PdfColors.orange),
+              _pdfStatBox('Tukenmis', '$outOfStockCount', PdfColors.red),
+            ],
+          ),
+          pw.SizedBox(height: 20),
+
+          // Products table
+          pw.TableHelper.fromTextArray(
+            headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
+            cellStyle: const pw.TextStyle(fontSize: 8),
+            headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+            cellAlignments: {
+              0: pw.Alignment.centerLeft,
+              1: pw.Alignment.center,
+              2: pw.Alignment.centerRight,
+              3: pw.Alignment.centerRight,
+              4: pw.Alignment.center,
+              5: pw.Alignment.center,
+            },
+            headers: ['Urun Adi', 'SKU', 'Fiyat (TL)', 'Stok', 'Min.', 'Durum'],
+            data: products.map((p) => [
+              p.name,
+              p.sku ?? '-',
+              p.price.toStringAsFixed(2),
+              '${p.stock}',
+              '${p.lowStockThreshold}',
+              p.isOutOfStock ? 'Tukendi' : p.isLowStock ? 'Dusuk' : 'Normal',
+            ]).toList(),
+          ),
+        ],
+      ),
+    );
+
+    Printing.layoutPdf(
+      name: 'Stok_Raporu_${DateFormat('yyyyMMdd').format(now)}',
+      onLayout: (format) => pdf.save(),
+    );
+  }
+
+  pw.Widget _pdfStatBox(String label, String value, [PdfColor color = PdfColors.blueGrey800]) {
+    return pw.Container(
+      padding: const pw.EdgeInsets.all(8),
+      decoration: pw.BoxDecoration(
+        border: pw.Border.all(color: PdfColors.grey300),
+        borderRadius: pw.BorderRadius.circular(6),
+      ),
+      child: pw.Column(
+        children: [
+          pw.Text(value, style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: color)),
+          pw.SizedBox(height: 2),
+          pw.Text(label, style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey600)),
         ],
       ),
     );
@@ -879,4 +1281,16 @@ class _MovementItem extends StatelessWidget {
       ),
     );
   }
+}
+
+class _BulkUpdateItem {
+  final String name;
+  final int currentStock;
+  final int newStock;
+
+  _BulkUpdateItem({
+    required this.name,
+    required this.currentStock,
+    required this.newStock,
+  });
 }

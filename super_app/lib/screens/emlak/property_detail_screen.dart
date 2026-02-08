@@ -224,7 +224,7 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen>
     bool isDark,
   ) {
     return SizedBox(
-      height: size.height * 0.45,
+      height: size.height * 0.32,
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -512,7 +512,7 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen>
       child: FadeTransition(
         opacity: _fadeController,
         child: Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -722,7 +722,7 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen>
     ];
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -753,15 +753,15 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen>
     return Column(
       children: [
         Container(
-          width: 56,
-          height: 56,
+          width: 46,
+          height: 46,
           decoration: BoxDecoration(
             color: EmlakColors.primary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(12),
           ),
-          child: Icon(icon, color: EmlakColors.primary, size: 26),
+          child: Icon(icon, color: EmlakColors.primary, size: 22),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         Text(
           value,
           style: TextStyle(
@@ -808,7 +808,7 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen>
     if (amenities.isEmpty) return const SizedBox.shrink();
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -819,10 +819,10 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen>
             runSpacing: 12,
             children: amenities.map((amenity) {
               return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 decoration: BoxDecoration(
                   color: isDark ? const Color(0xFF1E293B) : Colors.grey[100],
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                   border: Border.all(
                     color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
                   ),
@@ -833,9 +833,9 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen>
                     Icon(
                       amenity['icon'] as IconData,
                       color: EmlakColors.primary,
-                      size: 20,
+                      size: 18,
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
                     Text(
                       amenity['label'] as String,
                       style: TextStyle(
@@ -882,7 +882,7 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen>
     bool isDark,
   ) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -910,17 +910,17 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen>
                            property.location.longitude != null;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildSectionTitle('Konum', isDark),
           const SizedBox(height: 12),
           Container(
-            height: 200,
+            height: 160,
             decoration: BoxDecoration(
               color: isDark ? const Color(0xFF1E293B) : Colors.grey[200],
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(14),
             ),
             clipBehavior: Clip.antiAlias,
             child: hasCoordinates
@@ -1109,7 +1109,7 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen>
     }
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1268,12 +1268,12 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: _buildSectionTitle('Benzer İlanlar', isDark),
               ),
               const SizedBox(height: 16),
               SizedBox(
-                height: 220,
+                height: 200,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1299,7 +1299,7 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen>
     return GestureDetector(
       onTap: () => context.push('/emlak/property/${property.id}'),
       child: Container(
-        width: 200,
+        width: 160,
         margin: const EdgeInsets.symmetric(horizontal: 6),
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF1E293B) : Colors.white,
@@ -1390,67 +1390,52 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen>
   ) {
     return Container(
       padding: EdgeInsets.fromLTRB(
-        20,
         16,
-        20,
-        16 + MediaQuery.of(context).padding.bottom,
+        12,
+        16,
+        12 + MediaQuery.of(context).padding.bottom,
       ),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 20,
-            offset: const Offset(0, -5),
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, -4),
           ),
         ],
       ),
       child: Row(
         children: [
-          // Call Button
-          Expanded(
-            child: GestureDetector(
-              onTap: property.agent != null ? () => _callAgent(property.agent!) : null,
-              child: Container(
-                height: 56,
-                decoration: BoxDecoration(
-                  border: Border.all(color: EmlakColors.primary, width: 2),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.phone_rounded, color: EmlakColors.primary),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Ara',
-                      style: TextStyle(
-                        color: EmlakColors.primary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
+          // Call Button (icon only)
+          GestureDetector(
+            onTap: property.agent != null ? () => _callAgent(property.agent!) : null,
+            child: Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                border: Border.all(color: EmlakColors.primary, width: 1.5),
+                borderRadius: BorderRadius.circular(14),
               ),
+              child: Icon(Icons.phone_rounded, color: EmlakColors.primary, size: 22),
             ),
           ),
-          const SizedBox(width: 12),
-          // Message Button
+          const SizedBox(width: 10),
+          // Message Button (icon only)
           GestureDetector(
             onTap: _isStartingChat ? null : _startChat,
             child: Container(
-              width: 56,
-              height: 56,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
                 color: EmlakColors.secondary,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
               ),
               child: _isStartingChat
                   ? const Center(
                       child: SizedBox(
-                        width: 24,
-                        height: 24,
+                        width: 20,
+                        height: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
                           color: Colors.white,
@@ -1460,40 +1445,33 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen>
                   : const Icon(
                       Icons.chat_bubble_rounded,
                       color: Colors.white,
-                      size: 24,
+                      size: 20,
                     ),
             ),
           ),
-          const SizedBox(width: 12),
-          // Schedule Button
+          const SizedBox(width: 10),
+          // Schedule Button (primary CTA - expanded)
           Expanded(
             child: GestureDetector(
               onTap: () => _scheduleVisit(context, property),
               child: Container(
-                height: 56,
+                height: 48,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: EmlakColors.primaryGradient,
                   ),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: EmlakColors.primary.withValues(alpha: 0.3),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+                  borderRadius: BorderRadius.circular(14),
                 ),
                 child: const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.calendar_month_rounded, color: Colors.white),
+                    Icon(Icons.calendar_month_rounded, color: Colors.white, size: 20),
                     SizedBox(width: 8),
                     Text(
-                      'Randevu',
+                      'Randevu Al',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 16,
+                        fontSize: 15,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -1663,7 +1641,7 @@ class _ScheduleVisitSheetState extends State<_ScheduleVisitSheet> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      height: MediaQuery.of(context).size.height * 0.7,
+      height: MediaQuery.of(context).size.height * 0.55,
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B) : Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),

@@ -37,7 +37,7 @@ class _ReviewsScreenState extends State<ReviewsScreen> with SingleTickerProvider
     final response = await Supabase.instance.client
         .from('rental_companies')
         .select('id')
-        .eq('owner_id', userId)
+        .eq('owner_user_id', userId)
         .maybeSingle();
 
     if (response != null && mounted) {
@@ -54,12 +54,7 @@ class _ReviewsScreenState extends State<ReviewsScreen> with SingleTickerProvider
     try {
       final response = await Supabase.instance.client
           .from('rental_reviews')
-          .select('''
-            *,
-            profiles:user_id(full_name, avatar_url),
-            rental_cars:car_id(brand, model),
-            rental_bookings:booking_id(booking_number)
-          ''')
+          .select('*, rental_cars:car_id(brand, model), rental_bookings:booking_id(booking_number)')
           .eq('company_id', _companyId!)
           .order('created_at', ascending: false);
 
@@ -290,11 +285,9 @@ class _ReviewsScreenState extends State<ReviewsScreen> with SingleTickerProvider
   }
 
   Widget _buildReviewCard(Map<String, dynamic> review) {
-    final profile = review['profiles'] as Map<String, dynamic>?;
     final car = review['rental_cars'] as Map<String, dynamic>?;
     final booking = review['rental_bookings'] as Map<String, dynamic>?;
-    final userName = profile?['full_name'] ?? 'Anonim';
-    final userAvatar = profile?['avatar_url'];
+    final userName = review['user_name'] as String? ?? 'Anonim';
     final rating = review['overall_rating'] as int;
     final comment = review['comment'] as String?;
     final companyReply = review['company_reply'] as String?;
@@ -326,17 +319,14 @@ class _ReviewsScreenState extends State<ReviewsScreen> with SingleTickerProvider
                 CircleAvatar(
                   radius: 24,
                   backgroundColor: const Color(0xFF1976D2).withValues(alpha: 0.1),
-                  backgroundImage: userAvatar != null ? NetworkImage(userAvatar) : null,
-                  child: userAvatar == null
-                      ? Text(
-                          userName[0].toUpperCase(),
-                          style: const TextStyle(
-                            color: Color(0xFF1976D2),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 18,
-                          ),
-                        )
-                      : null,
+                  child: Text(
+                    userName.isNotEmpty ? userName[0].toUpperCase() : '?',
+                    style: const TextStyle(
+                      color: Color(0xFF1976D2),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(

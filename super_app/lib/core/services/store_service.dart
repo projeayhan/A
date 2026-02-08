@@ -34,7 +34,7 @@ class StoreService {
       // Mağazalar için bölge kontrolü yok - tüm onaylı mağazaları getir
       final response = await _client
           .from('merchants')
-          .select()
+          .select('*, products(count)')
           .eq('type', 'store')
           .eq('is_approved', true)
           .order('rating', ascending: false);
@@ -58,7 +58,7 @@ class StoreService {
       // Mağazalar için bölge kontrolü yok
       final response = await _client
           .from('merchants')
-          .select()
+          .select('*, products(count)')
           .eq('type', 'store')
           .eq('is_approved', true)
           .contains('category_tags', [categoryId])
@@ -82,7 +82,7 @@ class StoreService {
       // Mağazalar için bölge kontrolü yok
       final response = await _client
           .from('merchants')
-          .select()
+          .select('*, products(count)')
           .eq('type', 'store')
           .eq('is_approved', true)
           .order('rating', ascending: false)
@@ -291,7 +291,7 @@ class StoreService {
       // Mağazalar için bölge kontrolü yok
       final response = await _client
           .from('merchants')
-          .select()
+          .select('*, products(count)')
           .eq('type', 'store')
           .eq('is_approved', true)
           .ilike('business_name', '%$query%')

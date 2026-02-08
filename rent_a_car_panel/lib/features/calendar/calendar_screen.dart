@@ -920,7 +920,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             }
 
             // Reset selection
-            _clearSelection();
+            if (mounted) {
+              _clearSelection();
+            }
 
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -942,7 +944,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           }
         },
         onCancel: () {
-          _clearSelection();
+          if (mounted) {
+            _clearSelection();
+          }
         },
       ),
     );

@@ -339,7 +339,7 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen>
           return [
             // Custom App Bar with Cover Image
             SliverAppBar(
-              expandedHeight: 280,
+              expandedHeight: 200,
               pinned: true,
               backgroundColor: isDark ? Colors.grey[900] : Colors.white,
               leading: _buildBackButton(isDark),
@@ -465,17 +465,17 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen>
                               borderRadius: BorderRadius.circular(13),
                               child: Image.network(
                                 store.logoUrl,
-                                width: 80,
-                                height: 80,
+                                width: 60,
+                                height: 60,
                                 fit: BoxFit.cover,
                                 errorBuilder: (_, __, ___) => Container(
-                                  width: 80,
-                                  height: 80,
+                                  width: 60,
+                                  height: 60,
                                   color: AppColors.primary,
                                   child: const Icon(
                                     Icons.store,
                                     color: Colors.white,
-                                    size: 40,
+                                    size: 30,
                                   ),
                                 ),
                               ),
@@ -495,7 +495,7 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen>
                                         store.name,
                                         style: const TextStyle(
                                           color: Colors.white,
-                                          fontSize: 22,
+                                          fontSize: 18,
                                           fontWeight: FontWeight.bold,
                                         ),
                                         maxLines: 1,
@@ -1367,7 +1367,7 @@ SuperApp'te bu mağazayı keşfet! 🛍️
                   padding: const EdgeInsets.all(16),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
-                    childAspectRatio: 0.65,
+                    childAspectRatio: 0.72,
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
                   ),
@@ -1476,7 +1476,7 @@ SuperApp'te bu mağazayı keşfet! 🛍️
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 0.65,
+        childAspectRatio: 0.72,
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
       ),

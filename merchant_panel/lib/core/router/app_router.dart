@@ -21,6 +21,7 @@ import '../../features/store/screens/products_screen.dart';
 import '../../features/store/screens/inventory_screen.dart';
 import '../../features/store/screens/categories_screen.dart';
 import '../../shared/screens/couriers_screen.dart';
+import '../../shared/screens/messages_screen.dart';
 import '../../features/support/screens/ai_chat_screen.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -169,6 +170,13 @@ final routerProvider = Provider<GoRouter>((ref) {
             pageBuilder:
                 (context, state) =>
                     const NoTransitionPage(child: NotificationsScreen()),
+          ),
+          GoRoute(
+            path: '/messages',
+            name: 'messages',
+            pageBuilder:
+                (context, state) =>
+                    const NoTransitionPage(child: MessagesScreen()),
           ),
           GoRoute(
             path: '/couriers',

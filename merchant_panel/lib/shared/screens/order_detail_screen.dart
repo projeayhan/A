@@ -1077,38 +1077,100 @@ class OrderDetailScreen extends ConsumerWidget {
     WidgetRef ref,
     Order order,
   ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Platform Kuryesi Ara'),
-            content: const Text(
-              'Restoranınıza en yakın müsait kuryeye sipariş teklifi gönderilecek.\n\n'
-              'Kurye 30 saniye içinde kabul etmezse otomatik olarak bir sonraki en yakın kuryeye geçilecek.\n\n'
-              'Devam etmek istiyor musunuz?',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Iptal'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Kurye Ara'),
-              ),
-            ],
-          ),
-    );
-
-    if (confirmed != true) return;
-
     final supabase = ref.read(supabaseProvider);
 
+    // Platform kurye ücretini hesapla (koordinatlar varsa)
+    Map<String, dynamic>? feeData;
+    if (order.deliveryLat != null && order.deliveryLng != null) {
+      try {
+        final feeResult = await supabase.rpc('calculate_platform_delivery_fee', params: {
+          'p_merchant_id': order.merchantId,
+          'p_customer_lat': order.deliveryLat,
+          'p_customer_lon': order.deliveryLng,
+        });
+        if (feeResult != null && (feeResult as List).isNotEmpty) {
+          feeData = feeResult[0] as Map<String, dynamic>;
+        }
+      } catch (e) {
+        debugPrint('Platform fee calculation error: $e');
+      }
+    }
+
+    if (!context.mounted) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Platform Kuryesi Çağır'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Sipariş: #${order.orderNumber}',
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+            if (order.deliveryAddress.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                order.deliveryAddress,
+                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+              ),
+            ],
+            if (feeData != null) ...[
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                ),
+                child: Column(
+                  children: [
+                    _feeRow('Mesafe', '${feeData['distance_km']} km'),
+                    const SizedBox(height: 6),
+                    _feeRow('Tahmini Süre', '~${feeData['estimated_duration_min']} dk'),
+                    const SizedBox(height: 6),
+                    _feeRow('Teslimat Ücreti', '${(feeData['final_fee'] as num).toStringAsFixed(2)} TL',
+                        bold: true),
+                    if ((feeData['multiplier_reason'] as String?)?.isNotEmpty == true) ...[
+                      const SizedBox(height: 6),
+                      _feeRow('Çarpan', '${feeData['multiplier_reason']} x${feeData['multiplier']}'),
+                    ],
+                    const Divider(height: 16),
+                    _feeRow('Kurye Kazancı', '${(feeData['courier_earning'] as num).toStringAsFixed(2)} TL'),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            Text(
+              'En yakın müsait kuryeye teklif gönderilecek. '
+              '30sn içinde kabul edilmezse sıradaki kuryeye geçilecek.',
+              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('İptal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Kurye Çağır'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !context.mounted) return;
+
     try {
-      // Sıralı kurye atama sistemini başlat
       final result = await supabase.rpc('start_sequential_courier_assignment', params: {
         'p_order_id': order.id,
-        'p_max_distance_km': 10.0, // 10 km yarıçap
+        'p_max_distance_km': 10.0,
       });
 
       if (context.mounted) {
@@ -1134,6 +1196,23 @@ class OrderDetailScreen extends ConsumerWidget {
         AppDialogs.showError(context, 'Hata: $e');
       }
     }
+  }
+
+  static Widget _feeRow(String label, String value, {bool bold = false}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: TextStyle(fontSize: 13, color: Colors.grey[700])),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: bold ? FontWeight.bold : FontWeight.w500,
+            color: bold ? AppColors.primary : Colors.grey[900],
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildMessagesCard(BuildContext context, Order order, WidgetRef ref) {

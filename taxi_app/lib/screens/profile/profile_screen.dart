@@ -314,6 +314,14 @@ class ProfileScreen extends ConsumerWidget {
           const Divider(height: 1),
           _buildMenuItem(
             context,
+            icon: Icons.emergency_outlined,
+            title: 'Acil Durum Kişileri',
+            iconColor: AppColors.error,
+            onTap: () => context.push('/emergency-contacts'),
+          ),
+          const Divider(height: 1),
+          _buildMenuItem(
+            context,
             icon: Icons.notifications_outlined,
             title: 'Bildirimler',
             onTap: () {},

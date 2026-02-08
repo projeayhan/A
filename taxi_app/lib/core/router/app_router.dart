@@ -11,6 +11,7 @@ import '../../screens/rides/ride_detail_screen.dart';
 import '../../screens/earnings/earnings_screen.dart';
 import '../../screens/profile/profile_screen.dart';
 import '../../screens/profile/reviews_screen.dart';
+import '../../screens/profile/emergency_contacts_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
@@ -83,6 +84,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/reviews',
             builder: (context, state) => const ReviewsScreen(),
+          ),
+          GoRoute(
+            path: '/emergency-contacts',
+            builder: (context, state) => const EmergencyContactsScreen(),
           ),
         ],
       ),

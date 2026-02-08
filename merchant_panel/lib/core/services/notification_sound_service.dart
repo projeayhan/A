@@ -1,46 +1,77 @@
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 
-/// Bildirim sesi servisi
+enum NotificationSoundType {
+  order,
+  message,
+  general,
+}
+
+/// Bildirim sesi servisi - audioplayers ile gercek ses calar
 class NotificationSoundService {
-  static final NotificationSoundService _instance = NotificationSoundService._internal();
+  static final NotificationSoundService _instance =
+      NotificationSoundService._internal();
   factory NotificationSoundService() => _instance;
   NotificationSoundService._internal();
 
-  static bool _audioInitialized = false;
+  static final AudioPlayer _orderPlayer = AudioPlayer();
+  static final AudioPlayer _messagePlayer = AudioPlayer();
+  static final AudioPlayer _generalPlayer = AudioPlayer();
+  static bool _initialized = false;
 
   /// Initialize the service
   Future<void> initialize() async {
-    debugPrint('NotificationSoundService initialized');
-  }
+    if (_initialized) return;
+    _initialized = true;
 
-  /// Yeni sipariş sesi çal
-  void playNewOrderSound() {
-    playSound();
-  }
-
-  /// AudioContext'i başlat ve ses çal
-  static void playSound() {
-    if (kIsWeb) {
-      try {
-        // Web'de JavaScript fonksiyonu çağrılır (index.html'de tanımlı)
-        _audioInitialized = true;
-        debugPrint('Web notification sound triggered');
-      } catch (e) {
-        debugPrint('Error playing notification sound: $e');
-      }
-    } else {
-      // Native platformlarda (Windows, iOS, Android) şimdilik sadece log
-      debugPrint('Native notification sound not implemented');
+    // Set sources once (preload)
+    try {
+      await _orderPlayer.setSource(AssetSource('sounds/order_notification.wav'));
+      await _messagePlayer
+          .setSource(AssetSource('sounds/message_notification.wav'));
+      await _generalPlayer.setSource(AssetSource('sounds/notification.wav'));
+      debugPrint('NotificationSoundService initialized with audioplayers');
+    } catch (e) {
+      debugPrint('NotificationSoundService init error: $e');
     }
   }
 
-  /// AudioContext başlatıldı mı?
-  static bool get isInitialized => _audioInitialized;
+  /// Yeni siparis sesi cal
+  void playNewOrderSound() {
+    playSound(type: NotificationSoundType.order);
+  }
 
-  /// Sessizce AudioContext'i başlat (static method)
+  /// Mesaj sesi cal
+  static void playMessageSound() {
+    playSound(type: NotificationSoundType.message);
+  }
+
+  /// Ses cal - varsayilan genel bildirim sesi
+  static void playSound({NotificationSoundType type = NotificationSoundType.general}) {
+    try {
+      switch (type) {
+        case NotificationSoundType.order:
+          _orderPlayer.stop();
+          _orderPlayer.play(AssetSource('sounds/order_notification.wav'));
+        case NotificationSoundType.message:
+          _messagePlayer.stop();
+          _messagePlayer.play(AssetSource('sounds/message_notification.wav'));
+        case NotificationSoundType.general:
+          _generalPlayer.stop();
+          _generalPlayer.play(AssetSource('sounds/notification.wav'));
+      }
+    } catch (e) {
+      debugPrint('Error playing notification sound: $e');
+    }
+  }
+
+  /// AudioContext baslatildi mi?
+  static bool get isInitialized => _initialized;
+
+  /// Sessizce AudioContext'i baslat (static method)
   static void initializeAudio() {
-    if (!_audioInitialized && kIsWeb) {
-      playSound();
+    if (!_initialized) {
+      NotificationSoundService().initialize();
     }
   }
 }

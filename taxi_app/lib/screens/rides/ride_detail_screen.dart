@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
 import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/services/taxi_service.dart';
 import '../../core/services/directions_service.dart';
@@ -331,6 +332,22 @@ class _RideDetailScreenState extends ConsumerState<RideDetailScreen>
     }
   }
 
+  Future<void> _shareLocation() async {
+    if (_ride == null) return;
+    try {
+      final link = await CommunicationService.createShareLink(
+        rideId: widget.rideId,
+      );
+      if (link != null && mounted) {
+        await SharePlus.instance.share(
+          ShareParams(text: 'Sürüşümü canlı takip et: ${link.shareUrl}'),
+        );
+      }
+    } catch (e) {
+      debugPrint('Share location error: $e');
+    }
+  }
+
   Future<void> _updateStatus() async {
     if (_ride == null || _ride!.nextStatus == null) return;
 
@@ -539,6 +556,22 @@ class _RideDetailScreenState extends ConsumerState<RideDetailScreen>
                 rideId: widget.rideId,
                 latitude: _ride!.pickup.latitude,
                 longitude: _ride!.pickup.longitude,
+              ),
+            ),
+
+          // Share location button
+          if (_ride!.isActive)
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 124,
+              right: 16,
+              child: FloatingActionButton.small(
+                heroTag: 'shareLocation',
+                onPressed: _shareLocation,
+                backgroundColor: Colors.blue,
+                child: const Icon(
+                  Icons.share_location_rounded,
+                  color: Colors.white,
+                ),
               ),
             ),
 

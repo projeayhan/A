@@ -111,6 +111,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 isDark: isDark,
                 onTap: () => context.push('/settings/payment-methods'),
               ),
+              _buildNavigationItem(
+                icon: Icons.emergency_outlined,
+                title: 'Acil Durum Kişileri',
+                subtitle: 'SOS mesajı gönderilecek kişiler',
+                color: const Color(0xFFEF4444),
+                isDark: isDark,
+                onTap: () => context.push('/settings/emergency-contacts'),
+              ),
             ]),
 
             const SizedBox(height: 24),

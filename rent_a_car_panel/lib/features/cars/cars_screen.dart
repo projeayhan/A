@@ -41,6 +41,33 @@ final locationsProvider = FutureProvider.autoDispose((ref) async {
   return List<Map<String, dynamic>>.from(response);
 });
 
+// Active bookings provider - fetches active bookings to show renter info on cars
+final carActiveBookingsProvider = FutureProvider.autoDispose((ref) async {
+  final client = ref.watch(supabaseClientProvider);
+  final companyId = await ref.watch(companyIdProvider.future);
+
+  if (companyId == null) return <String, Map<String, dynamic>>{};
+
+  final response = await client
+      .from('rental_bookings')
+      .select('car_id, customer_name, dropoff_date')
+      .eq('company_id', companyId)
+      .eq('status', 'active');
+
+  final bookings = List<Map<String, dynamic>>.from(response);
+
+  // Build a map of car_id -> booking info for quick lookup
+  final Map<String, Map<String, dynamic>> bookingMap = {};
+  for (final booking in bookings) {
+    final carId = booking['car_id'] as String?;
+    if (carId != null) {
+      bookingMap[carId] = booking;
+    }
+  }
+
+  return bookingMap;
+});
+
 class CarsScreen extends ConsumerStatefulWidget {
   const CarsScreen({super.key});
 
@@ -56,6 +83,7 @@ class _CarsScreenState extends ConsumerState<CarsScreen> {
   @override
   Widget build(BuildContext context) {
     final carsAsync = ref.watch(carsProvider);
+    final activeBookingsAsync = ref.watch(carActiveBookingsProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -69,7 +97,7 @@ class _CarsScreenState extends ConsumerState<CarsScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  'Araçlar',
+                  'Araclar',
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
@@ -78,11 +106,19 @@ class _CarsScreenState extends ConsumerState<CarsScreen> {
                 ElevatedButton.icon(
                   onPressed: () => _showAddCarDialog(context),
                   icon: const Icon(Icons.add),
-                  label: const Text('Yeni Araç Ekle'),
+                  label: const Text('Yeni Arac Ekle'),
                 ),
               ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
+
+            // Fleet Summary Strip
+            carsAsync.when(
+              data: (cars) => _FleetSummaryStrip(cars: cars),
+              loading: () => const SizedBox.shrink(),
+              error: (_, __) => const SizedBox.shrink(),
+            ),
+            const SizedBox(height: 16),
 
             // Filters
             Card(
@@ -95,7 +131,7 @@ class _CarsScreenState extends ConsumerState<CarsScreen> {
                       flex: 2,
                       child: TextField(
                         decoration: const InputDecoration(
-                          hintText: 'Araç ara (marka, model, plaka)',
+                          hintText: 'Arac ara (marka, model, plaka)',
                           prefixIcon: Icon(Icons.search),
                           border: InputBorder.none,
                         ),
@@ -117,10 +153,10 @@ class _CarsScreenState extends ConsumerState<CarsScreen> {
                           border: InputBorder.none,
                         ),
                         items: const [
-                          DropdownMenuItem(value: null, child: Text('Tümü')),
-                          DropdownMenuItem(value: 'available', child: Text('Müsait')),
+                          DropdownMenuItem(value: null, child: Text('Tumu')),
+                          DropdownMenuItem(value: 'available', child: Text('Musait')),
                           DropdownMenuItem(value: 'rented', child: Text('Kirada')),
-                          DropdownMenuItem(value: 'maintenance', child: Text('Bakımda')),
+                          DropdownMenuItem(value: 'maintenance', child: Text('Bakimda')),
                           DropdownMenuItem(value: 'inactive', child: Text('Pasif')),
                         ],
                         onChanged: (value) {
@@ -141,13 +177,13 @@ class _CarsScreenState extends ConsumerState<CarsScreen> {
                           border: InputBorder.none,
                         ),
                         items: const [
-                          DropdownMenuItem(value: null, child: Text('Tümü')),
+                          DropdownMenuItem(value: null, child: Text('Tumu')),
                           DropdownMenuItem(value: 'economy', child: Text('Ekonomi')),
                           DropdownMenuItem(value: 'compact', child: Text('Kompakt')),
                           DropdownMenuItem(value: 'midsize', child: Text('Orta')),
-                          DropdownMenuItem(value: 'fullsize', child: Text('Büyük')),
+                          DropdownMenuItem(value: 'fullsize', child: Text('Buyuk')),
                           DropdownMenuItem(value: 'suv', child: Text('SUV')),
-                          DropdownMenuItem(value: 'luxury', child: Text('Lüks')),
+                          DropdownMenuItem(value: 'luxury', child: Text('Luks')),
                           DropdownMenuItem(value: 'van', child: Text('Van')),
                         ],
                         onChanged: (value) {
@@ -167,6 +203,8 @@ class _CarsScreenState extends ConsumerState<CarsScreen> {
             Expanded(
               child: carsAsync.when(
                 data: (cars) {
+                  final activeBookings = activeBookingsAsync.valueOrNull ?? <String, Map<String, dynamic>>{};
+
                   // Apply filters
                   var filteredCars = cars.where((car) {
                     if (_searchQuery.isNotEmpty) {
@@ -200,7 +238,7 @@ class _CarsScreenState extends ConsumerState<CarsScreen> {
                           ),
                           const SizedBox(height: 16),
                           const Text(
-                            'Araç bulunamadı',
+                            'Arac bulunamadi',
                             style: TextStyle(
                               color: AppColors.textSecondary,
                               fontSize: 16,
@@ -225,12 +263,12 @@ class _CarsScreenState extends ConsumerState<CarsScreen> {
                             children: [
                               SizedBox(width: 50), // Image
                               SizedBox(width: 12),
-                              Expanded(flex: 2, child: Text('Araç', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
+                              Expanded(flex: 2, child: Text('Arac', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
                               Expanded(flex: 1, child: Text('Plaka', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
                               Expanded(flex: 1, child: Text('Kategori', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
-                              Expanded(flex: 1, child: Text('Günlük Fiyat', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
+                              Expanded(flex: 1, child: Text('Gunluk Fiyat', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
                               Expanded(flex: 1, child: Text('Lokasyon', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
-                              SizedBox(width: 100, child: Text('Durum', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
+                              SizedBox(width: 120, child: Text('Durum', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
                               SizedBox(width: 50), // Actions
                             ],
                           ),
@@ -241,11 +279,15 @@ class _CarsScreenState extends ConsumerState<CarsScreen> {
                             itemCount: filteredCars.length,
                             separatorBuilder: (_, __) => const Divider(height: 1),
                             itemBuilder: (context, index) {
+                              final car = filteredCars[index];
+                              final carId = car['id'] as String?;
+                              final booking = carId != null ? activeBookings[carId] : null;
                               return _CarRow(
-                                car: filteredCars[index],
-                                onTap: () => context.go('/cars/${filteredCars[index]['id']}'),
+                                car: car,
+                                activeBooking: booking,
+                                onTap: () => context.go('/cars/${car['id']}'),
                                 onStatusChange: (newStatus) => _updateCarStatus(
-                                  filteredCars[index]['id'],
+                                  car['id'],
                                   newStatus,
                                 ),
                               );
@@ -278,7 +320,7 @@ class _CarsScreenState extends ConsumerState<CarsScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Araç durumu güncellendi')),
+          const SnackBar(content: Text('Arac durumu guncellendi')),
         );
       }
     } catch (e) {
@@ -297,7 +339,7 @@ class _CarsScreenState extends ConsumerState<CarsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Önce bir lokasyon eklemelisiniz'),
+            content: Text('Once bir lokasyon eklemelisiniz'),
             backgroundColor: AppColors.warning,
           ),
         );
@@ -326,7 +368,7 @@ class _CarsScreenState extends ConsumerState<CarsScreen> {
             if (mounted) {
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Araç eklendi')),
+                const SnackBar(content: Text('Arac eklendi')),
               );
             }
           } catch (e) {
@@ -342,212 +384,400 @@ class _CarsScreenState extends ConsumerState<CarsScreen> {
   }
 }
 
+// Fleet Summary Strip - 4 mini cards showing fleet status counts
+class _FleetSummaryStrip extends StatelessWidget {
+  final List<Map<String, dynamic>> cars;
+
+  const _FleetSummaryStrip({required this.cars});
+
+  @override
+  Widget build(BuildContext context) {
+    final total = cars.length;
+    final available = cars.where((c) => c['status'] == 'available').length;
+    final rented = cars.where((c) => c['status'] == 'rented').length;
+    final maintenance = cars.where((c) => c['status'] == 'maintenance').length;
+
+    return Row(
+      children: [
+        Expanded(
+          child: _SummaryCard(
+            icon: Icons.directions_car,
+            label: 'Toplam',
+            count: total,
+            color: AppColors.textPrimary,
+            bgColor: AppColors.surfaceLight,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _SummaryCard(
+            icon: Icons.check_circle_outline,
+            label: 'Musait',
+            count: available,
+            color: AppColors.success,
+            bgColor: AppColors.success.withValues(alpha: 0.1),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _SummaryCard(
+            icon: Icons.car_rental,
+            label: 'Kirada',
+            count: rented,
+            color: AppColors.info,
+            bgColor: AppColors.info.withValues(alpha: 0.1),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _SummaryCard(
+            icon: Icons.build_outlined,
+            label: 'Bakimda',
+            count: maintenance,
+            color: AppColors.warning,
+            bgColor: AppColors.warning.withValues(alpha: 0.1),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SummaryCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final int count;
+  final Color color;
+  final Color bgColor;
+
+  const _SummaryCard({
+    required this.icon,
+    required this.label,
+    required this.count,
+    required this.color,
+    required this.bgColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '$count',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _CarRow extends StatelessWidget {
   final Map<String, dynamic> car;
+  final Map<String, dynamic>? activeBooking;
   final VoidCallback onTap;
   final Function(String) onStatusChange;
 
   const _CarRow({
     required this.car,
+    this.activeBooking,
     required this.onTap,
     required this.onStatusChange,
   });
 
   @override
   Widget build(BuildContext context) {
-    final formatter = NumberFormat.currency(locale: 'tr_TR', symbol: '₺', decimalDigits: 0);
+    final formatter = NumberFormat.currency(locale: 'tr_TR', symbol: '\u20BA', decimalDigits: 0);
     final location = car['rental_locations'] as Map<String, dynamic>?;
+    final status = car['status'] ?? '';
+    final isInactive = status == 'inactive';
+    final isMaintenance = status == 'maintenance';
+    final isRented = status == 'rented';
 
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        child: Row(
-          children: [
-            // Image
-            Container(
-              width: 50,
-              height: 36,
-              decoration: BoxDecoration(
-                color: AppColors.surfaceLight,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: car['image_url'] != null
-                  ? Image.network(
-                      car['image_url'],
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const Icon(
+    // Row background color based on status
+    Color? rowBgColor;
+    if (isMaintenance) {
+      rowBgColor = AppColors.warning.withValues(alpha: 0.06);
+    }
+
+    // Opacity for inactive cars
+    final double rowOpacity = isInactive ? 0.5 : 1.0;
+
+    return Opacity(
+      opacity: rowOpacity,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          color: rowBgColor,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
+            children: [
+              // Image
+              Container(
+                width: 50,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceLight,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: car['image_url'] != null
+                    ? Image.network(
+                        car['image_url'],
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Icon(
+                          Icons.directions_car,
+                          size: 20,
+                          color: AppColors.textMuted,
+                        ),
+                      )
+                    : const Icon(
                         Icons.directions_car,
                         size: 20,
                         color: AppColors.textMuted,
                       ),
-                    )
-                  : const Icon(
-                      Icons.directions_car,
-                      size: 20,
-                      color: AppColors.textMuted,
+              ),
+              const SizedBox(width: 12),
+              // Car name
+              Expanded(
+                flex: 2,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${car['brand']} ${car['model']}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-            ),
-            const SizedBox(width: 12),
-            // Car name
-            Expanded(
-              flex: 2,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${car['brand']} ${car['model']}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
+                    Text(
+                      '${car['year']} \u2022 ${car['transmission'] == 'automatic' ? 'Otomatik' : 'Manuel'}',
+                      style: const TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 11,
+                      ),
                     ),
-                    overflow: TextOverflow.ellipsis,
+                  ],
+                ),
+              ),
+              // Plate
+              Expanded(
+                flex: 1,
+                child: Text(
+                  car['plate'] ?? '-',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
                   ),
-                  Text(
-                    '${car['year']} • ${car['transmission'] == 'automatic' ? 'Otomatik' : 'Manuel'}',
-                    style: const TextStyle(
-                      color: AppColors.textMuted,
-                      fontSize: 11,
-                    ),
+                ),
+              ),
+              // Category
+              Expanded(
+                flex: 1,
+                child: Text(
+                  _getCategoryLabel(car['category']),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
                   ),
-                ],
-              ),
-            ),
-            // Plate
-            Expanded(
-              flex: 1,
-              child: Text(
-                car['plate'] ?? '-',
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
                 ),
               ),
-            ),
-            // Category
-            Expanded(
-              flex: 1,
-              child: Text(
-                _getCategoryLabel(car['category']),
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
+              // Price
+              Expanded(
+                flex: 1,
+                child: Text(
+                  '${formatter.format(car['daily_price'] ?? 0)}/gun',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                  ),
                 ),
               ),
-            ),
-            // Price
-            Expanded(
-              flex: 1,
-              child: Text(
-                '${formatter.format(car['daily_price'] ?? 0)}/gün',
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.primary,
+              // Location
+              Expanded(
+                flex: 1,
+                child: Text(
+                  location?['city'] ?? '-',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-            ),
-            // Location
-            Expanded(
-              flex: 1,
-              child: Text(
-                location?['city'] ?? '-',
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
+              // Status with renter info
+              SizedBox(
+                width: 120,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildStatusBadge(status),
+                    if (isRented && activeBooking != null) ...[
+                      const SizedBox(height: 4),
+                      _buildRenterInfo(activeBooking!),
+                    ],
+                  ],
                 ),
-                overflow: TextOverflow.ellipsis,
               ),
-            ),
-            // Status
-            SizedBox(
-              width: 100,
-              child: _buildStatusBadge(car['status'] ?? ''),
-            ),
-            // Actions
-            SizedBox(
-              width: 50,
-              child: PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert, size: 18),
-                padding: EdgeInsets.zero,
-                onSelected: (action) {
-                  if (action == 'maintenance') {
-                    onStatusChange('maintenance');
-                  } else if (action == 'available') {
-                    onStatusChange('available');
-                  } else if (action == 'inactive') {
-                    onStatusChange('inactive');
-                  }
-                },
-                itemBuilder: (context) {
-                  final status = car['status'] ?? '';
-                  return [
-                    if (status == 'available') ...[
-                      const PopupMenuItem(
-                        value: 'maintenance',
-                        child: Row(
-                          children: [
-                            Icon(Icons.build, size: 18, color: AppColors.warning),
-                            SizedBox(width: 8),
-                            Text('Bakıma Al'),
-                          ],
+              // Actions
+              SizedBox(
+                width: 50,
+                child: PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert, size: 18),
+                  padding: EdgeInsets.zero,
+                  onSelected: (action) {
+                    if (action == 'maintenance') {
+                      onStatusChange('maintenance');
+                    } else if (action == 'available') {
+                      onStatusChange('available');
+                    } else if (action == 'inactive') {
+                      onStatusChange('inactive');
+                    }
+                  },
+                  itemBuilder: (context) {
+                    return [
+                      if (status == 'available') ...[
+                        const PopupMenuItem(
+                          value: 'maintenance',
+                          child: Row(
+                            children: [
+                              Icon(Icons.build, size: 18, color: AppColors.warning),
+                              SizedBox(width: 8),
+                              Text('Bakima Al'),
+                            ],
+                          ),
                         ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'inactive',
-                        child: Row(
-                          children: [
-                            Icon(Icons.visibility_off, size: 18, color: AppColors.error),
-                            SizedBox(width: 8),
-                            Text('Pasife Al'),
-                          ],
+                        const PopupMenuItem(
+                          value: 'inactive',
+                          child: Row(
+                            children: [
+                              Icon(Icons.visibility_off, size: 18, color: AppColors.error),
+                              SizedBox(width: 8),
+                              Text('Pasife Al'),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                    if (status == 'maintenance') ...[
-                      const PopupMenuItem(
-                        value: 'available',
-                        child: Row(
-                          children: [
-                            Icon(Icons.check_circle, size: 18, color: AppColors.success),
-                            SizedBox(width: 8),
-                            Text('Bakımdan Çıkar'),
-                          ],
+                      ],
+                      if (status == 'maintenance') ...[
+                        const PopupMenuItem(
+                          value: 'available',
+                          child: Row(
+                            children: [
+                              Icon(Icons.check_circle, size: 18, color: AppColors.success),
+                              SizedBox(width: 8),
+                              Text('Bakimdan Cikar'),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                    if (status == 'inactive') ...[
-                      const PopupMenuItem(
-                        value: 'available',
-                        child: Row(
-                          children: [
-                            Icon(Icons.visibility, size: 18, color: AppColors.success),
-                            SizedBox(width: 8),
-                            Text('Aktif Yap'),
-                          ],
+                      ],
+                      if (status == 'inactive') ...[
+                        const PopupMenuItem(
+                          value: 'available',
+                          child: Row(
+                            children: [
+                              Icon(Icons.visibility, size: 18, color: AppColors.success),
+                              SizedBox(width: 8),
+                              Text('Aktif Yap'),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                    if (status == 'rented') ...[
-                      const PopupMenuItem(
-                        enabled: false,
-                        child: Row(
-                          children: [
-                            Icon(Icons.info, size: 18, color: AppColors.textMuted),
-                            SizedBox(width: 8),
-                            Text('Kirada - İşlem yapılamaz'),
-                          ],
+                      ],
+                      if (status == 'rented') ...[
+                        const PopupMenuItem(
+                          enabled: false,
+                          child: Row(
+                            children: [
+                              Icon(Icons.info, size: 18, color: AppColors.textMuted),
+                              SizedBox(width: 8),
+                              Text('Kirada - Islem yapilamaz'),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ];
-                },
+                      ],
+                    ];
+                  },
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildRenterInfo(Map<String, dynamic> booking) {
+    final customerName = booking['customer_name'] as String? ?? '';
+    final dropoffDateStr = booking['dropoff_date'] as String?;
+
+    String returnText = '';
+    if (dropoffDateStr != null) {
+      try {
+        final dropoffDate = DateTime.parse(dropoffDateStr);
+        final dateFormat = DateFormat('dd MMM', 'tr_TR');
+        returnText = dateFormat.format(dropoffDate);
+      } catch (_) {
+        returnText = '';
+      }
+    }
+
+    final displayText = returnText.isNotEmpty
+        ? '$customerName \u2022 $returnText'
+        : customerName;
+
+    if (displayText.isEmpty) return const SizedBox.shrink();
+
+    return Row(
+      children: [
+        Icon(Icons.person_outline, size: 11, color: AppColors.info.withValues(alpha: 0.7)),
+        const SizedBox(width: 3),
+        Expanded(
+          child: Text(
+            displayText,
+            style: TextStyle(
+              fontSize: 10,
+              color: AppColors.info.withValues(alpha: 0.8),
+            ),
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
+        ),
+      ],
     );
   }
 
@@ -560,11 +790,11 @@ class _CarRow extends StatelessWidget {
       case 'midsize':
         return 'Orta';
       case 'fullsize':
-        return 'Büyük';
+        return 'Buyuk';
       case 'suv':
         return 'SUV';
       case 'luxury':
-        return 'Lüks';
+        return 'Luks';
       case 'van':
         return 'Van';
       default:
@@ -579,7 +809,7 @@ class _CarRow extends StatelessWidget {
     switch (status) {
       case 'available':
         color = AppColors.success;
-        label = 'Müsait';
+        label = 'Musait';
         break;
       case 'rented':
         color = AppColors.info;
@@ -587,7 +817,7 @@ class _CarRow extends StatelessWidget {
         break;
       case 'maintenance':
         color = AppColors.warning;
-        label = 'Bakımda';
+        label = 'Bakimda';
         break;
       case 'inactive':
         color = AppColors.error;
@@ -669,15 +899,19 @@ class _AddCarDialogState extends State<_AddCarDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      child: Container(
-        width: 600,
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 600,
+          maxHeight: MediaQuery.of(context).size.height * 0.85,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -933,6 +1167,7 @@ class _AddCarDialogState extends State<_AddCarDialog> {
               ],
             ),
           ),
+        ),
         ),
       ),
     );

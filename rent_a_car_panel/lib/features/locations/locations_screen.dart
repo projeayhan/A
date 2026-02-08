@@ -4,20 +4,66 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme.dart';
 import '../../core/supabase_config.dart';
 
-// Locations provider
+// Locations provider - fetches locations with car counts and active booking counts
 final companyLocationsProvider = FutureProvider.autoDispose((ref) async {
   final client = ref.watch(supabaseClientProvider);
   final companyId = await ref.watch(companyIdProvider.future);
 
   if (companyId == null) return <Map<String, dynamic>>[];
 
-  final response = await client
-      .from('rental_locations')
-      .select('*')
-      .eq('company_id', companyId)
-      .order('created_at', ascending: false);
+  // Fetch locations, car counts, and booking counts in parallel
+  final results = await Future.wait([
+    client
+        .from('rental_locations')
+        .select('*')
+        .eq('company_id', companyId)
+        .order('created_at', ascending: false),
+    client
+        .from('rental_cars')
+        .select('id, location_id')
+        .eq('company_id', companyId),
+    client
+        .from('rental_bookings')
+        .select('id, pickup_location_id, dropoff_location_id, status')
+        .eq('company_id', companyId)
+        .inFilter('status', ['active', 'confirmed']),
+  ]);
 
-  return List<Map<String, dynamic>>.from(response);
+  final locations = List<Map<String, dynamic>>.from(results[0]);
+  final cars = List<Map<String, dynamic>>.from(results[1]);
+  final bookings = List<Map<String, dynamic>>.from(results[2]);
+
+  // Build car count map: location_id -> count
+  final carCounts = <String, int>{};
+  for (final car in cars) {
+    final locId = car['location_id'] as String?;
+    if (locId != null) {
+      carCounts[locId] = (carCounts[locId] ?? 0) + 1;
+    }
+  }
+
+  // Build active booking count map: location_id -> count
+  // A booking counts for a location if it's either pickup or dropoff location
+  final bookingCounts = <String, int>{};
+  for (final booking in bookings) {
+    final pickupId = booking['pickup_location_id'] as String?;
+    final dropoffId = booking['dropoff_location_id'] as String?;
+    final counted = <String>{};
+    if (pickupId != null) counted.add(pickupId);
+    if (dropoffId != null) counted.add(dropoffId);
+    for (final locId in counted) {
+      bookingCounts[locId] = (bookingCounts[locId] ?? 0) + 1;
+    }
+  }
+
+  // Enrich locations with counts
+  for (final location in locations) {
+    final id = location['id'] as String;
+    location['car_count'] = carCounts[id] ?? 0;
+    location['active_booking_count'] = bookingCounts[id] ?? 0;
+  }
+
+  return locations;
 });
 
 class LocationsScreen extends ConsumerWidget {
@@ -54,6 +100,21 @@ class LocationsScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 24),
 
+            // Summary strip
+            locationsAsync.when(
+              data: (locations) => _SummaryStrip(locations: locations),
+              loading: () => const SizedBox.shrink(),
+              error: (_, _) => const SizedBox.shrink(),
+            ),
+
+            locationsAsync.when(
+              data: (locations) => locations.isNotEmpty
+                  ? const SizedBox(height: 24)
+                  : const SizedBox.shrink(),
+              loading: () => const SizedBox.shrink(),
+              error: (_, _) => const SizedBox.shrink(),
+            ),
+
             // Locations grid
             Expanded(
               child: locationsAsync.when(
@@ -63,7 +124,7 @@ class LocationsScreen extends ConsumerWidget {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.location_off_outlined,
                             size: 64,
                             color: AppColors.textMuted,
@@ -92,7 +153,7 @@ class LocationsScreen extends ConsumerWidget {
                       crossAxisCount: 3,
                       mainAxisSpacing: 16,
                       crossAxisSpacing: 16,
-                      childAspectRatio: 1.3,
+                      childAspectRatio: 1.15,
                     ),
                     itemCount: locations.length,
                     itemBuilder: (context, index) {
@@ -220,6 +281,136 @@ class LocationsScreen extends ConsumerWidget {
   }
 }
 
+// ── Summary Strip ──────────────────────────────────────────────────────
+
+class _SummaryStrip extends StatelessWidget {
+  final List<Map<String, dynamic>> locations;
+
+  const _SummaryStrip({required this.locations});
+
+  @override
+  Widget build(BuildContext context) {
+    if (locations.isEmpty) return const SizedBox.shrink();
+
+    final totalLocations = locations.length;
+    final activeLocations =
+        locations.where((l) => l['is_active'] == true).length;
+    final totalCars = locations.fold<int>(
+        0, (sum, l) => sum + ((l['car_count'] as int?) ?? 0));
+    final airportLocations =
+        locations.where((l) => l['is_airport'] == true).length;
+
+    return Row(
+      children: [
+        Expanded(
+          child: _SummaryCard(
+            icon: Icons.location_on,
+            iconColor: AppColors.primary,
+            label: 'Toplam Lokasyon',
+            value: '$totalLocations',
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _SummaryCard(
+            icon: Icons.check_circle,
+            iconColor: AppColors.success,
+            label: 'Aktif Lokasyon',
+            value: '$activeLocations',
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _SummaryCard(
+            icon: Icons.directions_car,
+            iconColor: AppColors.info,
+            label: 'Toplam Arac',
+            value: '$totalCars',
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _SummaryCard(
+            icon: Icons.flight,
+            iconColor: AppColors.warning,
+            label: 'Havalimani',
+            value: '$airportLocations',
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SummaryCard extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final String value;
+
+  const _SummaryCard({
+    required this.icon,
+    required this.iconColor,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: iconColor.withValues(alpha: 0.2),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: iconColor, size: 22),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Location Card ──────────────────────────────────────────────────────
+
 class _LocationCard extends StatelessWidget {
   final Map<String, dynamic> location;
   final VoidCallback onToggleActive;
@@ -238,6 +429,9 @@ class _LocationCard extends StatelessWidget {
     final isActive = location['is_active'] ?? false;
     final isAirport = location['is_airport'] ?? false;
     final is24Hours = location['is_24_hours'] ?? false;
+    final phone = (location['phone'] as String?) ?? '';
+    final carCount = (location['car_count'] as int?) ?? 0;
+    final activeBookingCount = (location['active_booking_count'] as int?) ?? 0;
 
     return Card(
       child: Padding(
@@ -245,7 +439,7 @@ class _LocationCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
+            // Header: icon, name/city, active switch
             Row(
               children: [
                 Container(
@@ -285,15 +479,14 @@ class _LocationCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                // Status switch
                 Switch(
                   value: isActive,
                   onChanged: (_) => onToggleActive(),
-                  activeColor: AppColors.success,
+                  activeThumbColor: AppColors.success,
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
 
             // Address
             Row(
@@ -313,32 +506,110 @@ class _LocationCard extends StatelessWidget {
                 ),
               ],
             ),
+
+            // Phone number
+            if (phone.isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  const Icon(Icons.phone, size: 16, color: AppColors.textMuted),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      phone,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 14),
+
+            // Car count & booking count badges
+            Row(
+              children: [
+                _buildCountBadge(
+                  icon: Icons.directions_car,
+                  label: '$carCount Arac',
+                  color: AppColors.info,
+                ),
+                const SizedBox(width: 10),
+                _buildCountBadge(
+                  icon: Icons.calendar_month,
+                  label: '$activeBookingCount Aktif Rez.',
+                  color: AppColors.warning,
+                ),
+              ],
+            ),
             const Spacer(),
+
+            // Divider
+            const Divider(
+              color: AppColors.surfaceLight,
+              height: 20,
+              thickness: 1,
+            ),
 
             // Tags & Actions
             Row(
               children: [
-                if (isAirport)
-                  _buildTag('Havalimanı', AppColors.info),
-                if (is24Hours)
-                  _buildTag('7/24', AppColors.success),
+                if (isAirport) _buildTag('Havalimani', AppColors.info),
+                if (is24Hours) _buildTag('7/24', AppColors.success),
+                if (!isActive)
+                  _buildTag('Pasif', AppColors.textMuted),
                 const Spacer(),
                 IconButton(
                   onPressed: onEdit,
                   icon: const Icon(Icons.edit, size: 20),
                   color: AppColors.textSecondary,
-                  tooltip: 'Düzenle',
+                  tooltip: 'Duzenle',
+                  visualDensity: VisualDensity.compact,
                 ),
                 IconButton(
                   onPressed: onDelete,
                   icon: const Icon(Icons.delete, size: 20),
                   color: AppColors.error,
                   tooltip: 'Sil',
+                  visualDensity: VisualDensity.compact,
                 ),
               ],
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildCountBadge({
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: color),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }

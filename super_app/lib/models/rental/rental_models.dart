@@ -116,6 +116,7 @@ class RentalCar {
   final double? discountPercentage;
   final String companyId; // Kiralama şirketi ID
   final String? companyName; // Kiralama şirketi adı
+  final String? companyLogo; // Kiralama şirketi logosu
   final double depositAmount; // Depozito tutarı
 
   const RentalCar({
@@ -149,6 +150,7 @@ class RentalCar {
     this.discountPercentage,
     this.companyId = 'demo_company',
     this.companyName,
+    this.companyLogo,
     this.depositAmount = 0,
   });
 
@@ -233,58 +235,42 @@ class RentalLocation {
 
 class RentalPackage {
   final String id;
+  final String tier;
   final String name;
   final String description;
-  final double priceMultiplier;
+  final double dailyPrice;
   final List<String> includedServices;
   final bool isPopular;
   final String iconName;
 
   const RentalPackage({
     required this.id,
+    this.tier = 'basic',
     required this.name,
     required this.description,
-    required this.priceMultiplier,
+    required this.dailyPrice,
     required this.includedServices,
     this.isPopular = false,
     required this.iconName,
   });
 
-  static const List<RentalPackage> packages = [
-    RentalPackage(
-      id: 'basic',
-      name: 'Temel',
-      description: 'Standart kiralama paketi',
-      priceMultiplier: 1.0,
-      includedServices: ['Temel sigorta', 'Yol yardımı'],
-      iconName: 'directions_car',
-    ),
-    RentalPackage(
-      id: 'comfort',
-      name: 'Konfor',
-      description: 'Ekstra konfor ve güvence',
-      priceMultiplier: 1.25,
-      includedServices: ['Tam kasko', 'Yol yardımı', 'İkinci sürücü ücretsiz', 'Bebek koltuğu'],
-      isPopular: true,
-      iconName: 'star',
-    ),
-    RentalPackage(
-      id: 'premium',
-      name: 'Premium',
-      description: 'Her şey dahil VIP deneyim',
-      priceMultiplier: 1.5,
-      includedServices: [
-        'Tam kasko (hasar muafiyeti yok)',
-        'Yol yardımı 7/24',
-        'İkinci sürücü ücretsiz',
-        'Bebek koltuğu',
-        'GPS navigasyon',
-        'Ücretsiz iptal',
-        'Havaalanı teslim/teslimat',
-      ],
-      iconName: 'workspace_premium',
-    ),
-  ];
+  factory RentalPackage.fromJson(Map<String, dynamic> json) {
+    final services = json['included_services'];
+    List<String> servicesList = [];
+    if (services is List) {
+      servicesList = services.map((e) => e.toString()).toList();
+    }
+    return RentalPackage(
+      id: json['id'] as String,
+      tier: json['tier'] as String? ?? 'basic',
+      name: json['name'] as String? ?? '',
+      description: json['description'] as String? ?? '',
+      dailyPrice: (json['daily_price'] as num?)?.toDouble() ?? 0,
+      includedServices: servicesList,
+      isPopular: json['is_popular'] as bool? ?? false,
+      iconName: json['icon'] as String? ?? 'directions_car',
+    );
+  }
 }
 
 class RentalBooking {
@@ -359,6 +345,7 @@ class AdditionalService {
   final String name;
   final String description;
   final double dailyPrice;
+  final String priceType;
   final String iconName;
 
   const AdditionalService({
@@ -366,53 +353,20 @@ class AdditionalService {
     required this.name,
     required this.description,
     required this.dailyPrice,
+    this.priceType = 'per_day',
     required this.iconName,
   });
 
-  static const List<AdditionalService> services = [
-    AdditionalService(
-      id: 'gps',
-      name: 'GPS Navigasyon',
-      description: 'Güncel haritalarla GPS cihazı',
-      dailyPrice: 50,
-      iconName: 'gps_fixed',
-    ),
-    AdditionalService(
-      id: 'child_seat',
-      name: 'Çocuk Koltuğu',
-      description: '0-12 yaş için güvenli koltuk',
-      dailyPrice: 40,
-      iconName: 'child_care',
-    ),
-    AdditionalService(
-      id: 'additional_driver',
-      name: 'Ek Sürücü',
-      description: 'İkinci sürücü kaydı',
-      dailyPrice: 75,
-      iconName: 'person_add',
-    ),
-    AdditionalService(
-      id: 'wifi',
-      name: 'Mobil WiFi',
-      description: '4G mobil internet cihazı',
-      dailyPrice: 60,
-      iconName: 'wifi',
-    ),
-    AdditionalService(
-      id: 'snow_chains',
-      name: 'Kar Zinciri',
-      description: 'Kış koşulları için',
-      dailyPrice: 30,
-      iconName: 'ac_unit',
-    ),
-    AdditionalService(
-      id: 'roof_rack',
-      name: 'Tavan Bagajı',
-      description: 'Ekstra bagaj alanı',
-      dailyPrice: 45,
-      iconName: 'luggage',
-    ),
-  ];
+  factory AdditionalService.fromJson(Map<String, dynamic> json) {
+    return AdditionalService(
+      id: json['id'] as String,
+      name: json['name'] as String? ?? '',
+      description: json['description'] as String? ?? '',
+      dailyPrice: (json['price'] as num?)?.toDouble() ?? 0,
+      priceType: json['price_type'] as String? ?? 'per_day',
+      iconName: json['icon'] as String? ?? 'build',
+    );
+  }
 }
 
 // Rental Review Model

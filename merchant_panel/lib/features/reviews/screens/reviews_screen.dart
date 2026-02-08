@@ -68,7 +68,7 @@ class _ReviewsScreenState extends ConsumerState<ReviewsScreen>
               if (!_seenReviewIds.contains(reviewId)) {
                 _seenReviewIds.add(reviewId);
                 // Play notification sound for new review
-                NotificationSoundService().playNewOrderSound();
+                NotificationSoundService.playSound(type: NotificationSoundType.general);
                 _showNewReviewNotification(newRecord);
               }
             }

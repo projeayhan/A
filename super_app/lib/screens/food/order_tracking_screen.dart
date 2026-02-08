@@ -74,6 +74,30 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
   // Chat modal açık mı?
   bool _isChatOpen = false;
 
+  /// Mesaj gönderilebilir mi? Sipariş iptal/teslim edildiyse 10dk sonra kapanır.
+  bool get _canSendMessage {
+    if (_currentStatus == 'cancelled') return false;
+    if (_currentStatus == 'delivered') {
+      final deliveredAt = _orderData?['delivered_at'] as String?;
+      if (deliveredAt != null) {
+        final deliveredTime = DateTime.tryParse(deliveredAt);
+        if (deliveredTime != null) {
+          return DateTime.now().difference(deliveredTime).inMinutes < 10;
+        }
+      }
+      // delivered_at yoksa updated_at'e bak
+      final updatedAt = _orderData?['updated_at'] as String?;
+      if (updatedAt != null) {
+        final updatedTime = DateTime.tryParse(updatedAt);
+        if (updatedTime != null) {
+          return DateTime.now().difference(updatedTime).inMinutes < 10;
+        }
+      }
+      return false;
+    }
+    return true; // pending, confirmed, preparing, ready, delivering
+  }
+
   @override
   void initState() {
     super.initState();
@@ -1364,39 +1388,46 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
           Expanded(
             flex: 2,
             child: GestureDetector(
-              onTap: () {
-                setState(() => _unreadMessageCount = 0);
-                _showSupportDialog(isDark);
-              },
+              onTap: _canSendMessage
+                  ? () {
+                      setState(() => _unreadMessageCount = 0);
+                      _showSupportDialog(isDark);
+                    }
+                  : null,
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [FoodColors.primary, const Color(0xFFEA580C)],
-                  ),
+                  gradient: _canSendMessage
+                      ? LinearGradient(
+                          colors: [FoodColors.primary, const Color(0xFFEA580C)],
+                        )
+                      : null,
+                  color: _canSendMessage ? null : (isDark ? Colors.grey[700] : Colors.grey[300]),
                   borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: FoodColors.primary.withValues(alpha: 0.3),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+                  boxShadow: _canSendMessage
+                      ? [
+                          BoxShadow(
+                            color: FoodColors.primary.withValues(alpha: 0.3),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ]
+                      : null,
                 ),
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
-                    const Row(
+                    Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.store, color: Colors.white, size: 20),
-                        SizedBox(width: 8),
+                        Icon(Icons.store, color: _canSendMessage ? Colors.white : Colors.grey[500], size: 20),
+                        const SizedBox(width: 8),
                         Text(
-                          'Restorana Yaz',
+                          _canSendMessage ? 'Restorana Yaz' : 'Mesaj süresi doldu',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            color: _canSendMessage ? Colors.white : Colors.grey[500],
                           ),
                         ),
                       ],
@@ -1785,6 +1816,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
         restaurantName: restaurantName,
         restaurantPhone: restaurantPhone,
         isDark: isDark,
+        canSendMessage: _canSendMessage,
       ),
     ).whenComplete(() {
       // Chat kapandığında işaretle
@@ -1804,6 +1836,7 @@ class _RestaurantChatSheet extends StatefulWidget {
   final String restaurantName;
   final String? restaurantPhone;
   final bool isDark;
+  final bool canSendMessage;
 
   const _RestaurantChatSheet({
     required this.orderId,
@@ -1811,6 +1844,7 @@ class _RestaurantChatSheet extends StatefulWidget {
     required this.restaurantName,
     this.restaurantPhone,
     required this.isDark,
+    this.canSendMessage = true,
   });
 
   @override
@@ -1937,83 +1971,43 @@ class _RestaurantChatSheetState extends State<_RestaurantChatSheet> {
     });
   }
 
-  bool _isAiTyping = false;
-
   Future<void> _sendMessage() async {
     final message = _messageController.text.trim();
     if (message.isEmpty) return;
 
     _messageController.clear();
 
-    // Müşteri mesajını hemen göster (optimistic update)
     final user = SupabaseService.currentUser;
+    final userName = user?.userMetadata?['full_name'] ?? 'Müşteri';
+
+    // Optimistic update
     final tempMessage = {
       'id': 'temp_${DateTime.now().millisecondsSinceEpoch}',
       'order_id': widget.orderId,
       'sender_type': 'customer',
       'sender_id': user?.id,
-      'sender_name': 'Müşteri',
+      'sender_name': userName,
       'message': message,
       'created_at': DateTime.now().toIso8601String(),
-      'is_ai_response': false,
     };
 
     setState(() {
       _messages.add(tempMessage);
-      _isAiTyping = true; // AI yazıyor göstergesi
     });
     _scrollToBottom();
 
     try {
-      // AI Edge Function'ı çağır - hem mesajı kaydeder hem AI yanıt verir
-      final response = await SupabaseService.client.functions.invoke(
-        'order-chat-ai',
-        body: {
-          'order_id': widget.orderId,
-          'message': message,
-        },
-      );
-
-      if (mounted) {
-        setState(() {
-          _isAiTyping = false;
-        });
-      }
-
-      if (response.status != 200) {
-        throw Exception(response.data?['error'] ?? 'Mesaj gönderilemedi');
-      }
-
-      // AI yanıt verdiyse bildirim göster
-      final aiResponded = response.data?['ai_responded'] == true;
-      if (aiResponded && mounted) {
-        // Mesajlar realtime ile zaten güncellenecek, ek işlem gerekmiyor
-        debugPrint('AI otomatik yanıt verdi');
-      }
+      await SupabaseService.client.from('order_messages').insert({
+        'order_id': widget.orderId,
+        'merchant_id': widget.merchantId,
+        'sender_type': 'customer',
+        'sender_id': user?.id,
+        'sender_name': userName,
+        'message': message,
+      });
     } catch (e) {
-      debugPrint('AI chat error: $e');
       if (mounted) {
-        setState(() {
-          _isAiTyping = false;
-        });
-      }
-      // Fallback: Direkt veritabanına yaz (AI olmadan)
-      try {
-        final user = SupabaseService.currentUser;
-        final userName = user?.userMetadata?['full_name'] ?? 'Müşteri';
-
-        await SupabaseService.client.from('order_messages').insert({
-          'order_id': widget.orderId,
-          'merchant_id': widget.merchantId,
-          'sender_type': 'customer',
-          'sender_id': user?.id,
-          'sender_name': userName,
-          'message': message,
-        });
-      } catch (e2) {
-        if (mounted) {
-          await AppDialogs.showError(context, 'Mesaj gönderilemedi: $e2');
-        }
+        await AppDialogs.showError(context, 'Mesaj gönderilemedi: $e');
       }
     }
   }
@@ -2103,50 +2097,10 @@ class _RestaurantChatSheetState extends State<_RestaurantChatSheet> {
                     : ListView.builder(
                         controller: _scrollController,
                         padding: const EdgeInsets.all(16),
-                        itemCount: _messages.length + (_isAiTyping ? 1 : 0),
+                        itemCount: _messages.length,
                         itemBuilder: (context, index) {
-                          // AI yazıyor göstergesi (en sonda)
-                          if (_isAiTyping && index == _messages.length) {
-                            return Align(
-                              alignment: Alignment.centerLeft,
-                              child: Container(
-                                margin: const EdgeInsets.only(bottom: 8),
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFE8F5E9),
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(color: const Color(0xFF4CAF50).withValues(alpha: 0.3), width: 1),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.smart_toy, size: 14, color: Color(0xFF4CAF50)),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'AI yanıt yazıyor',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey[600],
-                                        fontStyle: FontStyle.italic,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    const SizedBox(
-                                      width: 12,
-                                      height: 12,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4CAF50)),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          }
                           final msg = _messages[index];
                           final isFromCustomer = msg['sender_type'] == 'customer';
-                          final isAiResponse = msg['is_ai_response'] == true;
                           final time = DateTime.tryParse(msg['created_at'] ?? '');
                           final timeStr = time != null
                               ? '${time.toLocal().hour.toString().padLeft(2, '0')}:${time.toLocal().minute.toString().padLeft(2, '0')}'
@@ -2163,37 +2117,21 @@ class _RestaurantChatSheetState extends State<_RestaurantChatSheet> {
                               decoration: BoxDecoration(
                                 color: isFromCustomer
                                     ? FoodColors.primary
-                                    : isAiResponse
-                                        ? const Color(0xFFE8F5E9) // Açık yeşil AI için
-                                        : Colors.grey[200],
+                                    : Colors.grey[200],
                                 borderRadius: BorderRadius.circular(16),
-                                border: isAiResponse
-                                    ? Border.all(color: const Color(0xFF4CAF50).withValues(alpha: 0.3), width: 1)
-                                    : null,
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   if (!isFromCustomer)
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        if (isAiResponse) ...[
-                                          const Icon(Icons.smart_toy, size: 14, color: Color(0xFF4CAF50)),
-                                          const SizedBox(width: 4),
-                                        ],
-                                        Flexible(
-                                          child: Text(
-                                            msg['sender_name'] ?? 'Restoran',
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.bold,
-                                              color: isAiResponse ? const Color(0xFF4CAF50) : FoodColors.primary,
-                                            ),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      ],
+                                    Text(
+                                      msg['sender_name'] ?? 'Restoran',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: FoodColors.primary,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   if (!isFromCustomer) const SizedBox(height: 4),
                                   Text(
@@ -2213,24 +2151,6 @@ class _RestaurantChatSheetState extends State<_RestaurantChatSheet> {
                                           color: isFromCustomer ? Colors.white70 : Colors.grey[500],
                                         ),
                                       ),
-                                      if (isAiResponse) ...[
-                                        const SizedBox(width: 6),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFF4CAF50).withValues(alpha: 0.1),
-                                            borderRadius: BorderRadius.circular(8),
-                                          ),
-                                          child: const Text(
-                                            'AI',
-                                            style: TextStyle(
-                                              fontSize: 9,
-                                              fontWeight: FontWeight.bold,
-                                              color: Color(0xFF4CAF50),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
                                     ],
                                   ),
                                 ],
@@ -2242,44 +2162,59 @@ class _RestaurantChatSheetState extends State<_RestaurantChatSheet> {
           ),
 
           // Message input
-          Container(
-            padding: EdgeInsets.fromLTRB(16, 8, 16, MediaQuery.of(context).padding.bottom + 16),
-            decoration: BoxDecoration(
-              color: widget.isDark ? Colors.grey[850] : Colors.grey[100],
-              border: Border(top: BorderSide(color: Colors.grey[300]!)),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _messageController,
-                    decoration: InputDecoration(
-                      hintText: 'Mesajınızı yazın...',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
-                        borderSide: BorderSide.none,
+          if (widget.canSendMessage)
+            Container(
+              padding: EdgeInsets.fromLTRB(16, 8, 16, MediaQuery.of(context).padding.bottom + 16),
+              decoration: BoxDecoration(
+                color: widget.isDark ? Colors.grey[850] : Colors.grey[100],
+                border: Border(top: BorderSide(color: Colors.grey[300]!)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _messageController,
+                      decoration: InputDecoration(
+                        hintText: 'Mesajınızı yazın...',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(24),
+                          borderSide: BorderSide.none,
+                        ),
+                        filled: true,
+                        fillColor: widget.isDark ? Colors.grey[800] : Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       ),
-                      filled: true,
-                      fillColor: widget.isDark ? Colors.grey[800] : Colors.white,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      onSubmitted: (_) => _sendMessage(),
                     ),
-                    onSubmitted: (_) => _sendMessage(),
                   ),
+                  const SizedBox(width: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: FoodColors.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.send, color: Colors.white),
+                      onPressed: _sendMessage,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            Container(
+              padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + 16),
+              decoration: BoxDecoration(
+                color: widget.isDark ? Colors.grey[850] : Colors.grey[100],
+                border: Border(top: BorderSide(color: Colors.grey[300]!)),
+              ),
+              child: Center(
+                child: Text(
+                  'Mesaj süresi doldu (teslimattan 10 dk sonra)',
+                  style: TextStyle(color: Colors.grey[500], fontSize: 13),
                 ),
-                const SizedBox(width: 8),
-                Container(
-                  decoration: BoxDecoration(
-                    color: FoodColors.primary,
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.send, color: Colors.white),
-                    onPressed: _sendMessage,
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
         ],
       ),
     );

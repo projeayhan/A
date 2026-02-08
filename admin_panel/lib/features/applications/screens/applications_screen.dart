@@ -149,6 +149,34 @@ final carDealerApplicationsProvider = FutureProvider<List<Map<String, dynamic>>>
   },
 );
 
+// Rental Company Applications Provider with Pagination
+final rentalCompanyApplicationsPageProvider = FutureProvider.family<List<Map<String, dynamic>>, int>(
+  (ref, page) async {
+    final supabase = ref.watch(supabaseProvider);
+    final from = page * _pageSize;
+    final to = from + _pageSize - 1;
+
+    try {
+      final response = await supabase
+          .from('rental_companies')
+          .select('*')
+          .order('created_at', ascending: false)
+          .range(from, to);
+
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      rethrow;
+    }
+  },
+);
+
+// Backward compatibility - ilk sayfa için
+final rentalCompanyApplicationsProvider = FutureProvider<List<Map<String, dynamic>>>(
+  (ref) async {
+    return ref.watch(rentalCompanyApplicationsPageProvider(0).future);
+  },
+);
+
 class ApplicationsScreen extends ConsumerStatefulWidget {
   const ApplicationsScreen({super.key});
 
@@ -291,10 +319,9 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 5, vsync: this);
+    _tabController = TabController(length: 6, vsync: this);
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
-        // Tab değiştiğinde verileri yenile
         switch (_tabController.index) {
           case 0:
             ref.invalidate(partnerApplicationsProvider);
@@ -307,6 +334,12 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
             break;
           case 3:
             ref.invalidate(realtorApplicationsProvider);
+            break;
+          case 4:
+            ref.invalidate(carDealerApplicationsProvider);
+            break;
+          case 5:
+            ref.invalidate(rentalCompanyApplicationsProvider);
             break;
         }
       }
@@ -413,6 +446,11 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
                       label: 'Galericiler',
                       count: pendingCounts.carDealers,
                     ),
+                    _buildTabWithBadge(
+                      icon: Icons.car_rental,
+                      label: 'Kiralama Sirketleri',
+                      count: pendingCounts.rentalCompanies,
+                    ),
                   ],
                 ),
               );
@@ -431,6 +469,7 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
                 _buildMerchantApplicationsTab(),
                 _buildRealtorApplicationsTab(),
                 _buildCarDealerApplicationsTab(),
+                _buildRentalCompanyApplicationsTab(),
               ],
             ),
           ),
@@ -501,6 +540,7 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
     final partnerApps = ref.watch(partnerApplicationsProvider);
     final merchantApps = ref.watch(merchantApplicationsProvider);
     final realtorApps = ref.watch(realtorApplicationsProvider);
+    final rentalApps = ref.watch(rentalCompanyApplicationsProvider);
 
     int pendingTotal = 0;
     int todayTotal = 0;
@@ -511,13 +551,17 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
     });
 
     merchantApps.whenData((apps) {
-      // For merchants, check is_approved = false
       pendingTotal += apps.where((a) => a['is_approved'] == false).length;
       todayTotal += _getTodayCount(apps);
     });
 
     realtorApps.whenData((apps) {
       pendingTotal += apps.where((a) => a['status'] == 'pending').length;
+      todayTotal += _getTodayCount(apps);
+    });
+
+    rentalApps.whenData((apps) {
+      pendingTotal += apps.where((a) => a['is_approved'] == false).length;
       todayTotal += _getTodayCount(apps);
     });
 
@@ -1922,7 +1966,7 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
               children: [
                 _buildInfoChip(
                   'Isletme Tipi',
-                  _getBusinessTypeName(app['business_type']),
+                  _getBusinessTypeName(app['type']),
                 ),
                 _buildInfoChip(
                   'Adres',
@@ -2453,7 +2497,7 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
     return _buildDetailCard('Isletme Ayarlari', Icons.settings, [
       _buildDetailItem(
         'Isletme Tipi',
-        _getBusinessTypeName(app['business_type']),
+        _getBusinessTypeName(app['type']),
       ),
       _buildDetailItem('Teslimat Ucreti', '${app['delivery_fee'] ?? 0} TL'),
       _buildDetailItem(
@@ -3139,6 +3183,8 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
     ref.invalidate(merchantApplicationsProvider);
     ref.invalidate(couriersApplicationsProvider);
     ref.invalidate(realtorApplicationsProvider);
+    ref.invalidate(carDealerApplicationsProvider);
+    ref.invalidate(rentalCompanyApplicationsProvider);
   }
 
   // Helper methods
@@ -3837,5 +3883,430 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
       default:
         return 'Bireysel';
     }
+  }
+
+  // ==================== RENTAL COMPANY APPLICATIONS ====================
+
+  Widget _buildRentalCompanyApplicationsTab() {
+    final companiesAsync = ref.watch(rentalCompanyApplicationsProvider);
+
+    return companiesAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (err, stack) => Center(child: Text('Hata: $err')),
+      data: (companies) {
+        var filtered = companies;
+        if (_selectedStatus != 'all') {
+          if (_selectedStatus == 'pending') {
+            filtered = companies.where((c) => c['is_approved'] == false && c['is_active'] == false).toList();
+          } else if (_selectedStatus == 'approved') {
+            filtered = companies.where((c) => c['is_approved'] == true).toList();
+          } else if (_selectedStatus == 'rejected') {
+            filtered = companies.where((c) => c['is_active'] == false && c['is_approved'] == false).toList();
+          }
+        }
+
+        return _buildRentalCompanyList(filtered);
+      },
+    );
+  }
+
+  Widget _buildRentalCompanyList(List<Map<String, dynamic>> companies) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '${companies.length} kiralama sirketi basvurusu listeleniyor',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: () {},
+                    icon: const Icon(Icons.download, size: 18),
+                    label: const Text('Excel\'e Aktar'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: companies.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.car_rental,
+                              size: 64,
+                              color: AppColors.textMuted,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Bu kriterlere uygun kiralama sirketi basvurusu bulunamadi',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.builder(
+                        itemCount: companies.length,
+                        itemBuilder: (context, index) {
+                          return _buildRentalCompanyCard(companies[index]);
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRentalCompanyCard(Map<String, dynamic> company) {
+    final isApproved = company['is_approved'] == true;
+    final isPending = !isApproved;
+    final status = isApproved ? 'approved' : 'pending';
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      color: AppColors.surface,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 28,
+              backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+              child: const Icon(
+                Icons.car_rental,
+                color: AppColors.primary,
+                size: 28,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        company['company_name'] ?? 'Kiralama Sirketi',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(width: 8),
+                      _buildStatusBadge(status),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(Icons.person, size: 14, color: AppColors.textMuted),
+                      const SizedBox(width: 4),
+                      Text(
+                        company['owner_name'] ?? '-',
+                        style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                      ),
+                      const SizedBox(width: 16),
+                      Icon(Icons.phone, size: 14, color: AppColors.textMuted),
+                      const SizedBox(width: 4),
+                      Text(
+                        company['phone'] ?? '-',
+                        style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                      ),
+                      const SizedBox(width: 16),
+                      Icon(Icons.location_on, size: 14, color: AppColors.textMuted),
+                      const SizedBox(width: 4),
+                      Text(
+                        company['city'] ?? '-',
+                        style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                      ),
+                      if (company['email'] != null) ...[
+                        const SizedBox(width: 16),
+                        Icon(Icons.email, size: 14, color: AppColors.textMuted),
+                        const SizedBox(width: 4),
+                        Text(
+                          company['email'],
+                          style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            if (isPending) ...[
+              IconButton(
+                onPressed: () => _approveRentalCompany(company),
+                icon: const Icon(Icons.check_circle),
+                color: AppColors.success,
+                tooltip: 'Onayla',
+              ),
+              IconButton(
+                onPressed: () => _rejectRentalCompany(company),
+                icon: const Icon(Icons.cancel),
+                color: AppColors.error,
+                tooltip: 'Reddet',
+              ),
+            ],
+            IconButton(
+              onPressed: () => _showRentalCompanyDetailDialog(company),
+              icon: const Icon(Icons.info_outline),
+              color: AppColors.info,
+              tooltip: 'Detay',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _approveRentalCompany(Map<String, dynamic> company) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Basvuruyu Onayla'),
+        content: Text('"${company['company_name']}" basvurusunu onaylamak istediginize emin misiniz?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Iptal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
+            child: const Text('Onayla'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        final supabase = ref.read(supabaseProvider);
+        await supabase
+            .from('rental_companies')
+            .update({
+              'is_approved': true,
+              'is_active': true,
+              'updated_at': DateTime.now().toIso8601String(),
+            })
+            .eq('id', company['id']);
+
+        ref.invalidate(rentalCompanyApplicationsProvider);
+        ref.read(notificationServiceProvider.notifier).refreshCounts();
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Kiralama sirketi onaylandi'),
+              backgroundColor: AppColors.success,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Hata: $e'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  void _rejectRentalCompany(Map<String, dynamic> company) async {
+    final reasonController = TextEditingController();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Basvuruyu Reddet'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('"${company['company_name']}" basvurusunu reddetmek istediginize emin misiniz?'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonController,
+              decoration: const InputDecoration(
+                labelText: 'Red Sebebi (opsiyonel)',
+                hintText: 'Neden reddedildigini aciklayin',
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Iptal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            child: const Text('Reddet'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        final supabase = ref.read(supabaseProvider);
+        await supabase
+            .from('rental_companies')
+            .update({
+              'is_approved': false,
+              'is_active': false,
+              'updated_at': DateTime.now().toIso8601String(),
+            })
+            .eq('id', company['id']);
+
+        ref.invalidate(rentalCompanyApplicationsProvider);
+        ref.read(notificationServiceProvider.notifier).refreshCounts();
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Basvuru reddedildi'),
+              backgroundColor: AppColors.warning,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Hata: $e'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  void _showRentalCompanyDetailDialog(Map<String, dynamic> company) {
+    final isApproved = company['is_approved'] == true;
+    final isPending = !isApproved;
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        child: SizedBox(
+          width: 500,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                ),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 24,
+                      backgroundColor: AppColors.primary,
+                      child: const Icon(Icons.car_rental, color: Colors.white),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            company['company_name'] ?? 'Kiralama Sirketi',
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                          if (company['owner_name'] != null)
+                            Text(
+                              company['owner_name'],
+                              style: TextStyle(color: AppColors.textMuted),
+                            ),
+                        ],
+                      ),
+                    ),
+                    _buildStatusBadge(isApproved ? 'approved' : 'pending'),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    _buildDetailRow('Sirket Adi', company['company_name'] ?? '-'),
+                    _buildDetailRow('Sahip', company['owner_name'] ?? '-'),
+                    _buildDetailRow('Sahip Tel', company['owner_phone'] ?? '-'),
+                    _buildDetailRow('Telefon', company['phone'] ?? '-'),
+                    _buildDetailRow('E-posta', company['email'] ?? '-'),
+                    _buildDetailRow('Vergi No', company['tax_number'] ?? '-'),
+                    _buildDetailRow('Vergi Dairesi', company['tax_office'] ?? '-'),
+                    _buildDetailRow('Sehir', company['city'] ?? '-'),
+                    _buildDetailRow('Adres', company['address'] ?? '-'),
+                    _buildDetailRow('Basvuru Tarihi', _formatDateTime(company['created_at'])),
+                  ],
+                ),
+              ),
+              if (isPending)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            _rejectRentalCompany(company);
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppColors.error,
+                          ),
+                          child: const Text('Reddet'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            _approveRentalCompany(company);
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.success,
+                          ),
+                          child: const Text('Onayla'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Kapat'),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

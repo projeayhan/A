@@ -67,7 +67,7 @@ class Store {
       rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
       reviewCount: json['total_reviews'] as int? ?? 0,
       followerCount: 0,
-      productCount: 0,
+      productCount: _extractProductCount(json),
       isVerified: json['is_approved'] as bool? ?? false,
       isFavorite: false,
       deliveryTime: json['delivery_time'] as String? ?? '1-3 gün',
@@ -76,6 +76,14 @@ class Store {
       discountBadge: json['discount_badge'] as String?,
       memberSince: json['created_at'] != null ? DateTime.parse(json['created_at'] as String) : null,
     );
+  }
+
+  static int _extractProductCount(Map<String, dynamic> json) {
+    final products = json['products'];
+    if (products is List && products.isNotEmpty) {
+      return (products[0]['count'] as int?) ?? 0;
+    }
+    return 0;
   }
 
   String get formattedFollowers {

@@ -146,16 +146,16 @@ class AuthNotifier extends Notifier<AuthState> {
       );
 
       if (response.user != null) {
-        // Kullanıcının rolünü kontrol et
+        // Kullanıcının rollerini kontrol et
         final roleCheck = await _checkUserRole(response.user!.id);
-        final role = roleCheck['role'] as String?;
+        final roles = List<String>.from(roleCheck['roles'] ?? []);
 
-        // Eğer başka bir rol varsa, giriş yapmasına izin verme
-        if (role != null && role != 'none' && role != 'courier' && role != 'admin') {
+        // Kullanıcının rolleri var ama courier veya admin değilse engelle
+        if (roles.isNotEmpty && !roles.contains('courier') && !roles.contains('admin')) {
           await SupabaseService.signOut();
           state = state.copyWith(
             status: AuthStatus.error,
-            errorMessage: roleCheck['message'] as String? ?? 'Bu hesapla kurye uygulamasına giriş yapamazsınız.',
+            errorMessage: 'Bu hesapla kurye uygulamasına giriş yapamazsınız.',
           );
           return false;
         }

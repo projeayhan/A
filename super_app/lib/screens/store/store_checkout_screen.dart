@@ -793,7 +793,9 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
           _buildConfirmationSection(
             icon: Icons.local_shipping,
             title: 'Tahmini Teslimat',
-            content: '2-3 İş Günü',
+            content: cartState.estimatedDeliveryMin != null
+                ? '~${cartState.estimatedDeliveryMin} dk'
+                : '2-3 İş Günü',
             isDark: isDark,
           ),
           const SizedBox(height: 20),

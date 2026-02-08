@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -5,16 +6,51 @@ import '../models/merchant_models.dart';
 import '../services/supabase_service.dart';
 import '../services/notification_sound_service.dart';
 
-// Unread Messages Count Provider
+// Unread Messages Count Provider - lightweight count + realtime events
 final unreadMessagesCountProvider = StreamProvider.family<int, String>((ref, merchantId) {
-  return Supabase.instance.client
-      .from('order_messages')
-      .stream(primaryKey: ['id'])
-      .eq('merchant_id', merchantId)
-      .map((data) {
-        return data.where((m) =>
-            m['sender_type'] == 'customer' && m['is_read'] != true).length;
-      });
+  final controller = StreamController<int>();
+
+  Future<void> loadCount() async {
+    try {
+      final result = await Supabase.instance.client
+          .from('order_messages')
+          .select('id')
+          .eq('merchant_id', merchantId)
+          .eq('sender_type', 'customer')
+          .eq('is_read', false);
+      if (!controller.isClosed) {
+        controller.add((result as List).length);
+      }
+    } catch (e) {
+      if (!controller.isClosed) controller.add(0);
+    }
+  }
+
+  // Initial count
+  loadCount();
+
+  // Listen for changes via postgres realtime (no bulk data transfer)
+  final channel = Supabase.instance.client
+      .channel('unread_count_$merchantId')
+      .onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'order_messages',
+        filter: PostgresChangeFilter(
+          type: PostgresChangeFilterType.eq,
+          column: 'merchant_id',
+          value: merchantId,
+        ),
+        callback: (_) => loadCount(),
+      )
+      .subscribe();
+
+  ref.onDispose(() {
+    controller.close();
+    Supabase.instance.client.removeChannel(channel);
+  });
+
+  return controller.stream;
 });
 
 // Current Merchant Provider
@@ -196,8 +232,8 @@ class OrdersNotifier extends StateNotifier<AsyncValue<List<Order>>> {
                 // Check if order was cancelled by customer
                 if (updatedOrder.status == OrderStatus.cancelled &&
                     oldRecord['status'] == 'pending') {
-                  // Customer cancelled the order - play notification sound
-                  notificationSoundService.playNewOrderSound();
+                  // Customer cancelled the order - play general notification sound
+                  NotificationSoundService.playSound(type: NotificationSoundType.general);
 
                   // Add notification
                   ref.read(notificationsProvider.notifier).addNotification(
@@ -540,6 +576,34 @@ class StoreProductsNotifier
       final updated = product.copyWith(stockQuantity: newStock);
       await updateProduct(updated);
     });
+  }
+
+  /// Toplu stok güncelleme - Map<productId, newStock>
+  Future<int> bulkUpdateStock(Map<String, int> stockUpdates) async {
+    int updatedCount = 0;
+    try {
+      final supabase = ref.read(supabaseClientProvider);
+      for (final entry in stockUpdates.entries) {
+        await supabase
+            .from('products')
+            .update({'stock': entry.value})
+            .eq('id', entry.key);
+        updatedCount++;
+      }
+      // Reload products
+      state.whenData((products) {
+        final newList = products.map((p) {
+          if (stockUpdates.containsKey(p.id)) {
+            return p.copyWith(stockQuantity: stockUpdates[p.id]!);
+          }
+          return p;
+        }).toList();
+        state = AsyncValue.data(newList);
+      });
+    } catch (e) {
+      if (kDebugMode) print('Bulk update error: $e');
+    }
+    return updatedCount;
   }
 
   Future<void> deleteProduct(String productId) async {
@@ -967,6 +1031,7 @@ final notificationsProvider =
 class NotificationsNotifier extends StateNotifier<List<MerchantNotification>> {
   final Ref ref;
   RealtimeChannel? _channel;
+  String? _merchantId;
 
   NotificationsNotifier(this.ref) : super([]);
 
@@ -983,13 +1048,48 @@ class NotificationsNotifier extends StateNotifier<List<MerchantNotification>> {
     }
   }
 
+  Set<String> _readNotificationIds = {};
+
+  Future<void> _loadReadIds(String merchantId) async {
+    try {
+      final supabase = ref.read(supabaseClientProvider);
+      final result = await supabase
+          .from('merchants')
+          .select('notification_read_ids')
+          .eq('id', merchantId)
+          .single();
+      final ids = result['notification_read_ids'] as List<dynamic>?;
+      if (ids != null) {
+        _readNotificationIds = ids.map((e) => e.toString()).toSet();
+      }
+    } catch (e) {
+      debugPrint('_loadReadIds error: $e');
+    }
+  }
+
+  Future<void> _saveReadIds() async {
+    if (_merchantId == null) return;
+    try {
+      final supabase = ref.read(supabaseClientProvider);
+      // Keep only last 200 read IDs to prevent unbounded growth
+      final ids = _readNotificationIds.toList();
+      final trimmed = ids.length > 200 ? ids.sublist(ids.length - 200) : ids;
+      await supabase
+          .from('merchants')
+          .update({'notification_read_ids': trimmed})
+          .eq('id', _merchantId!);
+    } catch (e) {
+      debugPrint('_saveReadIds error: $e');
+    }
+  }
+
   // Supabase'den bildirimleri yukle
   Future<void> loadNotifications(String merchantId) async {
     try {
+      _merchantId = merchantId;
+      await _loadReadIds(merchantId);
       final supabase = ref.read(supabaseClientProvider);
 
-      // merchant_notifications tablosu varsa oradan yukle
-      // Yoksa son siparislerden ve yorumlardan bildirim olustur
       final recentOrders = await supabase
           .from('orders')
           .select('id, order_number, status, total_amount, created_at')
@@ -1037,13 +1137,14 @@ class NotificationsNotifier extends StateNotifier<List<MerchantNotification>> {
             continue; // Diger durumlari atla
         }
 
+        final notifId = 'order_${order['id']}';
         notifications.add(MerchantNotification(
-          id: 'order_${order['id']}',
+          id: notifId,
           type: type,
           title: title,
           message: message,
           data: {'order_id': order['id']},
-          isRead: status != 'pending' && status != 'cancelled',
+          isRead: _readNotificationIds.contains(notifId),
           createdAt: createdAt,
         ));
       }
@@ -1052,19 +1153,19 @@ class NotificationsNotifier extends StateNotifier<List<MerchantNotification>> {
       for (var review in recentReviews) {
         final createdAt = DateTime.parse(review['created_at']);
         final customerName = review['customer_name'] ?? 'Anonim';
-        // Calculate average rating from courier, service, taste
         final courier = (review['courier_rating'] as num?)?.toDouble() ?? 0;
         final service = (review['service_rating'] as num?)?.toDouble() ?? 0;
         final taste = (review['taste_rating'] as num?)?.toDouble() ?? 0;
         final rating = ((courier + service + taste) / 3).round();
 
+        final notifId = 'review_${review['id']}';
         notifications.add(MerchantNotification(
-          id: 'review_${review['id']}',
+          id: notifId,
           type: 'review',
           title: 'Yeni Degerlendirme',
           message: '$customerName - $rating yildiz',
           data: {'review_id': review['id']},
-          isRead: true,
+          isRead: _readNotificationIds.contains(notifId),
           createdAt: createdAt,
         ));
       }
@@ -1127,6 +1228,8 @@ class NotificationsNotifier extends StateNotifier<List<MerchantNotification>> {
   }
 
   void markAsRead(String notificationId) {
+    _readNotificationIds.add(notificationId);
+    _saveReadIds();
     state =
         state.map((n) {
           if (n.id == notificationId) {
@@ -1145,6 +1248,10 @@ class NotificationsNotifier extends StateNotifier<List<MerchantNotification>> {
   }
 
   void markAllAsRead() {
+    for (final n in state) {
+      _readNotificationIds.add(n.id);
+    }
+    _saveReadIds();
     state =
         state
             .map(

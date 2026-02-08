@@ -614,37 +614,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       backgroundColor: isDark ? AppColors.backgroundDark : const Color(0xFFF8F9FA),
       body: Column(
         children: [
-          // Delivery Header (Address, Notifications, Cart)
           const DeliveryHeader(showCart: true),
-
-          // Scrollable Content
           Expanded(
             child: CustomScrollView(
               slivers: [
-                // Welcome Header
-                SliverToBoxAdapter(
-                  child: _buildWelcomeHeader(isDark),
-                ),
-
-                // Search Bar
-                SliverToBoxAdapter(
-                  child: _buildSearchBar(isDark),
-                ),
-
-                // Content
+                SliverToBoxAdapter(child: _buildWelcomeHeader(isDark)),
+                SliverToBoxAdapter(child: _buildSearchBar(isDark)),
                 SliverPadding(
                   padding: context.pageInsets,
                   sliver: SliverList(
                     delegate: SliverChildListDelegate([
-                      // Promo Banner
                       PromoBanner(),
-
                       SizedBox(height: context.sectionGap),
-
-                      // Services Section
                       _buildServicesSection(isDark),
-
-                      // Bottom padding for nav bar
                       SizedBox(height: context.bottomNavPadding),
                     ]),
                   ),

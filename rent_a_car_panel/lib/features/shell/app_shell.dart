@@ -24,9 +24,13 @@ class _AppShellState extends State<AppShell> {
 
   // Realtime subscription for new bookings
   RealtimeChannel? _bookingChannel;
+  // Realtime subscription for new reviews
+  RealtimeChannel? _reviewChannel;
   final AudioPlayer _audioPlayer = AudioPlayer();
   int _pendingBookingsCount = 0;
   bool _hasNewBooking = false;
+  int _newReviewsCount = 0;
+  bool _hasNewReview = false;
 
   @override
   void initState() {
@@ -53,6 +57,7 @@ class _AppShellState extends State<AppShell> {
       // Company ID alındıktan sonra realtime subscription başlat
       if (_companyId != null) {
         _setupBookingSubscription();
+        _setupReviewSubscription();
         _loadPendingBookingsCount();
       }
     }
@@ -100,6 +105,94 @@ class _AppShellState extends State<AppShell> {
           },
         )
         .subscribe();
+  }
+
+  /// Yeni yorumlar için realtime subscription (notifications tablosu üzerinden)
+  void _setupReviewSubscription() {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return;
+
+    _reviewChannel = Supabase.instance.client
+        .channel('review_notifications_$userId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'notifications',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'user_id',
+            value: userId,
+          ),
+          callback: (payload) {
+            final type = payload.newRecord['type'] as String?;
+            if (type == 'rental_review_received') {
+              _onNewReviewReceived(payload.newRecord);
+            }
+          },
+        )
+        .subscribe();
+  }
+
+  /// Yeni yorum geldiğinde
+  void _onNewReviewReceived(Map<String, dynamic> notification) {
+    if (!mounted) return;
+
+    _playNotificationSound();
+
+    setState(() {
+      _newReviewsCount++;
+      _hasNewReview = true;
+    });
+
+    final body = notification['body'] as String? ?? 'Yeni bir yorum aldınız';
+    final title = notification['title'] as String? ?? 'Yeni Müşteri Yorumu!';
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.star, color: Colors.amber),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    body,
+                    style: const TextStyle(fontSize: 12),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.amber.shade800,
+        duration: const Duration(seconds: 5),
+        behavior: SnackBarBehavior.floating,
+        action: SnackBarAction(
+          label: 'GÖRÜNTÜLE',
+          textColor: Colors.white,
+          onPressed: () {
+            context.go('/reviews');
+          },
+        ),
+      ),
+    );
+
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        setState(() {
+          _hasNewReview = false;
+        });
+      }
+    });
   }
 
   /// Yeni rezervasyon geldiğinde
@@ -184,6 +277,7 @@ class _AppShellState extends State<AppShell> {
   @override
   void dispose() {
     _bookingChannel?.unsubscribe();
+    _reviewChannel?.unsubscribe();
     _audioPlayer.dispose();
     super.dispose();
   }
@@ -315,6 +409,22 @@ class _AppShellState extends State<AppShell> {
                           label: 'Yorumlar',
                           path: '/reviews',
                           currentPath: currentPath,
+                          badgeCount: _newReviewsCount,
+                          showPulse: _hasNewReview,
+                        ),
+                        _buildMenuItem(
+                          icon: Icons.inventory_2_outlined,
+                          activeIcon: Icons.inventory_2,
+                          label: 'Paketler',
+                          path: '/packages',
+                          currentPath: currentPath,
+                        ),
+                        _buildMenuItem(
+                          icon: Icons.build_outlined,
+                          activeIcon: Icons.build,
+                          label: 'Ek Hizmetler',
+                          path: '/services',
+                          currentPath: currentPath,
                         ),
 
                         const SizedBox(height: 16),
@@ -443,6 +553,12 @@ class _AppShellState extends State<AppShell> {
             // Rezervasyonlar sayfasına gidildiğinde sayacı güncelle
             if (path == '/bookings') {
               _loadPendingBookingsCount();
+            }
+            // Yorumlar sayfasına gidildiğinde sayacı sıfırla
+            if (path == '/reviews') {
+              setState(() {
+                _newReviewsCount = 0;
+              });
             }
           },
           child: Container(

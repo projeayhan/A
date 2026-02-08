@@ -81,6 +81,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         color: const Color(0xFF8B5CF6),
                         onTap: () => context.push('/settings/payment-methods'),
                       ),
+                      _buildMenuItemData(
+                        icon: Icons.emergency_outlined,
+                        title: 'Acil Durum Kişileri',
+                        subtitle: 'SOS mesajı gönderilecek kişiler',
+                        color: const Color(0xFFEF4444),
+                        onTap: () => context.push('/settings/emergency-contacts'),
+                      ),
                     ]),
 
                     const SizedBox(height: 20),
