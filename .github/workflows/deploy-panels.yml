@@ -7,18 +7,14 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         include:
           - panel: admin_panel
-            project_id_secret: VERCEL_ADMIN_PROJECT_ID
           - panel: merchant_panel
-            project_id_secret: VERCEL_MERCHANT_PROJECT_ID
           - panel: emlakci_panel
-            project_id_secret: VERCEL_EMLAKCI_PROJECT_ID
           - panel: arac_satis_panel
-            project_id_secret: VERCEL_ARAC_SATIS_PROJECT_ID
           - panel: rent_a_car_panel
-            project_id_secret: VERCEL_RENT_A_CAR_PROJECT_ID
     steps:
       - uses: actions/checkout@v4
 
@@ -33,6 +29,16 @@ jobs:
           flutter pub get
           flutter build web --release
 
+      - name: Set project ID
+        run: |
+          case "${{ matrix.panel }}" in
+            admin_panel) echo "PROJ_ID=${{ secrets.VERCEL_ADMIN_PROJECT_ID }}" >> $GITHUB_ENV ;;
+            merchant_panel) echo "PROJ_ID=${{ secrets.VERCEL_MERCHANT_PROJECT_ID }}" >> $GITHUB_ENV ;;
+            emlakci_panel) echo "PROJ_ID=${{ secrets.VERCEL_EMLAKCI_PROJECT_ID }}" >> $GITHUB_ENV ;;
+            arac_satis_panel) echo "PROJ_ID=${{ secrets.VERCEL_ARAC_SATIS_PROJECT_ID }}" >> $GITHUB_ENV ;;
+            rent_a_car_panel) echo "PROJ_ID=${{ secrets.VERCEL_RENT_A_CAR_PROJECT_ID }}" >> $GITHUB_ENV ;;
+          esac
+
       - name: Deploy to Vercel
         run: |
           npm i -g vercel
@@ -40,4 +46,4 @@ jobs:
           vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets[matrix.project_id_secret] }}
+          VERCEL_PROJECT_ID: ${{ env.PROJ_ID }}
