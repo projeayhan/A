@@ -189,7 +189,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         const SizedBox(height: 32),
 
                         const Text(
-                          'OdaBase',
+                          'SuperCyp',
                           style: TextStyle(
                             color: AppColors.textPrimary,
                             fontSize: 48,

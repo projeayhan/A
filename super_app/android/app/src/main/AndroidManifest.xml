@@ -7,7 +7,7 @@
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <application
-        android:label="super_app"
+        android:label="SuperCyp"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

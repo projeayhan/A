@@ -1182,7 +1182,7 @@ Deno.serve(async (req: Request) => {
     }).slice(0, 3);
 
     // ===== BUILD SYSTEM PROMPT =====
-    const systemPrompt = promptData?.system_prompt || 'Sen yardımcı bir asistansın.';
+    const systemPrompt = promptData?.system_prompt || 'Sen SuperCyp AI asistanısın.';
     const restrictions = promptData?.restrictions || '';
 
     let systemContent = `${systemPrompt}\n\nKISITLAMALAR:\n${restrictions}`;

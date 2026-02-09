@@ -1032,7 +1032,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             const SizedBox(height: 16),
             const Text(
-              'Super App',
+              'SuperCyp',
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4),
@@ -1048,7 +1048,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              '© 2024 Super App. Tüm hakları saklıdır.',
+              '© 2024 SuperCyp. Tüm hakları saklıdır.',
               style: TextStyle(fontSize: 12, color: Colors.grey[500]),
             ),
           ],

@@ -252,7 +252,7 @@ class _AboutScreenState extends State<AboutScreen> {
 
             // Copyright
             Text(
-              '© 2024 Kurye App. Tüm hakları saklıdır.',
+              '© 2024 SuperCyp Kurye. Tüm hakları saklıdır.',
               style: TextStyle(
                 color: AppColors.textHint,
                 fontSize: 12,

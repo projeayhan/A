@@ -124,8 +124,8 @@ class PushNotificationService {
     if (defaultTargetPlatform == TargetPlatform.android) {
       const channel = AndroidNotificationChannel(
         'super_app_notifications',
-        'Super App Bildirimleri',
-        description: 'Super App bildirim kanalı',
+        'SuperCyp Bildirimleri',
+        description: 'SuperCyp bildirim kanalı',
         importance: Importance.high,
         playSound: true,
         enableVibration: true,
@@ -187,8 +187,8 @@ class PushNotificationService {
       NotificationDetails(
         android: AndroidNotificationDetails(
           'super_app_notifications',
-          'Super App Bildirimleri',
-          channelDescription: 'Super App bildirim kanalı',
+          'SuperCyp Bildirimleri',
+          channelDescription: 'SuperCyp bildirim kanalı',
           importance: Importance.high,
           priority: Priority.high,
           color: iconColor,

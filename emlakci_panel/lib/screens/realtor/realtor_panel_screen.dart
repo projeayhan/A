@@ -3583,7 +3583,7 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
 
   // ==================== DIALOGS ====================
 
-  /// Randevu detaylarını göster (Super App'ten gelen randevular için)
+  /// Randevu detaylarını göster (SuperCyp'ten gelen randevular için)
   void _showAppointmentDetailDialog(Map<String, dynamic> appointment) {
     final property = appointment['properties'] as Map<String, dynamic>?;
     final requester = appointment['requester'] as Map<String, dynamic>?;

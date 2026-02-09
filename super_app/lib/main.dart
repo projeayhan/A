@@ -284,7 +284,7 @@ class _SuperAppState extends ConsumerState<SuperApp> {
     final settings = ref.watch(settingsProvider);
 
     return MaterialApp.router(
-      title: 'Super App',
+      title: 'SuperCyp',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,

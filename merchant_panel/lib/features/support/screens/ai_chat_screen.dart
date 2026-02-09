@@ -47,7 +47,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     } else {
       _messages.add(ChatMessage(
         role: 'assistant',
-        content: 'Merhaba! Ben Oda İşletme Asistanı. İşletme paneliniz hakkında size nasıl yardımcı olabilirim?\n\n'
+        content: 'Merhaba! Ben SuperCyp İşletme Asistanı. İşletme paneliniz hakkında size nasıl yardımcı olabilirim?\n\n'
             'Sorularınızı yazabilirsiniz. Örneğin:\n'
             '• Sipariş yönetimi nasıl yapılır?\n'
             '• Menü güncelleme nasıl yapılır?\n'
@@ -323,7 +323,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'İşletme Asistanı',
+                  'SuperCyp İşletme Asistanı',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                 ),
                 Row(

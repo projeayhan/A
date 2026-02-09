@@ -187,7 +187,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
                     // Subtitle
                     Text(
-                      'SuperApp dünyasına katılın',
+                      'SuperCyp dünyasına katılın',
                       style: TextStyle(
                         fontSize: 14,
                         color: isDark

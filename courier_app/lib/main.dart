@@ -45,7 +45,7 @@ class CourierApp extends ConsumerWidget {
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
-      title: 'Kurye App',
+      title: 'SuperCyp Kurye',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       routerConfig: router,

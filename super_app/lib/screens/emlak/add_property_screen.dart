@@ -1182,6 +1182,7 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
                     setState(() {
                       _selectedCity = value;
                       _selectedDistrict = '';
+                      _districtList = []; // Eski ilçeleri temizle
                     });
                     await _loadDistricts();
                   }

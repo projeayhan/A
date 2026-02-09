@@ -46,7 +46,7 @@ class EmlakciPanelApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'Emlakçı Panel',
+      title: 'SuperCyp Emlak',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,

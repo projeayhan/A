@@ -117,7 +117,7 @@ class _AdminShellState extends ConsumerState<AdminShell> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'OdaBase',
+                          'SuperCyp',
                           style: TextStyle(
                             color: AppColors.textPrimary,
                             fontSize: 18,

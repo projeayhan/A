@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-/// Araç Satış Mesajlaşma Servisi (Super App)
+/// Araç Satış Mesajlaşma Servisi (SuperCyp)
 class CarChatService {
   static final CarChatService _instance = CarChatService._internal();
   static CarChatService get instance => _instance;

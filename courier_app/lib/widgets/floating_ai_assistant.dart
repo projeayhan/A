@@ -565,7 +565,7 @@ class _AIChatDialogState extends State<_AIChatDialog> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('AI Asistan', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
+                const Text('SuperCyp AI', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
                 Row(
                   children: [
                     Container(width: 5, height: 5, decoration: BoxDecoration(color: const Color(0xFF00FF88), shape: BoxShape.circle, boxShadow: [BoxShadow(color: const Color(0xFF00FF88), blurRadius: 3)])),

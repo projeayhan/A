@@ -399,10 +399,10 @@ class _AiSupportScreenState extends ConsumerState<AiSupportScreen>
             dropdownColor: AppColors.surface,
             items: const [
               DropdownMenuItem(value: 'all', child: Text('Tümü')),
-              DropdownMenuItem(value: 'super_app', child: Text('Super App')),
+              DropdownMenuItem(value: 'super_app', child: Text('SuperCyp')),
               DropdownMenuItem(
                 value: 'merchant_panel',
-                child: Text('Merchant Panel'),
+                child: Text('SuperCyp İşletme'),
               ),
             ],
             onChanged: (value) {
@@ -472,7 +472,7 @@ class _AiSupportScreenState extends ConsumerState<AiSupportScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            appSource == 'super_app' ? 'Super App' : 'Merchant Panel',
+            appSource == 'super_app' ? 'SuperCyp' : 'SuperCyp İşletme',
             style: TextStyle(color: AppColors.textMuted, fontSize: 12),
           ),
           if (updatedAt != null)
@@ -782,11 +782,11 @@ class _AiSupportScreenState extends ConsumerState<AiSupportScreen>
                   ),
                   DropdownMenuItem(
                     value: 'super_app',
-                    child: Text('Super App'),
+                    child: Text('SuperCyp'),
                   ),
                   DropdownMenuItem(
                     value: 'merchant_panel',
-                    child: Text('Merchant Panel'),
+                    child: Text('SuperCyp İşletme'),
                   ),
                 ],
                 onChanged: (value) => selectedAppSource = value!,
@@ -859,11 +859,11 @@ class _AiSupportScreenState extends ConsumerState<AiSupportScreen>
                   ),
                   DropdownMenuItem(
                     value: 'super_app',
-                    child: Text('Super App'),
+                    child: Text('SuperCyp'),
                   ),
                   DropdownMenuItem(
                     value: 'merchant_panel',
-                    child: Text('Merchant Panel'),
+                    child: Text('SuperCyp İşletme'),
                   ),
                 ],
                 onChanged: (value) => selectedAppSource = value!,
@@ -1109,7 +1109,7 @@ class _AiSupportScreenState extends ConsumerState<AiSupportScreen>
                   ),
                   const SizedBox(height: 24),
                   _buildAnalyticsItem(
-                    'Super App',
+                    'SuperCyp',
                     _stats['super_app_sessions'] ?? 0,
                     _stats['total_sessions'] ?? 1,
                     AppColors.primary,

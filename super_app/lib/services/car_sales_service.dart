@@ -42,7 +42,7 @@ class CarModerationResult {
 }
 
 /// Araç Satış Servisi - Supabase Entegrasyonu
-/// Super App için araç ilanı işlemleri
+/// SuperCyp için araç ilanı işlemleri
 class CarSalesService {
   static final CarSalesService _instance = CarSalesService._internal();
   static CarSalesService get instance => _instance;

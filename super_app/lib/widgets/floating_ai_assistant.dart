@@ -391,9 +391,9 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
           }
         }
 
-        // Fallback: TTS hata verirse veya çok uzun sürerse 60 sn sonra kapat
+        // Fallback: TTS hata verirse 3 dk sonra kapat
         _voiceResponseDismissTimer?.cancel();
-        _voiceResponseDismissTimer = Timer(const Duration(seconds: 60), () {
+        _voiceResponseDismissTimer = Timer(const Duration(seconds: 180), () {
           if (mounted) _dismissVoiceResponse();
         });
       } else {
@@ -1891,7 +1891,7 @@ class _AIChatDialogState extends State<_AIChatDialog> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('AI Asistan', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
+                const Text('SuperCyp AI', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
                 Row(
                   children: [
                     Container(width: 6, height: 6, decoration: BoxDecoration(color: const Color(0xFF00FF88), shape: BoxShape.circle, boxShadow: [BoxShadow(color: const Color(0xFF00FF88), blurRadius: 4)])),

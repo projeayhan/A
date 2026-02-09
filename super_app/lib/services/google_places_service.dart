@@ -194,7 +194,7 @@ class GooglePlacesService {
 
       final response = await http.get(
         uri,
-        headers: {'User-Agent': 'SuperApp/1.0'},
+        headers: {'User-Agent': 'SuperCyp/1.0'},
       ).timeout(_httpTimeout);
 
       if (response.statusCode == 200) {
@@ -313,7 +313,7 @@ class GooglePlacesService {
 
       final response = await http.get(
         uri,
-        headers: {'User-Agent': 'SuperApp/1.0'},
+        headers: {'User-Agent': 'SuperCyp/1.0'},
       ).timeout(_httpTimeout);
 
       if (response.statusCode == 200) {
@@ -344,7 +344,7 @@ class GooglePlacesService {
 
       final searchResponse = await http.get(
         searchUri,
-        headers: {'User-Agent': 'SuperApp/1.0'},
+        headers: {'User-Agent': 'SuperCyp/1.0'},
       ).timeout(_httpTimeout);
 
       if (searchResponse.statusCode == 200) {

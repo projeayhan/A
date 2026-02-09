@@ -1522,7 +1522,7 @@ ${property.title}
 
 ${property.description.length > 200 ? '${property.description.substring(0, 200)}...' : property.description}
 
-Bu ilanı SuperApp'te görüntüle!
+Bu ilanı SuperCyp'te görüntüle!
 ''';
 
     SharePlus.instance.share(

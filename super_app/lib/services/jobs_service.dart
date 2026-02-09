@@ -40,7 +40,7 @@ class ModerationResult {
 }
 
 /// İş İlanları Servisi - Supabase Entegrasyonu
-/// Super App için iş ilanı işlemleri
+/// SuperCyp için iş ilanı işlemleri
 class JobsService {
   static final JobsService _instance = JobsService._internal();
   static JobsService get instance => _instance;

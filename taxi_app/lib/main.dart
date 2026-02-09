@@ -49,7 +49,7 @@ class TaxiApp extends ConsumerWidget {
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
-      title: 'Taxi App',
+      title: 'SuperCyp Taksi',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       routerConfig: router,

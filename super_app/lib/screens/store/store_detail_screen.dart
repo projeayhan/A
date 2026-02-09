@@ -656,11 +656,11 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen>
 
 📍 Hemen incele ve alışverişe başla!
 
-SuperApp'te bu mağazayı keşfet! 🛍️
+SuperCyp'te bu mağazayı keşfet! 🛍️
 ''';
 
     SharePlus.instance.share(
-      ShareParams(text: shareText, subject: '${store.name} - SuperApp'),
+      ShareParams(text: shareText, subject: '${store.name} - SuperCyp'),
     );
   }
 

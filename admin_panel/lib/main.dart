@@ -18,7 +18,7 @@ class AdminPanelApp extends ConsumerWidget {
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
-      title: 'OdaBase Admin Panel',
+      title: 'SuperCyp Admin',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
       routerConfig: router,

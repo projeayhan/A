@@ -183,7 +183,7 @@ class RealtorService {
 
   // ==================== RANDEVU İŞLEMLERİ ====================
 
-  /// Emlakçının randevularını getir (appointments tablosundan - Super App'ten gelen randevular)
+  /// Emlakçının randevularını getir (appointments tablosundan - SuperCyp'ten gelen randevular)
   Future<List<Map<String, dynamic>>> getAppointments({
     String? status,
     DateTime? fromDate,
@@ -379,7 +379,7 @@ class RealtorService {
         .eq('status', 'potential')
         .count();
 
-    // Randevu sayıları (appointments tablosundan - Super App'ten gelen randevular)
+    // Randevu sayıları (appointments tablosundan - SuperCyp'ten gelen randevular)
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day).toIso8601String().split('T').first;
     final weekEnd = DateTime(now.year, now.month, now.day + 7).toIso8601String().split('T').first;

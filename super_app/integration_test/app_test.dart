@@ -6,7 +6,7 @@ import 'package:super_app/main.dart' as app;
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  group('Super App UI Tests', () {
+  group('SuperCyp UI Tests', () {
 
     // 1. Uygulama Başlatma Testi
     testWidgets('App should start without errors', (tester) async {

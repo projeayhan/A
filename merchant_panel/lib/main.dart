@@ -35,7 +35,7 @@ class MerchantPanelApp extends ConsumerWidget {
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
-      title: 'Merchant Panel',
+      title: 'SuperCyp İşletme',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
       routerConfig: router,

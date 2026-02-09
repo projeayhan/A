@@ -109,6 +109,9 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen>
 
       // Seçili şehrin ilçelerini yükle
       await _loadDistricts();
+
+      // Provider'a şehir filtresini gönder
+      _applyFiltersToProvider();
     } catch (e) {
       debugPrint('Veri yükleme hatası: $e');
     }
@@ -133,6 +136,18 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen>
     }
   }
 
+  /// Seçili filtreleri provider'a gönder (DB seviyesinde filtre uygular)
+  void _applyFiltersToProvider() {
+    ref.read(propertyListProvider.notifier).setFilter(
+      PropertyFilter(
+        city: _selectedCity.isEmpty ? null : _selectedCity,
+        district: _selectedDistricts.length == 1 ? _selectedDistricts.first : null,
+        listingType: _selectedListingType,
+        minRooms: _minRooms,
+      ),
+    );
+  }
+
   void _onSearchChanged() {
     setState(() {
       _searchQuery = _searchController.text.toLowerCase();
@@ -152,11 +167,7 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen>
 
   List<Property> get filteredProperties {
     var list = _properties.toList();
-
-    // City filter - EN ÖNEMLİ FİLTRE
-    if (_selectedCity.isNotEmpty) {
-      list = list.where((p) => p.location.city == _selectedCity).toList();
-    }
+    // Not: Şehir filtresi artık provider (DB) seviyesinde uygulanıyor
 
     // Search filter
     if (_searchQuery.isNotEmpty) {
@@ -237,6 +248,7 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen>
       _searchController.clear();
       _searchQuery = '';
     });
+    _applyFiltersToProvider();
   }
 
   @override
@@ -668,7 +680,10 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen>
                   ),
                   if (_selectedDistricts.isNotEmpty)
                     GestureDetector(
-                      onTap: () => setState(() => _selectedDistricts.clear()),
+                      onTap: () {
+                        setState(() => _selectedDistricts.clear());
+                        _applyFiltersToProvider();
+                      },
                       child: Container(
                         padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
@@ -850,6 +865,7 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen>
                   setState(() {
                     _selectedDistricts.remove(district);
                   });
+                  _applyFiltersToProvider();
                 },
                 visualDensity: VisualDensity.compact,
                 padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -2318,6 +2334,7 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen>
                           _districts = [];
                         });
                         Navigator.pop(context);
+                        _applyFiltersToProvider();
                       },
                     );
                   }
@@ -2346,10 +2363,11 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen>
                     onTap: () async {
                       setState(() {
                         _selectedCity = city;
-                        _selectedDistricts
-                            .clear(); // Reset districts when city changes
+                        _selectedDistricts.clear();
+                        _districts = []; // Eski ilçeleri temizle
                       });
                       Navigator.pop(context);
+                      _applyFiltersToProvider();
                       // Yeni şehrin ilçelerini yükle
                       await _loadDistricts();
                     },
@@ -2496,7 +2514,10 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen>
                 child: SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _applyFiltersToProvider();
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: EmlakColors.primary,
                       foregroundColor: Colors.white,

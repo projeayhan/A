@@ -51,7 +51,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
       // Add welcome message
       _messages.add(ChatMessage(
         role: 'assistant',
-        content: 'Merhaba! 👋 Ben Oda Asistan, OdaBase müşteri temsilcinizim.\n\n'
+        content: 'Merhaba! 👋 Ben SuperCyp Asistan, kişisel dijital asistanınızım.\n\n'
             'Size nasıl yardımcı olabilirim?\n\n'
             '🍔 Yemek siparişi\n'
             '🛒 Market alışverişi\n'
@@ -328,7 +328,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Oda Asistan',
+                  'SuperCyp Asistan',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 Row(

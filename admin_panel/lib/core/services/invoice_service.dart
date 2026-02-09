@@ -15,13 +15,13 @@ class InvoiceService {
 
   // Sirket Bilgileri
   static const Map<String, String> companyInfo = {
-    'name': 'OdaBase Teknoloji A.S.',
+    'name': 'SuperCyp Teknoloji A.S.',
     'address': 'Levent Mah. Buyukdere Cad. No:123\n34394 Sisli/Istanbul',
     'phone': '+90 212 555 00 00',
     'email': 'fatura@odabase.com',
     'taxOffice': 'Besiktas Vergi Dairesi',
     'taxNumber': '1234567890',
-    'website': 'www.odabase.com',
+    'website': 'www.supercyp.com',
   };
 
   // Fatura numarasi uret
@@ -351,7 +351,7 @@ class InvoiceService {
                         ),
                       ),
                       pw.SizedBox(height: 5),
-                      pw.Text('OdaBase Yemek Siparis Platformu', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600)),
+                      pw.Text('SuperCyp Yemek Siparis Platformu', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600)),
                     ],
                   ),
                   pw.Container(
@@ -475,7 +475,7 @@ class InvoiceService {
 
               pw.Center(
                 child: pw.Text(
-                  'Afiyet olsun! - OdaBase',
+                  'Afiyet olsun! - SuperCyp',
                   style: pw.TextStyle(fontSize: 12, color: PdfColors.orange800, fontWeight: pw.FontWeight.bold),
                 ),
               ),

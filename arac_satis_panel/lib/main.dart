@@ -40,7 +40,7 @@ class AracSatisPanelApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
-      title: 'Araç Satış Panel',
+      title: 'SuperCyp Araç',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,

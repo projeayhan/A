@@ -30,7 +30,7 @@ class RentACarPanelApp extends ConsumerWidget {
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
-      title: 'Rent a Car Panel',
+      title: 'SuperCyp Kiralama',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
       routerConfig: router,

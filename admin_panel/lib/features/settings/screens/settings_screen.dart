@@ -277,7 +277,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     switch (category) {
       case 'general':
         return [
-          _buildTextField('Uygulama Adı', 'OdaBase', 'Uygulamanın görünen adı'),
+          _buildTextField('Uygulama Adı', 'SuperCyp', 'Uygulamanın görünen adı'),
           _buildTextField(
             'Destek E-posta',
             'destek@odabase.com',
