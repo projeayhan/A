@@ -39,11 +39,17 @@ jobs:
             rent_a_car_panel) echo "PROJ_ID=${{ secrets.VERCEL_RENT_A_CAR_PROJECT_ID }}" >> $GITHUB_ENV ;;
           esac
 
+      - name: Prepare Vercel prebuilt output
+        run: |
+          mkdir -p ${{ matrix.panel }}/.vercel/output/static
+          cp -r ${{ matrix.panel }}/build/web/* ${{ matrix.panel }}/.vercel/output/static/
+          echo '{"version":3}' > ${{ matrix.panel }}/.vercel/output/config.json
+
       - name: Deploy to Vercel
         run: |
           npm i -g vercel
-          cd ${{ matrix.panel }}/build/web
-          vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
+          cd ${{ matrix.panel }}
+          vercel deploy --prebuilt --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ env.PROJ_ID }}
