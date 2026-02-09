@@ -1,0 +1,43 @@
+name: Deploy Panels to Vercel
+on:
+  push:
+    branches: [master]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - panel: admin_panel
+            project_id_secret: VERCEL_ADMIN_PROJECT_ID
+          - panel: merchant_panel
+            project_id_secret: VERCEL_MERCHANT_PROJECT_ID
+          - panel: emlakci_panel
+            project_id_secret: VERCEL_EMLAKCI_PROJECT_ID
+          - panel: arac_satis_panel
+            project_id_secret: VERCEL_ARAC_SATIS_PROJECT_ID
+          - panel: rent_a_car_panel
+            project_id_secret: VERCEL_RENT_A_CAR_PROJECT_ID
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Build ${{ matrix.panel }}
+        run: |
+          cd ${{ matrix.panel }}
+          flutter pub get
+          flutter build web --release
+
+      - name: Deploy to Vercel
+        run: |
+          npm i -g vercel
+          cd ${{ matrix.panel }}/build/web
+          vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets[matrix.project_id_secret] }}
