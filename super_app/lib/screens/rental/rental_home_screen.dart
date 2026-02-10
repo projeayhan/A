@@ -1,17 +1,16 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:geocoding/geocoding.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/app_responsive.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/utils/app_dialogs.dart';
 import '../../models/rental/rental_models.dart';
 import '../../core/services/rental_service.dart';
-import '../../services/location_service.dart';
 import 'car_detail_screen.dart';
 import 'my_bookings_screen.dart';
+import 'rental_car_cards.dart';
+import 'rental_location_picker.dart';
+import 'rental_search_results_sheet.dart';
 
 class RentalHomeScreen extends StatefulWidget {
   const RentalHomeScreen({super.key});
@@ -236,27 +235,29 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
           ),
           child: Opacity(
             opacity: _heroAnimation.value,
-            child: Image.network(
-              imageUrl,
+            child: CachedNetworkImage(
+              imageUrl: imageUrl,
               fit: BoxFit.cover,
-              cacheWidth: 800,
-              cacheHeight: 400,
-              errorBuilder: (context, error, stackTrace) {
-                return Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [Colors.grey[900]!, Colors.grey[800]!],
-                    ),
+              memCacheWidth: 400,
+              memCacheHeight: 200,
+              placeholder: (_, __) => Container(
+                color: Colors.grey[900],
+                child: const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white24)),
+              ),
+              errorWidget: (_, __, ___) => Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Colors.grey[900]!, Colors.grey[800]!],
                   ),
-                  child: const Icon(
-                    Icons.directions_car,
-                    size: 120,
-                    color: Colors.white24,
-                  ),
-                );
-              },
+                ),
+                child: const Icon(
+                  Icons.directions_car,
+                  size: 120,
+                  color: Colors.white24,
+                ),
+              ),
             ),
           ),
         );
@@ -322,7 +323,7 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
   }
 
   Widget _buildPremiumAppBar(ThemeData theme, Size size) {
-    final double expandedHeight = size.height * 0.35;
+    final double expandedHeight = size.height * 0.25;
 
     return SliverAppBar(
       expandedHeight: expandedHeight,
@@ -380,7 +381,7 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
             // Page Indicators
             if (_heroBanners.length > 1)
               Positioned(
-                bottom: 100,
+                bottom: 70,
                 left: 0,
                 right: 0,
                 child: Row(
@@ -405,9 +406,9 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
 
             // Hero Text
             Positioned(
-              left: 24,
-              right: 24,
-              bottom: 40,
+              left: 16,
+              right: 16,
+              bottom: 24,
               child: FadeTransition(
                 opacity: _fadeAnimation,
                 child: Column(
@@ -420,28 +421,28 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
                       child: const Text(
                         'PREMIUM',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          letterSpacing: 4,
+                          letterSpacing: 3,
                           color: Colors.white,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 4),
                     Text(
                       _currentBannerTitle,
                       style: const TextStyle(
-                        fontSize: 32,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
-                        letterSpacing: -0.5,
+                        letterSpacing: -0.3,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 2),
                     Text(
                       _currentBannerSubtitle,
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 13,
                         color: Colors.white.withValues(alpha: 0.7),
                       ),
                     ),
@@ -496,12 +497,12 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
     return FadeTransition(
       opacity: _fadeAnimation,
       child: Card(
-        margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        elevation: 4,
-        shadowColor: Colors.black.withValues(alpha: 0.08),
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        elevation: 2,
+        shadowColor: Colors.black.withValues(alpha: 0.06),
         child: Padding(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           child: Column(
             children: [
               // Pickup Location
@@ -510,19 +511,16 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
                 icon: _isPickupCustomAddress ? Icons.home : Icons.location_on,
                 iconColor: _isPickupCustomAddress
                     ? theme.colorScheme.primary
-                    : const Color(0xFF4CAF50),
+                    : AppColors.success,
                 label: 'Alis Noktasi',
                 value: _isPickupCustomAddress
                     ? _pickupCustomAddress
                     : (_selectedPickupLocation?.name ?? 'Lokasyon Secin'),
                 isCustomAddress: _isPickupCustomAddress,
-                onTap: () => _showLocationPicker(true),
+                onTap: () => _handleShowLocationPicker(true),
               ),
 
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Divider(color: theme.dividerColor),
-              ),
+              Divider(color: theme.dividerColor, height: 16),
 
               // Dropoff Location
               _buildLocationField(
@@ -530,19 +528,16 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
                 icon: _isDropoffCustomAddress ? Icons.home : Icons.flag,
                 iconColor: _isDropoffCustomAddress
                     ? theme.colorScheme.primary
-                    : const Color(0xFFE53935),
+                    : AppColors.error,
                 label: 'Teslim Noktasi',
                 value: _isDropoffCustomAddress
                     ? _dropoffCustomAddress
                     : (_selectedDropoffLocation?.name ?? 'Lokasyon Secin'),
                 isCustomAddress: _isDropoffCustomAddress,
-                onTap: () => _showLocationPicker(false),
+                onTap: () => _handleShowLocationPicker(false),
               ),
 
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Divider(color: theme.dividerColor),
-              ),
+              Divider(color: theme.dividerColor, height: 16),
 
               // Date Selection
               Row(
@@ -576,7 +571,7 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
                 ],
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 10),
 
               // Search Button
               _buildSearchButton(theme),
@@ -601,15 +596,8 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
       borderRadius: BorderRadius.circular(12),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: iconColor.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: iconColor, size: 22),
-          ),
-          const SizedBox(width: 16),
+          Icon(icon, color: iconColor, size: 20),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -619,39 +607,28 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
                     Text(
                       label,
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 11,
                         color: AppColors.textSecondaryLight,
                       ),
                     ),
                     if (isCustomAddress) ...[
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primary
-                              .withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          'Adrese Teslim',
-                          style: TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.primary,
-                          ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Adrese Teslim',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.primary,
                         ),
                       ),
                     ],
                   ],
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Text(
                   value,
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 14,
                     fontWeight: FontWeight.w500,
                     color: theme.colorScheme.onSurface,
                   ),
@@ -661,7 +638,7 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
               ],
             ),
           ),
-          Icon(Icons.chevron_right, color: AppColors.textSecondaryLight),
+          Icon(Icons.chevron_right, color: AppColors.textSecondaryLight, size: 18),
         ],
       ),
     );
@@ -682,22 +659,22 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
         children: [
           Row(
             children: [
-              Icon(icon, color: theme.colorScheme.primary, size: 18),
-              const SizedBox(width: 8),
+              Icon(icon, color: theme.colorScheme.primary, size: 16),
+              const SizedBox(width: 6),
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: 11,
                   color: AppColors.textSecondaryLight,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 2),
           Text(
             value,
             style: TextStyle(
-              fontSize: 15,
+              fontSize: 13,
               fontWeight: FontWeight.w500,
               color: theme.colorScheme.onSurface,
             ),
@@ -710,15 +687,15 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
   Widget _buildSearchButton(ThemeData theme) {
     return Container(
       width: double.infinity,
-      height: 56,
+      height: 42,
       decoration: BoxDecoration(
         gradient: AppColors.primaryGradient,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(10),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
+            color: AppColors.primary.withValues(alpha: 0.15),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -726,17 +703,17 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
         color: Colors.transparent,
         child: InkWell(
           onTap: _searchCars,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(10),
           child: const Center(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.search, color: Colors.white, size: 24),
-                SizedBox(width: 8),
+                Icon(Icons.search, color: Colors.white, size: 18),
+                SizedBox(width: 6),
                 Text(
                   'Arac Ara',
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: 14,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
@@ -751,8 +728,8 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
 
   Widget _buildCategorySelector(ThemeData theme) {
     return Container(
-      height: 50,
-      margin: const EdgeInsets.only(bottom: 24),
+      height: 40,
+      margin: const EdgeInsets.only(bottom: 8),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -776,7 +753,7 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 300),
                   curve: Curves.easeOutCubic,
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
                   decoration: BoxDecoration(
                     gradient: isSelected ? AppColors.primaryGradient : null,
                     color: isSelected ? null : theme.cardColor,
@@ -800,16 +777,16 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
                     children: [
                       Icon(
                         category['icon'],
-                        size: 20,
+                        size: 16,
                         color: isSelected
                             ? Colors.white
                             : AppColors.textSecondaryLight,
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       Text(
                         category['name'],
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 13,
                           fontWeight:
                               isSelected ? FontWeight.bold : FontWeight.w500,
                           color: isSelected
@@ -832,290 +809,28 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
     final premiumCars = _cars.where((car) => car.isPremium).toList();
 
     return SizedBox(
-      height: 280,
+      height: 220,
       child: PageView.builder(
         controller: PageController(viewportFraction: 0.85),
         itemCount: premiumCars.length,
         itemBuilder: (context, index) {
           final car = premiumCars[index];
-          return _buildFeaturedCarCard(car, theme);
+          return buildFeaturedCarCard(car, theme, onTap: () => _navigateToCarDetail(car));
         },
       ),
     );
   }
 
-  Widget _buildFeaturedCarCard(RentalCar car, ThemeData theme) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => _navigateToCarDetail(car),
-          borderRadius: BorderRadius.circular(28),
-          child: Card(
-            margin: EdgeInsets.zero,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(28),
-            ),
-            elevation: 6,
-            shadowColor: Colors.black.withValues(alpha: 0.1),
-            clipBehavior: Clip.antiAlias,
-            child: Stack(
-              children: [
-                // Car Image
-                Positioned.fill(
-                  child: Image.network(
-                    car.thumbnailUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        color: Colors.grey[900],
-                        child: const Icon(
-                          Icons.directions_car,
-                          size: 80,
-                          color: Colors.white24,
-                        ),
-                      );
-                    },
-                  ),
-                ),
-
-                // Gradient Overlay
-                Positioned.fill(
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.black.withValues(alpha: 0.8),
-                        ],
-                        stops: const [0.4, 1.0],
-                      ),
-                    ),
-                  ),
-                ),
-
-                // Company Badge
-                if (car.companyName != null)
-                  Positioned(
-                    top: 16,
-                    left: 16,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.6),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (car.companyLogo != null && car.companyLogo!.isNotEmpty)
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
-                              child: Image.network(
-                                car.companyLogo!,
-                                width: 20,
-                                height: 20,
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => const Icon(
-                                  Icons.business,
-                                  color: Colors.white,
-                                  size: 16,
-                                ),
-                              ),
-                            )
-                          else
-                            const Icon(Icons.business, color: Colors.white, size: 16),
-                          const SizedBox(width: 6),
-                          Text(
-                            car.companyName!,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                // Premium Badge
-                if (car.isPremium)
-                  Positioned(
-                    top: car.companyName != null ? 52 : 16,
-                    left: 16,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        gradient: AppColors.primaryGradient,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.star, color: Colors.black, size: 14),
-                          SizedBox(width: 4),
-                          Text(
-                            'PREMIUM',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black,
-                              letterSpacing: 1,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                // Discount Badge
-                if (car.discountPercentage != null &&
-                    car.discountPercentage! > 0)
-                  Positioned(
-                    top: 16,
-                    right: 16,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.error,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        '-${car.discountPercentage!.toInt()}%',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                // Car Info
-                Positioned(
-                  left: 20,
-                  right: 20,
-                  bottom: 20,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        car.fullName,
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          _buildCarSpec(Icons.speed, car.transmissionName),
-                          const SizedBox(width: 16),
-                          _buildCarSpec(
-                              Icons.local_gas_station, car.fuelTypeName),
-                          const SizedBox(width: 16),
-                          _buildCarSpec(Icons.person, '${car.seats} Kisi'),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          // Rating
-                          Row(
-                            children: [
-                              const Icon(Icons.star,
-                                  color: Colors.amber, size: 18),
-                              const SizedBox(width: 4),
-                              Text(
-                                car.rating.toString(),
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              Text(
-                                ' (${car.reviewCount})',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.white70,
-                                ),
-                              ),
-                            ],
-                          ),
-                          // Price
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              if (car.discountPercentage != null &&
-                                  car.discountPercentage! > 0)
-                                Text(
-                                  '\u20BA${car.dailyPrice.toInt()}',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.white70,
-                                    decoration: TextDecoration.lineThrough,
-                                  ),
-                                ),
-                              Text(
-                                '\u20BA${car.discountedDailyPrice.toInt()}/gun',
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCarSpec(IconData icon, String text) {
-    return Row(
-      children: [
-        Icon(icon, size: 14, color: Colors.white60),
-        const SizedBox(width: 4),
-        Text(text,
-            style: const TextStyle(fontSize: 12, color: Colors.white60)),
-      ],
-    );
-  }
-
   Widget _buildSectionTitle(ThemeData theme, String title) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 32, 20, 16),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             title,
             style: TextStyle(
-              fontSize: 22,
+              fontSize: 16,
               fontWeight: FontWeight.bold,
               color: theme.colorScheme.onSurface,
             ),
@@ -1137,12 +852,12 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
 
   Widget _buildCarList(ThemeData theme) {
     return SliverPadding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
       sliver: SliverList(
         delegate: SliverChildBuilderDelegate(
           (context, index) {
             final car = _filteredCars[index];
-            return _buildCarListItem(car, theme, index);
+            return buildCarListItem(car, theme, index, onTap: () => _navigateToCarDetail(car));
           },
           childCount: _filteredCars.length,
         ),
@@ -1150,1577 +865,107 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
     );
   }
 
-  Widget _buildCarListItem(RentalCar car, ThemeData theme, int index) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: Duration(milliseconds: 400 + (index * 100)),
-      curve: Curves.easeOutCubic,
-      builder: (context, value, child) {
-        return Transform.translate(
-          offset: Offset(0, 30 * (1 - value)),
-          child: Opacity(opacity: value, child: child),
+  // --- Location picker handler methods ---
+
+  void _handleShowLocationPicker(bool isPickup) {
+    showRentalLocationPicker(
+      context: context,
+      isPickup: isPickup,
+      locations: _locations,
+      onLocationSelected: (location) {
+        setState(() {
+          if (isPickup) {
+            _selectedPickupLocation = location;
+            _isPickupCustomAddress = false;
+            _pickupCustomAddress = '';
+            _pickupCustomAddressNote = '';
+          } else {
+            _selectedDropoffLocation = location;
+            _isDropoffCustomAddress = false;
+            _dropoffCustomAddress = '';
+            _dropoffCustomAddressNote = '';
+          }
+        });
+      },
+      onCustomAddressTap: () => _handleShowCustomAddressDialog(isPickup),
+    );
+  }
+
+  void _handleShowCustomAddressDialog(bool isPickup) {
+    showCustomAddressDialog(
+      context: context,
+      isPickup: isPickup,
+      onUseCurrentLocation: () => _handleGetCurrentLocation(isPickup),
+      onShowSavedAddresses: () => _handleShowSavedAddresses(isPickup),
+      onManualEntry: () => _handleShowManualAddress(isPickup),
+    );
+  }
+
+  void _handleGetCurrentLocation(bool isPickup) {
+    getCurrentLocationAddress(
+      context: context,
+      isPickup: isPickup,
+      onAddressFound: (address) {
+        showAddressConfirmDialog(
+          context: context,
+          isPickup: isPickup,
+          address: address,
+          onConfirm: ({required bool isPickup, required String address, required String note}) {
+            _setCustomAddress(isPickup: isPickup, address: address, note: note);
+          },
+          onEdit: (isPickup) => _handleShowManualAddress(isPickup),
         );
       },
-      child: Card(
-        margin: const EdgeInsets.only(bottom: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        elevation: 2,
-        shadowColor: Colors.black.withValues(alpha: 0.05),
-        child: InkWell(
-          onTap: () => _navigateToCarDetail(car),
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                // Car Image
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: Image.network(
-                    car.thumbnailUrl,
-                    width: 120,
-                    height: 90,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        width: 120,
-                        height: 90,
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceLight,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Center(
-                          child: Icon(
-                            Icons.directions_car,
-                            size: 40,
-                            color: AppColors.textSecondaryLight,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(width: 14),
-                // Car Info
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        car.fullName,
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.onSurface,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      // Company name
-                      if (car.companyName != null)
-                        Row(
-                          children: [
-                            Icon(Icons.business, size: 12,
-                                color: theme.colorScheme.primary),
-                            const SizedBox(width: 4),
-                            Text(
-                              car.companyName!,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: theme.colorScheme.primary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      if (car.companyName != null)
-                        const SizedBox(height: 4),
-                      Text(
-                        '${car.transmissionName} \u2022 ${car.fuelTypeName}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          const Icon(Icons.star,
-                              color: Colors.amber, size: 14),
-                          const SizedBox(width: 3),
-                          Text(
-                            car.rating.toString(),
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: theme.colorScheme.onSurface,
-                            ),
-                          ),
-                          Text(
-                            ' (${car.reviewCount})',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        '\u20BA${car.discountedDailyPrice.toInt()}/gun',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(
-                  Icons.chevron_right,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+      onShowManualEntry: (isPickup) => _handleShowManualAddress(isPickup),
     );
   }
 
-  void _showLocationPicker(bool isPickup) {
-    final theme = Theme.of(context);
-
-    showModalBottomSheet(
+  void _handleShowSavedAddresses(bool isPickup) {
+    showSavedAddressesDialog(
       context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.7,
-        decoration: BoxDecoration(
-          color: theme.cardColor,
-          borderRadius:
-              const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          children: [
-            Container(
-              margin: const EdgeInsets.only(top: 12),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: theme.dividerColor,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Text(
-                isPickup ? 'Alis Noktasi Secin' : 'Teslim Noktasi Secin',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onSurface,
-                ),
-              ),
-            ),
-
-            // Adrese Teslim Secenegi
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: InkWell(
-                onTap: () {
-                  Navigator.pop(context);
-                  _showCustomAddressDialog(isPickup);
-                },
-                borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        theme.colorScheme.primary.withValues(alpha: 0.1),
-                        const Color(0xFF5B8DEF).withValues(alpha: 0.05),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color:
-                          theme.colorScheme.primary.withValues(alpha: 0.3),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primary,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(
-                          Icons.home_outlined,
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Adrese Teslim',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: theme.colorScheme.onSurface,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              isPickup
-                                  ? 'Araci adresinizden teslim alin'
-                                  : 'Araci adresinize teslim edelim',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: theme.colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Icon(
-                        Icons.arrow_forward_ios,
-                        color: theme.colorScheme.primary,
-                        size: 18,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            // Ayirici
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Row(
-                children: [
-                  Expanded(child: Divider(color: theme.dividerColor)),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      'veya ofis lokasyonu secin',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondaryLight,
-                      ),
-                    ),
-                  ),
-                  Expanded(child: Divider(color: theme.dividerColor)),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
-            Expanded(
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: _locations.length,
-                itemBuilder: (context, index) {
-                  final location = _locations[index];
-                  return ListTile(
-                    onTap: () {
-                      setState(() {
-                        if (isPickup) {
-                          _selectedPickupLocation = location;
-                          _isPickupCustomAddress = false;
-                          _pickupCustomAddress = '';
-                          _pickupCustomAddressNote = '';
-                        } else {
-                          _selectedDropoffLocation = location;
-                          _isDropoffCustomAddress = false;
-                          _dropoffCustomAddress = '';
-                          _dropoffCustomAddressNote = '';
-                        }
-                      });
-                      Navigator.pop(context);
-                    },
-                    leading: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: location.isAirport
-                            ? const Color(0xFF1E88E5)
-                                .withValues(alpha: 0.1)
-                            : const Color(0xFF4CAF50)
-                                .withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        location.isAirport
-                            ? Icons.flight
-                            : Icons.location_on,
-                        color: location.isAirport
-                            ? const Color(0xFF1E88E5)
-                            : const Color(0xFF4CAF50),
-                      ),
-                    ),
-                    title: Text(
-                      location.name,
-                      style: TextStyle(
-                        color: theme.colorScheme.onSurface,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    subtitle: Text(
-                      location.address,
-                      style: TextStyle(
-                        color: theme.colorScheme.onSurfaceVariant,
-                        fontSize: 12,
-                      ),
-                    ),
-                    trailing: location.is24Hours
-                        ? Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.info.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              '7/24',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: theme.colorScheme.primary,
-                              ),
-                            ),
-                          )
-                        : null,
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
+      isPickup: isPickup,
+      onAddressSelected: ({required bool isPickup, required String address, required String note}) {
+        _setCustomAddress(isPickup: isPickup, address: address, note: note);
+      },
+      onShowManualEntry: (isPickup, {bool saveAddress = false}) =>
+          _handleShowManualAddress(isPickup, saveAddress: saveAddress),
     );
   }
 
-  void _showCustomAddressDialog(bool isPickup) {
-    final theme = Theme.of(context);
-
-    showModalBottomSheet(
+  void _handleShowManualAddress(bool isPickup, {bool saveAddress = false}) {
+    showManualAddressDialog(
       context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.6,
-        decoration: BoxDecoration(
-          color: theme.cardColor,
-          borderRadius:
-              const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          children: [
-            // Handle bar
-            Container(
-              margin: const EdgeInsets.only(top: 12),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: theme.dividerColor,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-
-            // Baslik
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color:
-                          theme.colorScheme.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      Icons.home_outlined,
-                      color: theme.colorScheme.primary,
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          isPickup ? 'Alis Adresi' : 'Teslim Adresi',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: theme.colorScheme.onSurface,
-                          ),
-                        ),
-                        Text(
-                          'Adres secim yontinizi belirleyin',
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  children: [
-                    // Secenek 1: Konumumu Kullan
-                    _buildAddressOptionCard(
-                      theme: theme,
-                      icon: Icons.my_location,
-                      iconColor: const Color(0xFF4CAF50),
-                      title: 'Konumumu Kullan',
-                      subtitle:
-                          'GPS ile mevcut konumunuzu otomatik alin',
-                      onTap: () {
-                        Navigator.pop(context);
-                        _getCurrentLocationAddress(isPickup);
-                      },
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    // Secenek 2: Kayitli Adreslerim
-                    _buildAddressOptionCard(
-                      theme: theme,
-                      icon: Icons.bookmark_outline,
-                      iconColor: const Color(0xFFFF9800),
-                      title: 'Kayitli Adreslerim',
-                      subtitle:
-                          'Daha once kaydettiginiz adreslerden secin',
-                      onTap: () {
-                        Navigator.pop(context);
-                        _showSavedAddressesDialog(isPickup);
-                      },
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    // Secenek 3: Yeni Adres Gir
-                    _buildAddressOptionCard(
-                      theme: theme,
-                      icon: Icons.edit_location_alt_outlined,
-                      iconColor: AppColors.primary,
-                      title: 'Yeni Adres Gir',
-                      subtitle: 'Adresi manuel olarak yazin',
-                      onTap: () {
-                        Navigator.pop(context);
-                        _showManualAddressDialog(isPickup);
-                      },
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // Bilgi notu
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.amber.shade200),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.info_outline,
-                            color: Colors.amber.shade700,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'Adrese teslim hizmeti icin ek ucret uygulanabilir.',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.amber.shade800,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+      isPickup: isPickup,
+      currentAddress: isPickup ? _pickupCustomAddress : _dropoffCustomAddress,
+      currentNote: isPickup ? _pickupCustomAddressNote : _dropoffCustomAddressNote,
+      saveAddress: saveAddress,
+      onAddressConfirmed: ({required bool isPickup, required String address, required String note}) {
+        _setCustomAddress(isPickup: isPickup, address: address, note: note);
+      },
     );
   }
 
-  Widget _buildAddressOptionCard({
-    required ThemeData theme,
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    return Card(
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 1,
-      shadowColor: Colors.black.withValues(alpha: 0.04),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: iconColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: iconColor, size: 24),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: theme.colorScheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(
-                Icons.arrow_forward_ios,
-                color: theme.colorScheme.onSurfaceVariant,
-                size: 16,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // GPS ile konum alma
-  Future<void> _getCurrentLocationAddress(bool isPickup) async {
-    final theme = Theme.of(context);
-
-    // Loading dialog goster
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => Center(
-        child: Card(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(color: theme.colorScheme.primary),
-                const SizedBox(height: 16),
-                const Text('Konum aliniyor...'),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-
-    try {
-      // Konum izni kontrolu
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          if (mounted) Navigator.pop(context);
-          _showLocationError('Konum izni reddedildi');
-          return;
-        }
-      }
-
-      if (permission == LocationPermission.deniedForever) {
-        if (mounted) Navigator.pop(context);
-        _showLocationError(
-            'Konum izni kalici olarak reddedildi. Ayarlardan izin verin.');
-        return;
-      }
-
-      // Konum al
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 15),
-        ),
-      );
-
-      // Koordinatlari adrese cevir
-      String? address;
-
-      if (kIsWeb) {
-        // Web platformunda LocationService kullan (Google Geocoding API)
-        address = await LocationService().getAddressFromCoordinates(
-          position.latitude,
-          position.longitude,
-        );
-      } else {
-        // Mobilde geocoding paketi kullan
-        try {
-          final placemarks = await placemarkFromCoordinates(
-            position.latitude,
-            position.longitude,
-          );
-          if (placemarks.isNotEmpty) {
-            address = _formatPlacemark(placemarks.first);
-          }
-        } catch (e) {
-          debugPrint('Geocoding error: $e');
-          // Fallback to LocationService
-          address = await LocationService().getAddressFromCoordinates(
-            position.latitude,
-            position.longitude,
-          );
-        }
-      }
-
-      if (mounted) Navigator.pop(context); // Loading'i kapat
-
-      if (!mounted) return;
-
-      if (address != null && address.isNotEmpty) {
-        _showAddressConfirmDialog(isPickup, address);
-      } else {
-        _showLocationError('Adres bilgisi alinamadi');
-      }
-    } catch (e) {
-      if (mounted) Navigator.pop(context);
-      if (!mounted) return;
-      _showLocationError('Konum alinamadi: ${e.toString()}');
-    }
-  }
-
-  String _formatPlacemark(Placemark place) {
-    final parts = <String>[];
-
-    if (place.street != null && place.street!.isNotEmpty) {
-      parts.add(place.street!);
-    }
-    if (place.subLocality != null && place.subLocality!.isNotEmpty) {
-      parts.add(place.subLocality!);
-    }
-    if (place.locality != null && place.locality!.isNotEmpty) {
-      parts.add(place.locality!);
-    }
-    if (place.subAdministrativeArea != null &&
-        place.subAdministrativeArea!.isNotEmpty) {
-      parts.add(place.subAdministrativeArea!);
-    }
-    if (place.administrativeArea != null &&
-        place.administrativeArea!.isNotEmpty) {
-      parts.add(place.administrativeArea!);
-    }
-
-    return parts.join(', ');
-  }
-
-  void _showLocationError(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.error,
-        action: SnackBarAction(
-          label: 'Manuel Gir',
-          textColor: Colors.white,
-          onPressed: () => _showManualAddressDialog(true),
-        ),
-      ),
-    );
-  }
-
-  // Konum onay dialogu
-  void _showAddressConfirmDialog(bool isPickup, String address) {
-    final theme = Theme.of(context);
-    final noteController = TextEditingController();
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-        ),
-        child: Container(
-          decoration: BoxDecoration(
-            color: theme.cardColor,
-            borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: theme.dividerColor,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Basari ikonu
-                  Center(
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color:
-                            AppColors.success.withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.location_on,
-                        color: AppColors.success,
-                        size: 40,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  Center(
-                    child: Text(
-                      'Konum Bulundu',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.onSurface,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Bulunan adres
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceLight,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: theme.dividerColor),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.location_on_outlined,
-                          color: theme.colorScheme.primary,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            address,
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: theme.colorScheme.onSurface,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Adres tarifi
-                  TextField(
-                    controller: noteController,
-                    maxLines: 2,
-                    decoration: InputDecoration(
-                      labelText: 'Adres Tarifi (Opsiyonel)',
-                      hintText: 'Orn: Mavi binanin onu, 3. kat',
-                      prefixIcon: const Icon(Icons.note_outlined),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(
-                          color: theme.colorScheme.primary,
-                          width: 2,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Butonlar
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: () {
-                            Navigator.pop(context);
-                            _showManualAddressDialog(isPickup);
-                          },
-                          style: OutlinedButton.styleFrom(
-                            padding:
-                                const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: const Text('Duzenle'),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        flex: 2,
-                        child: ElevatedButton(
-                          onPressed: () {
-                            setState(() {
-                              if (isPickup) {
-                                _isPickupCustomAddress = true;
-                                _pickupCustomAddress = address;
-                                _pickupCustomAddressNote =
-                                    noteController.text.trim();
-                                _selectedPickupLocation = null;
-                              } else {
-                                _isDropoffCustomAddress = true;
-                                _dropoffCustomAddress = address;
-                                _dropoffCustomAddressNote =
-                                    noteController.text.trim();
-                                _selectedDropoffLocation = null;
-                              }
-                            });
-                            Navigator.pop(context);
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: theme.colorScheme.primary,
-                            padding:
-                                const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: const Text(
-                            'Onayla',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 16),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // Kayitli adresler dialogu
-  void _showSavedAddressesDialog(bool isPickup) async {
-    // Kullanicinin kayitli adreslerini cek (saved_locations tablosundan)
-    List<Map<String, dynamic>> savedAddresses = [];
-
-    try {
-      final userId = Supabase.instance.client.auth.currentUser?.id;
-      if (userId != null) {
-        final response = await Supabase.instance.client
-            .from('saved_locations')
-            .select()
-            .eq('user_id', userId)
-            .eq('is_active', true)
-            .order('is_default', ascending: false)
-            .order('sort_order', ascending: true);
-
-        savedAddresses = List<Map<String, dynamic>>.from(response);
-      }
-    } catch (e) {
-      debugPrint('Error loading saved addresses: $e');
-    }
-
-    if (!mounted) return;
-
-    final theme = Theme.of(context);
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.6,
-        decoration: BoxDecoration(
-          color: theme.cardColor,
-          borderRadius:
-              const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          children: [
-            Container(
-              margin: const EdgeInsets.only(top: 12),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: theme.dividerColor,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Row(
-                children: [
-                  Text(
-                    'Kayitli Adreslerim',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                  ),
-                  const Spacer(),
-                  TextButton.icon(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      _showManualAddressDialog(isPickup,
-                          saveAddress: true);
-                    },
-                    icon: const Icon(Icons.add, size: 18),
-                    label: const Text('Yeni Ekle'),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: savedAddresses.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.bookmark_border,
-                            size: 64,
-                            color: theme.dividerColor,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Kayitli adresiniz yok',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color:
-                                  theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pop(context);
-                              _showManualAddressDialog(isPickup,
-                                  saveAddress: true);
-                            },
-                            child: const Text('Yeni Adres Ekle'),
-                          ),
-                        ],
-                      ),
-                    )
-                  : ListView.builder(
-                      padding:
-                          const EdgeInsets.symmetric(horizontal: 20),
-                      itemCount: savedAddresses.length,
-                      itemBuilder: (context, index) {
-                        final addr = savedAddresses[index];
-                        final isDefault =
-                            addr['is_default'] == true;
-                        final addressType =
-                            addr['type'] ?? 'other';
-
-                        IconData typeIcon;
-                        switch (addressType) {
-                          case 'home':
-                            typeIcon = Icons.home;
-                            break;
-                          case 'work':
-                            typeIcon = Icons.work;
-                            break;
-                          default:
-                            typeIcon = Icons.location_on;
-                        }
-
-                        // Tam adresi olustur
-                        final fullAddress =
-                            _buildFullAddress(addr);
-                        final directions =
-                            addr['directions'] ?? '';
-
-                        return ListTile(
-                          onTap: () {
-                            setState(() {
-                              if (isPickup) {
-                                _isPickupCustomAddress = true;
-                                _pickupCustomAddress =
-                                    fullAddress;
-                                _pickupCustomAddressNote =
-                                    directions;
-                                _selectedPickupLocation = null;
-                              } else {
-                                _isDropoffCustomAddress = true;
-                                _dropoffCustomAddress =
-                                    fullAddress;
-                                _dropoffCustomAddressNote =
-                                    directions;
-                                _selectedDropoffLocation = null;
-                              }
-                            });
-                            Navigator.pop(context);
-                          },
-                          leading: Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: theme.colorScheme.primary
-                                  .withValues(alpha: 0.1),
-                              borderRadius:
-                                  BorderRadius.circular(10),
-                            ),
-                            child: Icon(
-                              typeIcon,
-                              color: theme.colorScheme.primary,
-                            ),
-                          ),
-                          title: Row(
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  addr['name'] ??
-                                      addr['title'] ??
-                                      'Adres',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                  overflow:
-                                      TextOverflow.ellipsis,
-                                ),
-                              ),
-                              if (isDefault) ...[
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding:
-                                      const EdgeInsets
-                                          .symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: theme
-                                        .colorScheme.primary,
-                                    borderRadius:
-                                        BorderRadius.circular(
-                                            4),
-                                  ),
-                                  child: const Text(
-                                    'Varsayilan',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: Colors.white,
-                                      fontWeight:
-                                          FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                          subtitle: Text(
-                            fullAddress,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: theme.colorScheme
-                                  .onSurfaceVariant,
-                            ),
-                          ),
-                          trailing: Icon(
-                            Icons.chevron_right,
-                            color: theme.colorScheme
-                                .onSurfaceVariant,
-                          ),
-                        );
-                      },
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Manuel adres giris dialogu
-  void _showManualAddressDialog(bool isPickup,
-      {bool saveAddress = false}) {
-    final theme = Theme.of(context);
-    final addressController = TextEditingController(
-      text: isPickup ? _pickupCustomAddress : _dropoffCustomAddress,
-    );
-    final noteController = TextEditingController(
-      text: isPickup
-          ? _pickupCustomAddressNote
-          : _dropoffCustomAddressNote,
-    );
-    final titleController = TextEditingController();
-    bool shouldSave = saveAddress;
-    String selectedType = 'home';
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-          ),
-          child: Container(
-            decoration: BoxDecoration(
-              color: theme.cardColor,
-              borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(24)),
-            ),
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(
-                      child: Container(
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: theme.dividerColor,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    Text(
-                      isPickup ? 'Alis Adresi' : 'Teslim Adresi',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.onSurface,
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // Adres girisi
-                    TextField(
-                      controller: addressController,
-                      maxLines: 2,
-                      decoration: InputDecoration(
-                        labelText: 'Acik Adres *',
-                        hintText:
-                            'Mahalle, Cadde/Sokak, No, Ilce/Il',
-                        prefixIcon:
-                            const Icon(Icons.location_on_outlined),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(
-                            color: theme.colorScheme.primary,
-                            width: 2,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Adres tarifi
-                    TextField(
-                      controller: noteController,
-                      maxLines: 2,
-                      decoration: InputDecoration(
-                        labelText: 'Adres Tarifi (Opsiyonel)',
-                        hintText: 'Bina rengi, kat, kapi no vs.',
-                        prefixIcon:
-                            const Icon(Icons.note_outlined),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(
-                            color: theme.colorScheme.primary,
-                            width: 2,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Adresi kaydet secenegi
-                    InkWell(
-                      onTap: () {
-                        setDialogState(
-                            () => shouldSave = !shouldSave);
-                      },
-                      child: Row(
-                        children: [
-                          Checkbox(
-                            value: shouldSave,
-                            onChanged: (v) {
-                              setDialogState(
-                                  () => shouldSave = v ?? false);
-                            },
-                            activeColor:
-                                theme.colorScheme.primary,
-                          ),
-                          Text(
-                            'Bu adresi kaydet',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color:
-                                  theme.colorScheme.onSurface,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // Kaydetme secenekleri
-                    if (shouldSave) ...[
-                      const SizedBox(height: 12),
-
-                      TextField(
-                        controller: titleController,
-                        decoration: InputDecoration(
-                          labelText: 'Adres Basligi',
-                          hintText: 'Orn: Evim, Is Yerim',
-                          prefixIcon:
-                              const Icon(Icons.label_outline),
-                          border: OutlineInputBorder(
-                            borderRadius:
-                                BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      // Adres tipi secimi
-                      Row(
-                        children: [
-                          _buildAddressTypeChip(
-                            theme,
-                            'home',
-                            Icons.home,
-                            'Ev',
-                            selectedType,
-                            (type) => setDialogState(
-                                () => selectedType = type),
-                          ),
-                          const SizedBox(width: 8),
-                          _buildAddressTypeChip(
-                            theme,
-                            'work',
-                            Icons.work,
-                            'Is',
-                            selectedType,
-                            (type) => setDialogState(
-                                () => selectedType = type),
-                          ),
-                          const SizedBox(width: 8),
-                          _buildAddressTypeChip(
-                            theme,
-                            'other',
-                            Icons.location_on,
-                            'Diger',
-                            selectedType,
-                            (type) => setDialogState(
-                                () => selectedType = type),
-                          ),
-                        ],
-                      ),
-                    ],
-
-                    const SizedBox(height: 24),
-
-                    // Butonlar
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton(
-                            onPressed: () =>
-                                Navigator.pop(context),
-                            style: OutlinedButton.styleFrom(
-                              padding:
-                                  const EdgeInsets.symmetric(
-                                      vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius:
-                                    BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: const Text('Iptal'),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          flex: 2,
-                          child: ElevatedButton(
-                            onPressed: () async {
-                              if (addressController.text
-                                  .trim()
-                                  .isEmpty) {
-                                AppDialogs.showWarning(context,
-                                    'Lutfen adres girin');
-                                return;
-                              }
-
-                              final address = addressController
-                                  .text
-                                  .trim();
-                              final note =
-                                  noteController.text.trim();
-
-                              // Adresi kaydet
-                              if (shouldSave) {
-                                await _saveAddress(
-                                  title: titleController.text
-                                          .trim()
-                                          .isEmpty
-                                      ? (selectedType == 'home'
-                                          ? 'Evim'
-                                          : selectedType ==
-                                                  'work'
-                                              ? 'Is Yerim'
-                                              : 'Adresim')
-                                      : titleController.text
-                                          .trim(),
-                                  address: address,
-                                  notes: note,
-                                  addressType: selectedType,
-                                );
-                              }
-
-                              if (!mounted) return;
-
-                              setState(() {
-                                if (isPickup) {
-                                  _isPickupCustomAddress =
-                                      true;
-                                  _pickupCustomAddress =
-                                      address;
-                                  _pickupCustomAddressNote =
-                                      note;
-                                  _selectedPickupLocation =
-                                      null;
-                                } else {
-                                  _isDropoffCustomAddress =
-                                      true;
-                                  _dropoffCustomAddress =
-                                      address;
-                                  _dropoffCustomAddressNote =
-                                      note;
-                                  _selectedDropoffLocation =
-                                      null;
-                                }
-                              });
-                              if (context.mounted) {
-                                Navigator.pop(context);
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor:
-                                  theme.colorScheme.primary,
-                              padding:
-                                  const EdgeInsets.symmetric(
-                                      vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius:
-                                    BorderRadius.circular(12),
-                              ),
-                            ),
-                            child: const Text(
-                              'Kaydet',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 16),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAddressTypeChip(
-    ThemeData theme,
-    String type,
-    IconData icon,
-    String label,
-    String selectedType,
-    Function(String) onSelect,
-  ) {
-    final isSelected = selectedType == type;
-    return InkWell(
-      onTap: () => onSelect(type),
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? theme.colorScheme.primary
-              : AppColors.surfaceLight,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 18,
-              color: isSelected
-                  ? Colors.white
-                  : theme.colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                color: isSelected
-                    ? Colors.white
-                    : theme.colorScheme.onSurfaceVariant,
-                fontWeight:
-                    isSelected ? FontWeight.w600 : FontWeight.normal,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // saved_locations tablosundan tam adres olustur
-  String _buildFullAddress(Map<String, dynamic> addr) {
-    final parts = <String>[];
-
-    if (addr['address'] != null &&
-        addr['address'].toString().isNotEmpty) {
-      parts.add(addr['address'].toString());
-    }
-    if (addr['address_details'] != null &&
-        addr['address_details'].toString().isNotEmpty) {
-      parts.add(addr['address_details'].toString());
-    }
-    if (addr['floor'] != null &&
-        addr['floor'].toString().isNotEmpty) {
-      parts.add('Kat: ${addr['floor']}');
-    }
-    if (addr['apartment'] != null &&
-        addr['apartment'].toString().isNotEmpty) {
-      parts.add('Daire: ${addr['apartment']}');
-    }
-
-    return parts.join(', ');
-  }
-
-  Future<void> _saveAddress({
-    required String title,
+  void _setCustomAddress({
+    required bool isPickup,
     required String address,
-    required String notes,
-    required String addressType,
-  }) async {
-    try {
-      final userId = Supabase.instance.client.auth.currentUser?.id;
-      if (userId == null) return;
-
-      // saved_locations tablosuna kaydet (ana uygulama ile uyumlu)
-      await Supabase.instance.client.from('saved_locations').insert({
-        'user_id': userId,
-        'name': title,
-        'address': address,
-        'directions': notes,
-        'type': addressType,
-        'is_default': false,
-        'is_active': true,
-        'sort_order': 0,
-      });
-    } catch (e) {
-      debugPrint('Error saving address: $e');
-    }
+    required String note,
+  }) {
+    setState(() {
+      if (isPickup) {
+        _isPickupCustomAddress = true;
+        _pickupCustomAddress = address;
+        _pickupCustomAddressNote = note;
+        _selectedPickupLocation = null;
+      } else {
+        _isDropoffCustomAddress = true;
+        _dropoffCustomAddress = address;
+        _dropoffCustomAddressNote = note;
+        _selectedDropoffLocation = null;
+      }
+    });
   }
+
+  // --- Date & Search methods ---
 
   Future<void> _selectDate(bool isPickup) async {
     final theme = Theme.of(context);
@@ -2798,540 +1043,19 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
     Navigator.of(context, rootNavigator: true).pop();
 
     // Sonuclari goster
-    _showSearchResults(rentalDays, availableCars);
-  }
-
-  void _showSearchResults(
-      int rentalDays, List<RentalCar> availableCars) {
-    final theme = Theme.of(context);
-
-    showModalBottomSheet(
+    showRentalSearchResults(
       context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.85,
-        minChildSize: 0.5,
-        maxChildSize: 0.95,
-        builder: (context, scrollController) => Container(
-          decoration: BoxDecoration(
-            color: theme.cardColor,
-            borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(24)),
-          ),
-          child: Column(
-            children: [
-              // Handle bar
-              Container(
-                margin: const EdgeInsets.only(top: 12),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: theme.dividerColor,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-
-              // Header
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            gradient: AppColors.primaryGradient,
-                            borderRadius:
-                                BorderRadius.circular(12),
-                          ),
-                          child: const Icon(
-                            Icons.search,
-                            color: Colors.white,
-                            size: 24,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Arama Sonuclari',
-                                style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  color: theme
-                                      .colorScheme.onSurface,
-                                ),
-                              ),
-                              Text(
-                                '${availableCars.length} arac bulundu \u2022 $rentalDays gun',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: theme.colorScheme
-                                      .onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () =>
-                              Navigator.pop(context),
-                          icon: Icon(Icons.close,
-                              color: theme.colorScheme
-                                  .onSurfaceVariant),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Search summary
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceLight,
-                        borderRadius:
-                            BorderRadius.circular(12),
-                        border: Border.all(
-                            color: theme.dividerColor),
-                      ),
-                      child: Column(
-                        children: [
-                          _buildSearchSummaryRow(
-                            theme,
-                            _isPickupCustomAddress
-                                ? Icons.home
-                                : Icons.location_on,
-                            _isPickupCustomAddress
-                                ? theme.colorScheme.primary
-                                : const Color(0xFF4CAF50),
-                            'Alis',
-                            _isPickupCustomAddress
-                                ? _pickupCustomAddress
-                                : (_selectedPickupLocation
-                                        ?.name ??
-                                    '-'),
-                          ),
-                          const SizedBox(height: 8),
-                          _buildSearchSummaryRow(
-                            theme,
-                            _isDropoffCustomAddress
-                                ? Icons.home
-                                : Icons.flag,
-                            _isDropoffCustomAddress
-                                ? theme.colorScheme.primary
-                                : const Color(0xFFE53935),
-                            'Teslim',
-                            _isDropoffCustomAddress
-                                ? _dropoffCustomAddress
-                                : (_selectedDropoffLocation
-                                        ?.name ??
-                                    '-'),
-                          ),
-                          const SizedBox(height: 8),
-                          _buildSearchSummaryRow(
-                            theme,
-                            Icons.calendar_today,
-                            theme.colorScheme.primary,
-                            'Tarih',
-                            '${_pickupDate.day}/${_pickupDate.month} - ${_dropoffDate.day}/${_dropoffDate.month}',
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Car list
-              Expanded(
-                child: availableCars.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment:
-                              MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.car_rental,
-                              size: 64,
-                              color: theme.dividerColor,
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Uygun arac bulunamadi',
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: theme.colorScheme
-                                    .onSurfaceVariant,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Farkli tarih veya kategori deneyin',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: AppColors
-                                    .textSecondaryLight,
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                    : ListView.builder(
-                        controller: scrollController,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20),
-                        itemCount: availableCars.length,
-                        itemBuilder: (context, index) {
-                          final car = availableCars[index];
-                          final totalPrice =
-                              car.discountedDailyPrice *
-                                  rentalDays;
-                          return _buildSearchResultCard(
-                            theme,
-                            car,
-                            rentalDays,
-                            totalPrice,
-                          );
-                        },
-                      ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSearchSummaryRow(
-    ThemeData theme,
-    IconData icon,
-    Color color,
-    String label,
-    String value,
-  ) {
-    return Row(
-      children: [
-        Icon(icon, color: color, size: 18),
-        const SizedBox(width: 12),
-        Text(
-          '$label:',
-          style: TextStyle(
-              fontSize: 13, color: AppColors.textSecondaryLight),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            value,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: theme.colorScheme.onSurface,
-            ),
-            textAlign: TextAlign.end,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSearchResultCard(
-    ThemeData theme,
-    RentalCar car,
-    int rentalDays,
-    double totalPrice,
-  ) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20)),
-      elevation: 2,
-      shadowColor: Colors.black.withValues(alpha: 0.05),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () {
-          Navigator.pop(context);
-          _navigateToCarDetail(car);
-        },
-        child: Column(
-          children: [
-            // Car image and info
-            Row(
-              children: [
-                // Car Image
-                ClipRRect(
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(20),
-                    bottomLeft: Radius.circular(20),
-                  ),
-                  child: car.thumbnailUrl.isNotEmpty
-                      ? Image.network(
-                          car.thumbnailUrl,
-                          width: 130,
-                          height: 120,
-                          fit: BoxFit.cover,
-                          errorBuilder:
-                              (context, error, stackTrace) {
-                            return Container(
-                              width: 130,
-                              height: 120,
-                              color: AppColors.surfaceLight,
-                              child: const Icon(
-                                Icons.directions_car,
-                                color: AppColors
-                                    .textSecondaryLight,
-                                size: 40,
-                              ),
-                            );
-                          },
-                        )
-                      : Container(
-                          width: 130,
-                          height: 120,
-                          color: AppColors.surfaceLight,
-                          child: const Icon(
-                            Icons.directions_car,
-                            color:
-                                AppColors.textSecondaryLight,
-                            size: 40,
-                          ),
-                        ),
-                ),
-
-                // Car details
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
-                      children: [
-                        // Company name
-                        if (car.companyName != null)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 4),
-                            child: Row(
-                              children: [
-                                Icon(Icons.business, size: 12,
-                                    color: theme.colorScheme.primary),
-                                const SizedBox(width: 4),
-                                Text(
-                                  car.companyName!,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: theme.colorScheme.primary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                car.fullName,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: theme
-                                      .colorScheme.onSurface,
-                                ),
-                                maxLines: 1,
-                                overflow:
-                                    TextOverflow.ellipsis,
-                              ),
-                            ),
-                            if (car.isPremium)
-                              Container(
-                                padding:
-                                    const EdgeInsets
-                                        .symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  gradient: AppColors
-                                      .primaryGradient,
-                                  borderRadius:
-                                      BorderRadius.circular(
-                                          6),
-                                ),
-                                child: const Text(
-                                  'PRO',
-                                  style: TextStyle(
-                                    fontSize: 9,
-                                    fontWeight:
-                                        FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            const Icon(
-                              Icons.star,
-                              color: Colors.amber,
-                              size: 14,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${car.rating}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: theme
-                                    .colorScheme.onSurface,
-                              ),
-                            ),
-                            Text(
-                              ' (${car.reviewCount})',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: AppColors
-                                    .textSecondaryLight,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          children: [
-                            _buildCarChip(theme, Icons.speed,
-                                car.transmissionName),
-                            _buildCarChip(
-                                theme,
-                                Icons.local_gas_station,
-                                car.fuelTypeName),
-                            _buildCarChip(theme,
-                                Icons.person, '${car.seats}'),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            // Price section
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceLight,
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(20),
-                  bottomRight: Radius.circular(20),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment:
-                    MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '\u20BA${car.discountedDailyPrice.toInt()}/gun',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: theme
-                              .colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      Row(
-                        children: [
-                          Text(
-                            '\u20BA${totalPrice.toInt()}',
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color:
-                                  theme.colorScheme.primary,
-                            ),
-                          ),
-                          Text(
-                            ' / $rentalDays gun',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: AppColors
-                                  .textSecondaryLight,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      gradient: AppColors.primaryGradient,
-                      borderRadius:
-                          BorderRadius.circular(12),
-                    ),
-                    child: const Row(
-                      children: [
-                        Text(
-                          'Sec',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        SizedBox(width: 6),
-                        Icon(
-                          Icons.arrow_forward,
-                          color: Colors.white,
-                          size: 18,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCarChip(ThemeData theme, IconData icon, String text) {
-    return Container(
-      padding:
-          const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon,
-              size: 12, color: theme.colorScheme.onSurfaceVariant),
-          const SizedBox(width: 4),
-          Text(
-            text,
-            style: TextStyle(
-                fontSize: 11,
-                color: theme.colorScheme.onSurfaceVariant),
-          ),
-        ],
-      ),
+      rentalDays: rentalDays,
+      availableCars: availableCars,
+      isPickupCustomAddress: _isPickupCustomAddress,
+      isDropoffCustomAddress: _isDropoffCustomAddress,
+      pickupCustomAddress: _pickupCustomAddress,
+      dropoffCustomAddress: _dropoffCustomAddress,
+      selectedPickupLocation: _selectedPickupLocation,
+      selectedDropoffLocation: _selectedDropoffLocation,
+      pickupDate: _pickupDate,
+      dropoffDate: _dropoffDate,
+      onCarSelected: _navigateToCarDetail,
     );
   }
 

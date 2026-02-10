@@ -1,7 +1,11 @@
+import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/providers/address_provider.dart';
+import '../../core/providers/cart_provider.dart';
+import '../../core/providers/notification_provider.dart';
 import '../../core/providers/restaurant_provider.dart';
 import '../../core/services/restaurant_service.dart';
 import '../../core/theme/app_responsive.dart';
@@ -49,10 +53,6 @@ class SearchableRestaurant {
   });
 }
 
-// Arama sonuçları - Supabase'den yüklenir
-final List<SearchableFood> _allFoods = [];
-final List<SearchableRestaurant> _allRestaurants = [];
-
 // Food theme colors
 class FoodColors {
   static const Color primary = Color(0xFFEC6D13);
@@ -83,6 +83,8 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
   String _searchQuery = '';
   List<SearchableFood> _foodResults = [];
   List<SearchableRestaurant> _restaurantResults = [];
+  Timer? _searchDebounceTimer;
+  bool _isSearching = false;
   String? _selectedCategory; // null = Tümü
 
   // Filter states
@@ -98,32 +100,8 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
 
   // Notification dropdown state
   bool _showNotificationDropdown = false;
-  final List<Map<String, dynamic>> _notifications = [
-    {
-      'title': 'Siparişiniz yola çıktı!',
-      'message': 'Burger King siparişiniz kurye tarafından teslim alındı.',
-      'time': '2 dk önce',
-      'isRead': false,
-      'icon': Icons.delivery_dining,
-    },
-    {
-      'title': '%30 İndirim Fırsatı!',
-      'message': 'Pizza House\'da bugüne özel %30 indirim.',
-      'time': '1 saat önce',
-      'isRead': false,
-      'icon': Icons.local_offer,
-    },
-    {
-      'title': 'Siparişiniz teslim edildi',
-      'message': 'Sushi Co. siparişiniz başarıyla teslim edildi.',
-      'time': '3 saat önce',
-      'isRead': true,
-      'icon': Icons.check_circle,
-    },
-  ];
 
-  // Cart state
-  final int _cartItemCount = 3;
+  // Cart state removed - using cartItemCountProvider instead
 
   @override
   void initState() {
@@ -167,6 +145,7 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
     _notificationOverlayEntry = null;
     _addressOverlayEntry?.remove();
     _addressOverlayEntry = null;
+    _searchDebounceTimer?.cancel();
     _searchController.removeListener(_onSearchChanged);
     _searchFocusNode.removeListener(_onFocusChanged);
     _searchController.dispose();
@@ -454,10 +433,14 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
     _removeNotificationOverlay();
     _removeAddressOverlay();
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final dropdownWidth = (screenWidth - 32).clamp(0.0, 380.0);
+    // Position: align right edge of dropdown with the bell icon
+    final offsetX = -(dropdownWidth - 40);
+
     _notificationOverlayEntry = OverlayEntry(
       builder: (context) => Stack(
         children: [
-          // Tap outside to close
           Positioned.fill(
             child: GestureDetector(
               onTap: _removeNotificationOverlay,
@@ -465,13 +448,12 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
               child: Container(color: Colors.transparent),
             ),
           ),
-          // Dropdown
           Positioned(
-            width: MediaQuery.of(context).size.width - 32,
+            width: dropdownWidth,
             child: CompositedTransformFollower(
               link: _notificationLayerLink,
               showWhenUnlinked: false,
-              offset: const Offset(-200, 45),
+              offset: Offset(offsetX, 45),
               child: Material(
                 color: Colors.transparent,
                 child: _buildNotificationOverlayContent(isDark),
@@ -491,9 +473,37 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
     _showNotificationDropdown = false;
   }
 
+  IconData _getNotificationIcon(String iconName) {
+    switch (iconName) {
+      case 'restaurant': return Icons.restaurant;
+      case 'shopping_bag': return Icons.shopping_bag;
+      case 'local_taxi': return Icons.local_taxi;
+      case 'directions_car': return Icons.directions_car;
+      case 'work': return Icons.work;
+      case 'home': return Icons.home;
+      case 'celebration': return Icons.celebration;
+      case 'delivery_dining': return Icons.delivery_dining;
+      case 'star': return Icons.star;
+      default: return Icons.notifications;
+    }
+  }
+
+  String _getTimeAgo(DateTime dateTime) {
+    final diff = DateTime.now().difference(dateTime);
+    if (diff.inMinutes < 1) return 'Az önce';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} dk önce';
+    if (diff.inHours < 24) return '${diff.inHours} saat önce';
+    if (diff.inDays < 7) return '${diff.inDays} gün önce';
+    return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
+  }
+
   Widget _buildNotificationOverlayContent(bool isDark) {
+    final notifState = ref.read(notificationProvider);
+    final notifications = notifState.notifications.take(5).toList();
+
     return Container(
       margin: const EdgeInsets.only(top: 8),
+      constraints: const BoxConstraints(maxHeight: 420),
       decoration: BoxDecoration(
         color: isDark ? FoodColors.surfaceDark : Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -529,141 +539,144 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
                     color: isDark ? Colors.white : Colors.grey[900],
                   ),
                 ),
-                GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      for (var notification in _notifications) {
-                        notification['isRead'] = true;
-                      }
-                    });
-                    _removeNotificationOverlay();
-                    _showNotificationOverlay();
-                  },
-                  child: const Text(
-                    'Tümünü Okundu İşaretle',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: FoodColors.primary,
+                if (notifState.unreadCount > 0)
+                  GestureDetector(
+                    onTap: () {
+                      ref.read(notificationProvider.notifier).markAllAsRead();
+                      _removeNotificationOverlay();
+                      _showNotificationOverlay();
+                    },
+                    child: const Text(
+                      'Tümünü Okundu İşaretle',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: FoodColors.primary,
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
           ),
-          // Notifications list
-          ..._notifications.asMap().entries.map((entry) {
-            final index = entry.key;
-            final notification = entry.value;
-            final isRead = notification['isRead'] as bool;
+          // Notifications list or empty state
+          if (notifications.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
+              child: Column(
+                children: [
+                  Icon(Icons.notifications_none_rounded, size: 48, color: Colors.grey[300]),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Henüz bildiriminiz yok',
+                    style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                  ),
+                ],
+              ),
+            )
+          else
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                padding: EdgeInsets.zero,
+                itemCount: notifications.length,
+                itemBuilder: (context, index) {
+                  final notification = notifications[index];
+                  final notifColor = Color(notification.colorValue);
 
-            return InkWell(
-              onTap: () {
-                setState(() {
-                  _notifications[index]['isRead'] = true;
-                });
-                _removeNotificationOverlay();
-              },
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: isRead
-                      ? null
-                      : FoodColors.primary.withValues(alpha: 0.05),
-                  border: index < _notifications.length - 1
-                      ? Border(
-                          bottom: BorderSide(
-                            color: isDark
-                                ? Colors.grey[800]!
-                                : Colors.grey[100]!,
-                          ),
-                        )
-                      : null,
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 44,
-                      height: 44,
+                  return InkWell(
+                    onTap: () {
+                      if (!notification.isRead) {
+                        ref.read(notificationProvider.notifier).markAsRead(notification.id);
+                      }
+                      _removeNotificationOverlay();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: FoodColors.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
+                        color: notification.isRead
+                            ? null
+                            : FoodColors.primary.withValues(alpha: 0.05),
+                        border: index < notifications.length - 1
+                            ? Border(
+                                bottom: BorderSide(
+                                  color: isDark ? Colors.grey[800]! : Colors.grey[100]!,
+                                ),
+                              )
+                            : null,
                       ),
-                      child: Icon(
-                        notification['icon'] as IconData,
-                        color: FoodColors.primary,
-                        size: 22,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
+                      child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  notification['title'] as String,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: isRead
-                                        ? FontWeight.w500
-                                        : FontWeight.bold,
-                                    color: isDark
-                                        ? Colors.white
-                                        : Colors.grey[900],
-                                  ),
-                                ),
-                              ),
-                              if (!isRead)
-                                Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: const BoxDecoration(
-                                    color: FoodColors.primary,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            notification['message'] as String,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey[500],
+                          Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: notifColor.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
+                            child: Icon(
+                              _getNotificationIcon(notification.iconName),
+                              color: notifColor,
+                              size: 22,
+                            ),
                           ),
-                          const SizedBox(height: 6),
-                          Text(
-                            notification['time'] as String,
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey[400],
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        notification.title,
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: notification.isRead
+                                              ? FontWeight.w500
+                                              : FontWeight.bold,
+                                          color: isDark ? Colors.white : Colors.grey[900],
+                                        ),
+                                      ),
+                                    ),
+                                    if (!notification.isRead)
+                                      Container(
+                                        width: 8,
+                                        height: 8,
+                                        decoration: const BoxDecoration(
+                                          color: FoodColors.primary,
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  notification.body,
+                                  style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  _getTimeAgo(notification.createdAt),
+                                  style: TextStyle(fontSize: 11, color: Colors.grey[400]),
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ],
-                ),
+                  );
+                },
               ),
-            );
-          }),
+            ),
           // See all button
           InkWell(
             onTap: () {
               _removeNotificationOverlay();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Tüm bildirimler sayfası açılacak'),
-                  backgroundColor: FoodColors.primary,
-                ),
-              );
+              context.push('/notifications');
             },
             borderRadius: const BorderRadius.vertical(
               bottom: Radius.circular(16),
@@ -920,42 +933,81 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
   }
 
   void _onSearchChanged() {
-    final query = _searchController.text.trim().toLowerCase();
+    final query = _searchController.text.trim();
     setState(() {
-      _searchQuery = query;
+      _searchQuery = query.toLowerCase();
     });
 
     if (query.isEmpty) {
+      _searchDebounceTimer?.cancel();
       _removeOverlay();
       setState(() {
         _foodResults = [];
         _restaurantResults = [];
+        _isSearching = false;
       });
       return;
     }
 
-    // Search foods
-    final foods = _allFoods.where((food) {
-      return food.name.toLowerCase().contains(query) ||
-          food.description.toLowerCase().contains(query) ||
-          food.restaurantName.toLowerCase().contains(query);
-    }).toList();
-
-    // Search restaurants
-    final restaurants = _allRestaurants.where((restaurant) {
-      return restaurant.name.toLowerCase().contains(query) ||
-          restaurant.categories.toLowerCase().contains(query);
-    }).toList();
-
-    setState(() {
-      _foodResults = foods;
-      _restaurantResults = restaurants;
+    // Debounce: wait 300ms before searching
+    _searchDebounceTimer?.cancel();
+    setState(() => _isSearching = true);
+    _searchDebounceTimer = Timer(const Duration(milliseconds: 300), () {
+      _performSearch(query);
     });
+  }
 
-    if (foods.isNotEmpty || restaurants.isNotEmpty) {
-      _showOverlay();
-    } else {
-      _removeOverlay();
+  Future<void> _performSearch(String query) async {
+    if (!mounted) return;
+
+    try {
+      // Search both restaurants and menu items in parallel
+      final results = await Future.wait([
+        RestaurantService.searchRestaurants(query),
+        RestaurantService.searchMenuItems(query),
+      ]);
+
+      if (!mounted || _searchController.text.trim() != query) return;
+
+      final restaurants = (results[0] as List<Restaurant>)
+          .map((r) => SearchableRestaurant(
+                id: r.id,
+                name: r.name,
+                categories: r.categoryTags.join(', '),
+                rating: r.rating,
+                deliveryTime: r.deliveryTime,
+                imageUrl: r.coverUrl ?? r.logoUrl ?? '',
+              ))
+          .toList();
+
+      final foods = (results[1] as List<Map<String, dynamic>>)
+          .map((f) => SearchableFood(
+                id: f['id'] as String,
+                name: f['name'] as String,
+                description: f['description'] as String,
+                price: f['price'] as double,
+                imageUrl: f['imageUrl'] as String,
+                rating: f['rating'] as double,
+                restaurantId: f['merchantId'] as String,
+                restaurantName: f['restaurantName'] as String,
+              ))
+          .toList();
+
+      setState(() {
+        _foodResults = foods;
+        _restaurantResults = restaurants;
+        _isSearching = false;
+      });
+
+      if (foods.isNotEmpty || restaurants.isNotEmpty) {
+        _showOverlay();
+      } else {
+        _removeOverlay();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSearching = false);
+      }
     }
   }
 
@@ -1161,10 +1213,14 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  restaurant.imageUrl,
+                child: CachedNetworkImage(
+                  imageUrl: restaurant.imageUrl,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
+                  placeholder: (_, __) => Container(
+                    color: Colors.grey[200],
+                    child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                  ),
+                  errorWidget: (_, __, ___) => Container(
                     color: FoodColors.primary.withValues(alpha: 0.1),
                     child: const Icon(
                       Icons.restaurant,
@@ -1282,10 +1338,14 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  food.imageUrl,
+                child: CachedNetworkImage(
+                  imageUrl: food.imageUrl,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
+                  placeholder: (_, __) => Container(
+                    color: Colors.grey[200],
+                    child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                  ),
+                  errorWidget: (_, __, ___) => Container(
                     color: FoodColors.primary.withValues(alpha: 0.1),
                     child: const Icon(
                       Icons.fastfood,
@@ -1586,9 +1646,8 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
 
   Widget _buildHeader(bool isDark) {
     final selectedAddress = ref.watch(selectedAddressProvider);
-    final unreadCount = _notifications
-        .where((n) => n['isRead'] == false)
-        .length;
+    final unreadCount = ref.watch(unreadNotificationCountProvider);
+    final cartItemCount = ref.watch(cartItemCountProvider);
 
     return Container(
       padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
@@ -1793,7 +1852,7 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
                           color: FoodColors.primary,
                           size: 22,
                         ),
-                        if (_cartItemCount > 0)
+                        if (cartItemCount > 0)
                           Positioned(
                             right: -2,
                             top: -2,
@@ -1804,7 +1863,7 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
                                 shape: BoxShape.circle,
                               ),
                               child: Text(
-                                _cartItemCount.toString(),
+                                cartItemCount.toString(),
                                 style: const TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
@@ -2129,19 +2188,21 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(14),
-                child: Image.network(
-                  imageUrl,
+                child: CachedNetworkImage(
+                  imageUrl: imageUrl,
                   fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      color: isDark ? FoodColors.surfaceDark : Colors.grey[100],
-                      child: Icon(
-                        Icons.restaurant,
-                        color: isDark ? Colors.grey[400] : Colors.grey[500],
-                        size: 26,
-                      ),
-                    );
-                  },
+                  placeholder: (_, __) => Container(
+                    color: Colors.grey[200],
+                    child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                  ),
+                  errorWidget: (_, __, ___) => Container(
+                    color: isDark ? FoodColors.surfaceDark : Colors.grey[100],
+                    child: Icon(
+                      Icons.restaurant,
+                      color: isDark ? Colors.grey[400] : Colors.grey[500],
+                      size: 26,
+                    ),
+                  ),
                 ),
               ),
             ),

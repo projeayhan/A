@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../core/theme/app_theme.dart';
@@ -237,12 +238,15 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                 ClipRRect(
                   borderRadius: BorderRadius.circular(10),
                   child: car?['image_url'] != null
-                      ? Image.network(
-                          car!['image_url'],
+                      ? CachedNetworkImage(
+                          imageUrl: car!['image_url'],
                           width: 100,
                           height: 70,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
+                          memCacheWidth: 200,
+                          memCacheHeight: 140,
+                          placeholder: (_, __) => _buildCarPlaceholder(theme),
+                          errorWidget: (_, __, ___) =>
                               _buildCarPlaceholder(theme),
                         )
                       : _buildCarPlaceholder(theme),

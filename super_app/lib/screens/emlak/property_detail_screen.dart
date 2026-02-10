@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -239,25 +240,18 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen>
             itemBuilder: (context, index) {
               return GestureDetector(
                 onTap: () => _showFullScreenGallery(context, property.images, index),
-                child: Image.network(
-                  property.images[index],
+                child: CachedNetworkImage(
+                  imageUrl: property.images[index],
                   fit: BoxFit.cover,
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return Container(
-                      color: EmlakColors.primary.withValues(alpha: 0.1),
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          value: loadingProgress.expectedTotalBytes != null
-                              ? loadingProgress.cumulativeBytesLoaded /
-                                  loadingProgress.expectedTotalBytes!
-                              : null,
-                          color: EmlakColors.primary,
-                        ),
+                  placeholder: (_, __) => Container(
+                    color: EmlakColors.primary.withValues(alpha: 0.1),
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        color: EmlakColors.primary,
                       ),
-                    );
-                  },
-                  errorBuilder: (_, __, ___) => Container(
+                    ),
+                  ),
+                  errorWidget: (_, __, ___) => Container(
                     color: EmlakColors.primary.withValues(alpha: 0.3),
                     child: const Icon(Icons.image, size: 80, color: Colors.white54),
                   ),
@@ -1138,10 +1132,14 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen>
                   ),
                   child: agent.imageUrl != null
                       ? ClipOval(
-                          child: Image.network(
-                            agent.imageUrl!,
+                          child: CachedNetworkImage(
+                            imageUrl: agent.imageUrl!,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const Icon(
+                            placeholder: (_, __) => Container(
+                              color: Colors.grey[200],
+                              child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                            ),
+                            errorWidget: (_, __, ___) => const Icon(
                               Icons.person,
                               color: Colors.white,
                               size: 30,
@@ -1318,12 +1316,17 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen>
             // Image
             ClipRRect(
               borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-              child: Image.network(
-                property.images.first,
+              child: CachedNetworkImage(
+                imageUrl: property.images.first,
                 height: 120,
                 width: double.infinity,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
+                placeholder: (_, __) => Container(
+                  height: 120,
+                  color: Colors.grey[200],
+                  child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                ),
+                errorWidget: (_, __, ___) => Container(
                   height: 120,
                   color: EmlakColors.primary.withValues(alpha: 0.2),
                   child: const Icon(Icons.image, color: Colors.white54),
@@ -1694,12 +1697,18 @@ class _ScheduleVisitSheetState extends State<_ScheduleVisitSheet> {
                       children: [
                         ClipRRect(
                           borderRadius: BorderRadius.circular(8),
-                          child: Image.network(
-                            widget.property.images.first,
+                          child: CachedNetworkImage(
+                            imageUrl: widget.property.images.first,
                             width: 60,
                             height: 60,
                             fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) => Container(
+                            placeholder: (_, __) => Container(
+                              width: 60,
+                              height: 60,
+                              color: Colors.grey[200],
+                              child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                            ),
+                            errorWidget: (_, __, ___) => Container(
                               width: 60,
                               height: 60,
                               color: EmlakColors.primary.withValues(alpha: 0.2),
@@ -1979,22 +1988,15 @@ class _FullScreenGalleryState extends State<_FullScreenGallery> {
                 minScale: 0.5,
                 maxScale: 4.0,
                 child: Center(
-                  child: Image.network(
-                    widget.images[index],
+                  child: CachedNetworkImage(
+                    imageUrl: widget.images[index],
                     fit: BoxFit.contain,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Center(
-                        child: CircularProgressIndicator(
-                          value: loadingProgress.expectedTotalBytes != null
-                              ? loadingProgress.cumulativeBytesLoaded /
-                                  loadingProgress.expectedTotalBytes!
-                              : null,
-                          color: Colors.white,
-                        ),
-                      );
-                    },
-                    errorBuilder: (_, __, ___) => const Icon(
+                    placeholder: (_, __) => Center(
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                      ),
+                    ),
+                    errorWidget: (_, __, ___) => const Icon(
                       Icons.broken_image,
                       size: 80,
                       color: Colors.white54,
@@ -2087,10 +2089,14 @@ class _FullScreenGalleryState extends State<_FullScreenGallery> {
                           borderRadius: BorderRadius.circular(6),
                           child: Opacity(
                             opacity: isSelected ? 1.0 : 0.5,
-                            child: Image.network(
-                              widget.images[index],
+                            child: CachedNetworkImage(
+                              imageUrl: widget.images[index],
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
+                              placeholder: (_, __) => Container(
+                                color: Colors.grey[800],
+                                child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                              ),
+                              errorWidget: (_, __, ___) => Container(
                                 color: Colors.grey[800],
                                 child: const Icon(
                                   Icons.image,

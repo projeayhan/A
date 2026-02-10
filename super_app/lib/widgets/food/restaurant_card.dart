@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -75,19 +76,21 @@ class RestaurantCard extends ConsumerWidget {
                 SizedBox(
                   height: context.cardImageHeight(140),
                   width: double.infinity,
-                  child: Image.network(
-                    ImageUtils.getProductDetail(imageUrl),
+                  child: CachedNetworkImage(
+                    imageUrl: ImageUtils.getProductDetail(imageUrl),
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        color: isDark ? Colors.grey[800] : Colors.grey[200],
-                        child: Icon(
-                          Icons.restaurant,
-                          size: 48,
-                          color: isDark ? Colors.grey[600] : Colors.grey[400],
-                        ),
-                      );
-                    },
+                    placeholder: (_, __) => Container(
+                      color: Colors.grey[200],
+                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    ),
+                    errorWidget: (_, __, ___) => Container(
+                      color: isDark ? Colors.grey[800] : Colors.grey[200],
+                      child: Icon(
+                        Icons.restaurant,
+                        size: 48,
+                        color: isDark ? Colors.grey[600] : Colors.grey[400],
+                      ),
+                    ),
                   ),
                 ),
 

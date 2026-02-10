@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../services/car_sales/car_chat_service.dart';
 
 /// Araç Satış Chat Ekranı
@@ -138,12 +139,18 @@ class _CarChatScreenState extends State<CarChatScreen> {
             if (listing != null && listing['images'] != null && (listing['images'] as List).isNotEmpty)
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  (listing['images'] as List).first,
+                child: CachedNetworkImage(
+                  imageUrl: (listing['images'] as List).first,
                   width: 40,
                   height: 40,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
+                  placeholder: (_, __) => Container(
+                    width: 40,
+                    height: 40,
+                    color: Colors.grey[200],
+                    child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                  ),
+                  errorWidget: (_, __, ___) => Container(
                     width: 40,
                     height: 40,
                     color: Colors.grey[300],

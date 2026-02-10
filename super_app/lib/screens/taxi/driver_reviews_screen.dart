@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../core/utils/name_masking.dart';
 import '../../models/taxi/driver_review_models.dart';
 import '../../core/services/taxi_service.dart';
 import '../../widgets/taxi/driver_rating_stats_widget.dart';
@@ -64,7 +65,7 @@ class _DriverReviewsScreenState extends ConsumerState<DriverReviewsScreen> {
     if (!mounted) return;
 
     final rating = data['rating'] as int?;
-    final customerName = data['customer_name'] as String? ?? 'Müşteri';
+    final customerName = maskUserName(data['customer_name'] as String?);
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -442,7 +443,7 @@ class _DriverReviewsScreenState extends ConsumerState<DriverReviewsScreen> {
                   radius: 20,
                   backgroundColor: colorScheme.primaryContainer,
                   child: Text(
-                    (review.customerName ?? 'M')[0].toUpperCase(),
+                    maskUserName(review.customerName)[0].toUpperCase(),
                     style: theme.textTheme.titleMedium?.copyWith(
                       color: colorScheme.onPrimaryContainer,
                       fontWeight: FontWeight.bold,
@@ -456,7 +457,7 @@ class _DriverReviewsScreenState extends ConsumerState<DriverReviewsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        review.customerName ?? 'Müşteri',
+                        maskUserName(review.customerName),
                         style: theme.textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),

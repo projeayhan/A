@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -136,10 +137,16 @@ class _RentalHeroBannerState extends State<RentalHeroBanner> {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          Image.network(
-            'https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=800',
+          CachedNetworkImage(
+            imageUrl: 'https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=800',
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => Container(
+            memCacheWidth: 400,
+            memCacheHeight: 200,
+            placeholder: (_, __) => Container(
+              color: Colors.grey[800],
+              child: const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white24)),
+            ),
+            errorWidget: (_, __, ___) => Container(
               color: Colors.grey[800],
               child: const Icon(Icons.directions_car, size: 80, color: Colors.white24),
             ),
@@ -161,12 +168,16 @@ class _RentalHeroBannerState extends State<RentalHeroBanner> {
       children: [
         // Background Image
         if (imageUrl != null)
-          Image.network(
-            imageUrl,
+          CachedNetworkImage(
+            imageUrl: imageUrl,
             fit: BoxFit.cover,
-            cacheWidth: 800,
-            cacheHeight: 400,
-            errorBuilder: (_, __, ___) => Container(
+            memCacheWidth: 400,
+            memCacheHeight: 200,
+            placeholder: (_, __) => Container(
+              color: Colors.grey[800],
+              child: const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white24)),
+            ),
+            errorWidget: (_, __, ___) => Container(
               color: Colors.grey[800],
               child: const Icon(Icons.directions_car, size: 80, color: Colors.white24),
             ),
@@ -234,10 +245,10 @@ class _RentalHeroBannerState extends State<RentalHeroBanner> {
           Text(
             title,
             style: const TextStyle(
-              fontSize: 28,
+              fontSize: 22,
               fontWeight: FontWeight.bold,
               color: Colors.white,
-              letterSpacing: -0.5,
+              letterSpacing: -0.3,
             ),
           ),
           if (description.isNotEmpty) ...[

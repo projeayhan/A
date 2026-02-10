@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'quantity_stepper.dart';
 
@@ -92,16 +93,18 @@ class CartItemTile extends StatelessWidget {
         height: imageSize,
         color: isDark ? Colors.grey[700] : Colors.grey[100],
         child: item.imageUrl.isNotEmpty
-            ? Image.network(
-                item.imageUrl,
+            ? CachedNetworkImage(
+                imageUrl: item.imageUrl,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Icon(
-                    item.fallbackIcon,
-                    size: 24,
-                    color: isDark ? Colors.grey[600] : Colors.grey[400],
-                  );
-                },
+                placeholder: (_, __) => Container(
+                  color: Colors.grey[200],
+                  child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                ),
+                errorWidget: (_, __, ___) => Icon(
+                  item.fallbackIcon,
+                  size: 24,
+                  color: isDark ? Colors.grey[600] : Colors.grey[400],
+                ),
               )
             : Icon(
                 item.fallbackIcon,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -1821,10 +1822,14 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
                     ClipRRect(
                       borderRadius: BorderRadius.circular(12),
                       child: isExisting
-                          ? Image.network(
-                              _existingImageUrls[index],
+                          ? CachedNetworkImage(
+                              imageUrl: _existingImageUrls[index],
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
+                              placeholder: (_, __) => Container(
+                                color: Colors.grey[200],
+                                child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                              ),
+                              errorWidget: (_, __, ___) => Container(
                                 color: Colors.grey[300],
                                 child: const Icon(Icons.broken_image),
                               ),

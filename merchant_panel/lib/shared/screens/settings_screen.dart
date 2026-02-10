@@ -276,7 +276,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           .uploadBinary(
             fileName,
             bytes,
-            fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+            fileOptions: const FileOptions(cacheControl: '31536000', upsert: true),
           );
 
       final imageUrl = supabase.storage.from('images').getPublicUrl(fileName);
@@ -1994,7 +1994,7 @@ class _VerificationSettingsState extends ConsumerState<_VerificationSettings> {
         await supabase.storage.from('images').uploadBinary(
           path,
           bytes,
-          fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+          fileOptions: const FileOptions(cacheControl: '31536000', upsert: true),
         );
 
         final url = supabase.storage.from('images').getPublicUrl(path);

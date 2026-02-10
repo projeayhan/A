@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/car_sales/car_sales_models.dart';
 import '../../services/car_sales_service.dart';
 import '../../widgets/moderation_feedback_widget.dart';
@@ -18,10 +19,16 @@ class _MyCarListingsScreenState extends State<MyCarListingsScreen>
   late TabController _tabController;
   late AnimationController _animationController;
 
-  late List<CarListing> _activeListings;
-  late List<CarListing> _pendingListings;
-  late List<CarListing> _rejectedListings;
-  late List<CarListing> _soldListings;
+  List<CarListing> _activeListings = [];
+  List<CarListing> _pendingListings = [];
+  List<CarListing> _rejectedListings = [];
+  List<CarListing> _soldListings = [];
+  bool _isLoading = true;
+
+  // İstatistikler
+  int _totalViews = 0;
+  int _totalFavorites = 0;
+  int _totalContacts = 0;
 
   // Moderasyon bilgileri cache'i
   final Map<String, ModerationInfo> _moderationCache = {};
@@ -29,10 +36,6 @@ class _MyCarListingsScreenState extends State<MyCarListingsScreen>
   @override
   void initState() {
     super.initState();
-    _activeListings = List.from(CarSalesDemoData.listings.take(4));
-    _pendingListings = List.from(CarSalesDemoData.listings.skip(4).take(2));
-    _rejectedListings = []; // Reddedilen ilanlar
-    _soldListings = [];
 
     _tabController = TabController(length: 4, vsync: this);
     _animationController = AnimationController(
@@ -40,7 +43,47 @@ class _MyCarListingsScreenState extends State<MyCarListingsScreen>
       vsync: this,
     )..forward();
 
-    _loadModerationInfo();
+    _loadMyListings();
+  }
+
+  Future<void> _loadMyListings() async {
+    try {
+      final service = CarSalesService.instance;
+      final allListings = await service.getMyListings();
+
+      if (mounted) {
+        setState(() {
+          _activeListings = allListings
+              .where((l) => l.status == 'active')
+              .map((l) => l.toCarListing())
+              .toList();
+          _pendingListings = allListings
+              .where((l) => l.status == 'pending')
+              .map((l) => l.toCarListing())
+              .toList();
+          _rejectedListings = allListings
+              .where((l) => l.status == 'rejected')
+              .map((l) => l.toCarListing())
+              .toList();
+          _soldListings = allListings
+              .where((l) => l.status == 'sold')
+              .map((l) => l.toCarListing())
+              .toList();
+
+          // İstatistikleri hesapla
+          _totalViews = allListings.fold(0, (sum, l) => sum + l.viewCount);
+          _totalFavorites = allListings.fold(0, (sum, l) => sum + l.favoriteCount);
+          _totalContacts = 0;
+          _isLoading = false;
+        });
+      }
+
+      _loadModerationInfo();
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
 
   Future<void> _loadModerationInfo() async {
@@ -522,12 +565,17 @@ class _MyCarListingsScreenState extends State<MyCarListingsScreen>
                     borderRadius: const BorderRadius.vertical(
                       top: Radius.circular(20),
                     ),
-                    child: Image.network(
-                      car.images.first,
+                    child: CachedNetworkImage(
+                      imageUrl: car.images.first,
                       height: 160,
                       width: double.infinity,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
+                      placeholder: (_, __) => Container(
+                        height: 160,
+                        color: Colors.grey[200],
+                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                      ),
+                      errorWidget: (_, __, ___) => Container(
                         height: 160,
                         color: CarSalesColors.surface(isDark),
                         child: Icon(

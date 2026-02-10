@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -387,27 +388,32 @@ class _GenericBannerCarouselState extends ConsumerState<GenericBannerCarousel> {
             // Background Image
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
-              child: Image.network(
-                _getOptimizedImageUrl(imageUrl),
+              child: CachedNetworkImage(
+                imageUrl: _getOptimizedImageUrl(imageUrl),
                 width: double.infinity,
                 height: double.infinity,
                 fit: BoxFit.cover,
-                cacheWidth: _bannerWidth,
-                cacheHeight: _bannerHeight,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          primaryColor.withValues(alpha: 0.8),
-                          primaryColor.withValues(alpha: 0.5),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
+                memCacheWidth: _bannerWidth,
+                memCacheHeight: _bannerHeight,
+                placeholder: (_, __) => Container(
+                  decoration: BoxDecoration(
+                    color: primaryColor.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                ),
+                errorWidget: (_, __, ___) => Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        primaryColor.withValues(alpha: 0.8),
+                        primaryColor.withValues(alpha: 0.5),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                  );
-                },
+                  ),
+                ),
               ),
             ),
 

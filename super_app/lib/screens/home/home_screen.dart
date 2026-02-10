@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -9,6 +10,7 @@ import '../../core/services/restaurant_service.dart';
 import '../../widgets/home/service_card.dart';
 import '../../widgets/home/promo_banner.dart';
 import '../../widgets/delivery_header.dart';
+import '../../core/providers/user_provider.dart';
 
 // Enhanced searchable data model with source info
 class SearchableItem {
@@ -453,21 +455,24 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             context.push('/food/restaurant/${item.id}');
             break;
           case 'menu_item':
-            if (item.sourceId != null) {
-              context.push('/food/restaurant/${item.sourceId}');
-            } else {
-              context.push('/food');
-            }
+            context.push(
+              '/food/item/${item.id}',
+              extra: {
+                'name': item.name,
+                'description': item.description,
+                'price': item.price ?? 0.0,
+                'imageUrl': item.imageUrl,
+                'rating': item.rating ?? 4.5,
+                'restaurantName': item.sourceName ?? '',
+                'deliveryTime': '30-40 dk',
+              },
+            );
             break;
           case 'store':
-            context.push('/market/store/${item.id}');
+            context.push('/store/detail/${item.id}');
             break;
           case 'store_product':
-            if (item.sourceId != null) {
-              context.push('/market/store/${item.sourceId}');
-            } else {
-              context.push('/market');
-            }
+            context.push('/store/product/${item.id}');
             break;
         }
       },
@@ -492,10 +497,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: item.imageUrl.isNotEmpty
-                    ? Image.network(
-                        item.imageUrl,
+                    ? CachedNetworkImage(
+                        imageUrl: item.imageUrl,
                         fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => Container(
+                        placeholder: (_, __) => Container(
+                          color: Colors.grey[200],
+                          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                        ),
+                        errorWidget: (_, __, ___) => Container(
                           color: typeColor.withValues(alpha: 0.1),
                           child: Icon(typeIcon, color: typeColor, size: 28),
                         ),
@@ -640,6 +649,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Widget _buildWelcomeHeader(bool isDark) {
+    final userProfile = ref.watch(userProfileProvider);
+    final userName = [userProfile?.firstName, userProfile?.lastName]
+        .where((s) => s != null && s.isNotEmpty)
+        .join(' ');
     return Container(
       padding: EdgeInsets.fromLTRB(context.pagePaddingH, context.pagePaddingV, context.pagePaddingH, 0),
       child: Row(
@@ -685,7 +698,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Ahmet Yılmaz',
+                  userName.isNotEmpty ? userName : 'Kullanıcı',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,

@@ -1195,7 +1195,7 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
       await supabase.storage.from('images').uploadBinary(
         fileName,
         _selectedImageBytes!,
-        fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+        fileOptions: const FileOptions(cacheControl: '31536000', upsert: true),
       );
 
       final publicUrl = supabase.storage.from('images').getPublicUrl(fileName);

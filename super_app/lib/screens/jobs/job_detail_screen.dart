@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -227,10 +228,14 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(16),
                               child: job.companyLogo != null
-                                  ? Image.network(
-                                      job.companyLogo!,
+                                  ? CachedNetworkImage(
+                                      imageUrl: job.companyLogo!,
                                       fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) =>
+                                      placeholder: (_, __) => Container(
+                                        color: Colors.grey[200],
+                                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                      ),
+                                      errorWidget: (_, __, ___) =>
                                           _buildCompanyInitial(job),
                                     )
                                   : _buildCompanyInitial(job),
@@ -707,10 +712,14 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(14),
                     child: company.logoUrl != null
-                        ? Image.network(
-                            company.logoUrl!,
+                        ? CachedNetworkImage(
+                            imageUrl: company.logoUrl!,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Center(
+                            placeholder: (_, __) => Container(
+                              color: Colors.grey[200],
+                              child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                            ),
+                            errorWidget: (_, __, ___) => Center(
                               child: Text(
                                 company.name.substring(0, 1),
                                 style: TextStyle(
@@ -1549,10 +1558,14 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                 ),
                 child: ClipOval(
                   child: job.poster.imageUrl != null
-                      ? Image.network(
-                          job.poster.imageUrl!,
+                      ? CachedNetworkImage(
+                          imageUrl: job.poster.imageUrl!,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
+                          placeholder: (_, __) => Container(
+                            color: Colors.grey[200],
+                            child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                          ),
+                          errorWidget: (_, __, ___) => Container(
                             color: JobsColors.surface(isDark),
                             child: Icon(
                               Icons.person,

@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/services/supabase_service.dart';
-import '../../core/theme/app_theme.dart';
+import '../../core/theme/app_responsive.dart';
+import 'food_home_screen.dart';
 import '../../core/utils/app_dialogs.dart';
 import '../../core/utils/profanity_filter.dart';
 
@@ -167,7 +168,7 @@ class _OrderReviewScreenState extends ConsumerState<OrderReviewScreen>
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -176,16 +177,16 @@ class _OrderReviewScreenState extends ConsumerState<OrderReviewScreen>
               height: 80,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.7)],
+                  colors: [FoodColors.primary, FoodColors.primary.withValues(alpha: 0.7)],
                 ),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.check, color: Colors.white, size: 48),
             ),
             const SizedBox(height: 24),
-            const Text(
+            Text(
               'Teşekkürler!',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: context.heading1Size + 4, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
@@ -199,7 +200,7 @@ class _OrderReviewScreenState extends ConsumerState<OrderReviewScreen>
               child: ElevatedButton(
                 onPressed: () => Navigator.pop(context),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
+                  backgroundColor: FoodColors.primary,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -230,7 +231,7 @@ class _OrderReviewScreenState extends ConsumerState<OrderReviewScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.backgroundDark : const Color(0xFFF8F9FA),
+      backgroundColor: isDark ? FoodColors.backgroundDark : const Color(0xFFF8F9FA),
       appBar: AppBar(
         title: const Text('Siparişi Değerlendir'),
         backgroundColor: Colors.transparent,
@@ -241,7 +242,7 @@ class _OrderReviewScreenState extends ConsumerState<OrderReviewScreen>
           : FadeTransition(
               opacity: _fadeController,
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
+                padding: EdgeInsets.all(context.pagePaddingH),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -321,7 +322,7 @@ class _OrderReviewScreenState extends ConsumerState<OrderReviewScreen>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceDark : Colors.white,
+        color: isDark ? FoodColors.surfaceDark : Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -336,12 +337,12 @@ class _OrderReviewScreenState extends ConsumerState<OrderReviewScreen>
             width: 60,
             height: 60,
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
+              color: FoodColors.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
               Icons.restaurant,
-              color: AppColors.primary,
+              color: FoodColors.primary,
               size: 32,
             ),
           ),
@@ -353,7 +354,7 @@ class _OrderReviewScreenState extends ConsumerState<OrderReviewScreen>
                 Text(
                   merchantName,
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: context.heading2Size,
                     fontWeight: FontWeight.bold,
                     color: isDark ? Colors.white : Colors.grey[800],
                   ),
@@ -362,7 +363,7 @@ class _OrderReviewScreenState extends ConsumerState<OrderReviewScreen>
                 Text(
                   'Sipariş #$orderNumber',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: context.bodySize,
                     color: Colors.grey[500],
                   ),
                 ),
@@ -386,7 +387,7 @@ class _OrderReviewScreenState extends ConsumerState<OrderReviewScreen>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceDark : Colors.white,
+        color: isDark ? FoodColors.surfaceDark : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: rating > 0
             ? Border.all(color: color.withValues(alpha: 0.3), width: 2)
@@ -421,7 +422,7 @@ class _OrderReviewScreenState extends ConsumerState<OrderReviewScreen>
                     Text(
                       title,
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: context.heading2Size,
                         fontWeight: FontWeight.bold,
                         color: isDark ? Colors.white : Colors.grey[800],
                       ),
@@ -429,7 +430,7 @@ class _OrderReviewScreenState extends ConsumerState<OrderReviewScreen>
                     Text(
                       subtitle,
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: context.captionSize,
                         color: Colors.grey[500],
                       ),
                     ),
@@ -482,15 +483,15 @@ class _OrderReviewScreenState extends ConsumerState<OrderReviewScreen>
             children: [
               Text(
                 'Kötü',
-                style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                style: TextStyle(fontSize: context.captionSmallSize, color: Colors.grey[500]),
               ),
               Text(
                 'Orta',
-                style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                style: TextStyle(fontSize: context.captionSmallSize, color: Colors.grey[500]),
               ),
               Text(
                 'Harika',
-                style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                style: TextStyle(fontSize: context.captionSmallSize, color: Colors.grey[500]),
               ),
             ],
           ),
@@ -506,12 +507,12 @@ class _OrderReviewScreenState extends ConsumerState<OrderReviewScreen>
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.8)],
+          colors: [FoodColors.primary, FoodColors.primary.withValues(alpha: 0.8)],
         ),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.3),
+            color: FoodColors.primary.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -524,8 +525,8 @@ class _OrderReviewScreenState extends ConsumerState<OrderReviewScreen>
           const SizedBox(width: 12),
           Text(
             average.toStringAsFixed(1),
-            style: const TextStyle(
-              fontSize: 36,
+            style: TextStyle(
+              fontSize: context.heading1Size + 4,
               fontWeight: FontWeight.bold,
               color: Colors.white,
             ),
@@ -545,7 +546,7 @@ class _OrderReviewScreenState extends ConsumerState<OrderReviewScreen>
                 'Bu restoran için verilecek',
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.8),
-                  fontSize: 12,
+                  fontSize: context.captionSize,
                 ),
               ),
             ],
@@ -562,7 +563,7 @@ class _OrderReviewScreenState extends ConsumerState<OrderReviewScreen>
         Text(
           'Yorumunuz (İsteğe Bağlı)',
           style: TextStyle(
-            fontSize: 16,
+            fontSize: context.heading2Size,
             fontWeight: FontWeight.bold,
             color: isDark ? Colors.white : Colors.grey[800],
           ),
@@ -570,7 +571,7 @@ class _OrderReviewScreenState extends ConsumerState<OrderReviewScreen>
         const SizedBox(height: 12),
         Container(
           decoration: BoxDecoration(
-            color: isDark ? AppColors.surfaceDark : Colors.white,
+            color: isDark ? FoodColors.surfaceDark : Colors.white,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
@@ -591,7 +592,7 @@ class _OrderReviewScreenState extends ConsumerState<OrderReviewScreen>
                 borderSide: BorderSide.none,
               ),
               filled: true,
-              fillColor: isDark ? AppColors.surfaceDark : Colors.white,
+              fillColor: isDark ? FoodColors.surfaceDark : Colors.white,
               contentPadding: const EdgeInsets.all(16),
             ),
           ),
@@ -609,12 +610,12 @@ class _OrderReviewScreenState extends ConsumerState<OrderReviewScreen>
       child: ElevatedButton(
         onPressed: isComplete && !_isSubmitting ? _submitReview : null,
         style: ElevatedButton.styleFrom(
-          backgroundColor: isComplete ? AppColors.primary : Colors.grey[400],
+          backgroundColor: isComplete ? FoodColors.primary : Colors.grey[400],
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
           elevation: isComplete ? 8 : 0,
-          shadowColor: AppColors.primary.withValues(alpha: 0.4),
+          shadowColor: FoodColors.primary.withValues(alpha: 0.4),
         ),
         child: _isSubmitting
             ? const SizedBox(
@@ -635,9 +636,9 @@ class _OrderReviewScreenState extends ConsumerState<OrderReviewScreen>
                   const SizedBox(width: 8),
                   Text(
                     isComplete ? 'Değerlendirmeyi Gönder' : 'Tüm Kategorileri Değerlendirin',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: Colors.white,
-                      fontSize: 16,
+                      fontSize: context.heading2Size,
                       fontWeight: FontWeight.bold,
                     ),
                   ),

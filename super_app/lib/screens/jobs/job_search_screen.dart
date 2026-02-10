@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -826,10 +827,14 @@ class _JobSearchScreenState extends ConsumerState<JobSearchScreen>
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
                 child: job.companyLogo != null
-                    ? Image.network(
-                        job.companyLogo!,
+                    ? CachedNetworkImage(
+                        imageUrl: job.companyLogo!,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Center(
+                        placeholder: (_, __) => Container(
+                          color: Colors.grey[200],
+                          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                        ),
+                        errorWidget: (_, __, ___) => Center(
                           child: Text(
                             job.companyName.substring(0, 1),
                             style: TextStyle(

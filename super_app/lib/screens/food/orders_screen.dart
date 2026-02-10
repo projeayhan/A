@@ -1,5 +1,7 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/theme/app_responsive.dart';
 import 'food_home_screen.dart';
 
 class OrdersScreen extends StatefulWidget {
@@ -115,7 +117,7 @@ class _OrdersScreenState extends State<OrdersScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? FoodColors.backgroundDark : const Color(0xFFF8F7F5),
+      backgroundColor: isDark ? FoodColors.backgroundDark : FoodColors.backgroundLight,
       appBar: AppBar(
         backgroundColor: isDark ? FoodColors.backgroundDark : Colors.white,
         elevation: 0,
@@ -129,7 +131,7 @@ class _OrdersScreenState extends State<OrdersScreen>
         title: Text(
           'Siparişlerim',
           style: TextStyle(
-            fontSize: 20,
+            fontSize: context.heading1Size,
             fontWeight: FontWeight.bold,
             color: isDark ? Colors.white : const Color(0xFF1C130D),
           ),
@@ -140,8 +142,8 @@ class _OrdersScreenState extends State<OrdersScreen>
           indicatorWeight: 3,
           labelColor: FoodColors.primary,
           unselectedLabelColor: isDark ? Colors.grey[400] : Colors.grey[600],
-          labelStyle: const TextStyle(
-            fontSize: 15,
+          labelStyle: TextStyle(
+            fontSize: context.heading2Size,
             fontWeight: FontWeight.bold,
           ),
           tabs: [
@@ -160,8 +162,8 @@ class _OrdersScreenState extends State<OrdersScreen>
                       ),
                       child: Text(
                         _activeOrders.length.toString(),
-                        style: const TextStyle(
-                          fontSize: 12,
+                        style: TextStyle(
+                          fontSize: context.captionSize,
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                         ),
@@ -253,7 +255,7 @@ class _OrdersScreenState extends State<OrdersScreen>
           Text(
             title,
             style: TextStyle(
-              fontSize: 20,
+              fontSize: context.heading1Size,
               fontWeight: FontWeight.bold,
               color: isDark ? Colors.white : const Color(0xFF1C130D),
             ),
@@ -262,7 +264,7 @@ class _OrdersScreenState extends State<OrdersScreen>
           Text(
             subtitle,
             style: TextStyle(
-              fontSize: 14,
+              fontSize: context.bodySize,
               color: isDark ? Colors.grey[400] : Colors.grey[600],
             ),
           ),
@@ -276,10 +278,10 @@ class _OrdersScreenState extends State<OrdersScreen>
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: const Text(
+            child: Text(
               'Sipariş Ver',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: context.heading2Size,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
@@ -328,7 +330,7 @@ class _OrdersScreenState extends State<OrdersScreen>
                       Text(
                         order['statusText'],
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: context.heading2Size,
                           fontWeight: FontWeight.bold,
                           color: statusColor,
                         ),
@@ -337,7 +339,7 @@ class _OrdersScreenState extends State<OrdersScreen>
                       Text(
                         'Tahmini süre: ${order['estimatedTime']}',
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: context.bodySmallSize,
                           color: isDark ? Colors.grey[400] : Colors.grey[600],
                         ),
                       ),
@@ -357,15 +359,15 @@ class _OrdersScreenState extends State<OrdersScreen>
                     ),
                     elevation: 0,
                   ),
-                  child: const Row(
+                  child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.map, size: 16, color: Colors.white),
-                      SizedBox(width: 4),
+                      const Icon(Icons.map, size: 16, color: Colors.white),
+                      const SizedBox(width: 4),
                       Text(
                         'Takip Et',
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: context.bodySmallSize,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
@@ -388,19 +390,23 @@ class _OrdersScreenState extends State<OrdersScreen>
                 // Restoran resmi
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.network(
-                    order['restaurantImage'],
+                  child: CachedNetworkImage(
+                    imageUrl: order['restaurantImage'],
                     width: 60,
                     height: 60,
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        width: 60,
-                        height: 60,
-                        color: isDark ? Colors.grey[800] : Colors.grey[200],
-                        child: const Icon(Icons.restaurant, color: Colors.grey),
-                      );
-                    },
+                    placeholder: (_, __) => Container(
+                      width: 60,
+                      height: 60,
+                      color: Colors.grey[200],
+                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    ),
+                    errorWidget: (_, __, ___) => Container(
+                      width: 60,
+                      height: 60,
+                      color: isDark ? Colors.grey[800] : Colors.grey[200],
+                      child: const Icon(Icons.restaurant, color: Colors.grey),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -411,7 +417,7 @@ class _OrdersScreenState extends State<OrdersScreen>
                       Text(
                         order['restaurantName'],
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: context.heading2Size,
                           fontWeight: FontWeight.bold,
                           color: isDark ? Colors.white : const Color(0xFF1C130D),
                         ),
@@ -420,7 +426,7 @@ class _OrdersScreenState extends State<OrdersScreen>
                       Text(
                         (order['items'] as List).join(', '),
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: context.bodySmallSize,
                           color: isDark ? Colors.grey[400] : Colors.grey[600],
                         ),
                         maxLines: 1,
@@ -432,7 +438,7 @@ class _OrdersScreenState extends State<OrdersScreen>
                           Text(
                             '${order['itemCount']} ürün',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: context.captionSize,
                               color: isDark ? Colors.grey[500] : Colors.grey[500],
                             ),
                           ),
@@ -444,8 +450,8 @@ class _OrdersScreenState extends State<OrdersScreen>
                           const SizedBox(width: 8),
                           Text(
                             '${order['totalPrice'].toStringAsFixed(0)} TL',
-                            style: const TextStyle(
-                              fontSize: 14,
+                            style: TextStyle(
+                              fontSize: context.bodySize,
                               fontWeight: FontWeight.bold,
                               color: FoodColors.primary,
                             ),
@@ -463,7 +469,7 @@ class _OrdersScreenState extends State<OrdersScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: isDark ? Colors.black.withValues(alpha: 0.2) : const Color(0xFFF8F7F5),
+              color: isDark ? Colors.black.withValues(alpha: 0.2) : FoodColors.backgroundLight,
               borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
             ),
             child: Row(
@@ -480,7 +486,7 @@ class _OrdersScreenState extends State<OrdersScreen>
                     Text(
                       'Sipariş: ${order['orderDate']}',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: context.captionSize,
                         color: isDark ? Colors.grey[400] : Colors.grey[600],
                       ),
                     ),
@@ -488,10 +494,10 @@ class _OrdersScreenState extends State<OrdersScreen>
                 ),
                 TextButton(
                   onPressed: () => _showOrderDetails(order, isDark),
-                  child: const Text(
+                  child: Text(
                     'Detayları Gör',
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: context.bodySmallSize,
                       fontWeight: FontWeight.bold,
                       color: FoodColors.primary,
                     ),
@@ -611,19 +617,23 @@ class _OrdersScreenState extends State<OrdersScreen>
                   // Restoran resmi
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: Image.network(
-                      order['restaurantImage'],
+                    child: CachedNetworkImage(
+                      imageUrl: order['restaurantImage'],
                       width: 56,
                       height: 56,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          width: 56,
-                          height: 56,
-                          color: isDark ? Colors.grey[800] : Colors.grey[200],
-                          child: const Icon(Icons.restaurant, color: Colors.grey),
-                        );
-                      },
+                      placeholder: (_, __) => Container(
+                        width: 56,
+                        height: 56,
+                        color: Colors.grey[200],
+                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                      ),
+                      errorWidget: (_, __, ___) => Container(
+                        width: 56,
+                        height: 56,
+                        color: isDark ? Colors.grey[800] : Colors.grey[200],
+                        child: const Icon(Icons.restaurant, color: Colors.grey),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -637,7 +647,7 @@ class _OrdersScreenState extends State<OrdersScreen>
                             Text(
                               order['restaurantName'],
                               style: TextStyle(
-                                fontSize: 15,
+                                fontSize: context.heading2Size,
                                 fontWeight: FontWeight.bold,
                                 color: isDark ? Colors.white : const Color(0xFF1C130D),
                               ),
@@ -651,21 +661,21 @@ class _OrdersScreenState extends State<OrdersScreen>
                                 color: const Color(0xFF22C55E).withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: const Row(
+                              child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(
+                                  const Icon(
                                     Icons.check_circle,
                                     size: 12,
                                     color: Color(0xFF22C55E),
                                   ),
-                                  SizedBox(width: 4),
+                                  const SizedBox(width: 4),
                                   Text(
                                     'Teslim Edildi',
                                     style: TextStyle(
-                                      fontSize: 11,
+                                      fontSize: context.captionSmallSize,
                                       fontWeight: FontWeight.w600,
-                                      color: Color(0xFF22C55E),
+                                      color: const Color(0xFF22C55E),
                                     ),
                                   ),
                                 ],
@@ -677,7 +687,7 @@ class _OrdersScreenState extends State<OrdersScreen>
                         Text(
                           (order['items'] as List).join(', '),
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: context.bodySmallSize,
                             color: isDark ? Colors.grey[400] : Colors.grey[600],
                           ),
                           maxLines: 1,
@@ -689,7 +699,7 @@ class _OrdersScreenState extends State<OrdersScreen>
                             Text(
                               order['orderDate'],
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: context.captionSize,
                                 color: isDark ? Colors.grey[500] : Colors.grey[500],
                               ),
                             ),
@@ -701,8 +711,8 @@ class _OrdersScreenState extends State<OrdersScreen>
                             const SizedBox(width: 8),
                             Text(
                               '${order['totalPrice'].toStringAsFixed(0)} TL',
-                              style: const TextStyle(
-                                fontSize: 13,
+                              style: TextStyle(
+                                fontSize: context.bodySmallSize,
                                 fontWeight: FontWeight.bold,
                                 color: FoodColors.primary,
                               ),
@@ -723,7 +733,7 @@ class _OrdersScreenState extends State<OrdersScreen>
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: isDark ? Colors.grey[800] : const Color(0xFFF8F7F5),
+                        color: isDark ? Colors.grey[800] : FoodColors.backgroundLight,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
@@ -733,7 +743,7 @@ class _OrdersScreenState extends State<OrdersScreen>
                           Text(
                             order['rating'].toString(),
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: context.bodySmallSize,
                               fontWeight: FontWeight.w600,
                               color: isDark ? Colors.white : const Color(0xFF1C130D),
                             ),
@@ -745,10 +755,10 @@ class _OrdersScreenState extends State<OrdersScreen>
                     TextButton.icon(
                       onPressed: () => _showRatingDialog(order, isDark),
                       icon: const Icon(Icons.star_border, size: 18, color: FoodColors.primary),
-                      label: const Text(
+                      label: Text(
                         'Değerlendir',
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: context.bodySmallSize,
                           fontWeight: FontWeight.w600,
                           color: FoodColors.primary,
                         ),
@@ -770,10 +780,10 @@ class _OrdersScreenState extends State<OrdersScreen>
                       );
                     },
                     icon: const Icon(Icons.replay, size: 16, color: Colors.white),
-                    label: const Text(
+                    label: Text(
                       'Tekrarla',
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: context.bodySmallSize,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
@@ -839,7 +849,7 @@ class _OrdersScreenState extends State<OrdersScreen>
               Text(
                 order['restaurantName'],
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: context.heading2Size,
                   fontWeight: FontWeight.w600,
                   color: isDark ? Colors.grey[300] : Colors.grey[700],
                 ),
@@ -946,26 +956,30 @@ class _OrderDetailSheet extends StatelessWidget {
               Expanded(
                 child: ListView(
                   controller: scrollController,
-                  padding: const EdgeInsets.all(20),
+                  padding: EdgeInsets.all(context.pagePaddingH),
                   children: [
                     // Header
                     Row(
                       children: [
                         ClipRRect(
                           borderRadius: BorderRadius.circular(12),
-                          child: Image.network(
-                            order['restaurantImage'],
+                          child: CachedNetworkImage(
+                            imageUrl: order['restaurantImage'],
                             width: 60,
                             height: 60,
                             fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                width: 60,
-                                height: 60,
-                                color: Colors.grey[300],
-                                child: const Icon(Icons.restaurant),
-                              );
-                            },
+                            placeholder: (_, __) => Container(
+                              width: 60,
+                              height: 60,
+                              color: Colors.grey[200],
+                              child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                            ),
+                            errorWidget: (_, __, ___) => Container(
+                              width: 60,
+                              height: 60,
+                              color: Colors.grey[300],
+                              child: const Icon(Icons.restaurant),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 16),
@@ -976,7 +990,7 @@ class _OrderDetailSheet extends StatelessWidget {
                               Text(
                                 order['restaurantName'],
                                 style: TextStyle(
-                                  fontSize: 20,
+                                  fontSize: context.heading1Size,
                                   fontWeight: FontWeight.bold,
                                   color: isDark ? Colors.white : const Color(0xFF1C130D),
                                 ),
@@ -985,7 +999,7 @@ class _OrderDetailSheet extends StatelessWidget {
                               Text(
                                 'Sipariş No: ${order['id']}',
                                 style: TextStyle(
-                                  fontSize: 13,
+                                  fontSize: context.bodySmallSize,
                                   color: isDark ? Colors.grey[400] : Colors.grey[600],
                                 ),
                               ),
@@ -1015,7 +1029,7 @@ class _OrderDetailSheet extends StatelessWidget {
                             Text(
                               order['statusText'],
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: context.heading2Size,
                                 fontWeight: FontWeight.bold,
                                 color: _getStatusColor(order['status']),
                               ),
@@ -1023,6 +1037,7 @@ class _OrderDetailSheet extends StatelessWidget {
                           ],
                         ),
                       ),
+                      context,
                     ),
                     const SizedBox(height: 20),
 
@@ -1042,11 +1057,11 @@ class _OrderDetailSheet extends StatelessWidget {
                                     color: FoodColors.primary.withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
-                                  child: const Center(
+                                  child: Center(
                                     child: Text(
                                       '1',
                                       style: TextStyle(
-                                        fontSize: 12,
+                                        fontSize: context.captionSize,
                                         fontWeight: FontWeight.bold,
                                         color: FoodColors.primary,
                                       ),
@@ -1058,7 +1073,7 @@ class _OrderDetailSheet extends StatelessWidget {
                                   child: Text(
                                     item.toString(),
                                     style: TextStyle(
-                                      fontSize: 15,
+                                      fontSize: context.heading2Size,
                                       color: isDark ? Colors.white : const Color(0xFF1C130D),
                                     ),
                                   ),
@@ -1068,6 +1083,7 @@ class _OrderDetailSheet extends StatelessWidget {
                           );
                         }).toList(),
                       ),
+                      context,
                     ),
                     const SizedBox(height: 20),
 
@@ -1094,13 +1110,14 @@ class _OrderDetailSheet extends StatelessWidget {
                               child: Text(
                                 order['address'],
                                 style: TextStyle(
-                                  fontSize: 14,
+                                  fontSize: context.bodySize,
                                   color: isDark ? Colors.grey[300] : Colors.grey[700],
                                 ),
                               ),
                             ),
                           ],
                         ),
+                        context,
                       ),
                     const SizedBox(height: 20),
 
@@ -1110,7 +1127,7 @@ class _OrderDetailSheet extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: isDark ? FoodColors.surfaceDark : const Color(0xFFF8F7F5),
+                          color: isDark ? FoodColors.surfaceDark : FoodColors.backgroundLight,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Column(
@@ -1128,6 +1145,7 @@ class _OrderDetailSheet extends StatelessWidget {
                           ],
                         ),
                       ),
+                      context,
                     ),
                     const SizedBox(height: 24),
 
@@ -1145,15 +1163,15 @@ class _OrderDetailSheet extends StatelessWidget {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Row(
+                        child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.map, color: Colors.white),
-                            SizedBox(width: 8),
+                            const Icon(Icons.map, color: Colors.white),
+                            const SizedBox(width: 8),
                             Text(
                               'Siparişi Takip Et',
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: context.heading2Size,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
                               ),
@@ -1179,15 +1197,15 @@ class _OrderDetailSheet extends StatelessWidget {
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Row(
+                        child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.replay, color: Colors.white),
-                            SizedBox(width: 8),
+                            const Icon(Icons.replay, color: Colors.white),
+                            const SizedBox(width: 8),
                             Text(
                               'Tekrar Sipariş Ver',
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: context.heading2Size,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
                               ),
@@ -1222,7 +1240,7 @@ class _OrderDetailSheet extends StatelessWidget {
                           Text(
                             'Yardım Al',
                             style: TextStyle(
-                              fontSize: 16,
+                              fontSize: context.heading2Size,
                               fontWeight: FontWeight.w600,
                               color: isDark ? Colors.grey[400] : Colors.grey[600],
                             ),
@@ -1240,14 +1258,14 @@ class _OrderDetailSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildSection(String title, Widget content) {
+  Widget _buildSection(String title, Widget content, BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           title,
           style: TextStyle(
-            fontSize: 14,
+            fontSize: context.bodySize,
             fontWeight: FontWeight.w600,
             color: isDark ? Colors.grey[400] : Colors.grey[600],
           ),
@@ -1674,19 +1692,23 @@ class _OrdersScreenContentState extends State<OrdersScreenContent>
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.network(
-                    order['restaurantImage'],
+                  child: CachedNetworkImage(
+                    imageUrl: order['restaurantImage'],
                     width: 56,
                     height: 56,
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        width: 56,
-                        height: 56,
-                        color: Colors.grey[300],
-                        child: const Icon(Icons.restaurant),
-                      );
-                    },
+                    placeholder: (_, __) => Container(
+                      width: 56,
+                      height: 56,
+                      color: Colors.grey[200],
+                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    ),
+                    errorWidget: (_, __, ___) => Container(
+                      width: 56,
+                      height: 56,
+                      color: Colors.grey[300],
+                      child: const Icon(Icons.restaurant),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -1743,19 +1765,23 @@ class _OrdersScreenContentState extends State<OrdersScreenContent>
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.network(
-                    order['restaurantImage'],
+                  child: CachedNetworkImage(
+                    imageUrl: order['restaurantImage'],
                     width: 56,
                     height: 56,
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        width: 56,
-                        height: 56,
-                        color: Colors.grey[300],
-                        child: const Icon(Icons.restaurant),
-                      );
-                    },
+                    placeholder: (_, __) => Container(
+                      width: 56,
+                      height: 56,
+                      color: Colors.grey[200],
+                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    ),
+                    errorWidget: (_, __, ___) => Container(
+                      width: 56,
+                      height: 56,
+                      color: Colors.grey[300],
+                      child: const Icon(Icons.restaurant),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -1818,7 +1844,7 @@ class _OrdersScreenContentState extends State<OrdersScreenContent>
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: isDark ? Colors.grey[800] : const Color(0xFFF8F7F5),
+                      color: isDark ? Colors.grey[800] : FoodColors.backgroundLight,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(

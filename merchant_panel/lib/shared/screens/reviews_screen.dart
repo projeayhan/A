@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/providers/merchant_provider.dart';
 import '../../core/services/notification_sound_service.dart';
+import '../../core/utils/name_masking.dart';
 import '../../core/utils/profanity_filter.dart';
 import '../../core/utils/app_dialogs.dart';
 
@@ -83,7 +84,7 @@ class _ReviewsScreenState extends ConsumerState<ReviewsScreen>
         (review['service_rating'] as int? ?? 0) +
         (review['taste_rating'] as int? ?? 0);
     final avgRating = (rating / 3).toStringAsFixed(1);
-    final customerName = review['customer_name'] as String? ?? 'Müşteri';
+    final customerName = maskUserName(review['customer_name'] as String?);
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -364,7 +365,7 @@ class _ReviewsScreenState extends ConsumerState<ReviewsScreen>
     final avgRating = (courierRating + serviceRating + tasteRating) / 3;
     final comment = review['comment'] as String?;
     final merchantReply = review['merchant_reply'] as String?;
-    final customerName = review['customer_name'] as String? ?? 'Anonim';
+    final customerName = maskUserName(review['customer_name'] as String?);
     final orderNumber = review['order_number'] as String? ?? '';
     final createdAt = DateTime.tryParse(review['created_at'] as String? ?? '') ?? DateTime.now();
 
@@ -394,7 +395,7 @@ class _ReviewsScreenState extends ConsumerState<ReviewsScreen>
                 CircleAvatar(
                   backgroundColor: Colors.amber.withValues(alpha: 0.1),
                   child: Text(
-                    customerName.isNotEmpty ? customerName[0].toUpperCase() : 'A',
+                    customerName[0].toUpperCase(),
                     style: TextStyle(
                       color: Colors.amber[700],
                       fontWeight: FontWeight.bold,

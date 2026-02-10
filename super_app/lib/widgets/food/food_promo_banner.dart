@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 class FoodPromoBanner extends StatelessWidget {
@@ -37,19 +38,21 @@ class FoodPromoBanner extends StatelessWidget {
           children: [
             // Background Image
             Positioned.fill(
-              child: Image.network(
-                imageUrl,
+              child: CachedNetworkImage(
+                imageUrl: imageUrl,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    color: Colors.grey[800],
-                    child: const Icon(
-                      Icons.image,
-                      color: Colors.grey,
-                      size: 48,
-                    ),
-                  );
-                },
+                placeholder: (_, __) => Container(
+                  color: Colors.grey[200],
+                  child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                ),
+                errorWidget: (_, __, ___) => Container(
+                  color: Colors.grey[800],
+                  child: const Icon(
+                    Icons.image,
+                    color: Colors.grey,
+                    size: 48,
+                  ),
+                ),
               ),
             ),
 

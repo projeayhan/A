@@ -1,7 +1,9 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/car_sales/car_sales_models.dart';
 import '../../core/providers/unified_favorites_provider.dart';
 import '../../services/car_sales_service.dart';
@@ -29,6 +31,7 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen>
   int _currentImageIndex = 0;
   double _scrollOffset = 0;
   bool _showFullDescription = false;
+  List<CarListing> _similarCars = [];
 
   @override
   void initState() {
@@ -68,6 +71,25 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen>
 
     // Görüntülenme kaydı
     _recordView();
+    _loadSimilarCars();
+  }
+
+  Future<void> _loadSimilarCars() async {
+    try {
+      final listings = await CarSalesService.instance.getActiveListings(
+        brandId: widget.car.brand.id,
+        limit: 4,
+      );
+      if (mounted) {
+        setState(() {
+          _similarCars = listings
+              .where((l) => l.id != widget.car.id)
+              .take(4)
+              .map((l) => l.toCarListing())
+              .toList();
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _recordView() async {
@@ -182,7 +204,15 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen>
           Positioned.fill(
             child: Transform.translate(
               offset: Offset(0, _scrollOffset * 0.4),
-              child: PageView.builder(
+              child: ScrollConfiguration(
+                behavior: ScrollConfiguration.of(context).copyWith(
+                  dragDevices: {
+                    PointerDeviceKind.touch,
+                    PointerDeviceKind.mouse,
+                    PointerDeviceKind.stylus,
+                  },
+                ),
+                child: PageView.builder(
                 controller: _imagePageController,
                 onPageChanged: (index) {
                   setState(() => _currentImageIndex = index);
@@ -191,10 +221,14 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen>
                 itemBuilder: (context, index) {
                   return Hero(
                     tag: index == 0 ? 'car_${car.id}' : 'car_${car.id}_$index',
-                    child: Image.network(
-                      car.images[index],
+                    child: CachedNetworkImage(
+                      imageUrl: car.images[index],
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
+                      placeholder: (_, __) => Container(
+                        color: Colors.grey[200],
+                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                      ),
+                      errorWidget: (_, __, ___) => Container(
                         color: CarSalesColors.surface(isDark),
                         child: Icon(
                           Icons.directions_car,
@@ -205,6 +239,7 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen>
                     ),
                   );
                 },
+              ),
               ),
             ),
           ),
@@ -1196,10 +1231,14 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen>
                       ),
                       child: ClipOval(
                         child: seller.imageUrl != null
-                            ? Image.network(
-                                seller.imageUrl!,
+                            ? CachedNetworkImage(
+                                imageUrl: seller.imageUrl!,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Icon(
+                                placeholder: (_, __) => Container(
+                                  color: Colors.grey[200],
+                                  child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                ),
+                                errorWidget: (_, __, ___) => Icon(
                                   seller.type.icon,
                                   color: CarSalesColors.textSecondary(isDark),
                                   size: 28,
@@ -1444,7 +1483,7 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen>
   }
 
   Widget _buildSimilarCars(bool isDark) {
-    final similarCars = CarSalesDemoData.listings.take(4).toList();
+    if (_similarCars.isEmpty) return const SizedBox.shrink();
 
     return Padding(
       padding: const EdgeInsets.all(20),
@@ -1464,9 +1503,9 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen>
             height: 220,
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
-              itemCount: similarCars.length,
+              itemCount: _similarCars.length,
               itemBuilder: (context, index) {
-                final car = similarCars[index];
+                final car = _similarCars[index];
                 return GestureDetector(
                   onTap: () {
                     Navigator.of(context).pushReplacement(
@@ -1478,7 +1517,7 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen>
                   child: Container(
                     width: 180,
                     margin: EdgeInsets.only(
-                      right: index < similarCars.length - 1 ? 12 : 0,
+                      right: index < _similarCars.length - 1 ? 12 : 0,
                     ),
                     decoration: BoxDecoration(
                       color: CarSalesColors.card(isDark),
@@ -1492,12 +1531,17 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen>
                           borderRadius: const BorderRadius.vertical(
                             top: Radius.circular(16),
                           ),
-                          child: Image.network(
-                            car.images.first,
+                          child: CachedNetworkImage(
+                            imageUrl: car.images.first,
                             height: 110,
                             width: double.infinity,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
+                            placeholder: (_, __) => Container(
+                              height: 110,
+                              color: Colors.grey[200],
+                              child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                            ),
+                            errorWidget: (_, __, ___) => Container(
                               height: 110,
                               color: CarSalesColors.surface(isDark),
                               child: Icon(

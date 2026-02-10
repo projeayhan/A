@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/car_sales/car_sales_models.dart';
+import '../../services/car_sales_service.dart';
 import 'car_detail_screen.dart';
 
 class CarSearchScreen extends StatefulWidget {
@@ -60,92 +62,61 @@ class _CarSearchScreenState extends State<CarSearchScreen>
     super.dispose();
   }
 
-  void _performSearch() {
+  Future<void> _performSearch() async {
     setState(() => _isSearching = true);
 
-    // Simulate search delay
-    Future.delayed(const Duration(milliseconds: 300), () {
-      var results = CarSalesDemoData.listings;
-
-      // Apply text search
-      if (_searchController.text.isNotEmpty) {
-        final query = _searchController.text.toLowerCase();
-        results = results.where((car) {
-          return car.fullName.toLowerCase().contains(query) ||
-              car.description.toLowerCase().contains(query);
-        }).toList();
-      }
-
-      // Apply brand filter
-      if (_filter.brandIds?.isNotEmpty ?? false) {
-        results = results.where((car) {
-          return _filter.brandIds!.contains(car.brand.id);
-        }).toList();
-      }
-
-      // Apply body type filter
-      if (_filter.bodyTypes?.isNotEmpty ?? false) {
-        results = results.where((car) {
-          return _filter.bodyTypes!.contains(car.bodyType);
-        }).toList();
-      }
-
-      // Apply fuel type filter
-      if (_filter.fuelTypes?.isNotEmpty ?? false) {
-        results = results.where((car) {
-          return _filter.fuelTypes!.contains(car.fuelType);
-        }).toList();
-      }
-
-      // Apply price filter
-      if (_filter.minPrice != null) {
-        results = results.where((car) => car.price >= _filter.minPrice!).toList();
-      }
-      if (_filter.maxPrice != null) {
-        results = results.where((car) => car.price <= _filter.maxPrice!).toList();
-      }
-
-      // Apply year filter
-      if (_filter.minYear != null) {
-        results = results.where((car) => car.year >= _filter.minYear!).toList();
-      }
-      if (_filter.maxYear != null) {
-        results = results.where((car) => car.year <= _filter.maxYear!).toList();
-      }
-
-      // Apply sorting
+    try {
+      final service = CarSalesService.instance;
+      String sortBy = 'newest';
       switch (_filter.sortBy) {
-        case CarSortOption.newest:
-          results.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-          break;
-        case CarSortOption.oldest:
-          results.sort((a, b) => a.createdAt.compareTo(b.createdAt));
-          break;
         case CarSortOption.priceLow:
-          results.sort((a, b) => a.price.compareTo(b.price));
+          sortBy = 'price_asc';
           break;
         case CarSortOption.priceHigh:
-          results.sort((a, b) => b.price.compareTo(a.price));
-          break;
-        case CarSortOption.mileageLow:
-          results.sort((a, b) => a.mileage.compareTo(b.mileage));
-          break;
-        case CarSortOption.mileageHigh:
-          results.sort((a, b) => b.mileage.compareTo(a.mileage));
+          sortBy = 'price_desc';
           break;
         case CarSortOption.yearNew:
-          results.sort((a, b) => b.year.compareTo(a.year));
-          break;
         case CarSortOption.yearOld:
-          results.sort((a, b) => a.year.compareTo(b.year));
+          sortBy = 'year_desc';
           break;
+        case CarSortOption.mileageLow:
+        case CarSortOption.mileageHigh:
+          sortBy = 'mileage_asc';
+          break;
+        default:
+          sortBy = 'newest';
       }
 
-      setState(() {
-        _searchResults = results;
-        _isSearching = false;
-      });
-    });
+      List<CarListingData> listings;
+
+      if (_searchController.text.isNotEmpty) {
+        listings = await service.searchListings(_searchController.text);
+      } else {
+        listings = await service.getActiveListings(
+          brandId: _filter.brandIds?.isNotEmpty == true ? _filter.brandIds!.first : null,
+          minPrice: _filter.minPrice?.toDouble(),
+          maxPrice: _filter.maxPrice?.toDouble(),
+          minYear: _filter.minYear,
+          maxYear: _filter.maxYear,
+          sortBy: sortBy,
+          limit: 50,
+        );
+      }
+
+      if (mounted) {
+        setState(() {
+          _searchResults = listings.map((l) => l.toCarListing()).toList();
+          _isSearching = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _searchResults = [];
+          _isSearching = false;
+        });
+      }
+    }
   }
 
   void _clearFilters() {
@@ -623,12 +594,17 @@ class _CarSearchScreenState extends State<CarSearchScreen>
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(20),
                   ),
-                  child: Image.network(
-                    car.images.first,
+                  child: CachedNetworkImage(
+                    imageUrl: car.images.first,
                     height: 180,
                     width: double.infinity,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
+                    placeholder: (_, __) => Container(
+                      height: 180,
+                      color: Colors.grey[200],
+                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    ),
+                    errorWidget: (_, __, ___) => Container(
                       height: 180,
                       color: CarSalesColors.surface(isDark),
                       child: Icon(

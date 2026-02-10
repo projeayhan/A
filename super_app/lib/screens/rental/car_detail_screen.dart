@@ -1,6 +1,8 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/name_masking.dart';
 import '../../models/rental/rental_models.dart';
 import 'booking_screen.dart';
 import 'all_reviews_screen.dart';
@@ -59,29 +61,26 @@ class _CarDetailScreenState extends State<CarDetailScreen>
     super.initState();
 
     _mainController = AnimationController(
-      duration: const Duration(milliseconds: 1200),
+      duration: const Duration(milliseconds: 400),
       vsync: this,
     );
 
     _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(
         parent: _mainController,
-        curve: const Interval(0, 0.5, curve: Curves.easeOut),
+        curve: Curves.easeOut,
       ),
     );
 
-    _slideAnimation = Tween<double>(begin: 50, end: 0).animate(
+    _slideAnimation = Tween<double>(begin: 20, end: 0).animate(
       CurvedAnimation(
         parent: _mainController,
-        curve: const Interval(0.2, 0.7, curve: Curves.easeOutCubic),
+        curve: Curves.easeOutCubic,
       ),
     );
 
-    _scaleAnimation = Tween<double>(begin: 0.9, end: 1).animate(
-      CurvedAnimation(
-        parent: _mainController,
-        curve: const Interval(0.1, 0.6, curve: Curves.easeOutBack),
-      ),
+    _scaleAnimation = Tween<double>(begin: 1, end: 1).animate(
+      _mainController,
     );
 
     _mainController.forward();
@@ -248,19 +247,23 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                     },
                     itemCount: car.imageUrls.length,
                     itemBuilder: (context, index) {
-                      return Image.network(
-                        car.imageUrls[index],
+                      return CachedNetworkImage(
+                        imageUrl: car.imageUrls[index],
                         fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return Container(
-                            color: Colors.grey[300],
-                            child: const Icon(
-                              Icons.directions_car,
-                              size: 120,
-                              color: Colors.grey,
-                            ),
-                          );
-                        },
+                        memCacheWidth: 400,
+                        memCacheHeight: 300,
+                        placeholder: (_, __) => Container(
+                          color: Colors.grey[300],
+                          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                        ),
+                        errorWidget: (_, __, ___) => Container(
+                          color: Colors.grey[300],
+                          child: const Icon(
+                            Icons.directions_car,
+                            size: 120,
+                            color: Colors.grey,
+                          ),
+                        ),
                       );
                     },
                   ),
@@ -372,7 +375,7 @@ class _CarDetailScreenState extends State<CarDetailScreen>
           child: Opacity(
             opacity: _fadeAnimation.value,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -407,12 +410,12 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                                           padding: const EdgeInsets.only(right: 6),
                                           child: ClipRRect(
                                             borderRadius: BorderRadius.circular(4),
-                                            child: Image.network(
-                                              car.companyLogo!,
+                                            child: CachedNetworkImage(
+                                              imageUrl: car.companyLogo!,
                                               width: 18,
                                               height: 18,
                                               fit: BoxFit.cover,
-                                              errorBuilder: (_, __, ___) =>
+                                              errorWidget: (_, __, ___) =>
                                                   Icon(Icons.business, size: 14,
                                                       color: theme.colorScheme.primary),
                                             ),
@@ -448,10 +451,10 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                             Text(
                               car.model,
                               style: TextStyle(
-                                fontSize: 32,
+                                fontSize: 24,
                                 fontWeight: FontWeight.bold,
                                 color: theme.colorScheme.onSurface,
-                                letterSpacing: -0.5,
+                                letterSpacing: -0.3,
                               ),
                             ),
                             const SizedBox(height: 8),
@@ -501,12 +504,12 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                       ),
                       // Rating
                       Card(
-                        elevation: 2,
+                        elevation: 1,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(10),
                         ),
                         child: Padding(
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.all(12),
                           child: Column(
                             children: [
                               Icon(
@@ -541,12 +544,12 @@ class _CarDetailScreenState extends State<CarDetailScreen>
 
                   // Quick Specs
                   Card(
-                    elevation: 2,
+                    elevation: 1,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: Padding(
-                      padding: const EdgeInsets.all(20),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
@@ -636,14 +639,14 @@ class _CarDetailScreenState extends State<CarDetailScreen>
           child: Opacity(
             opacity: _fadeAnimation.value,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     '\u00D6zellikler',
                     style: TextStyle(
-                      fontSize: 20,
+                      fontSize: 17,
                       fontWeight: FontWeight.bold,
                       color: theme.colorScheme.onSurface,
                     ),
@@ -693,26 +696,26 @@ class _CarDetailScreenState extends State<CarDetailScreen>
           child: Opacity(
             opacity: _fadeAnimation.value,
             child: Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     'Teknik \u00D6zellikler',
                     style: TextStyle(
-                      fontSize: 20,
+                      fontSize: 17,
                       fontWeight: FontWeight.bold,
                       color: theme.colorScheme.onSurface,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   Card(
-                    elevation: 2,
+                    elevation: 1,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: Padding(
-                      padding: const EdgeInsets.all(20),
+                      padding: const EdgeInsets.all(14),
                       child: Column(
                         children: [
                           _buildSpecRow('Marka', car.brandName, theme),
@@ -787,7 +790,7 @@ class _CarDetailScreenState extends State<CarDetailScreen>
           child: Opacity(
             opacity: _fadeAnimation.value,
             child: Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -797,7 +800,7 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                       Text(
                         'Yorumlar & Puanlar',
                         style: TextStyle(
-                          fontSize: 20,
+                          fontSize: 17,
                           fontWeight: FontWeight.bold,
                           color: theme.colorScheme.onSurface,
                         ),
@@ -856,12 +859,12 @@ class _CarDetailScreenState extends State<CarDetailScreen>
 
   Widget _buildLoadingRatingSummary(ThemeData theme) {
     return Card(
-      elevation: 2,
+      elevation: 1,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(16),
         child: Center(
           child: CircularProgressIndicator(color: theme.colorScheme.primary),
         ),
@@ -875,12 +878,12 @@ class _CarDetailScreenState extends State<CarDetailScreen>
     final reviewCount = summary?.totalReviews ?? widget.car.reviewCount;
 
     return Card(
-      elevation: 2,
+      elevation: 1,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(14),
         child: Row(
           children: [
             Column(
@@ -888,7 +891,7 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                 Text(
                   rating.toStringAsFixed(1),
                   style: TextStyle(
-                    fontSize: 48,
+                    fontSize: 36,
                     fontWeight: FontWeight.bold,
                     color: theme.colorScheme.onSurface,
                   ),
@@ -956,7 +959,7 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                       : null,
                   child: review.userAvatar == null
                       ? Text(
-                          (review.userName ?? 'A')[0].toUpperCase(),
+                          maskUserName(review.userName)[0].toUpperCase(),
                           style: TextStyle(
                             color: theme.colorScheme.primary,
                             fontWeight: FontWeight.bold,
@@ -970,7 +973,7 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        review.userName ?? 'Anonim',
+                        maskUserName(review.userName),
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
                           color: theme.colorScheme.onSurface,
@@ -1099,18 +1102,18 @@ class _CarDetailScreenState extends State<CarDetailScreen>
       right: 0,
       child: Container(
         padding: EdgeInsets.only(
-          left: 20,
-          right: 20,
-          top: 20,
-          bottom: MediaQuery.of(context).padding.bottom + 20,
+          left: 16,
+          right: 16,
+          top: 12,
+          bottom: MediaQuery.of(context).padding.bottom + 12,
         ),
         decoration: BoxDecoration(
           color: theme.cardColor,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 20,
-              offset: const Offset(0, -4),
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 10,
+              offset: const Offset(0, -2),
             ),
           ],
         ),
@@ -1138,7 +1141,7 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                       Text(
                         '\u20BA${car.discountedDailyPrice.toInt()}',
                         style: TextStyle(
-                          fontSize: 28,
+                          fontSize: 24,
                           fontWeight: FontWeight.bold,
                           color: theme.colorScheme.primary,
                         ),
@@ -1167,14 +1170,14 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                 backgroundColor: theme.colorScheme.primary,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 16,
+                  horizontal: 24,
+                  vertical: 14,
                 ),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                elevation: 4,
-                shadowColor: theme.colorScheme.primary.withValues(alpha: 0.4),
+                elevation: 2,
+                shadowColor: theme.colorScheme.primary.withValues(alpha: 0.3),
               ),
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
@@ -1235,13 +1238,13 @@ class _CarDetailScreenState extends State<CarDetailScreen>
   Color _getCategoryColor(CarCategory category) {
     switch (category) {
       case CarCategory.luxury:
-        return const Color(0xFF1976D2);
+        return AppColors.info;
       case CarCategory.sports:
-        return const Color(0xFFE53935);
+        return AppColors.error;
       case CarCategory.electric:
-        return const Color(0xFF4CAF50);
+        return AppColors.success;
       case CarCategory.suv:
-        return const Color(0xFF2196F3);
+        return AppColors.primary;
       default:
         return AppColors.textSecondaryLight;
     }

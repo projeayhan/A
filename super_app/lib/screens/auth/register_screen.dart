@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -457,19 +458,22 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             label: 'Google',
                             isDark: isDark,
                             onPressed: isLoading ? null : _handleGoogleRegister,
-                            child: Image.network(
-                              'https://www.google.com/favicon.ico',
+                            child: CachedNetworkImage(
+                              imageUrl: 'https://www.google.com/favicon.ico',
                               width: 20,
                               height: 20,
-                              errorBuilder: (context, error, stackTrace) {
-                                return const Text(
-                                  'G',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                );
-                              },
+                              placeholder: (_, __) => const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                              ),
+                              errorWidget: (_, __, ___) => const Text(
+                                'G',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
                             ),
                           ),
                         ),

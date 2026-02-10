@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../../core/theme/app_theme.dart';
+import '../../core/theme/app_responsive.dart';
+import '../../core/theme/store_colors.dart';
 
 class FlashDealBanner extends StatefulWidget {
   final VoidCallback? onTap;
@@ -48,9 +49,9 @@ class _FlashDealBannerState extends State<FlashDealBanner> {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [
-              AppColors.primary,
-              AppColors.primary.withValues(alpha: 0.8),
-              const Color(0xFF1E40AF),
+              StoreColors.primary,
+              StoreColors.primary.withValues(alpha: 0.8),
+              StoreColors.primaryDark,
             ],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -58,7 +59,7 @@ class _FlashDealBannerState extends State<FlashDealBanner> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: AppColors.primary.withValues(alpha: 0.3),
+              color: StoreColors.primary.withValues(alpha: 0.3),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -83,11 +84,11 @@ class _FlashDealBannerState extends State<FlashDealBanner> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Flash Fırsatlar',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 18,
+                      fontSize: context.heading2Size,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -96,7 +97,7 @@ class _FlashDealBannerState extends State<FlashDealBanner> {
                     '%70\'e varan indirimler',
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.9),
-                      fontSize: 13,
+                      fontSize: context.bodySmallSize,
                     ),
                   ),
                 ],
@@ -109,7 +110,7 @@ class _FlashDealBannerState extends State<FlashDealBanner> {
                   'Biter',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.8),
-                    fontSize: 11,
+                    fontSize: context.captionSmallSize,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -125,8 +126,8 @@ class _FlashDealBannerState extends State<FlashDealBanner> {
                   child: Text(
                     _formatDuration(_remaining),
                     style: TextStyle(
-                      color: AppColors.primary,
-                      fontSize: 16,
+                      color: StoreColors.primary,
+                      fontSize: context.heading2Size,
                       fontWeight: FontWeight.bold,
                       fontFeatures: const [FontFeature.tabularFigures()],
                     ),

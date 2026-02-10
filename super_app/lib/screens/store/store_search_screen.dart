@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../core/theme/app_theme.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../../core/theme/app_responsive.dart';
+import '../../core/theme/store_colors.dart';
 import '../../models/store/store_model.dart';
 import '../../models/store/store_product_model.dart';
 
@@ -83,7 +85,7 @@ class _StoreSearchScreenState extends ConsumerState<StoreSearchScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? Colors.black : Colors.grey[50],
+      backgroundColor: isDark ? StoreColors.backgroundDark : StoreColors.backgroundLight,
       appBar: AppBar(
         backgroundColor: isDark ? Colors.grey[900] : Colors.white,
         elevation: 0,
@@ -100,13 +102,13 @@ class _StoreSearchScreenState extends ConsumerState<StoreSearchScreen>
           onChanged: _search,
           style: TextStyle(
             color: isDark ? Colors.white : Colors.black87,
-            fontSize: 16,
+            fontSize: context.heading2Size,
           ),
           decoration: InputDecoration(
             hintText: 'Mağaza veya ürün ara...',
             hintStyle: TextStyle(
               color: Colors.grey[500],
-              fontSize: 16,
+              fontSize: context.heading2Size,
             ),
             border: InputBorder.none,
             contentPadding: EdgeInsets.zero,
@@ -128,9 +130,9 @@ class _StoreSearchScreenState extends ConsumerState<StoreSearchScreen>
         bottom: _query.isNotEmpty
             ? TabBar(
                 controller: _tabController,
-                labelColor: AppColors.primary,
+                labelColor: StoreColors.primary,
                 unselectedLabelColor: Colors.grey[500],
-                indicatorColor: AppColors.primary,
+                indicatorColor: StoreColors.primary,
                 indicatorWeight: 3,
                 tabs: [
                   Tab(text: 'Ürünler (${_productResults.length})'),
@@ -157,7 +159,7 @@ class _StoreSearchScreenState extends ConsumerState<StoreSearchScreen>
                 Text(
                   'Son Aramalar',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: context.heading2Size,
                     fontWeight: FontWeight.bold,
                     color: isDark ? Colors.white : Colors.black87,
                   ),
@@ -171,8 +173,8 @@ class _StoreSearchScreenState extends ConsumerState<StoreSearchScreen>
                   child: Text(
                     'Temizle',
                     style: TextStyle(
-                      color: AppColors.primary,
-                      fontSize: 14,
+                      color: StoreColors.primary,
+                      fontSize: context.bodySize,
                     ),
                   ),
                 ),
@@ -213,7 +215,7 @@ class _StoreSearchScreenState extends ConsumerState<StoreSearchScreen>
                           search,
                           style: TextStyle(
                             color: isDark ? Colors.white70 : Colors.black87,
-                            fontSize: 14,
+                            fontSize: context.bodySize,
                           ),
                         ),
                       ],
@@ -229,7 +231,7 @@ class _StoreSearchScreenState extends ConsumerState<StoreSearchScreen>
           Text(
             'Popüler Aramalar',
             style: TextStyle(
-              fontSize: 16,
+              fontSize: context.heading2Size,
               fontWeight: FontWeight.bold,
               color: isDark ? Colors.white : Colors.black87,
             ),
@@ -250,7 +252,7 @@ class _StoreSearchScreenState extends ConsumerState<StoreSearchScreen>
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
+                    color: StoreColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
@@ -259,14 +261,14 @@ class _StoreSearchScreenState extends ConsumerState<StoreSearchScreen>
                       Icon(
                         Icons.trending_up_rounded,
                         size: 16,
-                        color: AppColors.primary,
+                        color: StoreColors.primary,
                       ),
                       const SizedBox(width: 6),
                       Text(
                         search,
                         style: TextStyle(
-                          color: AppColors.primary,
-                          fontSize: 14,
+                          color: StoreColors.primary,
+                          fontSize: context.bodySize,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -339,18 +341,24 @@ class _StoreSearchScreenState extends ConsumerState<StoreSearchScreen>
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                product.imageUrl,
+              child: CachedNetworkImage(
+                imageUrl: product.imageUrl,
                 width: 70,
                 height: 70,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
+                placeholder: (_, __) => Container(
                   width: 70,
                   height: 70,
-                  color: AppColors.primary.withValues(alpha: 0.1),
+                  color: Colors.grey[200],
+                  child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                ),
+                errorWidget: (_, __, ___) => Container(
+                  width: 70,
+                  height: 70,
+                  color: StoreColors.primary.withValues(alpha: 0.1),
                   child: Icon(
                     Icons.image_outlined,
-                    color: AppColors.primary,
+                    color: StoreColors.primary,
                   ),
                 ),
               ),
@@ -363,7 +371,7 @@ class _StoreSearchScreenState extends ConsumerState<StoreSearchScreen>
                   Text(
                     product.name,
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: context.bodySize,
                       fontWeight: FontWeight.w600,
                       color: isDark ? Colors.white : Colors.black87,
                     ),
@@ -376,15 +384,15 @@ class _StoreSearchScreenState extends ConsumerState<StoreSearchScreen>
                       Icon(
                         Icons.store_rounded,
                         size: 14,
-                        color: AppColors.primary,
+                        color: StoreColors.primary,
                       ),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           product.storeName,
                           style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.primary,
+                            fontSize: context.captionSize,
+                            color: StoreColors.primary,
                             fontWeight: FontWeight.w500,
                           ),
                           maxLines: 1,
@@ -399,7 +407,7 @@ class _StoreSearchScreenState extends ConsumerState<StoreSearchScreen>
                       Text(
                         product.formattedPrice,
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: context.bodySize,
                           fontWeight: FontWeight.bold,
                           color: isDark ? Colors.white : Colors.black87,
                         ),
@@ -409,7 +417,7 @@ class _StoreSearchScreenState extends ConsumerState<StoreSearchScreen>
                         Text(
                           product.formattedOriginalPrice,
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: context.captionSize,
                             color: Colors.grey[500],
                             decoration: TextDecoration.lineThrough,
                           ),
@@ -427,7 +435,7 @@ class _StoreSearchScreenState extends ConsumerState<StoreSearchScreen>
                           Text(
                             product.rating.toStringAsFixed(1),
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: context.captionSize,
                               color: isDark ? Colors.white70 : Colors.black54,
                             ),
                           ),
@@ -475,18 +483,24 @@ class _StoreSearchScreenState extends ConsumerState<StoreSearchScreen>
           children: [
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                store.logoUrl,
+              child: CachedNetworkImage(
+                imageUrl: store.logoUrl,
                 width: 60,
                 height: 60,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
+                placeholder: (_, __) => Container(
                   width: 60,
                   height: 60,
-                  color: AppColors.primary.withValues(alpha: 0.1),
+                  color: Colors.grey[200],
+                  child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                ),
+                errorWidget: (_, __, ___) => Container(
+                  width: 60,
+                  height: 60,
+                  color: StoreColors.primary.withValues(alpha: 0.1),
                   child: Icon(
                     Icons.store_rounded,
-                    color: AppColors.primary,
+                    color: StoreColors.primary,
                   ),
                 ),
               ),
@@ -502,7 +516,7 @@ class _StoreSearchScreenState extends ConsumerState<StoreSearchScreen>
                         child: Text(
                           store.name,
                           style: TextStyle(
-                            fontSize: 15,
+                            fontSize: context.bodySize,
                             fontWeight: FontWeight.w600,
                             color: isDark ? Colors.white : Colors.black87,
                           ),
@@ -515,7 +529,7 @@ class _StoreSearchScreenState extends ConsumerState<StoreSearchScreen>
                         Icon(
                           Icons.verified_rounded,
                           size: 16,
-                          color: AppColors.primary,
+                          color: StoreColors.primary,
                         ),
                       ],
                     ],
@@ -532,7 +546,7 @@ class _StoreSearchScreenState extends ConsumerState<StoreSearchScreen>
                       Text(
                         '${store.formattedRating} (${store.reviewCount})',
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: context.captionSize,
                           color: isDark ? Colors.white70 : Colors.black54,
                         ),
                       ),
@@ -546,7 +560,7 @@ class _StoreSearchScreenState extends ConsumerState<StoreSearchScreen>
                       Text(
                         store.formattedFollowers,
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: context.captionSize,
                           color: isDark ? Colors.white70 : Colors.black54,
                         ),
                       ),
@@ -565,9 +579,9 @@ class _StoreSearchScreenState extends ConsumerState<StoreSearchScreen>
                       ),
                       child: Text(
                         store.discountBadge!,
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
-                          fontSize: 11,
+                          fontSize: context.captionSmallSize,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -601,7 +615,7 @@ class _StoreSearchScreenState extends ConsumerState<StoreSearchScreen>
           Text(
             message,
             style: TextStyle(
-              fontSize: 16,
+              fontSize: context.heading2Size,
               color: Colors.grey[500],
             ),
           ),
@@ -609,7 +623,7 @@ class _StoreSearchScreenState extends ConsumerState<StoreSearchScreen>
           Text(
             'Farklı bir arama terimi deneyin',
             style: TextStyle(
-              fontSize: 14,
+              fontSize: context.bodySize,
               color: Colors.grey[400],
             ),
           ),

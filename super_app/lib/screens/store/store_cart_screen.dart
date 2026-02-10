@@ -1,17 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/providers/store_cart_provider.dart';
 import '../../core/providers/address_provider.dart';
+import '../../core/theme/app_responsive.dart';
+import '../../core/theme/store_colors.dart';
 import '../../widgets/common/common_widgets.dart';
 import '../../core/services/delivery_service.dart';
-
-class StoreColors {
-  static const primary = Color(0xFF6366F1);
-  static const primaryDark = Color(0xFF4F46E5);
-  static const accent = Color(0xFF8B5CF6);
-  static const backgroundDark = Color(0xFF0F172A);
-}
 
 class StoreCartScreen extends ConsumerStatefulWidget {
   const StoreCartScreen({super.key});
@@ -54,7 +50,7 @@ class _StoreCartScreenState extends ConsumerState<StoreCartScreen> {
     return Scaffold(
       backgroundColor: isDark
           ? StoreColors.backgroundDark
-          : const Color(0xFFF8F9FA),
+          : StoreColors.backgroundLight,
       body: Column(
         children: [
           _buildHeader(isDark, cartState),
@@ -102,7 +98,7 @@ class _StoreCartScreenState extends ConsumerState<StoreCartScreen> {
       decoration: BoxDecoration(
         color: isDark
             ? StoreColors.backgroundDark.withValues(alpha: 0.95)
-            : const Color(0xFFF8F9FA).withValues(alpha: 0.95),
+            : StoreColors.backgroundLight.withValues(alpha: 0.95),
         border: Border(
           bottom: BorderSide(
             color: isDark ? Colors.grey[800]! : Colors.grey[100]!,
@@ -129,7 +125,7 @@ class _StoreCartScreenState extends ConsumerState<StoreCartScreen> {
           Text(
             'Sepetim (${cartState.itemCount})',
             style: TextStyle(
-              fontSize: 18,
+              fontSize: context.heading2Size,
               fontWeight: FontWeight.bold,
               color: isDark ? Colors.white : Colors.grey[800],
             ),
@@ -153,7 +149,7 @@ class _StoreCartScreenState extends ConsumerState<StoreCartScreen> {
                 Text(
                   'Temizle',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: context.bodySize,
                     fontWeight: FontWeight.w600,
                     color: cartState.isNotEmpty
                         ? Colors.red[500]
@@ -182,7 +178,7 @@ class _StoreCartScreenState extends ConsumerState<StoreCartScreen> {
           Text(
             'Sepetiniz Boş',
             style: TextStyle(
-              fontSize: 20,
+              fontSize: context.heading1Size,
               fontWeight: FontWeight.bold,
               color: isDark ? Colors.white : Colors.grey[800],
             ),
@@ -191,7 +187,7 @@ class _StoreCartScreenState extends ConsumerState<StoreCartScreen> {
           Text(
             'Harika ürünler keşfetmeye başlayın',
             style: TextStyle(
-              fontSize: 14,
+              fontSize: context.bodySize,
               color: isDark ? Colors.grey[400] : Colors.grey[500],
             ),
           ),
@@ -205,10 +201,10 @@ class _StoreCartScreenState extends ConsumerState<StoreCartScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: const Text(
+            child: Text(
               'Alışverişe Başla',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: context.heading2Size,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
@@ -266,7 +262,7 @@ class _StoreCartScreenState extends ConsumerState<StoreCartScreen> {
                 Text(
                   'Tahmini Teslimat: $estimateText',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: context.bodySize,
                     fontWeight: FontWeight.bold,
                     color: isDark ? Colors.grey[100] : Colors.grey[900],
                   ),
@@ -277,7 +273,7 @@ class _StoreCartScreenState extends ConsumerState<StoreCartScreen> {
                       ? '$distanceText • Siparişiniz hazırlandığında bildirim alacaksınız.'
                       : 'Siparişiniz kargoya verildiğinde bildirim alacaksınız.',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: context.captionSize,
                     color: isDark ? Colors.grey[400] : Colors.grey[500],
                   ),
                 ),
@@ -343,7 +339,7 @@ class _StoreCartScreenState extends ConsumerState<StoreCartScreen> {
                     Text(
                       'Teslimat Adresi',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: context.captionSize,
                         fontWeight: FontWeight.w500,
                         color: isDark ? Colors.grey[400] : Colors.grey[500],
                       ),
@@ -365,7 +361,7 @@ class _StoreCartScreenState extends ConsumerState<StoreCartScreen> {
                             ? 'Ev'
                             : (addressType == 'work' ? 'İş' : addressTitle),
                         style: TextStyle(
-                          fontSize: 10,
+                          fontSize: context.captionSmallSize,
                           fontWeight: FontWeight.bold,
                           color: isDark
                               ? const Color(0xFF4ADE80)
@@ -379,7 +375,7 @@ class _StoreCartScreenState extends ConsumerState<StoreCartScreen> {
                 Text(
                   addressLine1,
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: context.bodySize,
                     fontWeight: FontWeight.bold,
                     color: isDark ? Colors.white : Colors.grey[900],
                   ),
@@ -390,7 +386,7 @@ class _StoreCartScreenState extends ConsumerState<StoreCartScreen> {
                 Text(
                   addressLine2,
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: context.captionSize,
                     color: isDark ? Colors.grey[400] : Colors.grey[500],
                   ),
                 ),
@@ -448,7 +444,7 @@ class _StoreCartScreenState extends ConsumerState<StoreCartScreen> {
                   Text(
                     'Teslimat Adresi Seç',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: context.heading2Size,
                       fontWeight: FontWeight.bold,
                       color: isDark ? Colors.white : Colors.grey[900],
                     ),
@@ -524,7 +520,7 @@ class _StoreCartScreenState extends ConsumerState<StoreCartScreen> {
                               Text(
                                 address.title,
                                 style: TextStyle(
-                                  fontSize: 15,
+                                  fontSize: context.bodySize,
                                   fontWeight: FontWeight.bold,
                                   color: isDark
                                       ? Colors.white
@@ -535,7 +531,7 @@ class _StoreCartScreenState extends ConsumerState<StoreCartScreen> {
                               Text(
                                 address.fullAddress,
                                 style: TextStyle(
-                                  fontSize: 13,
+                                  fontSize: context.bodySmallSize,
                                   color: Colors.grey[500],
                                 ),
                                 maxLines: 2,
@@ -591,10 +587,14 @@ class _StoreCartScreenState extends ConsumerState<StoreCartScreen> {
               width: 96,
               height: 96,
               color: isDark ? Colors.grey[700] : Colors.grey[100],
-              child: Image.network(
-                item.imageUrl,
+              child: CachedNetworkImage(
+                imageUrl: item.imageUrl,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
+                placeholder: (_, __) => Container(
+                  color: Colors.grey[200],
+                  child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                ),
+                errorWidget: (context, error, stackTrace) {
                   return Icon(
                     Icons.shopping_bag,
                     size: 32,
@@ -620,7 +620,7 @@ class _StoreCartScreenState extends ConsumerState<StoreCartScreen> {
                           Text(
                             item.name,
                             style: TextStyle(
-                              fontSize: 15,
+                              fontSize: context.bodySize,
                               fontWeight: FontWeight.bold,
                               color: isDark ? Colors.white : Colors.grey[900],
                             ),
@@ -631,7 +631,7 @@ class _StoreCartScreenState extends ConsumerState<StoreCartScreen> {
                           Text(
                             item.storeName,
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: context.captionSize,
                               color: StoreColors.primary,
                               fontWeight: FontWeight.w500,
                             ),
@@ -656,7 +656,7 @@ class _StoreCartScreenState extends ConsumerState<StoreCartScreen> {
                     Text(
                       '₺${item.price.toStringAsFixed(2)}',
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: context.heading2Size,
                         fontWeight: FontWeight.bold,
                         color: isDark ? Colors.white : Colors.grey[900],
                       ),
@@ -735,19 +735,19 @@ class _StoreCartScreenState extends ConsumerState<StoreCartScreen> {
             ),
           ],
         ),
-        child: const Row(
+        child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
               'Siparişi Tamamla',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: context.heading2Size,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
             ),
-            SizedBox(width: 8),
-            Icon(
+            const SizedBox(width: 8),
+            const Icon(
               Icons.arrow_forward_rounded,
               color: Colors.white,
               size: 20,

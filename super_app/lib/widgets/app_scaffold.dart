@@ -22,6 +22,8 @@ class AppScaffold extends ConsumerWidget {
     '/food/cart',
     '/food/order-success/',
     '/food/order-tracking/',
+    '/store/cart',
+    '/store/checkout',
     '/store/product/',
     '/emlak/property/',
     '/emlak/add',
@@ -172,6 +174,8 @@ class AppScaffold extends ConsumerWidget {
       ctx = const AiScreenContext(screenType: 'car_sales');
     } else if (location.startsWith('/jobs')) {
       ctx = const AiScreenContext(screenType: 'jobs');
+    } else if (location.startsWith('/taxi')) {
+      ctx = const AiScreenContext(screenType: 'taxi_home');
     } else {
       ctx = AiScreenContext(screenType: 'other', extra: {'path': location});
     }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/emlak/emlak_models.dart';
 import '../../services/emlak/property_service.dart';
 
@@ -688,12 +689,17 @@ class _PropertySearchScreenState extends ConsumerState<PropertySearchScreen>
               children: [
                 ClipRRect(
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
-                  child: Image.network(
-                    property.images.first,
+                  child: CachedNetworkImage(
+                    imageUrl: property.images.first,
                     height: 180,
                     width: double.infinity,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
+                    placeholder: (_, __) => Container(
+                      height: 180,
+                      color: Colors.grey[200],
+                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    ),
+                    errorWidget: (_, __, ___) => Container(
                       height: 180,
                       color: EmlakColors.primary.withValues(alpha: 0.2),
                       child: const Icon(Icons.image, color: Colors.white54, size: 40),

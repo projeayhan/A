@@ -118,13 +118,30 @@ class AuthNotifier extends StateNotifier<AuthState> {
           'created_at': DateTime.now().toIso8601String(),
         });
       } else {
-        // Mevcut kullanıcıyı güncelle (sadece boş alanları doldur)
+        // Mevcut kullanıcıyı güncelle (boş alanları doldur)
         final updates = <String, dynamic>{
           'updated_at': DateTime.now().toIso8601String(),
         };
 
         if (email != null) updates['email'] = email;
         if (avatarUrl != null) updates['avatar_url'] = avatarUrl;
+
+        // İsim alanları boşsa metadata'dan doldur
+        final existingProfile = await SupabaseService.client
+            .from('users')
+            .select('first_name, last_name')
+            .eq('id', user.id)
+            .single();
+
+        final existingFirst = existingProfile['first_name'] as String? ?? '';
+        final existingLast = existingProfile['last_name'] as String? ?? '';
+
+        if (existingFirst.isEmpty && firstName.isNotEmpty) {
+          updates['first_name'] = firstName;
+        }
+        if (existingLast.isEmpty && lastName.isNotEmpty) {
+          updates['last_name'] = lastName;
+        }
 
         await SupabaseService.client
             .from('users')

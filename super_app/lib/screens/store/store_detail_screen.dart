@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
-import '../../core/theme/app_theme.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../../core/theme/app_responsive.dart';
+import '../../core/theme/store_colors.dart';
 import '../../core/providers/store_cart_provider.dart';
 import '../../core/providers/store_follow_provider.dart';
 import '../../core/providers/store_favorite_provider.dart';
@@ -12,6 +14,7 @@ import '../../models/store/store_product_model.dart';
 import '../../widgets/store/product_card.dart';
 import '../../core/providers/store_provider.dart';
 import '../../core/providers/ai_context_provider.dart';
+import '../../core/utils/name_masking.dart';
 
 // Reviews provider for a store (merchant)
 final storeReviewsProvider =
@@ -212,7 +215,7 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen>
             child: Container(
               constraints: const BoxConstraints(maxHeight: 350),
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1F2937) : Colors.white,
+                color: isDark ? StoreColors.surfaceDark : Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
@@ -234,7 +237,7 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen>
                             '"$_productSearchQuery" için ürün bulunamadı',
                             style: TextStyle(
                               color: isDark ? Colors.white70 : Colors.grey[600],
-                              fontSize: 14,
+                              fontSize: context.bodySize,
                             ),
                             textAlign: TextAlign.center,
                           ),
@@ -257,34 +260,40 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen>
                           leading: ClipRRect(
                             borderRadius: BorderRadius.circular(8),
                             child: product.imageUrl != null
-                                ? Image.network(
-                                    product.imageUrl!,
+                                ? CachedNetworkImage(
+                                    imageUrl: product.imageUrl!,
                                     width: 44,
                                     height: 44,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => Container(
+                                    placeholder: (_, __) => Container(
                                       width: 44,
                                       height: 44,
-                                      color: AppColors.primary.withValues(alpha: 0.1),
+                                      color: Colors.grey[200],
+                                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                    ),
+                                    errorWidget: (_, __, ___) => Container(
+                                      width: 44,
+                                      height: 44,
+                                      color: StoreColors.primary.withValues(alpha: 0.1),
                                       child: Icon(Icons.shopping_bag_outlined,
-                                          color: AppColors.primary, size: 22),
+                                          color: StoreColors.primary, size: 22),
                                     ),
                                   )
                                 : Container(
                                     width: 44,
                                     height: 44,
                                     decoration: BoxDecoration(
-                                      color: AppColors.primary.withValues(alpha: 0.1),
+                                      color: StoreColors.primary.withValues(alpha: 0.1),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Icon(Icons.shopping_bag_outlined,
-                                        color: AppColors.primary, size: 22),
+                                        color: StoreColors.primary, size: 22),
                                   ),
                           ),
                           title: Text(
                             product.name,
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: context.bodySize,
                               fontWeight: FontWeight.w600,
                               color: isDark ? Colors.white : Colors.black87,
                             ),
@@ -294,16 +303,16 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen>
                           subtitle: Text(
                             product.category.isNotEmpty ? product.category : 'Ürün',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: context.captionSize,
                               color: isDark ? Colors.white54 : Colors.grey[500],
                             ),
                           ),
                           trailing: Text(
                             '₺${product.price.toStringAsFixed(2)}',
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: context.bodySize,
                               fontWeight: FontWeight.bold,
-                              color: AppColors.primary,
+                              color: StoreColors.primary,
                             ),
                           ),
                           onTap: () {
@@ -332,7 +341,7 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen>
     final cartState = ref.watch(storeCartProvider);
 
     return Scaffold(
-      backgroundColor: isDark ? Colors.black : Colors.grey[50],
+      backgroundColor: isDark ? StoreColors.backgroundDark : StoreColors.backgroundLight,
       body: NestedScrollView(
         controller: _scrollController,
         headerSliverBuilder: (context, innerBoxIsScrolled) {
@@ -375,15 +384,21 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen>
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: Image.network(
-                        store.logoUrl,
+                      child: CachedNetworkImage(
+                        imageUrl: store.logoUrl,
                         width: 32,
                         height: 32,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
+                        placeholder: (_, __) => Container(
                           width: 32,
                           height: 32,
-                          color: AppColors.primary,
+                          color: Colors.grey[200],
+                          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                        ),
+                        errorWidget: (_, __, ___) => Container(
+                          width: 32,
+                          height: 32,
+                          color: StoreColors.primary,
                           child: const Icon(
                             Icons.store,
                             color: Colors.white,
@@ -397,7 +412,7 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen>
                       child: Text(
                         store.name,
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: context.heading2Size,
                           fontWeight: FontWeight.bold,
                           color: isDark ? Colors.white : Colors.black87,
                         ),
@@ -412,15 +427,19 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen>
                   fit: StackFit.expand,
                   children: [
                     // Cover Image
-                    Image.network(
-                      store.coverUrl,
+                    CachedNetworkImage(
+                      imageUrl: store.coverUrl,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
+                      placeholder: (_, __) => Container(
+                        color: Colors.grey[200],
+                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                      ),
+                      errorWidget: (_, __, ___) => Container(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              AppColors.primary,
-                              AppColors.primary.withValues(alpha: 0.7),
+                              StoreColors.primary,
+                              StoreColors.primary.withValues(alpha: 0.7),
                             ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
@@ -463,15 +482,21 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen>
                             ),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(13),
-                              child: Image.network(
-                                store.logoUrl,
+                              child: CachedNetworkImage(
+                                imageUrl: store.logoUrl,
                                 width: 60,
                                 height: 60,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Container(
+                                placeholder: (_, __) => Container(
                                   width: 60,
                                   height: 60,
-                                  color: AppColors.primary,
+                                  color: Colors.grey[200],
+                                  child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                ),
+                                errorWidget: (_, __, ___) => Container(
+                                  width: 60,
+                                  height: 60,
+                                  color: StoreColors.primary,
                                   child: const Icon(
                                     Icons.store,
                                     color: Colors.white,
@@ -493,9 +518,9 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen>
                                     Flexible(
                                       child: Text(
                                         store.name,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           color: Colors.white,
-                                          fontSize: 18,
+                                          fontSize: context.heading2Size,
                                           fontWeight: FontWeight.bold,
                                         ),
                                         maxLines: 1,
@@ -512,7 +537,7 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen>
                                         ),
                                         child: Icon(
                                           Icons.verified,
-                                          color: AppColors.primary,
+                                          color: StoreColors.primary,
                                           size: 18,
                                         ),
                                       ),
@@ -533,9 +558,9 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen>
                                     ),
                                     child: Text(
                                       store.discountBadge!,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         color: Colors.white,
-                                        fontSize: 12,
+                                        fontSize: context.captionSize,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
@@ -573,7 +598,7 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen>
                           store.formattedFollowers,
                           'Takipçi',
                           Icons.people_rounded,
-                          AppColors.primary,
+                          StoreColors.primary,
                           isDark,
                         ),
                         _buildDivider(isDark),
@@ -616,9 +641,9 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen>
               delegate: _SliverTabBarDelegate(
                 TabBar(
                   controller: _tabController,
-                  labelColor: AppColors.primary,
+                  labelColor: StoreColors.primary,
                   unselectedLabelColor: Colors.grey[500],
-                  indicatorColor: AppColors.primary,
+                  indicatorColor: StoreColors.primary,
                   indicatorWeight: 3,
                   tabs: const [
                     Tab(text: 'Ürünler'),
@@ -765,15 +790,21 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(10),
-                    child: Image.network(
-                      store.logoUrl,
+                    child: CachedNetworkImage(
+                      imageUrl: store.logoUrl,
                       width: 44,
                       height: 44,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
+                      placeholder: (_, __) => Container(
                         width: 44,
                         height: 44,
-                        color: AppColors.primary,
+                        color: Colors.grey[200],
+                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                      ),
+                      errorWidget: (_, __, ___) => Container(
+                        width: 44,
+                        height: 44,
+                        color: StoreColors.primary,
                         child: const Icon(Icons.store, color: Colors.white),
                       ),
                     ),
@@ -786,7 +817,7 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                         Text(
                           store.name,
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: context.heading2Size,
                             fontWeight: FontWeight.bold,
                             color: isDark ? Colors.white : Colors.black87,
                           ),
@@ -805,7 +836,7 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                             Text(
                               'Genellikle 1 saat içinde yanıt verir',
                               style: TextStyle(
-                                fontSize: 12,
+                                fontSize: context.captionSize,
                                 color: Colors.grey[500],
                               ),
                             ),
@@ -910,7 +941,7 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                   const SizedBox(width: 12),
                   Container(
                     decoration: BoxDecoration(
-                      color: AppColors.primary,
+                      color: StoreColors.primary,
                       borderRadius: BorderRadius.circular(24),
                     ),
                     child: IconButton(
@@ -967,15 +998,21 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
           ClipRRect(
             borderRadius: BorderRadius.circular(16),
             child: avatarUrl != null
-                ? Image.network(
-                    avatarUrl,
+                ? CachedNetworkImage(
+                    imageUrl: avatarUrl,
                     width: 32,
                     height: 32,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
+                    placeholder: (_, __) => Container(
                       width: 32,
                       height: 32,
-                      color: AppColors.primary,
+                      color: Colors.grey[200],
+                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    ),
+                    errorWidget: (_, __, ___) => Container(
+                      width: 32,
+                      height: 32,
+                      color: StoreColors.primary,
                       child: const Icon(
                         Icons.store,
                         color: Colors.white,
@@ -986,7 +1023,7 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                 : Container(
                     width: 32,
                     height: 32,
-                    color: AppColors.primary,
+                    color: StoreColors.primary,
                     child: const Icon(
                       Icons.store,
                       color: Colors.white,
@@ -1001,7 +1038,7 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
               color: isMe
-                  ? AppColors.primary
+                  ? StoreColors.primary
                   : (isDark ? Colors.grey[800] : Colors.grey[100]),
               borderRadius: BorderRadius.only(
                 topLeft: const Radius.circular(16),
@@ -1016,7 +1053,7 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                 color: isMe
                     ? Colors.white
                     : (isDark ? Colors.white : Colors.black87),
-                fontSize: 14,
+                fontSize: context.bodySize,
               ),
             ),
           ),
@@ -1039,13 +1076,13 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
         decoration: BoxDecoration(
           color: isDark ? Colors.grey[800] : Colors.white,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+          border: Border.all(color: StoreColors.primary.withValues(alpha: 0.3)),
         ),
         child: Text(
           label,
           style: TextStyle(
-            fontSize: 13,
-            color: AppColors.primary,
+            fontSize: context.bodySmallSize,
+            color: StoreColors.primary,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -1095,7 +1132,7 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
       style: ElevatedButton.styleFrom(
         backgroundColor: isFollowing
             ? (isDark ? Colors.grey[800] : Colors.grey[200])
-            : AppColors.primary,
+            : StoreColors.primary,
         foregroundColor: isFollowing
             ? (isDark ? Colors.white : Colors.black87)
             : Colors.white,
@@ -1143,13 +1180,13 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
           Text(
             value,
             style: TextStyle(
-              fontSize: 16,
+              fontSize: context.heading2Size,
               fontWeight: FontWeight.bold,
               color: isDark ? Colors.white : Colors.black87,
             ),
           ),
           const SizedBox(height: 2),
-          Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+          Text(label, style: TextStyle(fontSize: context.captionSmallSize, color: Colors.grey[500])),
         ],
       ),
     );
@@ -1235,20 +1272,20 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
               controller: _productSearchController,
               focusNode: _productSearchFocusNode,
               style: TextStyle(
-                fontSize: 14,
+                fontSize: context.bodySize,
                 color: isDark ? Colors.white : Colors.black87,
               ),
               decoration: InputDecoration(
                 hintText: 'Ürün ara...',
                 hintStyle: TextStyle(
                   color: isDark ? Colors.white38 : Colors.grey[400],
-                  fontSize: 14,
+                  fontSize: context.bodySize,
                 ),
                 prefixIcon: Icon(
                   Icons.search,
                   size: 20,
                   color: _productSearchFocusNode.hasFocus
-                      ? AppColors.primary
+                      ? StoreColors.primary
                       : (isDark ? Colors.white38 : Colors.grey[400]),
                 ),
                 suffixIcon: _productSearchQuery.isNotEmpty
@@ -1269,7 +1306,7 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppColors.primary, width: 1.5),
+                  borderSide: BorderSide(color: StoreColors.primary, width: 1.5),
                 ),
               ),
             ),
@@ -1302,12 +1339,12 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                       ),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? AppColors.primary
+                            ? StoreColors.primary
                             : (isDark ? Colors.grey[800] : Colors.grey[100]),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: isSelected
-                              ? AppColors.primary
+                              ? StoreColors.primary
                               : (isDark
                                     ? Colors.grey[700]!
                                     : Colors.grey[300]!),
@@ -1316,7 +1353,7 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                         boxShadow: isSelected
                             ? [
                                 BoxShadow(
-                                  color: AppColors.primary.withValues(
+                                  color: StoreColors.primary.withValues(
                                     alpha: 0.3,
                                   ),
                                   blurRadius: 8,
@@ -1339,7 +1376,7 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                           Text(
                             cat['name'] as String,
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: context.bodySmallSize,
                               fontWeight: isSelected
                                   ? FontWeight.w600
                                   : FontWeight.w500,
@@ -1423,7 +1460,7 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildCategoryHeader(categoryName, Icons.category, AppColors.primary, isDark),
+              _buildCategoryHeader(categoryName, Icons.category, StoreColors.primary, isDark),
               const SizedBox(height: 12),
               _buildProductsGrid(categoryProducts, isDark),
               const SizedBox(height: 24),
@@ -1461,7 +1498,7 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
         Text(
           title,
           style: TextStyle(
-            fontSize: 18,
+            fontSize: context.heading2Size,
             fontWeight: FontWeight.bold,
             color: isDark ? Colors.white : Colors.black87,
           ),
@@ -1595,7 +1632,7 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
           Text(
             title,
             style: TextStyle(
-              fontSize: 16,
+              fontSize: context.heading2Size,
               fontWeight: FontWeight.bold,
               color: isDark ? Colors.white : Colors.black87,
             ),
@@ -1612,7 +1649,7 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: AppColors.primary),
+          Icon(icon, size: 20, color: StoreColors.primary),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -1620,13 +1657,13 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
               children: [
                 Text(
                   label,
-                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                  style: TextStyle(fontSize: context.captionSize, color: Colors.grey[500]),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   value,
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: context.bodySize,
                     color: isDark ? Colors.white : Colors.black87,
                   ),
                 ),
@@ -1711,7 +1748,7 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                       Text(
                         '$totalReviews değerlendirme',
                         style:
-                            TextStyle(fontSize: 12, color: Colors.grey[500]),
+                            TextStyle(fontSize: context.captionSize, color: Colors.grey[500]),
                       ),
                     ],
                   ),
@@ -1800,7 +1837,7 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
             child: Text(
               label,
               style: TextStyle(
-                fontSize: 10,
+                fontSize: context.captionSmallSize,
                 fontWeight: FontWeight.bold,
                 color: Colors.grey[500],
               ),
@@ -1839,7 +1876,7 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
     final avgRating = (courierRating + serviceRating + tasteRating) / 3;
     final comment = review['comment'] as String?;
     final merchantReply = review['merchant_reply'] as String?;
-    final customerName = review['customer_name'] as String? ?? 'Anonim';
+    final customerName = maskUserName(review['customer_name'] as String?);
     final createdAt =
         DateTime.tryParse(review['created_at'] as String? ?? '') ??
             DateTime.now();
@@ -1861,13 +1898,11 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
             children: [
               CircleAvatar(
                 radius: 18,
-                backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                backgroundColor: StoreColors.primary.withValues(alpha: 0.1),
                 child: Text(
-                  customerName.isNotEmpty
-                      ? customerName[0].toUpperCase()
-                      : 'A',
+                  customerName[0].toUpperCase(),
                   style: const TextStyle(
-                    color: AppColors.primary,
+                    color: StoreColors.primary,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -1886,7 +1921,7 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                     ),
                     Text(
                       _formatReviewDate(createdAt),
-                      style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                      style: TextStyle(fontSize: context.captionSmallSize, color: Colors.grey[500]),
                     ),
                   ],
                 ),
@@ -1909,7 +1944,7 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                       avgRating.toStringAsFixed(1),
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 12,
+                        fontSize: context.captionSize,
                         color: _getRatingColor(avgRating),
                       ),
                     ),
@@ -1938,7 +1973,7 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
               comment,
               style: TextStyle(
                 color: isDark ? Colors.grey[300] : Colors.grey[700],
-                fontSize: 13,
+                fontSize: context.bodySmallSize,
               ),
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
@@ -1951,15 +1986,15 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.05),
+                color: StoreColors.primary.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                    color: AppColors.primary.withValues(alpha: 0.2)),
+                    color: StoreColors.primary.withValues(alpha: 0.2)),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.reply, size: 14, color: AppColors.primary),
+                  Icon(Icons.reply, size: 14, color: StoreColors.primary),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Column(
@@ -1969,8 +2004,8 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                           'Mağaza Yanıtı',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 11,
-                            color: AppColors.primary,
+                            fontSize: context.captionSmallSize,
+                            color: StoreColors.primary,
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -1979,7 +2014,7 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                           style: TextStyle(
                             color:
                                 isDark ? Colors.grey[300] : Colors.grey[700],
-                            fontSize: 12,
+                            fontSize: context.captionSize,
                           ),
                         ),
                       ],
@@ -2006,14 +2041,14 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
         children: [
           Text(
             label,
-            style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+            style: TextStyle(fontSize: context.captionSmallSize, color: Colors.grey[500]),
           ),
           const SizedBox(width: 4),
           const Icon(Icons.star, size: 10, color: Colors.amber),
           Text(
             rating.toString(),
             style: TextStyle(
-              fontSize: 10,
+              fontSize: context.captionSmallSize,
               fontWeight: FontWeight.bold,
               color: isDark ? Colors.white : Colors.grey[800],
             ),

@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -467,10 +468,14 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: notification.storeLogoUrl.isNotEmpty
-                    ? Image.network(
-                        notification.storeLogoUrl,
+                    ? CachedNetworkImage(
+                        imageUrl: notification.storeLogoUrl,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Icon(
+                        placeholder: (_, __) => Container(
+                          color: Colors.grey[200],
+                          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                        ),
+                        errorWidget: (_, __, ___) => Icon(
                           notification.icon,
                           color: notification.iconColor,
                           size: 18,

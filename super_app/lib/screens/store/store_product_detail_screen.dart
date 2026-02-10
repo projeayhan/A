@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../core/theme/app_theme.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../../core/theme/app_responsive.dart';
+import '../../core/theme/store_colors.dart';
 import '../../core/providers/store_cart_provider.dart';
 import '../../core/providers/product_favorite_provider.dart';
 import '../../core/utils/image_utils.dart';
@@ -55,7 +57,7 @@ class _StoreProductDetailScreenState
     final cartState = ref.watch(storeCartProvider);
 
     return Scaffold(
-      backgroundColor: isDark ? Colors.black : Colors.grey[50],
+      backgroundColor: isDark ? StoreColors.backgroundDark : StoreColors.backgroundLight,
       body: CustomScrollView(
         slivers: [
           // App Bar
@@ -156,10 +158,14 @@ class _StoreProductDetailScreenState
                     itemBuilder: (context, index) {
                       return Container(
                         color: isDark ? Colors.grey[900] : Colors.grey[100],
-                        child: Image.network(
-                          _images[index],
+                        child: CachedNetworkImage(
+                          imageUrl: _images[index],
                           fit: BoxFit.contain,
-                          errorBuilder: (_, __, ___) => Container(
+                          placeholder: (_, __) => Container(
+                            color: Colors.grey[200],
+                            child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                          ),
+                          errorWidget: (_, __, ___) => Container(
                             color: isDark ? Colors.grey[800] : Colors.grey[200],
                             child: Icon(
                               Icons.image_outlined,
@@ -187,9 +193,9 @@ class _StoreProductDetailScreenState
                         ),
                         child: Text(
                           '%${product.discountPercent} İNDİRİM',
-                          style: const TextStyle(
+                          style: TextStyle(
                             color: Colors.white,
-                            fontSize: 14,
+                            fontSize: context.bodySize,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -213,7 +219,7 @@ class _StoreProductDetailScreenState
                                       ? '${product.name} favorilerden kaldırıldı'
                                       : '${product.name} favorilere eklendi',
                                 ),
-                                backgroundColor: isFavorite ? Colors.red : AppColors.primary,
+                                backgroundColor: isFavorite ? Colors.red : StoreColors.primary,
                                 behavior: SnackBarBehavior.floating,
                                 duration: const Duration(seconds: 2),
                               ),
@@ -258,7 +264,7 @@ class _StoreProductDetailScreenState
                             height: 8,
                             decoration: BoxDecoration(
                               color: _selectedImageIndex == index
-                                  ? AppColors.primary
+                                  ? StoreColors.primary
                                   : Colors.white.withValues(alpha: 0.5),
                               borderRadius: BorderRadius.circular(4),
                             ),
@@ -296,7 +302,7 @@ class _StoreProductDetailScreenState
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.1),
+                                  color: StoreColors.primary.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Row(
@@ -305,14 +311,14 @@ class _StoreProductDetailScreenState
                                     Icon(
                                       Icons.store_rounded,
                                       size: 14,
-                                      color: AppColors.primary,
+                                      color: StoreColors.primary,
                                     ),
                                     const SizedBox(width: 6),
                                     Text(
                                       product.storeName,
                                       style: TextStyle(
-                                        fontSize: 13,
-                                        color: AppColors.primary,
+                                        fontSize: context.bodySmallSize,
+                                        color: StoreColors.primary,
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
@@ -323,7 +329,7 @@ class _StoreProductDetailScreenState
                               Icon(
                                 Icons.arrow_forward_ios_rounded,
                                 size: 14,
-                                color: AppColors.primary,
+                                color: StoreColors.primary,
                               ),
                             ],
                           ),
@@ -335,7 +341,7 @@ class _StoreProductDetailScreenState
                         Text(
                           product.name,
                           style: TextStyle(
-                            fontSize: 22,
+                            fontSize: context.heading1Size + 4,
                             fontWeight: FontWeight.bold,
                             color: isDark ? Colors.white : Colors.black87,
                             height: 1.3,
@@ -367,8 +373,8 @@ class _StoreProductDetailScreenState
                                   const SizedBox(width: 4),
                                   Text(
                                     product.rating.toStringAsFixed(1),
-                                    style: const TextStyle(
-                                      fontSize: 14,
+                                    style: TextStyle(
+                                      fontSize: context.bodySize,
                                       fontWeight: FontWeight.bold,
                                       color: Colors.amber,
                                     ),
@@ -380,7 +386,7 @@ class _StoreProductDetailScreenState
                             Text(
                               '${product.reviewCount} Değerlendirme',
                               style: TextStyle(
-                                fontSize: 13,
+                                fontSize: context.bodySmallSize,
                                 color: Colors.grey[600],
                               ),
                             ),
@@ -389,7 +395,7 @@ class _StoreProductDetailScreenState
                               Text(
                                 product.formattedSoldCount,
                                 style: TextStyle(
-                                  fontSize: 13,
+                                  fontSize: context.bodySmallSize,
                                   color: Colors.grey[600],
                                 ),
                               ),
@@ -405,7 +411,7 @@ class _StoreProductDetailScreenState
                             Text(
                               product.formattedPrice,
                               style: TextStyle(
-                                fontSize: 28,
+                                fontSize: context.heading1Size + 10,
                                 fontWeight: FontWeight.bold,
                                 color: isDark ? Colors.white : Colors.black87,
                               ),
@@ -415,7 +421,7 @@ class _StoreProductDetailScreenState
                               Text(
                                 product.formattedOriginalPrice,
                                 style: TextStyle(
-                                  fontSize: 18,
+                                  fontSize: context.heading2Size,
                                   color: Colors.grey[500],
                                   decoration: TextDecoration.lineThrough,
                                 ),
@@ -442,7 +448,7 @@ class _StoreProductDetailScreenState
                               _buildBadge(
                                 Icons.flash_on_rounded,
                                 'Hızlı Teslimat',
-                                AppColors.primary,
+                                StoreColors.primary,
                                 isDark,
                               ),
                             _buildBadge(
@@ -480,7 +486,7 @@ class _StoreProductDetailScreenState
                             Text(
                               'Renk Seçin',
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: context.heading2Size,
                                 fontWeight: FontWeight.bold,
                                 color: isDark ? Colors.white : Colors.black87,
                               ),
@@ -502,12 +508,12 @@ class _StoreProductDetailScreenState
                                     ),
                                     decoration: BoxDecoration(
                                       color: isSelected
-                                          ? AppColors.primary
+                                          ? StoreColors.primary
                                           : (isDark ? Colors.grey[800] : Colors.grey[100]),
                                       borderRadius: BorderRadius.circular(8),
                                       border: Border.all(
                                         color: isSelected
-                                            ? AppColors.primary
+                                            ? StoreColors.primary
                                             : (isDark ? Colors.grey[700]! : Colors.grey[300]!),
                                       ),
                                     ),
@@ -535,7 +541,7 @@ class _StoreProductDetailScreenState
                             Text(
                               _getSizeLabel(product.variants!),
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: context.heading2Size,
                                 fontWeight: FontWeight.bold,
                                 color: isDark ? Colors.white : Colors.black87,
                               ),
@@ -557,12 +563,12 @@ class _StoreProductDetailScreenState
                                     ),
                                     decoration: BoxDecoration(
                                       color: isSelected
-                                          ? AppColors.primary
+                                          ? StoreColors.primary
                                           : (isDark ? Colors.grey[800] : Colors.grey[100]),
                                       borderRadius: BorderRadius.circular(8),
                                       border: Border.all(
                                         color: isSelected
-                                            ? AppColors.primary
+                                            ? StoreColors.primary
                                             : (isDark ? Colors.grey[700]! : Colors.grey[300]!),
                                       ),
                                     ),
@@ -600,7 +606,7 @@ class _StoreProductDetailScreenState
                         Text(
                           'Ürün Açıklaması',
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: context.heading2Size,
                             fontWeight: FontWeight.bold,
                             color: isDark ? Colors.white : Colors.black87,
                           ),
@@ -609,7 +615,7 @@ class _StoreProductDetailScreenState
                         Text(
                           product.description,
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: context.bodySize,
                             color: isDark ? Colors.white70 : Colors.black87,
                             height: 1.6,
                           ),
@@ -618,7 +624,7 @@ class _StoreProductDetailScreenState
                         Text(
                           '• Yüksek kaliteli malzeme\n• Uzun ömürlü kullanım\n• Kolay bakım\n• Hızlı kargo ile kapınızda',
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: context.bodySize,
                             color: isDark ? Colors.white70 : Colors.black87,
                             height: 1.8,
                           ),
@@ -667,20 +673,20 @@ class _StoreProductDetailScreenState
                         : null,
                     icon: Icon(
                       Icons.remove,
-                      color: _quantity > 1 ? AppColors.primary : Colors.grey,
+                      color: _quantity > 1 ? StoreColors.primary : Colors.grey,
                     ),
                   ),
                   Text(
                     '$_quantity',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: context.heading2Size,
                       fontWeight: FontWeight.bold,
                       color: isDark ? Colors.white : Colors.black87,
                     ),
                   ),
                   IconButton(
                     onPressed: () => setState(() => _quantity++),
-                    icon: Icon(Icons.add, color: AppColors.primary),
+                    icon: Icon(Icons.add, color: StoreColors.primary),
                   ),
                 ],
               ),
@@ -759,7 +765,7 @@ class _StoreProductDetailScreenState
                               ),
                             ],
                           ),
-                          backgroundColor: AppColors.primary,
+                          backgroundColor: StoreColors.primary,
                           behavior: SnackBarBehavior.floating,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10),
@@ -774,12 +780,12 @@ class _StoreProductDetailScreenState
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   decoration: BoxDecoration(
                     color: _isAnimating
-                        ? AppColors.primary.withValues(alpha: 0.7)
-                        : AppColors.primary,
+                        ? StoreColors.primary.withValues(alpha: 0.7)
+                        : StoreColors.primary,
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.3),
+                        color: StoreColors.primary.withValues(alpha: 0.3),
                         blurRadius: 12,
                         offset: const Offset(0, 4),
                       ),
@@ -794,8 +800,8 @@ class _StoreProductDetailScreenState
                         _isAnimating
                             ? 'Ekleniyor...'
                             : 'Sepete Ekle • ${(product.price * _quantity).toStringAsFixed(2)} ₺',
-                        style: const TextStyle(
-                          fontSize: 16,
+                        style: TextStyle(
+                          fontSize: context.heading2Size,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),
@@ -827,7 +833,7 @@ class _StoreProductDetailScreenState
           Text(
             text,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: context.captionSize,
               color: color,
               fontWeight: FontWeight.w500,
             ),

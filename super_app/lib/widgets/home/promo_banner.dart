@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -234,27 +235,29 @@ class _PromoBannerState extends ConsumerState<PromoBanner> {
             // Background Image - otomatik boyutlandırma ile
             ClipRRect(
               borderRadius: BorderRadius.circular(24),
-              child: Image.network(
-                _getOptimizedImageUrl(imageUrl),
+              child: CachedNetworkImage(
+                imageUrl: _getOptimizedImageUrl(imageUrl),
                 width: double.infinity,
                 height: double.infinity,
                 fit: BoxFit.cover,
-                cacheWidth: _bannerWidth,
-                cacheHeight: _bannerHeight,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          AppColors.primary.withValues(alpha: 0.8),
-                          const Color(0xFF60A5FA),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
+                memCacheWidth: _bannerWidth,
+                memCacheHeight: _bannerHeight,
+                placeholder: (_, __) => Container(
+                  color: Colors.grey[200],
+                  child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                ),
+                errorWidget: (_, __, ___) => Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        AppColors.primary.withValues(alpha: 0.8),
+                        const Color(0xFF60A5FA),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                  );
-                },
+                  ),
+                ),
               ),
             ),
 

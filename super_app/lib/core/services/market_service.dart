@@ -3,60 +3,69 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/store/store_model.dart';
 import '../../models/store/store_product_model.dart';
 import 'supabase_service.dart';
+import '../utils/cache_helper.dart';
 
 /// Market service - Grocery stores like Migros, A101
 /// Uses delivery zone filtering (unlike store_service which has no zone check)
 class MarketService {
   static SupabaseClient get _client => SupabaseService.client;
+  static final _cache = CacheManager();
 
   // Tüm marketleri getir (teslimat bölgesi filtreli)
   static Future<List<Store>> getMarkets({
     double? customerLat,
     double? customerLon,
   }) async {
-    try {
-      // Müşteri konumu varsa, teslimat bölgesi içindeki marketleri getir
-      if (customerLat != null && customerLon != null) {
-        final deliveryRangeResponse = await _client
-            .rpc('get_stores_in_delivery_range', params: {
-              'p_customer_lat': customerLat,
-              'p_customer_lon': customerLon,
-            });
+    final cacheKey = 'markets_${customerLat ?? 'none'}_${customerLon ?? 'none'}';
+    return _cache.getOrFetch<List<Store>>(
+      cacheKey,
+      ttl: const Duration(minutes: 30),
+      fetcher: () async {
+        try {
+          // Müşteri konumu varsa, teslimat bölgesi içindeki marketleri getir
+          if (customerLat != null && customerLon != null) {
+            final deliveryRangeResponse = await _client
+                .rpc('get_stores_in_delivery_range', params: {
+                  'p_customer_lat': customerLat,
+                  'p_customer_lon': customerLon,
+                });
 
-        final deliverableMarketIds = (deliveryRangeResponse as List)
-            .map((json) => json['merchant_id'] as String)
-            .toList();
+            final deliverableMarketIds = (deliveryRangeResponse as List)
+                .map((json) => json['merchant_id'] as String)
+                .toList();
 
-        if (deliverableMarketIds.isEmpty) return [];
+            if (deliverableMarketIds.isEmpty) return [];
 
-        final response = await _client
-            .from('merchants')
-            .select('*, products(count)')
-            .inFilter('id', deliverableMarketIds)
-            .eq('type', 'market')
-            .eq('is_approved', true)
-            .order('rating', ascending: false);
+            final response = await _client
+                .from('merchants')
+                .select('*, products(count)')
+                .inFilter('id', deliverableMarketIds)
+                .eq('type', 'market')
+                .eq('is_approved', true)
+                .order('rating', ascending: false);
 
-        return (response as List)
-            .map((json) => Store.fromMerchant(json))
-            .toList();
-      }
+            return (response as List)
+                .map((json) => Store.fromMerchant(json))
+                .toList();
+          }
 
-      // Konum yoksa tüm marketleri getir
-      final response = await _client
-          .from('merchants')
-          .select('*, products(count)')
-          .eq('type', 'market')
-          .eq('is_approved', true)
-          .order('rating', ascending: false);
+          // Konum yoksa tüm marketleri getir
+          final response = await _client
+              .from('merchants')
+              .select('*, products(count)')
+              .eq('type', 'market')
+              .eq('is_approved', true)
+              .order('rating', ascending: false);
 
-      return (response as List)
-          .map((json) => Store.fromMerchant(json))
-          .toList();
-    } catch (e) {
-      if (kDebugMode) print('Error fetching markets: $e');
-      return [];
-    }
+          return (response as List)
+              .map((json) => Store.fromMerchant(json))
+              .toList();
+        } catch (e) {
+          if (kDebugMode) print('Error fetching markets: $e');
+          return [];
+        }
+      },
+    );
   }
 
   // Öne çıkan marketleri getir (teslimat bölgesi filtreli)
@@ -64,49 +73,56 @@ class MarketService {
     double? customerLat,
     double? customerLon,
   }) async {
-    try {
-      if (customerLat != null && customerLon != null) {
-        final deliveryRangeResponse = await _client
-            .rpc('get_stores_in_delivery_range', params: {
-              'p_customer_lat': customerLat,
-              'p_customer_lon': customerLon,
-            });
+    final cacheKey = 'markets_featured_${customerLat ?? 'none'}_${customerLon ?? 'none'}';
+    return _cache.getOrFetch<List<Store>>(
+      cacheKey,
+      ttl: const Duration(minutes: 30),
+      fetcher: () async {
+        try {
+          if (customerLat != null && customerLon != null) {
+            final deliveryRangeResponse = await _client
+                .rpc('get_stores_in_delivery_range', params: {
+                  'p_customer_lat': customerLat,
+                  'p_customer_lon': customerLon,
+                });
 
-        final deliverableMarketIds = (deliveryRangeResponse as List)
-            .map((json) => json['merchant_id'] as String)
-            .toList();
+            final deliverableMarketIds = (deliveryRangeResponse as List)
+                .map((json) => json['merchant_id'] as String)
+                .toList();
 
-        if (deliverableMarketIds.isEmpty) return [];
+            if (deliverableMarketIds.isEmpty) return [];
 
-        final response = await _client
-            .from('merchants')
-            .select('*, products(count)')
-            .inFilter('id', deliverableMarketIds)
-            .eq('type', 'market')
-            .eq('is_approved', true)
-            .order('rating', ascending: false)
-            .limit(10);
+            final response = await _client
+                .from('merchants')
+                .select('*, products(count)')
+                .inFilter('id', deliverableMarketIds)
+                .eq('type', 'market')
+                .eq('is_approved', true)
+                .order('rating', ascending: false)
+                .limit(10);
 
-        return (response as List)
-            .map((json) => Store.fromMerchant(json))
-            .toList();
-      }
+            return (response as List)
+                .map((json) => Store.fromMerchant(json))
+                .toList();
+          }
 
-      final response = await _client
-          .from('merchants')
-          .select('*, products(count)')
-          .eq('type', 'market')
-          .eq('is_approved', true)
-          .order('rating', ascending: false)
-          .limit(10);
+          final response = await _client
+              .from('merchants')
+              .select('*, products(count)')
+              .eq('type', 'market')
+              .eq('is_approved', true)
+              .order('rating', ascending: false)
+              .limit(10);
 
-      return (response as List)
-          .map((json) => Store.fromMerchant(json))
-          .toList();
-    } catch (e) {
-      if (kDebugMode) print('Error fetching featured markets: $e');
-      return [];
-    }
+          return (response as List)
+              .map((json) => Store.fromMerchant(json))
+              .toList();
+        } catch (e) {
+          if (kDebugMode) print('Error fetching featured markets: $e');
+          return [];
+        }
+      },
+    );
   }
 
   // Market ID'lerini getir (type='market' olan merchant'lar, teslimat bölgesi filtreli)
@@ -153,32 +169,38 @@ class MarketService {
 
   // Markete göre ürünleri getir
   static Future<List<StoreProduct>> getProductsByMarket(String marketId) async {
-    try {
-      final response = await _client
-          .from('products')
-          .select('*, product_categories(id, name, sort_order)')
-          .eq('merchant_id', marketId)
-          .eq('is_available', true)
-          .order('sold_count', ascending: false);
+    return _cache.getOrFetch<List<StoreProduct>>(
+      'market_products_$marketId',
+      ttl: const Duration(minutes: 15),
+      fetcher: () async {
+        try {
+          final response = await _client
+              .from('products')
+              .select('*, product_categories(id, name, sort_order)')
+              .eq('merchant_id', marketId)
+              .eq('is_available', true)
+              .order('sold_count', ascending: false);
 
-      return (response as List).map((json) {
-        final categoryData = json['product_categories'];
-        final categoryName = categoryData != null ? categoryData['name'] as String? : null;
-        final categorySortOrder = categoryData != null ? (categoryData['sort_order'] as int?) ?? 999 : 999;
-        return StoreProduct.fromJson(
-          json,
-          storeName: '',
-          categoryName: categoryName,
-          categorySortOrder: categorySortOrder,
-        );
-      }).toList();
-    } catch (e) {
-      if (kDebugMode) print('Error fetching products by market: $e');
-      return [];
-    }
+          return (response as List).map((json) {
+            final categoryData = json['product_categories'];
+            final categoryName = categoryData != null ? categoryData['name'] as String? : null;
+            final categorySortOrder = categoryData != null ? (categoryData['sort_order'] as int?) ?? 999 : 999;
+            return StoreProduct.fromJson(
+              json,
+              storeName: '',
+              categoryName: categoryName,
+              categorySortOrder: categorySortOrder,
+            );
+          }).toList();
+        } catch (e) {
+          if (kDebugMode) print('Error fetching products by market: $e');
+          return [];
+        }
+      },
+    );
   }
 
-  // Market ara (teslimat bölgesi filtreli)
+  // Market ara (teslimat bölgesi filtreli) - NO CACHE
   static Future<List<Store>> searchMarkets(
     String query, {
     double? customerLat,
@@ -236,29 +258,35 @@ class MarketService {
     double? customerLat,
     double? customerLon,
   }) async {
-    try {
-      final marketIds = await _getMarketIds(
-        customerLat: customerLat,
-        customerLon: customerLon,
-      );
-      if (marketIds.isEmpty) return [];
+    return _cache.getOrFetch<List<StoreProduct>>(
+      'market_deals',
+      ttl: const Duration(minutes: 5),
+      fetcher: () async {
+        try {
+          final marketIds = await _getMarketIds(
+            customerLat: customerLat,
+            customerLon: customerLon,
+          );
+          if (marketIds.isEmpty) return [];
 
-      final response = await _client
-          .from('products')
-          .select()
-          .inFilter('merchant_id', marketIds)
-          .eq('is_available', true)
-          .not('original_price', 'is', null)
-          .order('sold_count', ascending: false)
-          .limit(20);
+          final response = await _client
+              .from('products')
+              .select()
+              .inFilter('merchant_id', marketIds)
+              .eq('is_available', true)
+              .not('original_price', 'is', null)
+              .order('sold_count', ascending: false)
+              .limit(20);
 
-      return (response as List).map((json) {
-        return StoreProduct.fromJson(json, storeName: '');
-      }).toList();
-    } catch (e) {
-      if (kDebugMode) print('Error fetching market deals: $e');
-      return [];
-    }
+          return (response as List).map((json) {
+            return StoreProduct.fromJson(json, storeName: '');
+          }).toList();
+        } catch (e) {
+          if (kDebugMode) print('Error fetching market deals: $e');
+          return [];
+        }
+      },
+    );
   }
 
   // Sipariş oluştur
@@ -312,5 +340,21 @@ class MarketService {
       if (kDebugMode) print('MarketService.createOrder Error: $e');
       rethrow;
     }
+  }
+
+  /// Realtime invalidation: markets değiştiğinde çağır
+  static void invalidateMarkets() {
+    _cache.invalidatePrefix('markets_');
+    _cache.invalidate('market_deals');
+  }
+
+  /// Realtime invalidation: market ürünleri değiştiğinde çağır
+  static void invalidateProducts([String? marketId]) {
+    if (marketId != null) {
+      _cache.invalidate('market_products_$marketId');
+    } else {
+      _cache.invalidatePrefix('market_products_');
+    }
+    _cache.invalidate('market_deals');
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/theme/app_responsive.dart';
 import '../../models/emlak/emlak_models.dart';
 import '../../core/providers/emlak_provider.dart';
@@ -1725,10 +1726,14 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen>
                   children: [
                     // Background Image
                     if (property.images.isNotEmpty)
-                      Image.network(
-                        property.images.first,
+                      CachedNetworkImage(
+                        imageUrl: property.images.first,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
+                        placeholder: (_, __) => Container(
+                          color: Colors.grey[200],
+                          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                        ),
+                        errorWidget: (_, __, ___) => Container(
                           color: EmlakColors.primary.withValues(alpha: 0.3),
                           child: const Icon(
                             Icons.image,
@@ -2011,10 +2016,14 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen>
                         top: Radius.circular(property.isPremium || property.isFeatured ? 18 : 20),
                       ),
                       child: property.images.isNotEmpty
-                          ? Image.network(
-                              property.images.first,
+                          ? CachedNetworkImage(
+                              imageUrl: property.images.first,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
+                              placeholder: (_, __) => Container(
+                                color: Colors.grey[200],
+                                child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                              ),
+                              errorWidget: (_, __, ___) => Container(
                                 color: EmlakColors.primary.withValues(alpha: 0.2),
                                 child: const Icon(Icons.image, color: Colors.white54),
                               ),

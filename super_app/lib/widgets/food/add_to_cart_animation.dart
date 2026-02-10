@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 class AddToCartAnimation extends StatefulWidget {
@@ -189,12 +190,14 @@ class _FlyingCartItemState extends State<FlyingCartItem>
                       // Ürün resmi veya ikon
                       Positioned.fill(
                         child: widget.imageUrl != null && widget.imageUrl!.isNotEmpty
-                            ? Image.network(
-                                widget.imageUrl!,
+                            ? CachedNetworkImage(
+                                imageUrl: widget.imageUrl!,
                                 fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return _buildFallbackIcon(size);
-                                },
+                                placeholder: (_, __) => Container(
+                                  color: Colors.grey[200],
+                                  child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                ),
+                                errorWidget: (_, __, ___) => _buildFallbackIcon(size),
                               )
                             : _buildFallbackIcon(size),
                       ),

@@ -218,7 +218,6 @@ class AiChatService {
         } catch (_) {
           yield AiStreamEvent.error('HTTP ${response.statusCode}');
         }
-        client.close();
         return;
       }
 
@@ -243,11 +242,10 @@ class AiChatService {
         final event = _parseSseChunk(buffer.trim());
         if (event != null) yield event;
       }
-
-      client.close();
     } catch (e) {
-      client?.close();
       yield AiStreamEvent.error('Bağlantı hatası: $e');
+    } finally {
+      client?.close();
     }
   }
 

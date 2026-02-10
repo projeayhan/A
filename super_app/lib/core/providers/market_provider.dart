@@ -2,10 +2,23 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/store/store_model.dart';
 import '../../models/store/store_product_model.dart';
 import '../services/market_service.dart';
+import '../services/supabase_service.dart';
 import 'address_provider.dart';
 
-// Tüm marketler provider (teslimat bölgesi filtreli)
+// Markets (merchants type='market') tablosu değişikliklerini dinle
+final _marketsChangeProvider = StreamProvider<void>((ref) {
+  return SupabaseService.client
+      .from('merchants')
+      .stream(primaryKey: ['id'])
+      .map((_) {
+        // Markets değiştiğinde cache'i invalidate et
+        MarketService.invalidateMarkets();
+      });
+});
+
+// Tüm marketler provider (teslimat bölgesi filtreli + realtime)
 final marketsProvider = FutureProvider<List<Store>>((ref) async {
+  ref.watch(_marketsChangeProvider);
   final selectedAddress = ref.watch(selectedAddressProvider);
   return await MarketService.getMarkets(
     customerLat: selectedAddress?.latitude,
@@ -13,8 +26,9 @@ final marketsProvider = FutureProvider<List<Store>>((ref) async {
   );
 });
 
-// Öne çıkan marketler provider (teslimat bölgesi filtreli)
+// Öne çıkan marketler provider (teslimat bölgesi filtreli + realtime)
 final featuredMarketsProvider = FutureProvider<List<Store>>((ref) async {
+  ref.watch(_marketsChangeProvider);
   final selectedAddress = ref.watch(selectedAddressProvider);
   return await MarketService.getFeaturedMarkets(
     customerLat: selectedAddress?.latitude,

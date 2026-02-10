@@ -1,18 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/providers/store_cart_provider.dart';
 import '../../core/providers/address_provider.dart';
 import '../../core/services/store_service.dart';
+import '../../core/theme/app_responsive.dart';
+import '../../core/theme/store_colors.dart';
 import '../../core/utils/app_dialogs.dart';
 import '../../widgets/common/common_widgets.dart';
-
-class StoreColors {
-  static const primary = Color(0xFF6366F1);
-  static const primaryDark = Color(0xFF4F46E5);
-  static const accent = Color(0xFF8B5CF6);
-  static const backgroundDark = Color(0xFF0F172A);
-}
 
 class StoreCheckoutScreen extends ConsumerStatefulWidget {
   const StoreCheckoutScreen({super.key});
@@ -191,7 +187,7 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
     return Scaffold(
       backgroundColor: isDark
           ? StoreColors.backgroundDark
-          : const Color(0xFFF8F9FA),
+          : StoreColors.backgroundLight,
       body: Column(
         children: [
           _buildHeader(isDark),
@@ -245,14 +241,14 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
                 Text(
                   'Sipariş Tamamla',
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: context.heading2Size,
                     fontWeight: FontWeight.bold,
                     color: isDark ? Colors.white : Colors.grey[900],
                   ),
                 ),
                 Text(
                   'Adım ${_currentStep + 1}/${_steps.length}',
-                  style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                  style: TextStyle(fontSize: context.bodySmallSize, color: Colors.grey[500]),
                 ),
               ],
             ),
@@ -271,7 +267,7 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
                 Text(
                   'Güvenli',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: context.captionSize,
                     fontWeight: FontWeight.w600,
                     color: StoreColors.primary,
                   ),
@@ -339,7 +335,7 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
                         : Text(
                             '${stepIndex + 1}',
                             style: TextStyle(
-                              fontSize: isActive ? 14 : 12,
+                              fontSize: isActive ? context.bodySize : context.captionSize,
                               fontWeight: FontWeight.bold,
                               color: isActive
                                   ? Colors.white
@@ -354,7 +350,7 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
                 Text(
                   _steps[stepIndex],
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: context.captionSmallSize,
                     fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
                     color: isActive
                         ? StoreColors.primary
@@ -395,7 +391,7 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
           Text(
             'Sepetinizdeki Ürünler',
             style: TextStyle(
-              fontSize: 18,
+              fontSize: context.heading2Size,
               fontWeight: FontWeight.bold,
               color: isDark ? Colors.white : Colors.grey[900],
             ),
@@ -416,12 +412,18 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      item.imageUrl,
+                    child: CachedNetworkImage(
+                      imageUrl: item.imageUrl,
                       width: 60,
                       height: 60,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
+                      placeholder: (_, __) => Container(
+                        width: 60,
+                        height: 60,
+                        color: Colors.grey[200],
+                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                      ),
+                      errorWidget: (_, __, ___) => Container(
                         width: 60,
                         height: 60,
                         color: Colors.grey[300],
@@ -437,7 +439,7 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
                         Text(
                           item.name,
                           style: TextStyle(
-                            fontSize: 14,
+                            fontSize: context.bodySize,
                             fontWeight: FontWeight.w600,
                             color: isDark ? Colors.white : Colors.grey[900],
                           ),
@@ -448,7 +450,7 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
                         Text(
                           item.storeName,
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: context.captionSize,
                             color: StoreColors.primary,
                           ),
                         ),
@@ -461,14 +463,14 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
                       Text(
                         '₺${item.totalPrice.toStringAsFixed(2)}',
                         style: TextStyle(
-                          fontSize: 15,
+                          fontSize: context.bodySize,
                           fontWeight: FontWeight.bold,
                           color: isDark ? Colors.white : Colors.grey[900],
                         ),
                       ),
                       Text(
                         '${item.quantity} adet',
-                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                        style: TextStyle(fontSize: context.captionSize, color: Colors.grey[500]),
                       ),
                     ],
                   ),
@@ -538,7 +540,7 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
           Text(
             'Teslimat Adresi',
             style: TextStyle(
-              fontSize: 18,
+              fontSize: context.heading2Size,
               fontWeight: FontWeight.bold,
               color: isDark ? Colors.white : Colors.grey[900],
             ),
@@ -546,7 +548,7 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
           const SizedBox(height: 8),
           Text(
             'Siparişinizin teslim edileceği adresi seçin',
-            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+            style: TextStyle(fontSize: context.bodySize, color: Colors.grey[500]),
           ),
           const SizedBox(height: 20),
           ...addresses.map((address) {
@@ -600,7 +602,7 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
                               Text(
                                 address.title,
                                 style: TextStyle(
-                                  fontSize: 15,
+                                  fontSize: context.bodySize,
                                   fontWeight: FontWeight.bold,
                                   color: isDark
                                       ? Colors.white
@@ -618,10 +620,10 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
                                     color: StoreColors.primary,
                                     borderRadius: BorderRadius.circular(10),
                                   ),
-                                  child: const Text(
+                                  child: Text(
                                     'Seçili',
                                     style: TextStyle(
-                                      fontSize: 10,
+                                      fontSize: context.captionSmallSize,
                                       fontWeight: FontWeight.bold,
                                       color: Colors.white,
                                     ),
@@ -634,7 +636,7 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
                           Text(
                             address.fullAddress,
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: context.bodySmallSize,
                               color: Colors.grey[500],
                             ),
                             maxLines: 2,
@@ -686,7 +688,7 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
           Text(
             'Ödeme Yöntemi',
             style: TextStyle(
-              fontSize: 18,
+              fontSize: context.heading2Size,
               fontWeight: FontWeight.bold,
               color: isDark ? Colors.white : Colors.grey[900],
             ),
@@ -694,7 +696,7 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
           const SizedBox(height: 8),
           Text(
             'Güvenli ödeme yönteminizi seçin',
-            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+            style: TextStyle(fontSize: context.bodySize, color: Colors.grey[500]),
           ),
           const SizedBox(height: 20),
           PaymentMethodSelector(
@@ -731,7 +733,7 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
                 Text(
                   '3D Secure ile Güvenli Ödeme',
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: context.bodySize,
                     fontWeight: FontWeight.bold,
                     color: Colors.amber[800],
                   ),
@@ -740,7 +742,7 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
                 Text(
                   'Ödemeniz SSL ile şifrelenerek korunmaktadır.',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: context.captionSize,
                     color: Colors.amber[700],
                   ),
                 ),
@@ -764,7 +766,7 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
           Text(
             'Sipariş Özeti',
             style: TextStyle(
-              fontSize: 18,
+              fontSize: context.heading2Size,
               fontWeight: FontWeight.bold,
               color: isDark ? Colors.white : Colors.grey[900],
             ),
@@ -772,7 +774,7 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
           const SizedBox(height: 8),
           Text(
             'Lütfen siparişinizi kontrol edin',
-            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+            style: TextStyle(fontSize: context.bodySize, color: Colors.grey[500]),
           ),
           const SizedBox(height: 20),
           // Teslimat Bilgileri
@@ -815,12 +817,12 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
                   children: [
                     Text(
                       'Ürünler (${cartState.itemCount})',
-                      style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                      style: TextStyle(fontSize: context.bodySize, color: Colors.grey[500]),
                     ),
                     Text(
                       '₺${cartState.subtotal.toStringAsFixed(2)}',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: context.bodySize,
                         color: isDark ? Colors.white : Colors.grey[900],
                       ),
                     ),
@@ -832,14 +834,14 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
                   children: [
                     Text(
                       'Kargo',
-                      style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                      style: TextStyle(fontSize: context.bodySize, color: Colors.grey[500]),
                     ),
                     Text(
                       cartState.subtotal >= 500
                           ? 'Ücretsiz'
                           : '₺${cartState.deliveryFee.toStringAsFixed(2)}',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: context.bodySize,
                         color: cartState.subtotal >= 500
                             ? Colors.green
                             : (isDark ? Colors.white : Colors.grey[900]),
@@ -860,7 +862,7 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
                     Text(
                       'Toplam',
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: context.heading2Size,
                         fontWeight: FontWeight.bold,
                         color: isDark ? Colors.white : Colors.grey[900],
                       ),
@@ -868,7 +870,7 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
                     Text(
                       '₺${(cartState.subtotal >= 500 ? cartState.subtotal : cartState.total).toStringAsFixed(2)}',
                       style: TextStyle(
-                        fontSize: 22,
+                        fontSize: context.heading1Size + 4,
                         fontWeight: FontWeight.bold,
                         color: StoreColors.primary,
                       ),
@@ -892,7 +894,7 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
                 Expanded(
                   child: Text(
                     'Siparişi onayladığınızda ödeme işlemi başlayacaktır.',
-                    style: TextStyle(fontSize: 13, color: Colors.green[700]),
+                    style: TextStyle(fontSize: context.bodySmallSize, color: Colors.green[700]),
                   ),
                 ),
               ],
@@ -936,13 +938,13 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
               children: [
                 Text(
                   title,
-                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                  style: TextStyle(fontSize: context.captionSize, color: Colors.grey[500]),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   content,
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: context.bodySize,
                     fontWeight: FontWeight.w600,
                     color: isDark ? Colors.white : Colors.grey[900],
                   ),
@@ -969,7 +971,7 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
         Text(
           label,
           style: TextStyle(
-            fontSize: isBold ? 16 : 14,
+            fontSize: isBold ? context.heading2Size : context.bodySize,
             fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
             color: isGreen
                 ? Colors.green
@@ -979,7 +981,7 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
         Text(
           value,
           style: TextStyle(
-            fontSize: isBold ? 18 : 14,
+            fontSize: isBold ? context.heading2Size : context.bodySize,
             fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
             color: isGreen
                 ? Colors.green
@@ -1022,12 +1024,12 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
               children: [
                 Text(
                   'Toplam',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                  style: TextStyle(fontSize: context.captionSize, color: Colors.grey[500]),
                 ),
                 Text(
                   '₺${total.toStringAsFixed(2)}',
                   style: TextStyle(
-                    fontSize: 22,
+                    fontSize: context.heading1Size + 4,
                     fontWeight: FontWeight.bold,
                     color: isDark ? Colors.white : Colors.grey[900],
                   ),
@@ -1058,8 +1060,8 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
                     _currentStep == _steps.length - 1
                         ? 'Siparişi Onayla'
                         : 'Devam Et',
-                    style: const TextStyle(
-                      fontSize: 16,
+                    style: TextStyle(
+                      fontSize: context.heading2Size,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
@@ -1077,7 +1079,7 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
     return Scaffold(
       backgroundColor: isDark
           ? StoreColors.backgroundDark
-          : const Color(0xFFF8F9FA),
+          : StoreColors.backgroundLight,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -1094,7 +1096,7 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
             Text(
               'Siparişiniz İşleniyor...',
               style: TextStyle(
-                fontSize: 22,
+                fontSize: context.heading1Size + 4,
                 fontWeight: FontWeight.bold,
                 color: isDark ? Colors.white : Colors.grey[900],
               ),
@@ -1102,7 +1104,7 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
             const SizedBox(height: 12),
             Text(
               'Lütfen bekleyin, ödemeniz onaylanıyor',
-              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+              style: TextStyle(fontSize: context.bodySize, color: Colors.grey[500]),
             ),
             const SizedBox(height: 32),
             _buildProcessingStep(
@@ -1141,7 +1143,7 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
           Text(
             text,
             style: TextStyle(
-              fontSize: 14,
+              fontSize: context.bodySize,
               color: isDark ? Colors.grey[300] : Colors.grey[700],
             ),
           ),
@@ -1156,7 +1158,7 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
     return Scaffold(
       backgroundColor: isDark
           ? StoreColors.backgroundDark
-          : const Color(0xFFF8F9FA),
+          : StoreColors.backgroundLight,
       body: SafeArea(
         child: Center(
           child: Padding(
@@ -1184,7 +1186,7 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
                 Text(
                   'Siparişiniz Alındı!',
                   style: TextStyle(
-                    fontSize: 28,
+                    fontSize: context.heading1Size + 10,
                     fontWeight: FontWeight.bold,
                     color: isDark ? Colors.white : Colors.grey[900],
                   ),
@@ -1192,7 +1194,7 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
                 const SizedBox(height: 12),
                 Text(
                   'Sipariş numaranız:',
-                  style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                  style: TextStyle(fontSize: context.bodySize, color: Colors.grey[500]),
                 ),
                 const SizedBox(height: 4),
                 Container(
@@ -1207,7 +1209,7 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
                   child: Text(
                     _orderId ?? '',
                     style: TextStyle(
-                      fontSize: 20,
+                      fontSize: context.heading1Size,
                       fontWeight: FontWeight.bold,
                       color: StoreColors.primary,
                       letterSpacing: 2,
@@ -1235,7 +1237,7 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
                           Text(
                             'Tahmini Teslimat: 2-3 İş Günü',
                             style: TextStyle(
-                              fontSize: 14,
+                              fontSize: context.bodySize,
                               fontWeight: FontWeight.w600,
                               color: isDark ? Colors.white : Colors.grey[800],
                             ),
@@ -1246,7 +1248,7 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
                       Text(
                         'Siparişiniz hazırlandığında ve kargoya verildiğinde\nsize bildirim göndereceğiz.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                        style: TextStyle(fontSize: context.bodySmallSize, color: Colors.grey[500]),
                       ),
                     ],
                   ),
@@ -1266,10 +1268,10 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
                         borderRadius: BorderRadius.circular(14),
                       ),
                     ),
-                    child: const Text(
+                    child: Text(
                       'Ana Sayfaya Dön',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: context.heading2Size,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
@@ -1292,10 +1294,10 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
                         borderRadius: BorderRadius.circular(14),
                       ),
                     ),
-                    child: const Text(
+                    child: Text(
                       'Alışverişe Devam Et',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: context.heading2Size,
                         fontWeight: FontWeight.bold,
                       ),
                     ),

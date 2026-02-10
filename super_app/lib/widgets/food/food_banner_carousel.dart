@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -253,12 +254,16 @@ class _FoodBannerCarouselState extends State<FoodBannerCarousel> {
           children: [
             // Background Image
             if (imageUrl != null)
-              Image.network(
-                imageUrl,
+              CachedNetworkImage(
+                imageUrl: imageUrl,
                 fit: BoxFit.cover,
-                cacheWidth: 600,
-                cacheHeight: 300,
-                errorBuilder: (_, __, ___) => _buildPlaceholder(),
+                memCacheWidth: 600,
+                memCacheHeight: 300,
+                placeholder: (_, __) => Container(
+                  color: Colors.grey[200],
+                  child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                ),
+                errorWidget: (_, __, ___) => _buildPlaceholder(),
               )
             else
               _buildPlaceholder(),

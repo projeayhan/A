@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/app_responsive.dart';
 import '../../models/store/store_model.dart';
@@ -50,12 +51,17 @@ class StoreCard extends StatelessWidget {
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(10),
                   ),
-                  child: Image.network(
-                    store.coverUrl,
+                  child: CachedNetworkImage(
+                    imageUrl: store.coverUrl,
                     height: 64,
                     width: double.infinity,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
+                    placeholder: (_, __) => Container(
+                      height: 64,
+                      color: Colors.grey[200],
+                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    ),
+                    errorWidget: (_, __, ___) => Container(
                       height: 64,
                       color: AppColors.primary.withValues(alpha: 0.1),
                       child: Icon(
@@ -178,12 +184,17 @@ class StoreCard extends StatelessWidget {
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(10),
                   ),
-                  child: Image.network(
-                    store.coverUrl,
+                  child: CachedNetworkImage(
+                    imageUrl: store.coverUrl,
                     height: 90,
                     width: double.infinity,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
+                    placeholder: (_, __) => Container(
+                      height: 90,
+                      color: Colors.grey[200],
+                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    ),
+                    errorWidget: (_, __, ___) => Container(
                       height: 90,
                       color: AppColors.primary.withValues(alpha: 0.1),
                       child: Icon(
@@ -213,10 +224,14 @@ class StoreCard extends StatelessWidget {
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: Image.network(
-                        store.logoUrl,
+                      child: CachedNetworkImage(
+                        imageUrl: store.logoUrl,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Icon(
+                        placeholder: (_, __) => Container(
+                          color: Colors.grey[200],
+                          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                        ),
+                        errorWidget: (_, __, ___) => Icon(
                           Icons.store_rounded,
                           color: AppColors.primary,
                           size: 20,

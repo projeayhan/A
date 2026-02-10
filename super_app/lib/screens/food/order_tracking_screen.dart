@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/utils/app_dialogs.dart';
+import '../../core/theme/app_responsive.dart';
 import 'food_home_screen.dart';
 
 // Order tracking provider
@@ -73,6 +74,9 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
 
   // Chat modal açık mı?
   bool _isChatOpen = false;
+
+  // Navigation guard - çift navigasyon engelle
+  bool _isNavigating = false;
 
   /// Mesaj gönderilebilir mi? Sipariş iptal/teslim edildiyse 10dk sonra kapanır.
   bool get _canSendMessage {
@@ -229,7 +233,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
                   ),
                   Text(
                     messageText.length > 40 ? '${messageText.substring(0, 40)}...' : messageText,
-                    style: const TextStyle(fontSize: 12),
+                    style: TextStyle(fontSize: context.captionSize),
                   ),
                 ],
               ),
@@ -608,8 +612,8 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
         step++;
         setState(() {
           _courierLocation = routePoints[step];
-          _updateMarkers();
         });
+        _updateMarkers();
 
         // Center camera on courier
         _mapController?.animateCamera(CameraUpdate.newLatLng(_courierLocation));
@@ -620,10 +624,18 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
   }
 
   @override
+  void deactivate() {
+    _pulseController.stop();
+    _courierTimer?.cancel();
+    _courierTimer = null;
+    _statusCheckTimer?.cancel();
+    _statusCheckTimer = null;
+    super.deactivate();
+  }
+
+  @override
   void dispose() {
     _pulseController.dispose();
-    _courierTimer?.cancel();
-    _statusCheckTimer?.cancel();
     _mapController?.dispose();
     _orderChannel?.unsubscribe();
     _messagesChannel?.unsubscribe();
@@ -635,7 +647,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? FoodColors.backgroundDark : const Color(0xFFF8F9FA),
+      backgroundColor: isDark ? FoodColors.backgroundDark : FoodColors.backgroundLight,
       body: Column(
         children: [
           _buildHeader(isDark),
@@ -643,7 +655,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
             child: _orderData == null
                 ? const Center(child: CircularProgressIndicator())
                 : SingleChildScrollView(
-                    padding: const EdgeInsets.all(20),
+                    padding: EdgeInsets.all(context.pagePaddingH),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -679,8 +691,8 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
     return Container(
       padding: EdgeInsets.only(
         top: MediaQuery.of(context).padding.top + 8,
-        left: 20,
-        right: 20,
+        left: context.pagePaddingH,
+        right: context.pagePaddingH,
         bottom: 16,
       ),
       decoration: BoxDecoration(
@@ -694,6 +706,8 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
         children: [
           GestureDetector(
             onTap: () {
+              if (_isNavigating) return;
+              _isNavigating = true;
               if (context.canPop()) {
                 context.pop();
               } else {
@@ -717,7 +731,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
               Text(
                 'Sipariş Takibi',
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: context.heading2Size,
                   fontWeight: FontWeight.bold,
                   color: isDark ? Colors.white : Colors.grey[800],
                 ),
@@ -725,7 +739,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
               Text(
                 '#${_orderData?['order_number'] ?? widget.orderId.substring(0, 8)}',
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: context.captionSize,
                   color: FoodColors.primary,
                   fontWeight: FontWeight.w600,
                 ),
@@ -758,8 +772,8 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
       return Container(
         height: 220,
         decoration: BoxDecoration(
-          color: isDark ? Colors.grey[850] : Colors.grey[100],
-          borderRadius: BorderRadius.circular(20),
+          color: isDark ? FoodColors.surfaceDark : Colors.grey[100],
+          borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
           ),
@@ -778,7 +792,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
                 'Harita mobil cihazda görüntülenir',
                 style: TextStyle(
                   color: isDark ? Colors.grey[500] : Colors.grey[600],
-                  fontSize: 14,
+                  fontSize: context.bodySize,
                 ),
               ),
               const SizedBox(height: 8),
@@ -786,7 +800,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
                 'Kurye konumu: ${_getStatusStep(_currentStatus) >= 4 ? "Yolda" : "Restoranda"}',
                 style: TextStyle(
                   color: FoodColors.primary,
-                  fontSize: 12,
+                  fontSize: context.captionSize,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -799,13 +813,13 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
     return Container(
       height: 220,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
         ),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         child: Stack(
           children: [
             GoogleMap(
@@ -908,7 +922,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: (statusInfo['color'] as Color).withValues(alpha: 0.3),
@@ -948,8 +962,8 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
               children: [
                 Text(
                   statusInfo['title'] as String,
-                  style: const TextStyle(
-                    fontSize: 20,
+                  style: TextStyle(
+                    fontSize: context.heading1Size,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
@@ -958,7 +972,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
                 Text(
                   statusInfo['subtitle'] as String,
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: context.bodySize,
                     color: Colors.white.withValues(alpha: 0.9),
                   ),
                 ),
@@ -970,7 +984,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(16),
               ),
               child: Row(
                 children: [
@@ -978,8 +992,8 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
                   const SizedBox(width: 4),
                   Text(
                     estimatedTime,
-                    style: const TextStyle(
-                      fontSize: 12,
+                    style: TextStyle(
+                      fontSize: context.captionSize,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
@@ -1007,8 +1021,8 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isDark ? Colors.grey[850] : Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        color: isDark ? FoodColors.surfaceDark : Colors.white,
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark ? Colors.grey[700]! : Colors.grey[100]!,
         ),
@@ -1078,7 +1092,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
                                 Text(
                                   step['title']!,
                                   style: TextStyle(
-                                    fontSize: 14,
+                                    fontSize: context.bodySize,
                                     fontWeight: FontWeight.bold,
                                     color: isCompleted || isCurrent
                                         ? (isDark ? Colors.white : Colors.grey[800])
@@ -1089,7 +1103,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
                                 Text(
                                   step['subtitle']!,
                                   style: TextStyle(
-                                    fontSize: 12,
+                                    fontSize: context.captionSize,
                                     color: isDark ? Colors.grey[500] : Colors.grey[500],
                                   ),
                                 ),
@@ -1117,13 +1131,13 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
 
   Widget _buildCourierInfo(bool isDark) {
     final courierName = _orderData?['courier_name'] ?? 'Kurye';
-    final courierPhone = _orderData?['courier_phone'] ?? '+90 555 123 4567';
+    final courierPhone = _orderData?['courier_phone'];
 
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? Colors.grey[850] : Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        color: isDark ? FoodColors.surfaceDark : Colors.white,
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark ? Colors.grey[700]! : Colors.grey[100]!,
         ),
@@ -1151,7 +1165,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
                 Text(
                   courierName,
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: context.heading2Size,
                     fontWeight: FontWeight.bold,
                     color: isDark ? Colors.white : Colors.grey[800],
                   ),
@@ -1164,7 +1178,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
                     Text(
                       '4.9',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: context.captionSize,
                         fontWeight: FontWeight.w600,
                         color: isDark ? Colors.grey[300] : Colors.grey[600],
                       ),
@@ -1173,7 +1187,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
                     Text(
                       '• 1.250+ teslimat',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: context.captionSize,
                         color: isDark ? Colors.grey[500] : Colors.grey[500],
                       ),
                     ),
@@ -1194,7 +1208,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
                 Icons.phone_outlined,
                 isDark,
                 isPrimary: true,
-                onTap: () => _callCourier(courierPhone),
+                onTap: courierPhone != null ? () => _callCourier(courierPhone) : null,
               ),
             ],
           ),
@@ -1248,8 +1262,8 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isDark ? Colors.grey[850] : Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        color: isDark ? FoodColors.surfaceDark : Colors.white,
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark ? Colors.grey[700]! : Colors.grey[100]!,
         ),
@@ -1260,7 +1274,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
           Text(
             'Sipariş Detayları',
             style: TextStyle(
-              fontSize: 16,
+              fontSize: context.heading2Size,
               fontWeight: FontWeight.bold,
               color: isDark ? Colors.white : Colors.grey[800],
             ),
@@ -1294,7 +1308,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
               Text(
                 'Toplam',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: context.heading2Size,
                   fontWeight: FontWeight.bold,
                   color: isDark ? Colors.white : Colors.grey[800],
                 ),
@@ -1302,7 +1316,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
               Text(
                 '₺${total.toStringAsFixed(2)}',
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: context.heading2Size,
                   fontWeight: FontWeight.bold,
                   color: FoodColors.primary,
                 ),
@@ -1324,7 +1338,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
             child: Text(
               name,
               style: TextStyle(
-                fontSize: 14,
+                fontSize: context.bodySize,
                 color: isDark ? Colors.grey[300] : Colors.grey[600],
               ),
             ),
@@ -1332,7 +1346,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
           Text(
             price,
             style: TextStyle(
-              fontSize: 14,
+              fontSize: context.bodySize,
               fontWeight: FontWeight.w600,
               color: isDark ? Colors.white : Colors.grey[800],
             ),
@@ -1345,13 +1359,13 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
   Widget _buildBottomActions(bool isDark) {
     return Container(
       padding: EdgeInsets.fromLTRB(
-        20,
+        context.pagePaddingH,
         16,
-        20,
+        context.pagePaddingH,
         MediaQuery.of(context).padding.bottom + 16,
       ),
       decoration: BoxDecoration(
-        color: isDark ? Colors.grey[900] : Colors.white,
+        color: isDark ? FoodColors.surfaceDark : Colors.white,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -1375,7 +1389,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
                   child: Text(
                     'İptal Et',
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: context.heading2Size,
                       fontWeight: FontWeight.bold,
                       color: isDark ? Colors.grey[300] : Colors.grey[600],
                     ),
@@ -1425,7 +1439,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
                         Text(
                           _canSendMessage ? 'Restorana Yaz' : 'Mesaj süresi doldu',
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: context.heading2Size,
                             fontWeight: FontWeight.bold,
                             color: _canSendMessage ? Colors.white : Colors.grey[500],
                           ),
@@ -1456,9 +1470,9 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
                               const SizedBox(width: 4),
                               Text(
                                 '$_unreadMessageCount yeni',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 11,
+                                  fontSize: context.captionSmallSize,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -1486,7 +1500,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
       builder: (context) => Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: isDark ? Colors.grey[900] : Colors.white,
+          color: isDark ? FoodColors.surfaceDark : Colors.white,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: Column(
@@ -1507,7 +1521,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
             Text(
               'Yardım ve Destek',
               style: TextStyle(
-                fontSize: 20,
+                fontSize: context.heading1Size,
                 fontWeight: FontWeight.bold,
                 color: isDark ? Colors.white : Colors.grey[800],
               ),
@@ -1580,14 +1594,14 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
                   Text(
                     title,
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: context.heading2Size,
                       fontWeight: FontWeight.w600,
                       color: isDark ? Colors.white : Colors.grey[800],
                     ),
                   ),
                   Text(
                     subtitle,
-                    style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                    style: TextStyle(fontSize: context.bodySmallSize, color: Colors.grey[500]),
                   ),
                 ],
               ),
@@ -1607,8 +1621,8 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          backgroundColor: isDark ? Colors.grey[900] : Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          backgroundColor: isDark ? FoodColors.surfaceDark : Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: Text(
             'İptal Edilemez',
             style: TextStyle(color: isDark ? Colors.white : Colors.grey[800]),
@@ -1642,8 +1656,8 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: isDark ? Colors.grey[900] : Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: isDark ? FoodColors.surfaceDark : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           'Siparişi İptal Et',
           style: TextStyle(color: isDark ? Colors.white : Colors.grey[800]),
@@ -1711,7 +1725,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
       builder: (ctx) => Container(
         height: MediaQuery.of(ctx).size.height * 0.5,
         decoration: BoxDecoration(
-          color: isDark ? Colors.grey[900] : Colors.white,
+          color: isDark ? FoodColors.surfaceDark : Colors.white,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: Column(
@@ -1743,14 +1757,14 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
                         Text(
                           courierName,
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: context.heading2Size,
                             fontWeight: FontWeight.bold,
                             color: isDark ? Colors.white : Colors.grey[800],
                           ),
                         ),
                         Text(
                           'Kurye ile sohbet',
-                          style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                          style: TextStyle(fontSize: context.captionSize, color: Colors.grey[500]),
                         ),
                       ],
                     ),

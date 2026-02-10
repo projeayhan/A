@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../models/taxi/driver_review_models.dart';
 import '../../../core/services/taxi_service.dart';
 import '../../../core/utils/app_dialogs.dart';
+import '../../../core/utils/name_masking.dart';
 
 class ReviewReplySheet extends StatefulWidget {
   final DriverReview review;
@@ -189,7 +190,7 @@ class _ReviewReplySheetState extends State<ReviewReplySheet> {
                   children: [
                     // Customer name
                     Text(
-                      widget.review.customerName ?? 'Müşteri',
+                      maskUserName(widget.review.customerName),
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),

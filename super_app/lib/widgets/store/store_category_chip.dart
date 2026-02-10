@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/app_responsive.dart';
 import '../../models/store/store_category_model.dart';
 
 class StoreCategoryChip extends StatelessWidget {
@@ -43,7 +44,7 @@ class StoreCategoryChip extends StatelessWidget {
             Text(
               category.name,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: context.captionSize,
                 fontWeight: FontWeight.w500,
                 color: isDark ? Colors.white : Colors.black87,
               ),

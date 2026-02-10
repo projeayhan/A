@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 class FoodCategoryItem extends StatelessWidget {
@@ -36,16 +37,18 @@ class FoodCategoryItem extends StatelessWidget {
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(15),
-              child: Image.network(
-                imageUrl,
+              child: CachedNetworkImage(
+                imageUrl: imageUrl,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Icon(
-                    Icons.restaurant,
-                    color: isDark ? Colors.orange[300] : Colors.orange[600],
-                    size: 28,
-                  );
-                },
+                placeholder: (_, __) => Container(
+                  color: Colors.grey[200],
+                  child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                ),
+                errorWidget: (_, __, ___) => Icon(
+                  Icons.restaurant,
+                  color: isDark ? Colors.orange[300] : Colors.orange[600],
+                  size: 28,
+                ),
               ),
             ),
           ),

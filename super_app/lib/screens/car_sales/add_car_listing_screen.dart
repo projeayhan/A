@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/car_sales/car_sales_models.dart';
 import '../../services/car_sales_service.dart';
 import '../../core/utils/app_dialogs.dart';
@@ -1818,11 +1819,19 @@ class _AddCarListingScreenState extends State<AddCarListingScreen>
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(16),
-                  child: Image.network(
-                    _selectedImages[remoteIndex],
+                  child: CachedNetworkImage(
+                    imageUrl: _selectedImages[remoteIndex],
                     fit: BoxFit.cover,
                     width: double.infinity,
                     height: double.infinity,
+                    placeholder: (_, __) => Container(
+                      color: Colors.grey[200],
+                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    ),
+                    errorWidget: (_, __, ___) => Container(
+                      color: Colors.grey[200],
+                      child: const Icon(Icons.image_not_supported, color: Colors.grey),
+                    ),
                   ),
                 ),
                 Positioned(

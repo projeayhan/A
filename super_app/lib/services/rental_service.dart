@@ -1,44 +1,58 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../core/utils/cache_helper.dart';
 
 class RentalService {
   static final RentalService _instance = RentalService._internal();
   factory RentalService() => _instance;
   RentalService._internal();
 
+  final _cache = CacheManager();
   SupabaseClient get _client => Supabase.instance.client;
 
   // ==================== LOCATIONS ====================
 
   /// Get all active rental locations
   Future<List<Map<String, dynamic>>> getLocations({String? city}) async {
-    var query = _client
-        .from('rental_locations')
-        .select('*, rental_companies(company_name, logo_url)')
-        .eq('is_active', true);
+    return _cache.getOrFetch<List<Map<String, dynamic>>>(
+      'rental_locations_${city ?? 'all'}',
+      ttl: const Duration(hours: 24),
+      fetcher: () async {
+        var query = _client
+            .from('rental_locations')
+            .select('*, rental_companies(company_name, logo_url)')
+            .eq('is_active', true);
 
-    if (city != null) {
-      query = query.eq('city', city);
-    }
+        if (city != null) {
+          query = query.eq('city', city);
+        }
 
-    final response = await query.order('name');
-    return List<Map<String, dynamic>>.from(response);
+        final response = await query.order('name');
+        return List<Map<String, dynamic>>.from(response);
+      },
+    );
   }
 
   /// Get unique cities with rental locations
   Future<List<String>> getCities() async {
-    final response = await _client
-        .from('rental_locations')
-        .select('city')
-        .eq('is_active', true);
+    return _cache.getOrFetch<List<String>>(
+      'rental_cities',
+      ttl: const Duration(hours: 24),
+      fetcher: () async {
+        final response = await _client
+            .from('rental_locations')
+            .select('city')
+            .eq('is_active', true);
 
-    final cities = <String>{};
-    for (final row in response) {
-      if (row['city'] != null) {
-        cities.add(row['city'] as String);
-      }
-    }
-    return cities.toList()..sort();
+        final cities = <String>{};
+        for (final row in response) {
+          if (row['city'] != null) {
+            cities.add(row['city'] as String);
+          }
+        }
+        return cities.toList()..sort();
+      },
+    );
   }
 
   // ==================== CARS ====================
@@ -69,17 +83,23 @@ class RentalService {
 
   /// Get car details by ID
   Future<Map<String, dynamic>?> getCarDetails(String carId) async {
-    final response = await _client
-        .from('rental_cars')
-        .select('''
-          *,
-          rental_companies(id, company_name, logo_url, rating, phone, email),
-          rental_locations(id, name, address, city, is_airport, is_24_hours)
-        ''')
-        .eq('id', carId)
-        .maybeSingle();
+    return _cache.getOrFetch<Map<String, dynamic>?>(
+      'rental_car_$carId',
+      ttl: const Duration(minutes: 30),
+      fetcher: () async {
+        final response = await _client
+            .from('rental_cars')
+            .select('''
+              *,
+              rental_companies(id, company_name, logo_url, rating, phone, email),
+              rental_locations(id, name, address, city, is_airport, is_24_hours)
+            ''')
+            .eq('id', carId)
+            .maybeSingle();
 
-    return response;
+        return response;
+      },
+    );
   }
 
   /// Get cars by company
@@ -98,54 +118,78 @@ class RentalService {
 
   /// Get approved rental companies
   Future<List<Map<String, dynamic>>> getCompanies({String? city}) async {
-    var query = _client
-        .from('rental_companies')
-        .select('*')
-        .eq('is_approved', true)
-        .eq('is_active', true);
+    return _cache.getOrFetch<List<Map<String, dynamic>>>(
+      'rental_companies_${city ?? 'all'}',
+      ttl: const Duration(hours: 1),
+      fetcher: () async {
+        var query = _client
+            .from('rental_companies')
+            .select('*')
+            .eq('is_approved', true)
+            .eq('is_active', true);
 
-    if (city != null) {
-      query = query.eq('city', city);
-    }
+        if (city != null) {
+          query = query.eq('city', city);
+        }
 
-    final response = await query.order('rating', ascending: false);
-    return List<Map<String, dynamic>>.from(response);
+        final response = await query.order('rating', ascending: false);
+        return List<Map<String, dynamic>>.from(response);
+      },
+    );
   }
 
   /// Get company details
   Future<Map<String, dynamic>?> getCompanyDetails(String companyId) async {
-    final response = await _client
-        .from('rental_companies')
-        .select('*')
-        .eq('id', companyId)
-        .maybeSingle();
+    return _cache.getOrFetch<Map<String, dynamic>?>(
+      'rental_company_$companyId',
+      ttl: const Duration(hours: 1),
+      fetcher: () async {
+        final response = await _client
+            .from('rental_companies')
+            .select('*')
+            .eq('id', companyId)
+            .maybeSingle();
 
-    return response;
+        return response;
+      },
+    );
   }
 
   // ==================== SERVICES ====================
 
   /// Get packages for a company
   Future<List<Map<String, dynamic>>> getCompanyPackages(String companyId) async {
-    final response = await _client
-        .from('rental_packages')
-        .select('*')
-        .eq('company_id', companyId)
-        .eq('is_active', true)
-        .order('sort_order');
+    return _cache.getOrFetch<List<Map<String, dynamic>>>(
+      'rental_packages_$companyId',
+      ttl: const Duration(hours: 1),
+      fetcher: () async {
+        final response = await _client
+            .from('rental_packages')
+            .select('*')
+            .eq('company_id', companyId)
+            .eq('is_active', true)
+            .order('sort_order');
 
-    return List<Map<String, dynamic>>.from(response);
+        return List<Map<String, dynamic>>.from(response);
+      },
+    );
   }
 
   /// Get additional services for a company
   Future<List<Map<String, dynamic>>> getCompanyServices(String companyId) async {
-    final response = await _client
-        .from('rental_services')
-        .select('*')
-        .eq('company_id', companyId)
-        .eq('is_active', true);
+    return _cache.getOrFetch<List<Map<String, dynamic>>>(
+      'rental_services_$companyId',
+      ttl: const Duration(hours: 1),
+      fetcher: () async {
+        final response = await _client
+            .from('rental_services')
+            .select('*')
+            .eq('company_id', companyId)
+            .eq('is_active', true);
 
-    return List<Map<String, dynamic>>.from(response);
+        return List<Map<String, dynamic>>.from(response);
+      },
+    );
   }
 
   // ==================== BOOKINGS ====================
@@ -358,16 +402,22 @@ class RentalService {
     String companyId, {
     int limit = 20,
   }) async {
-    final response = await _client
-        .from('rental_reviews')
-        .select('*, rental_cars(brand, model)')
-        .eq('company_id', companyId)
-        .eq('is_approved', true)
-        .eq('is_hidden', false)
-        .order('created_at', ascending: false)
-        .limit(limit);
+    return _cache.getOrFetch<List<Map<String, dynamic>>>(
+      'rental_reviews_$companyId',
+      ttl: const Duration(minutes: 30),
+      fetcher: () async {
+        final response = await _client
+            .from('rental_reviews')
+            .select('*, rental_cars(brand, model)')
+            .eq('company_id', companyId)
+            .eq('is_approved', true)
+            .eq('is_hidden', false)
+            .order('created_at', ascending: false)
+            .limit(limit);
 
-    return List<Map<String, dynamic>>.from(response);
+        return List<Map<String, dynamic>>.from(response);
+      },
+    );
   }
 
   /// Check if user has already reviewed a booking

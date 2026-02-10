@@ -273,7 +273,25 @@
       "Bash(for d in govva.com yukko.com peppa.com lakko.com mokko.com vikko.com zukko.com pikvo.com mokvo.com zepko.com rekvo.com sipvo.com tokvo.com dekko.com yokko.com bukvo.com)",
       "Bash(for d in herseygo.com heledaa.com golladaa.com goyveri.com dabana.com gabsiz.com gapigo.com hersego.com herseyo.com gomsun.com gollan.com gayriga.com hersem.com gabim.com gomsum.com gollam.com dabanda.com)",
       "Bash(for d in harman.com harmanda.com sofada.com gomsuluq.com gomsulug.com gardas.com mahalla.com avluda.com bereket.com bollug.com carsida.com harmani.com sofam.com avlum.com gardasi.com mahallan.com bahcam.com duggan.com ocagim.com sofanda.com)",
-      "mcp__supabase__update_storage_config"
+      "mcp__supabase__update_storage_config",
+      "Bash(fc:*)",
+      "Bash(vercel whoami:*)",
+      "Bash(vercel ls:*)",
+      "Bash(vercel inspect:*)",
+      "Bash(vercel domains ls:*)",
+      "Bash(vercel project ls:*)",
+      "WebFetch(domain:merchant-panel-wine.vercel.app)",
+      "WebFetch(domain:rent-a-car-panel.vercel.app)",
+      "WebFetch(domain:arac-satis-panel.vercel.app)",
+      "WebFetch(domain:admin-panel-tau-wine.vercel.app)",
+      "Bash(cmd /c \"c:\\\\A\\\\website\\\\flutter_attach.cmd\")",
+      "Bash(vercel login:*)",
+      "Bash(vercel deploy:*)",
+      "Bash(vercel link:*)",
+      "Bash(powershell -File:*)",
+      "Bash(git -C c:/A status -s)",
+      "Bash(git -C c:/A log --oneline -5)",
+      "Bash(git -C c:/A diff --stat)"
     ]
   }
 }

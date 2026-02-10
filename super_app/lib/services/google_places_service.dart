@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 class PlacePrediction {
@@ -96,7 +97,7 @@ class LatLng {
 }
 
 class GooglePlacesService {
-  static const String _apiKey = 'AIzaSyDKGWWyuU8vbE_8H50XaFCi7exSSFolLnQ';
+  static String get _apiKey => dotenv.env['GOOGLE_API_KEY'] ?? '';
   static const String _placesBaseUrl = 'https://maps.googleapis.com/maps/api/place';
   static const String _directionsBaseUrl = 'https://maps.googleapis.com/maps/api/directions/json';
   static const Duration _httpTimeout = Duration(seconds: 10);

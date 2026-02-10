@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../core/theme/app_theme.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/theme/app_responsive.dart';
 import '../../core/providers/store_cart_provider.dart';
 import '../../core/providers/product_favorite_provider.dart';
@@ -10,13 +10,15 @@ import '../../core/providers/store_provider.dart';
 import '../../models/store/store_category_model.dart';
 import '../../models/store/store_model.dart';
 import '../../models/store/store_product_model.dart';
-import '../../widgets/store/flash_deal_banner.dart';
 import '../../widgets/store/store_card.dart';
 import '../../widgets/store/product_card.dart';
 import '../../widgets/store/section_header.dart';
 import '../../widgets/store/campaign_carousel.dart';
 import '../../widgets/common/generic_banner_carousel.dart';
 import '../../core/providers/banner_provider.dart';
+import '../../core/providers/notification_provider.dart';
+import '../../core/providers/store_follow_provider.dart' hide unreadNotificationCountProvider;
+import '../../core/theme/store_colors.dart';
 
 class StoreHomeScreen extends ConsumerStatefulWidget {
   const StoreHomeScreen({super.key});
@@ -38,6 +40,10 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
   String _searchQuery = '';
   Timer? _debounceTimer;
 
+  // Notification dropdown
+  OverlayEntry? _notificationOverlay;
+  bool _showNotificationDropdown = false;
+
   @override
   void initState() {
     super.initState();
@@ -50,6 +56,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
   void dispose() {
     _debounceTimer?.cancel();
     _removeOverlay();
+    _removeNotificationOverlay();
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     _searchController.removeListener(_onSearchChanged);
@@ -141,7 +148,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
       return Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1F2937) : Colors.white,
+          color: isDark ? StoreColors.surfaceDark : Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
@@ -165,7 +172,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
       return Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1F2937) : Colors.white,
+          color: isDark ? StoreColors.surfaceDark : Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
@@ -182,7 +189,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
             Text(
               'Sonuç bulunamadı',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: context.heading2Size,
                 fontWeight: FontWeight.w600,
                 color: isDark ? Colors.grey[300] : Colors.grey[700],
               ),
@@ -190,7 +197,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
             const SizedBox(height: 4),
             Text(
               '"$_searchQuery" için sonuç yok',
-              style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+              style: TextStyle(fontSize: context.bodySmallSize, color: Colors.grey[500]),
             ),
           ],
         ),
@@ -202,7 +209,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
         maxHeight: MediaQuery.of(context).size.height * 0.55,
       ),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1F2937) : Colors.white,
+        color: isDark ? StoreColors.surfaceDark : Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -244,16 +251,16 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
+              color: StoreColors.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(icon, size: 16, color: AppColors.primary),
+            child: Icon(icon, size: 16, color: StoreColors.primary),
           ),
           const SizedBox(width: 10),
           Text(
             title,
             style: TextStyle(
-              fontSize: 13,
+              fontSize: context.bodySmallSize,
               fontWeight: FontWeight.w700,
               color: isDark ? Colors.grey[400] : Colors.grey[600],
               letterSpacing: 0.5,
@@ -291,12 +298,16 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  store.logoUrl,
+                child: CachedNetworkImage(
+                  imageUrl: store.logoUrl,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    child: Icon(Icons.store, color: AppColors.primary),
+                  placeholder: (_, __) => Container(
+                    color: Colors.grey[200],
+                    child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                  ),
+                  errorWidget: (_, __, ___) => Container(
+                    color: StoreColors.primary.withValues(alpha: 0.1),
+                    child: Icon(Icons.store, color: StoreColors.primary),
                   ),
                 ),
               ),
@@ -312,7 +323,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                         child: Text(
                           store.name,
                           style: TextStyle(
-                            fontSize: 15,
+                            fontSize: context.bodySize,
                             fontWeight: FontWeight.w600,
                             color: isDark ? Colors.white : Colors.grey[900],
                           ),
@@ -321,7 +332,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                       ),
                       if (store.isVerified) ...[
                         const SizedBox(width: 4),
-                        Icon(Icons.verified, size: 14, color: AppColors.primary),
+                        Icon(Icons.verified, size: 14, color: StoreColors.primary),
                       ],
                     ],
                   ),
@@ -333,7 +344,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                       Text(
                         store.formattedRating,
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: context.captionSize,
                           fontWeight: FontWeight.w500,
                           color: Colors.grey[600],
                         ),
@@ -349,7 +360,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                                 .firstOrNull ?? '';
                             return Text(
                               categoryName,
-                              style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                              style: TextStyle(fontSize: context.captionSize, color: Colors.grey[500]),
                               overflow: TextOverflow.ellipsis,
                             );
                           },
@@ -394,12 +405,16 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  product.imageUrl,
+                child: CachedNetworkImage(
+                  imageUrl: product.imageUrl,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    child: Icon(Icons.shopping_bag, color: AppColors.primary),
+                  placeholder: (_, __) => Container(
+                    color: Colors.grey[200],
+                    child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                  ),
+                  errorWidget: (_, __, ___) => Container(
+                    color: StoreColors.primary.withValues(alpha: 0.1),
+                    child: Icon(Icons.shopping_bag, color: StoreColors.primary),
                   ),
                 ),
               ),
@@ -412,7 +427,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                   Text(
                     product.name,
                     style: TextStyle(
-                      fontSize: 15,
+                      fontSize: context.bodySize,
                       fontWeight: FontWeight.w600,
                       color: isDark ? Colors.white : Colors.grey[900],
                     ),
@@ -422,14 +437,14 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                   const SizedBox(height: 2),
                   Row(
                     children: [
-                      Icon(Icons.storefront, size: 12, color: AppColors.primary),
+                      Icon(Icons.storefront, size: 12, color: StoreColors.primary),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           product.storeName,
                           style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.primary,
+                            fontSize: context.captionSize,
+                            color: StoreColors.primary,
                             fontWeight: FontWeight.w500,
                           ),
                           overflow: TextOverflow.ellipsis,
@@ -440,7 +455,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                   Text(
                     product.formattedPrice,
                     style: TextStyle(
-                      fontSize: 13,
+                      fontSize: context.bodySmallSize,
                       color: Colors.green[600],
                       fontWeight: FontWeight.w700,
                     ),
@@ -453,6 +468,386 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
         ),
       ),
     );
+  }
+
+  // ==================== Notification Dropdown ====================
+
+  void _removeNotificationOverlay() {
+    _notificationOverlay?.remove();
+    _notificationOverlay = null;
+  }
+
+  void _toggleNotificationDropdown() {
+    // Arama overlay açıksa kapat
+    _removeOverlay();
+
+    if (_showNotificationDropdown) {
+      _removeNotificationOverlay();
+      setState(() => _showNotificationDropdown = false);
+    } else {
+      _showNotificationOverlayDropdown();
+      setState(() => _showNotificationDropdown = true);
+      ref.read(notificationProvider.notifier).markAllAsRead();
+      ref.read(storeNotificationProvider.notifier).markAllAsRead();
+    }
+  }
+
+  void _showNotificationOverlayDropdown() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final notifications = ref.read(notificationProvider).notifications;
+    final storeNotifications = ref.read(storeNotificationProvider).notifications;
+
+    _notificationOverlay = OverlayEntry(
+      builder: (context) => Stack(
+        children: [
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: () {
+                _removeNotificationOverlay();
+                setState(() => _showNotificationDropdown = false);
+              },
+              child: Container(color: Colors.transparent),
+            ),
+          ),
+          Positioned(
+            left: 16,
+            right: 16,
+            top: MediaQuery.of(context).padding.top + 120,
+            child: Material(
+              elevation: 8,
+              borderRadius: BorderRadius.circular(16),
+              color: isDark ? StoreColors.surfaceDark : Colors.white,
+              child: Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.4,
+                ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isDark ? Colors.grey[700]! : Colors.grey[200]!,
+                  ),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Text(
+                            'Bildirimler',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? Colors.white : StoreColors.surfaceDark,
+                            ),
+                          ),
+                          const Spacer(),
+                          GestureDetector(
+                            onTap: () {
+                              _removeNotificationOverlay();
+                              setState(() => _showNotificationDropdown = false);
+                              context.push('/profile/notifications');
+                            },
+                            child: Text(
+                              'Tümünü Gör',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: StoreColors.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Divider(height: 1),
+                    Flexible(
+                      child: (notifications.isEmpty && storeNotifications.isEmpty)
+                          ? Padding(
+                              padding: const EdgeInsets.all(32),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.notifications_off_outlined,
+                                      size: 48, color: Colors.grey[400]),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'Bildirim yok',
+                                    style: TextStyle(color: Colors.grey[500]),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : ListView(
+                              shrinkWrap: true,
+                              padding: const EdgeInsets.all(8),
+                              children: [
+                                if (storeNotifications.isNotEmpty) ...[
+                                  _notifSectionLabel('Mağaza Bildirimleri', Icons.store_rounded),
+                                  ...storeNotifications.map((n) => _buildStoreNotifItem(n, isDark)),
+                                  if (notifications.isNotEmpty) ...[
+                                    const SizedBox(height: 8),
+                                    const Divider(height: 1),
+                                    const SizedBox(height: 8),
+                                  ],
+                                ],
+                                if (notifications.isNotEmpty) ...[
+                                  _notifSectionLabel('Genel Bildirimler', Icons.notifications_rounded),
+                                  ...notifications.map((n) => _buildAppNotifItem(n, isDark)),
+                                ],
+                              ],
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    Overlay.of(context).insert(_notificationOverlay!);
+  }
+
+  Widget _notifSectionLabel(String title, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: Colors.grey[500]),
+          const SizedBox(width: 6),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: context.captionSize,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey[500],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStoreNotifItem(StoreNotification notification, bool isDark) {
+    return GestureDetector(
+      onTap: () {
+        ref.read(storeNotificationProvider.notifier).markAsRead(notification.id);
+        _removeNotificationOverlay();
+        setState(() => _showNotificationDropdown = false);
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: notification.isRead
+              ? Colors.transparent
+              : notification.iconColor.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: notification.iconColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(notification.icon, color: notification.iconColor, size: 18),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          notification.title,
+                          style: TextStyle(
+                            fontSize: context.bodySmallSize,
+                            fontWeight: notification.isRead ? FontWeight.w500 : FontWeight.bold,
+                            color: isDark ? Colors.white : StoreColors.surfaceDark,
+                          ),
+                        ),
+                      ),
+                      if (!notification.isRead)
+                        Container(
+                          width: 7, height: 7,
+                          decoration: BoxDecoration(
+                            color: notification.iconColor,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    notification.message,
+                    style: TextStyle(fontSize: context.captionSmallSize, color: Colors.grey[500]),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    notification.timeAgo,
+                    style: TextStyle(fontSize: context.captionSmallSize, color: Colors.grey[400]),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAppNotifItem(AppNotification notification, bool isDark) {
+    final iconColor = Color(notification.colorValue);
+    final icon = _notifIcon(notification.iconName);
+    final timeAgo = _notifTimeAgo(notification.createdAt);
+
+    return GestureDetector(
+      onTap: () {
+        if (!notification.isRead) {
+          ref.read(notificationProvider.notifier).markAsRead(notification.id);
+        }
+        _removeNotificationOverlay();
+        setState(() => _showNotificationDropdown = false);
+        _handleNotificationTap(notification);
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 2),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: notification.isRead
+              ? Colors.transparent
+              : iconColor.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: iconColor, size: 18),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          notification.title,
+                          style: TextStyle(
+                            fontSize: context.bodySmallSize,
+                            fontWeight: notification.isRead ? FontWeight.w500 : FontWeight.bold,
+                            color: isDark ? Colors.white : StoreColors.surfaceDark,
+                          ),
+                        ),
+                      ),
+                      if (!notification.isRead)
+                        Container(
+                          width: 7, height: 7,
+                          decoration: BoxDecoration(
+                            color: iconColor,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    notification.body,
+                    style: TextStyle(fontSize: context.captionSmallSize, color: Colors.grey[500]),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    timeAgo,
+                    style: TextStyle(fontSize: context.captionSmallSize, color: Colors.grey[400]),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  IconData _notifIcon(String iconName) {
+    switch (iconName) {
+      case 'restaurant': return Icons.restaurant;
+      case 'shopping_bag': return Icons.shopping_bag;
+      case 'local_taxi': return Icons.local_taxi;
+      case 'directions_car': return Icons.directions_car;
+      case 'work': return Icons.work;
+      case 'home': return Icons.home;
+      case 'celebration': return Icons.celebration;
+      case 'delivery_dining': return Icons.delivery_dining;
+      case 'star': return Icons.star;
+      default: return Icons.notifications;
+    }
+  }
+
+  String _notifTimeAgo(DateTime dateTime) {
+    final diff = DateTime.now().difference(dateTime);
+    if (diff.inMinutes < 1) return 'Az önce';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} dk önce';
+    if (diff.inHours < 24) return '${diff.inHours} saat önce';
+    if (diff.inDays < 7) return '${diff.inDays} gün önce';
+    return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
+  }
+
+  void _handleNotificationTap(AppNotification notification) {
+    final data = notification.data;
+    if (data == null) return;
+    switch (notification.type) {
+      case 'order_update':
+      case 'store_order':
+        final orderId = data['order_id'] as String?;
+        if (orderId != null) context.push('/food/order-tracking/$orderId');
+        break;
+      case 'taxi_ride':
+        context.push('/taxi');
+        break;
+      case 'job_application':
+      case 'job_application_status':
+        final jobId = data['job_id'] as String?;
+        if (jobId != null) context.push('/jobs/detail/$jobId');
+        break;
+      case 'car_message':
+      case 'car_favorite':
+        final listingId = data['listing_id'] as String?;
+        if (listingId != null) context.push('/car-sales/detail/$listingId');
+        break;
+      case 'property_message':
+      case 'property_favorite':
+      case 'property_appointment':
+        final propertyId = data['property_id'] as String?;
+        if (propertyId != null) context.push('/emlak/property/$propertyId');
+        break;
+      case 'rental_reservation':
+        context.push('/rental');
+        break;
+      default:
+        break;
+    }
   }
 
   void _onScroll() {
@@ -519,7 +914,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
           }).toList();
 
     return Scaffold(
-      backgroundColor: isDark ? Colors.black : Colors.grey[50],
+      backgroundColor: isDark ? StoreColors.backgroundDark : StoreColors.backgroundLight,
       body: Stack(
         children: [
           CustomScrollView(
@@ -554,7 +949,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                                   Text(
                                     'Mağazalar',
                                     style: TextStyle(
-                                      fontSize: 20,
+                                      fontSize: context.heading1Size,
                                       fontWeight: FontWeight.w800,
                                       color: isDark ? Colors.white : Colors.black87,
                                       letterSpacing: -0.3,
@@ -566,23 +961,31 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                                         ? '${_getSelectedCategoryName(categories)} kategorisinde ${filteredStores.length} mağaza'
                                         : '${allStores.length}+ mağaza sizi bekliyor',
                                     style: TextStyle(
-                                      fontSize: 13,
+                                      fontSize: context.bodySmallSize,
                                       color: Colors.grey[600],
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                            // Notification Button - BottomSheet
-                            IconButton(
-                              onPressed: () => _showNotificationsSheet(isDark),
-                              icon: Badge(
-                                label: const Text('2'),
-                                child: Icon(
-                                  Icons.notifications_outlined,
-                                  color: isDark ? Colors.white : Colors.black87,
-                                ),
-                              ),
+                            // Notification Button
+                            Consumer(
+                              builder: (context, ref, _) {
+                                final generalUnread = ref.watch(notificationProvider).unreadCount;
+                                final storeUnread = ref.watch(storeNotificationProvider).unreadCount;
+                                final unreadCount = generalUnread + storeUnread;
+                                return IconButton(
+                                  onPressed: _toggleNotificationDropdown,
+                                  icon: Badge(
+                                    label: Text('$unreadCount'),
+                                    isLabelVisible: unreadCount > 0,
+                                    child: Icon(
+                                      Icons.notifications_outlined,
+                                      color: isDark ? Colors.white : Colors.black87,
+                                    ),
+                                  ),
+                                );
+                              },
                             ),
                             // Cart Button
                             IconButton(
@@ -617,7 +1020,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: _searchFocusNode.hasFocus
-                                ? AppColors.primary
+                                ? StoreColors.primary
                                 : (isDark ? Colors.grey[700]! : Colors.grey[200]!),
                             width: _searchFocusNode.hasFocus ? 2 : 1,
                           ),
@@ -629,12 +1032,12 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                             hintText: 'Mağaza veya ürün ara...',
                             hintStyle: TextStyle(
                               color: Colors.grey[500],
-                              fontSize: 14,
+                              fontSize: context.bodySize,
                             ),
                             prefixIcon: Icon(
                               Icons.search,
                               color: _searchFocusNode.hasFocus
-                                  ? AppColors.primary
+                                  ? StoreColors.primary
                                   : Colors.grey[500],
                             ),
                             suffixIcon: _searchQuery.isNotEmpty
@@ -672,7 +1075,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
 
                     // Categories with "All" option
                     SizedBox(
-                      height: 96,
+                      height: 105,
                       child: ListView.separated(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         scrollDirection: Axis.horizontal,
@@ -701,7 +1104,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                                 vertical: 6,
                               ),
                               decoration: BoxDecoration(
-                                color: AppColors.primary,
+                                color: StoreColors.primary,
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: Row(
@@ -709,9 +1112,9 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                                 children: [
                                   Text(
                                     _getSelectedCategoryName(categories),
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       color: Colors.white,
-                                      fontSize: 13,
+                                      fontSize: context.bodySmallSize,
                                       fontWeight: FontWeight.w600,
                                     ),
                                   ),
@@ -731,7 +1134,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                             Text(
                               '${filteredStores.length} mağaza, ${filteredFlashDeals.length + filteredBestSellers.length} ürün',
                               style: TextStyle(
-                                fontSize: 13,
+                                fontSize: context.bodySmallSize,
                                 color: Colors.grey[600],
                               ),
                             ),
@@ -747,8 +1150,8 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                         bannerProvider: storeBannersProvider,
                         height: 130,
                         primaryColor: Colors.teal,
-                        defaultTitle: 'Market Fırsatları',
-                        defaultSubtitle: 'En iyi fiyatlar burada!',
+                        defaultTitle: 'Mağaza Fırsatları',
+                        defaultSubtitle: 'En iyi fırsatlar burada!',
                       ),
                       const SizedBox(height: 10),
                     ],
@@ -769,70 +1172,6 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                       const SizedBox(height: 10),
                     ],
 
-                    // Flash Deals Banner (only when no filter)
-                    if (_selectedCategoryId == null) ...[
-                      FlashDealBanner(
-                        onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Flash fırsatlar sayfası açılıyor...'),
-                              duration: Duration(seconds: 1),
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 10),
-                    ],
-
-                    // Flash Deal Products
-                    if (filteredFlashDeals.isNotEmpty) ...[
-                      SectionHeader(
-                        title: _selectedCategoryId != null
-                            ? '${_getSelectedCategoryName(categories)} Fırsatları'
-                            : 'Flaş Fırsatlar',
-                        icon: Icons.flash_on_rounded,
-                        actionText: 'Tümü',
-                        onActionTap: () {},
-                      ),
-                      const SizedBox(height: 8),
-                      SizedBox(
-                        height: 210,
-                        child: ListView.separated(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          scrollDirection: Axis.horizontal,
-                          itemCount: filteredFlashDeals.length,
-                          separatorBuilder: (_, __) => const SizedBox(width: 8),
-                          itemBuilder: (context, index) {
-                            final product = filteredFlashDeals[index];
-                            return SizedBox(
-                              width: 150,
-                              child: ProductCard(
-                                product: product,
-                                isFavorite: ref.watch(isProductFavoriteProvider(product.id)),
-                                onTap: () {
-                                  _navigateToProduct(product);
-                                },
-                                onFavorite: () {
-                                  ref.read(productFavoriteProvider.notifier).toggleFavorite(product);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        ref.read(isProductFavoriteProvider(product.id))
-                                            ? '${product.name} favorilere eklendi'
-                                            : '${product.name} favorilerden çıkarıldı',
-                                      ),
-                                      duration: const Duration(seconds: 1),
-                                      behavior: SnackBarBehavior.floating,
-                                    ),
-                                  );
-                                },
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                    ],
 
                     // Featured Stores
                     if (filteredFeaturedStores.isNotEmpty) ...[
@@ -956,7 +1295,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                               Text(
                                 'Bu kategoride mağaza bulunamadı',
                                 style: TextStyle(
-                                  fontSize: 16,
+                                  fontSize: context.heading2Size,
                                   color: Colors.grey[500],
                                 ),
                               ),
@@ -966,7 +1305,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                                 child: Text(
                                   'Tüm mağazaları göster',
                                   style: TextStyle(
-                                    color: AppColors.primary,
+                                    color: StoreColors.primary,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -993,7 +1332,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                 duration: const Duration(milliseconds: 200),
                 child: FloatingActionButton.small(
                   onPressed: _scrollToTop,
-                  backgroundColor: AppColors.primary,
+                  backgroundColor: StoreColors.primary,
                   child: const Icon(
                     Icons.keyboard_arrow_up_rounded,
                     color: Colors.white,
@@ -1020,19 +1359,19 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
               height: 60,
               decoration: BoxDecoration(
                 color: isSelected
-                    ? AppColors.primary
+                    ? StoreColors.primary
                     : (isDark ? Colors.grey[800] : Colors.grey[100]),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: isSelected
-                      ? AppColors.primary
+                      ? StoreColors.primary
                       : (isDark ? Colors.grey[700]! : Colors.grey[300]!),
                   width: 1.5,
                 ),
               ),
               child: Icon(
                 Icons.apps_rounded,
-                color: isSelected ? Colors.white : AppColors.primary,
+                color: isSelected ? Colors.white : StoreColors.primary,
                 size: 28,
               ),
             ),
@@ -1040,10 +1379,10 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
             Text(
               'Tümü',
               style: TextStyle(
-                fontSize: 12,
+                fontSize: context.captionSize,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                 color: isSelected
-                    ? AppColors.primary
+                    ? StoreColors.primary
                     : (isDark ? Colors.white : Colors.black87),
               ),
               textAlign: TextAlign.center,
@@ -1087,7 +1426,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
             Text(
               category.name,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: context.captionSize,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                 color: isSelected
                     ? category.color
@@ -1103,144 +1442,6 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
     );
   }
 
-  void _showNotificationsSheet(bool isDark) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: isDark ? Colors.grey[900] : Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 8),
-              Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[400],
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: Row(
-                  children: [
-                    Text(
-                      'Bildirimler',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : Colors.black87,
-                      ),
-                    ),
-                    const Spacer(),
-                    Text(
-                      'Tümünü Gör',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(height: 1),
-              _buildNotificationItem(
-                icon: Icons.local_offer_rounded,
-                color: Colors.orange,
-                title: 'Flash İndirim Başladı!',
-                message: '%50\'ye varan indirimler',
-                time: '5 dk önce',
-                isDark: isDark,
-              ),
-              _buildNotificationItem(
-                icon: Icons.local_shipping_rounded,
-                color: Colors.green,
-                title: 'Siparişiniz Yola Çıktı',
-                message: 'TechZone kargoya verdi',
-                time: '1 saat önce',
-                isDark: isDark,
-              ),
-              _buildNotificationItem(
-                icon: Icons.favorite_rounded,
-                color: Colors.red,
-                title: 'Favori Mağazanızda İndirim',
-                message: 'Fashion House %30 indirim',
-                time: '3 saat önce',
-                isDark: isDark,
-              ),
-              const SizedBox(height: 8),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildNotificationItem({
-    required IconData icon,
-    required Color color,
-    required String title,
-    required String message,
-    required String time,
-    required bool isDark,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: color, size: 18),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.white : Colors.black87,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  message,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey[600],
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            time,
-            style: TextStyle(
-              fontSize: 10,
-              color: Colors.grey[500],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   void _navigateToProduct(StoreProduct product) {
     context.push('/store/product/${product.id}', extra: {'product': product});

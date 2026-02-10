@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,12 +7,15 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/services/ai_chat_service.dart';
+import '../core/services/taxi_service.dart';
 import '../core/services/voice_input_service.dart';
 import '../core/services/voice_output_service.dart';
 import '../core/providers/ai_context_provider.dart';
 import '../core/providers/cart_provider.dart';
 import '../core/providers/store_cart_provider.dart';
 import '../core/router/app_router.dart';
+import '../models/taxi/taxi_models.dart';
+import '../screens/taxi/taxi_ride_screen.dart' hide AnimatedBuilder;
 
 class FloatingAIAssistant extends ConsumerStatefulWidget {
   const FloatingAIAssistant({super.key});
@@ -638,14 +642,15 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
               onEnter: (_) => _onHoverStart(),
               onExit: (_) => _onHoverEnd(),
               cursor: SystemMouseCursors.click,
-              child: Transform.scale(
+              child: RepaintBoundary(
+                child: Transform.scale(
                 scale: _hoverScaleAnimation.value,
                 child: Transform.rotate(
                   angle: _showNotificationBubble ? _shakeAnimation.value : 0,
                   child: SizedBox(
-                    width: 80,
-                    height: 175,
-                    child: Stack(
+                      width: 80,
+                      height: 175,
+                      child: Stack(
                       clipBehavior: Clip.none,
                       children: [
                         Positioned(
@@ -741,6 +746,7 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
                     ),
                   ),
                 ),
+              ),
               ),
             ),
           ),
@@ -910,22 +916,23 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
               ),
               // Close button - positioned outside main gesture area
               Positioned(
-                top: 4,
-                right: 4,
+                top: -6,
+                right: -6,
                 child: GestureDetector(
                   onTap: _dismissProactiveMessage,
                   behavior: HitTestBehavior.opaque,
                   child: Container(
-                    width: 20,
-                    height: 20,
+                    width: 26,
+                    height: 26,
                     decoration: BoxDecoration(
-                      color: Colors.black.withAlpha(80),
+                      color: Colors.black.withAlpha(120),
                       shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white24, width: 1),
                     ),
                     child: const Icon(
                       Icons.close,
-                      size: 12,
-                      color: Colors.white70,
+                      size: 16,
+                      color: Colors.white,
                     ),
                   ),
                 ),
@@ -1782,6 +1789,9 @@ class _AIChatDialogState extends State<_AIChatDialog> {
       case 'navigate':
         _handleNavigate(payload);
         break;
+      case 'taxi_ride_created':
+        _handleTaxiRideCreated(payload);
+        break;
     }
   }
 
@@ -1814,6 +1824,44 @@ class _AIChatDialogState extends State<_AIChatDialog> {
       final navContext = rootNavigatorKey.currentContext;
       if (navContext != null) {
         GoRouter.of(navContext).go(route);
+      }
+    });
+  }
+
+  void _handleTaxiRideCreated(Map<String, dynamic> payload) {
+    final rideId = payload['ride_id'] as String?;
+    if (rideId == null) return;
+
+    setState(() {
+      _messages.add(_ChatMessage(
+        role: 'assistant',
+        content: 'Taksiniz çağrıldı! Yolculuk takip ekranına yönlendiriliyorsunuz...',
+        timestamp: DateTime.now(),
+      ));
+    });
+
+    // Fetch ride data then navigate to ride tracking screen
+    Future.delayed(const Duration(milliseconds: 800), () async {
+      widget.onClose();
+      await Future.delayed(const Duration(milliseconds: 300));
+      try {
+        final rideData = await TaxiService.getRide(rideId);
+        if (rideData != null) {
+          final ride = TaxiRide.fromJson(rideData);
+          final navContext = rootNavigatorKey.currentContext;
+          if (navContext != null) {
+            Navigator.of(navContext).push(
+              MaterialPageRoute(builder: (_) => TaxiRideScreen(ride: ride)),
+            );
+          }
+        }
+      } catch (e) {
+        debugPrint('Taxi ride navigation error: $e');
+        // Fallback: navigate to taxi home
+        final navContext = rootNavigatorKey.currentContext;
+        if (navContext != null) {
+          GoRouter.of(navContext).go('/taxi');
+        }
       }
     });
   }
@@ -2200,8 +2248,9 @@ class _AiProductCard extends StatelessWidget {
               width: 48, height: 48,
               color: const Color(0xFF1a1a2e),
               child: imageUrl.isNotEmpty
-                  ? Image.network(imageUrl, fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const Icon(Icons.fastfood, color: Color(0xFF555577), size: 22))
+                  ? CachedNetworkImage(imageUrl: imageUrl, fit: BoxFit.cover,
+                      memCacheWidth: 96, memCacheHeight: 96,
+                      errorWidget: (_, __, ___) => const Icon(Icons.fastfood, color: Color(0xFF555577), size: 22))
                   : const Icon(Icons.fastfood, color: Color(0xFF555577), size: 22),
             ),
           ),
@@ -2313,8 +2362,9 @@ class _AiRentalCard extends StatelessWidget {
               width: 52, height: 52,
               color: const Color(0xFF1a1a2e),
               child: imageUrl.isNotEmpty
-                  ? Image.network(imageUrl, fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const Icon(Icons.directions_car, color: Color(0xFF555577), size: 24))
+                  ? CachedNetworkImage(imageUrl: imageUrl, fit: BoxFit.cover,
+                      memCacheWidth: 104, memCacheHeight: 104,
+                      errorWidget: (_, __, ___) => const Icon(Icons.directions_car, color: Color(0xFF555577), size: 24))
                   : const Icon(Icons.directions_car, color: Color(0xFF555577), size: 24),
             ),
           ),

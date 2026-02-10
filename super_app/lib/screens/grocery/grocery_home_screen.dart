@@ -123,7 +123,7 @@ class _GroceryHomeScreenState extends ConsumerState<GroceryHomeScreen> {
                   style: TextStyle(
                     fontSize: context.heading2Size,
                     fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : const Color(0xFF111827),
+                    color: isDark ? Colors.white : Colors.grey[900],
                   ),
                 ),
                 Text(
@@ -253,7 +253,7 @@ class _GroceryHomeScreenState extends ConsumerState<GroceryHomeScreen> {
                             style: TextStyle(
                               fontSize: context.heading1Size,
                               fontWeight: FontWeight.bold,
-                              color: isDark ? Colors.white : const Color(0xFF111827),
+                              color: isDark ? Colors.white : Colors.grey[900],
                             ),
                           ),
                         ],
@@ -271,7 +271,7 @@ class _GroceryHomeScreenState extends ConsumerState<GroceryHomeScreen> {
                             child: Text(
                               selectedAddress?.shortAddress ?? 'Adres seçin',
                               style: TextStyle(
-                                fontSize: 13,
+                                fontSize: context.bodySmallSize,
                                 color: Colors.grey[600],
                               ),
                               maxLines: 1,
@@ -380,7 +380,7 @@ class _GroceryHomeScreenState extends ConsumerState<GroceryHomeScreen> {
                 ? 'Sonuç Bulunamadı'
                 : 'Bölgenizde Market Yok',
             style: TextStyle(
-              fontSize: 18,
+              fontSize: context.heading2Size,
               fontWeight: FontWeight.bold,
               color: isDark ? Colors.white : Colors.black87,
             ),
@@ -390,7 +390,7 @@ class _GroceryHomeScreenState extends ConsumerState<GroceryHomeScreen> {
             _searchQuery.isNotEmpty
                 ? '"$_searchQuery" için sonuç bulunamadı'
                 : 'Seçili adresinize teslimat yapan market bulunmuyor',
-            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+            style: TextStyle(fontSize: context.bodySize, color: Colors.grey[500]),
             textAlign: TextAlign.center,
           ),
           if (_searchQuery.isEmpty) ...[
@@ -426,7 +426,7 @@ class _GroceryHomeScreenState extends ConsumerState<GroceryHomeScreen> {
             Text(
               'Bir hata oluştu',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: context.heading2Size,
                 fontWeight: FontWeight.bold,
                 color: isDark ? Colors.white : Colors.black87,
               ),
@@ -434,7 +434,7 @@ class _GroceryHomeScreenState extends ConsumerState<GroceryHomeScreen> {
             const SizedBox(height: 8),
             Text(
               error,
-              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+              style: TextStyle(fontSize: context.bodySize, color: Colors.grey[500]),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -480,6 +480,7 @@ class _MarketFilterBarDelegate extends SliverPersistentHeaderDelegate {
         children: [
           // Sort Button
           _buildFilterChip(
+            context: context,
             icon: Icons.sort_rounded,
             label: selectedSorting,
             isActive: selectedSorting != 'Önerilen',
@@ -507,7 +508,7 @@ class _MarketFilterBarDelegate extends SliverPersistentHeaderDelegate {
                     child: Text(
                       'Bölgenize teslimat yapan marketler',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: context.captionSize,
                         fontWeight: FontWeight.w500,
                         color: MarketColors.primary,
                       ),
@@ -526,6 +527,7 @@ class _MarketFilterBarDelegate extends SliverPersistentHeaderDelegate {
   }
 
   Widget _buildFilterChip({
+    required BuildContext context,
     required IconData icon,
     required String label,
     required bool isActive,
@@ -560,7 +562,7 @@ class _MarketFilterBarDelegate extends SliverPersistentHeaderDelegate {
             Text(
               label,
               style: TextStyle(
-                fontSize: 13,
+                fontSize: context.bodySmallSize,
                 fontWeight: FontWeight.w500,
                 color: isActive
                     ? Colors.white
@@ -607,7 +609,7 @@ class _MarketFilterBarDelegate extends SliverPersistentHeaderDelegate {
               child: Text(
                 'Sıralama',
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: context.heading2Size,
                   fontWeight: FontWeight.bold,
                   color: isDark ? Colors.white : Colors.black,
                 ),

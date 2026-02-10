@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/utils/image_utils.dart';
@@ -19,6 +20,7 @@ class MenuItemCard extends StatefulWidget {
   final double rating;
   final GlobalKey? cartIconKey;
   final bool hasOptionGroups; // Whether item has option groups that need selection
+  final double? imageSize; // Optional override for image size
 
   const MenuItemCard({
     super.key,
@@ -35,6 +37,7 @@ class MenuItemCard extends StatefulWidget {
     this.rating = 4.5,
     this.cartIconKey,
     this.hasOptionGroups = false,
+    this.imageSize,
   });
 
   @override
@@ -80,7 +83,7 @@ class _MenuItemCardState extends State<MenuItemCard> {
 
   @override
   Widget build(BuildContext context) {
-    final imageSize = context.listItemImage; // 64px on mobile
+    final imageSize = widget.imageSize ?? context.listItemImage; // 64px on mobile default
 
     return InkWell(
       onTap: () {
@@ -180,23 +183,29 @@ class _MenuItemCardState extends State<MenuItemCard> {
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      ImageUtils.getProductThumbnail(widget.imageUrl),
+                    child: CachedNetworkImage(
+                      imageUrl: ImageUtils.getProductThumbnail(widget.imageUrl),
                       width: imageSize,
                       height: imageSize,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          width: imageSize,
-                          height: imageSize,
-                          color: widget.isDark ? Colors.grey[800] : Colors.grey[100],
-                          child: Icon(
-                            Icons.fastfood,
-                            size: 24,
-                            color: widget.isDark ? Colors.grey[600] : Colors.grey[400],
-                          ),
-                        );
-                      },
+                      memCacheWidth: 200,
+                      memCacheHeight: 200,
+                      placeholder: (_, __) => Container(
+                        width: imageSize,
+                        height: imageSize,
+                        color: Colors.grey[200],
+                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                      ),
+                      errorWidget: (_, __, ___) => Container(
+                        width: imageSize,
+                        height: imageSize,
+                        color: widget.isDark ? Colors.grey[800] : Colors.grey[100],
+                        child: Icon(
+                          Icons.fastfood,
+                          size: 24,
+                          color: widget.isDark ? Colors.grey[600] : Colors.grey[400],
+                        ),
+                      ),
                     ),
                   ),
                   Positioned(

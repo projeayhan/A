@@ -1,10 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 
 class LocationService {
-  static const String _googleApiKey = 'AIzaSyDKGWWyuU8vbE_8H50XaFCi7exSSFolLnQ';
+  static String get _googleApiKey => dotenv.env['GOOGLE_API_KEY'] ?? '';
   static const Duration _httpTimeout = Duration(seconds: 10);
 
   // Singleton

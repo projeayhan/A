@@ -4,25 +4,33 @@ import '../../models/store/store_model.dart';
 import '../../models/store/store_category_model.dart';
 import '../../models/store/store_product_model.dart';
 import 'supabase_service.dart';
+import '../utils/cache_helper.dart';
 
 class StoreService {
   static SupabaseClient get _client => SupabaseService.client;
+  static final _cache = CacheManager();
 
   // Kategorileri getir
   static Future<List<StoreCategory>> getCategories() async {
-    try {
-      final response = await _client
-          .from('store_categories')
-          .select()
-          .order('name');
+    return _cache.getOrFetch<List<StoreCategory>>(
+      'store_categories',
+      ttl: const Duration(hours: 24),
+      fetcher: () async {
+        try {
+          final response = await _client
+              .from('store_categories')
+              .select()
+              .order('name');
 
-      return (response as List)
-          .map((json) => StoreCategory.fromJson(json))
-          .toList();
-    } catch (e) {
-      if (kDebugMode) print('Error fetching categories: $e');
-      return [];
-    }
+          return (response as List)
+              .map((json) => StoreCategory.fromJson(json))
+              .toList();
+        } catch (e) {
+          if (kDebugMode) print('Error fetching categories: $e');
+          return [];
+        }
+      },
+    );
   }
 
   // Tüm mağazaları getir (teslimat bölgesi kontrolü YOK - tüm KKTC'ye kargo ile hizmet verir)
@@ -30,22 +38,28 @@ class StoreService {
     double? customerLat,
     double? customerLon,
   }) async {
-    try {
-      // Mağazalar için bölge kontrolü yok - tüm onaylı mağazaları getir
-      final response = await _client
-          .from('merchants')
-          .select('*, products(count)')
-          .eq('type', 'store')
-          .eq('is_approved', true)
-          .order('rating', ascending: false);
+    return _cache.getOrFetch<List<Store>>(
+      'stores_all',
+      ttl: const Duration(minutes: 30),
+      fetcher: () async {
+        try {
+          // Mağazalar için bölge kontrolü yok - tüm onaylı mağazaları getir
+          final response = await _client
+              .from('merchants')
+              .select('*, products(count)')
+              .eq('type', 'store')
+              .eq('is_approved', true)
+              .order('rating', ascending: false);
 
-      return (response as List)
-          .map((json) => Store.fromMerchant(json))
-          .toList();
-    } catch (e) {
-      if (kDebugMode) print('Error fetching stores: $e');
-      return [];
-    }
+          return (response as List)
+              .map((json) => Store.fromMerchant(json))
+              .toList();
+        } catch (e) {
+          if (kDebugMode) print('Error fetching stores: $e');
+          return [];
+        }
+      },
+    );
   }
 
   // Kategoriye göre mağazaları getir (teslimat bölgesi kontrolü YOK)
@@ -78,23 +92,29 @@ class StoreService {
     double? customerLat,
     double? customerLon,
   }) async {
-    try {
-      // Mağazalar için bölge kontrolü yok
-      final response = await _client
-          .from('merchants')
-          .select('*, products(count)')
-          .eq('type', 'store')
-          .eq('is_approved', true)
-          .order('rating', ascending: false)
-          .limit(10);
+    return _cache.getOrFetch<List<Store>>(
+      'stores_featured',
+      ttl: const Duration(minutes: 30),
+      fetcher: () async {
+        try {
+          // Mağazalar için bölge kontrolü yok
+          final response = await _client
+              .from('merchants')
+              .select('*, products(count)')
+              .eq('type', 'store')
+              .eq('is_approved', true)
+              .order('rating', ascending: false)
+              .limit(10);
 
-      return (response as List)
-          .map((json) => Store.fromMerchant(json))
-          .toList();
-    } catch (e) {
-      if (kDebugMode) print('Error fetching featured stores: $e');
-      return [];
-    }
+          return (response as List)
+              .map((json) => Store.fromMerchant(json))
+              .toList();
+        } catch (e) {
+          if (kDebugMode) print('Error fetching featured stores: $e');
+          return [];
+        }
+      },
+    );
   }
 
   // Mağaza ID'lerini getir (type='store' olan merchant'lar)
@@ -111,6 +131,53 @@ class StoreService {
       if (kDebugMode) print('Error fetching store ids: $e');
       return [];
     }
+  }
+
+  // Tek ürün getir (ID ile)
+  static Future<StoreProduct?> getProductById(String productId) async {
+    return _cache.getOrFetch<StoreProduct?>(
+      'store_product_$productId',
+      ttl: const Duration(minutes: 15),
+      fetcher: () async {
+        try {
+          final response = await _client
+              .from('products')
+              .select('*, merchants(business_name)')
+              .eq('id', productId)
+              .maybeSingle();
+          if (response == null) return null;
+          final merchantData = response['merchants'];
+          final storeName = merchantData != null ? merchantData['business_name'] as String? ?? '' : '';
+          return StoreProduct.fromJson(response, storeName: storeName);
+        } catch (e) {
+          if (kDebugMode) print('Error fetching product by id: $e');
+          return null;
+        }
+      },
+    );
+  }
+
+  // Tek mağaza getir (ID ile)
+  static Future<Store?> getStoreById(String storeId) async {
+    return _cache.getOrFetch<Store?>(
+      'store_detail_$storeId',
+      ttl: const Duration(minutes: 15),
+      fetcher: () async {
+        try {
+          final response = await _client
+              .from('merchants')
+              .select()
+              .eq('id', storeId)
+              .eq('type', 'store')
+              .maybeSingle();
+          if (response == null) return null;
+          return Store.fromJson(response);
+        } catch (e) {
+          if (kDebugMode) print('Error fetching store by id: $e');
+          return null;
+        }
+      },
+    );
   }
 
   // Tüm ürünleri getir (sadece type='store' olan merchant'ların ürünleri)
@@ -137,30 +204,36 @@ class StoreService {
 
   // Mağazaya göre ürünleri getir
   static Future<List<StoreProduct>> getProductsByStore(String storeId) async {
-    try {
-      final response = await _client
-          .from('products')
-          .select('*, product_categories(id, name, sort_order)')
-          .eq('merchant_id', storeId)
-          .eq('is_available', true)
-          .order('sold_count', ascending: false);
+    return _cache.getOrFetch<List<StoreProduct>>(
+      'store_products_$storeId',
+      ttl: const Duration(minutes: 15),
+      fetcher: () async {
+        try {
+          final response = await _client
+              .from('products')
+              .select('*, product_categories(id, name, sort_order)')
+              .eq('merchant_id', storeId)
+              .eq('is_available', true)
+              .order('sold_count', ascending: false);
 
-      return (response as List).map((json) {
-        // Extract category name and sort_order from joined data
-        final categoryData = json['product_categories'];
-        final categoryName = categoryData != null ? categoryData['name'] as String? : null;
-        final categorySortOrder = categoryData != null ? (categoryData['sort_order'] as int?) ?? 999 : 999;
-        return StoreProduct.fromJson(
-          json,
-          storeName: '',
-          categoryName: categoryName,
-          categorySortOrder: categorySortOrder,
-        );
-      }).toList();
-    } catch (e) {
-      if (kDebugMode) print('Error fetching products by store: $e');
-      return [];
-    }
+          return (response as List).map((json) {
+            // Extract category name and sort_order from joined data
+            final categoryData = json['product_categories'];
+            final categoryName = categoryData != null ? categoryData['name'] as String? : null;
+            final categorySortOrder = categoryData != null ? (categoryData['sort_order'] as int?) ?? 999 : 999;
+            return StoreProduct.fromJson(
+              json,
+              storeName: '',
+              categoryName: categoryName,
+              categorySortOrder: categorySortOrder,
+            );
+          }).toList();
+        } catch (e) {
+          if (kDebugMode) print('Error fetching products by store: $e');
+          return [];
+        }
+      },
+    );
   }
 
   // Kategoriye göre ürünleri getir (sadece mağaza ürünleri)
@@ -188,73 +261,91 @@ class StoreService {
 
   // Flash deal ürünlerini getir (indirimli ürünler, sadece mağaza ürünleri)
   static Future<List<StoreProduct>> getFlashDeals() async {
-    try {
-      final storeIds = await _getStoreIds();
-      if (storeIds.isEmpty) return [];
+    return _cache.getOrFetch<List<StoreProduct>>(
+      'store_flash_deals',
+      ttl: const Duration(minutes: 5),
+      fetcher: () async {
+        try {
+          final storeIds = await _getStoreIds();
+          if (storeIds.isEmpty) return [];
 
-      final response = await _client
-          .from('products')
-          .select()
-          .inFilter('merchant_id', storeIds)
-          .eq('is_available', true)
-          .not('original_price', 'is', null)
-          .order('sold_count', ascending: false)
-          .limit(20);
+          final response = await _client
+              .from('products')
+              .select()
+              .inFilter('merchant_id', storeIds)
+              .eq('is_available', true)
+              .not('original_price', 'is', null)
+              .order('sold_count', ascending: false)
+              .limit(20);
 
-      return (response as List).map((json) {
-        return StoreProduct.fromJson(json, storeName: '');
-      }).toList();
-    } catch (e) {
-      if (kDebugMode) print('Error fetching flash deals: $e');
-      return [];
-    }
+          return (response as List).map((json) {
+            return StoreProduct.fromJson(json, storeName: '');
+          }).toList();
+        } catch (e) {
+          if (kDebugMode) print('Error fetching flash deals: $e');
+          return [];
+        }
+      },
+    );
   }
 
   // En çok satanları getir (sadece mağaza ürünleri)
   static Future<List<StoreProduct>> getBestSellers() async {
-    try {
-      final storeIds = await _getStoreIds();
-      if (storeIds.isEmpty) return [];
+    return _cache.getOrFetch<List<StoreProduct>>(
+      'store_best_sellers',
+      ttl: const Duration(minutes: 30),
+      fetcher: () async {
+        try {
+          final storeIds = await _getStoreIds();
+          if (storeIds.isEmpty) return [];
 
-      final response = await _client
-          .from('products')
-          .select()
-          .inFilter('merchant_id', storeIds)
-          .eq('is_available', true)
-          .order('sold_count', ascending: false)
-          .limit(20);
+          final response = await _client
+              .from('products')
+              .select()
+              .inFilter('merchant_id', storeIds)
+              .eq('is_available', true)
+              .order('sold_count', ascending: false)
+              .limit(20);
 
-      return (response as List).map((json) {
-        return StoreProduct.fromJson(json, storeName: '');
-      }).toList();
-    } catch (e) {
-      if (kDebugMode) print('Error fetching best sellers: $e');
-      return [];
-    }
+          return (response as List).map((json) {
+            return StoreProduct.fromJson(json, storeName: '');
+          }).toList();
+        } catch (e) {
+          if (kDebugMode) print('Error fetching best sellers: $e');
+          return [];
+        }
+      },
+    );
   }
 
   // Önerilen ürünleri getir (sadece mağaza ürünleri)
   static Future<List<StoreProduct>> getRecommended() async {
-    try {
-      final storeIds = await _getStoreIds();
-      if (storeIds.isEmpty) return [];
+    return _cache.getOrFetch<List<StoreProduct>>(
+      'store_recommended',
+      ttl: const Duration(minutes: 30),
+      fetcher: () async {
+        try {
+          final storeIds = await _getStoreIds();
+          if (storeIds.isEmpty) return [];
 
-      final response = await _client
-          .from('products')
-          .select()
-          .inFilter('merchant_id', storeIds)
-          .eq('is_available', true)
-          .gte('rating', 4.0)
-          .order('rating', ascending: false)
-          .limit(20);
+          final response = await _client
+              .from('products')
+              .select()
+              .inFilter('merchant_id', storeIds)
+              .eq('is_available', true)
+              .gte('rating', 4.0)
+              .order('rating', ascending: false)
+              .limit(20);
 
-      return (response as List).map((json) {
-        return StoreProduct.fromJson(json, storeName: '');
-      }).toList();
-    } catch (e) {
-      if (kDebugMode) print('Error fetching recommended: $e');
-      return [];
-    }
+          return (response as List).map((json) {
+            return StoreProduct.fromJson(json, storeName: '');
+          }).toList();
+        } catch (e) {
+          if (kDebugMode) print('Error fetching recommended: $e');
+          return [];
+        }
+      },
+    );
   }
 
   // Ürün ara (sadece mağaza ürünleri)
@@ -359,5 +450,23 @@ class StoreService {
       if (kDebugMode) print('StoreService.createOrder Error: $e');
       rethrow;
     }
+  }
+
+  /// Realtime invalidation: stores değiştiğinde çağır
+  static void invalidateStores() {
+    _cache.invalidate('stores_all');
+    _cache.invalidate('stores_featured');
+  }
+
+  /// Realtime invalidation: store_products değiştiğinde çağır
+  static void invalidateProducts([String? storeId]) {
+    if (storeId != null) {
+      _cache.invalidate('store_products_$storeId');
+    } else {
+      _cache.invalidatePrefix('store_products_');
+    }
+    _cache.invalidate('store_flash_deals');
+    _cache.invalidate('store_best_sellers');
+    _cache.invalidate('store_recommended');
   }
 }

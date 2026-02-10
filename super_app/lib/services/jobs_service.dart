@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../core/utils/cache_helper.dart';
 import '../models/jobs/job_data_models.dart';
 
 /// AI Moderasyon sonucu
@@ -47,6 +48,7 @@ class JobsService {
   factory JobsService() => _instance;
   JobsService._internal();
 
+  final _cache = CacheManager();
   SupabaseClient get _client => Supabase.instance.client;
   String? get _userId => _client.auth.currentUser?.id;
 
@@ -54,86 +56,110 @@ class JobsService {
 
   /// Kategorileri getir
   Future<List<JobCategoryData>> getCategories() async {
-    try {
-      final response = await _client
-          .from('job_categories')
-          .select()
-          .eq('is_active', true)
-          .order('sort_order');
+    return _cache.getOrFetch<List<JobCategoryData>>(
+      'job_categories',
+      ttl: const Duration(hours: 48),
+      fetcher: () async {
+        try {
+          final response = await _client
+              .from('job_categories')
+              .select()
+              .eq('is_active', true)
+              .order('sort_order');
 
-      return (response as List)
-          .map((json) => JobCategoryData.fromJson(json))
-          .toList();
-    } catch (e) {
-      debugPrint('JobsService.getCategories error: $e');
-      return [];
-    }
+          return (response as List)
+              .map((json) => JobCategoryData.fromJson(json))
+              .toList();
+        } catch (e) {
+          debugPrint('JobsService.getCategories error: $e');
+          return [];
+        }
+      },
+    );
   }
 
   /// Alt kategorileri getir
   Future<List<JobSubcategoryData>> getSubcategories(String categoryId) async {
-    try {
-      final response = await _client
-          .from('job_subcategories')
-          .select()
-          .eq('category_id', categoryId)
-          .eq('is_active', true)
-          .order('sort_order');
+    return _cache.getOrFetch<List<JobSubcategoryData>>(
+      'job_subcategories_$categoryId',
+      ttl: const Duration(hours: 48),
+      fetcher: () async {
+        try {
+          final response = await _client
+              .from('job_subcategories')
+              .select()
+              .eq('category_id', categoryId)
+              .eq('is_active', true)
+              .order('sort_order');
 
-      return (response as List)
-          .map((json) => JobSubcategoryData.fromJson(json))
-          .toList();
-    } catch (e) {
-      debugPrint('JobsService.getSubcategories error: $e');
-      return [];
-    }
+          return (response as List)
+              .map((json) => JobSubcategoryData.fromJson(json))
+              .toList();
+        } catch (e) {
+          debugPrint('JobsService.getSubcategories error: $e');
+          return [];
+        }
+      },
+    );
   }
 
   // ==================== YETENEKLER ====================
 
   /// Yetenekleri getir
   Future<List<JobSkillData>> getSkills({bool popularOnly = false, String? jobCategoryId}) async {
-    try {
-      var query = _client.from('job_skills').select();
+    return _cache.getOrFetch<List<JobSkillData>>(
+      'job_skills_${popularOnly}_${jobCategoryId ?? 'all'}',
+      ttl: const Duration(hours: 24),
+      fetcher: () async {
+        try {
+          var query = _client.from('job_skills').select();
 
-      if (popularOnly) {
-        query = query.eq('is_popular', true);
-      }
+          if (popularOnly) {
+            query = query.eq('is_popular', true);
+          }
 
-      // Job kategorisine göre filtrele
-      if (jobCategoryId != null) {
-        query = query.contains('job_category_ids', [jobCategoryId]);
-      }
+          // Job kategorisine göre filtrele
+          if (jobCategoryId != null) {
+            query = query.contains('job_category_ids', [jobCategoryId]);
+          }
 
-      final response = await query.order('usage_count', ascending: false);
+          final response = await query.order('usage_count', ascending: false);
 
-      return (response as List)
-          .map((json) => JobSkillData.fromJson(json))
-          .toList();
-    } catch (e) {
-      debugPrint('JobsService.getSkills error: $e');
-      return [];
-    }
+          return (response as List)
+              .map((json) => JobSkillData.fromJson(json))
+              .toList();
+        } catch (e) {
+          debugPrint('JobsService.getSkills error: $e');
+          return [];
+        }
+      },
+    );
   }
 
   // ==================== YAN HAKLAR ====================
 
   /// Yan hakları getir
   Future<List<JobBenefitData>> getBenefits() async {
-    try {
-      final response = await _client
-          .from('job_benefits')
-          .select()
-          .eq('is_active', true)
-          .order('sort_order');
+    return _cache.getOrFetch<List<JobBenefitData>>(
+      'job_benefits',
+      ttl: const Duration(hours: 24),
+      fetcher: () async {
+        try {
+          final response = await _client
+              .from('job_benefits')
+              .select()
+              .eq('is_active', true)
+              .order('sort_order');
 
-      return (response as List)
-          .map((json) => JobBenefitData.fromJson(json))
-          .toList();
-    } catch (e) {
-      debugPrint('JobsService.getBenefits error: $e');
-      return [];
-    }
+          return (response as List)
+              .map((json) => JobBenefitData.fromJson(json))
+              .toList();
+        } catch (e) {
+          debugPrint('JobsService.getBenefits error: $e');
+          return [];
+        }
+      },
+    );
   }
 
   // ==================== ŞİRKETLER ====================
@@ -357,28 +383,34 @@ class JobsService {
 
   /// Tek ilan detayı getir
   Future<JobListingData?> getListing(String listingId) async {
-    try {
-      final response = await _client
-          .from('job_listings')
-          .select('''
-            *,
-            poster:poster_id (
-              id, name, title, phone, email, image_url, is_verified,
-              active_listings, total_hires, response_rate, avg_response_time
-            ),
-            company:company_id (
-              id, name, logo_url, website, industry, size, description,
-              city, is_verified, is_premium, rating, review_count
-            )
-          ''')
-          .eq('id', listingId)
-          .single();
+    return _cache.getOrFetch<JobListingData?>(
+      'job_listing_$listingId',
+      ttl: const Duration(minutes: 10),
+      fetcher: () async {
+        try {
+          final response = await _client
+              .from('job_listings')
+              .select('''
+                *,
+                poster:poster_id (
+                  id, name, title, phone, email, image_url, is_verified,
+                  active_listings, total_hires, response_rate, avg_response_time
+                ),
+                company:company_id (
+                  id, name, logo_url, website, industry, size, description,
+                  city, is_verified, is_premium, rating, review_count
+                )
+              ''')
+              .eq('id', listingId)
+              .single();
 
-      return JobListingData.fromJson(response);
-    } catch (e) {
-      debugPrint('JobsService.getListing error: $e');
-      return null;
-    }
+          return JobListingData.fromJson(response);
+        } catch (e) {
+          debugPrint('JobsService.getListing error: $e');
+          return null;
+        }
+      },
+    );
   }
 
   /// İlan yeteneklerini getir
@@ -887,21 +919,27 @@ class JobsService {
 
   /// Promosyon fiyatlarını getir
   Future<List<JobPromotionPrice>> getPromotionPrices() async {
-    try {
-      final response = await _client
-          .from('job_promotion_prices')
-          .select()
-          .eq('is_active', true)
-          .order('promotion_type')
-          .order('duration_days');
+    return _cache.getOrFetch<List<JobPromotionPrice>>(
+      'job_promotion_prices',
+      ttl: const Duration(hours: 1),
+      fetcher: () async {
+        try {
+          final response = await _client
+              .from('job_promotion_prices')
+              .select()
+              .eq('is_active', true)
+              .order('promotion_type')
+              .order('duration_days');
 
-      return (response as List)
-          .map((json) => JobPromotionPrice.fromJson(json))
-          .toList();
-    } catch (e) {
-      debugPrint('JobsService.getPromotionPrices error: $e');
-      return [];
-    }
+          return (response as List)
+              .map((json) => JobPromotionPrice.fromJson(json))
+              .toList();
+        } catch (e) {
+          debugPrint('JobsService.getPromotionPrices error: $e');
+          return [];
+        }
+      },
+    );
   }
 
   /// Promosyon satın al

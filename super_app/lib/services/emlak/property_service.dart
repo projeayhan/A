@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../core/utils/cache_helper.dart';
 import '../../models/emlak/emlak_models.dart';
 
 /// AI Moderasyon sonucu
@@ -41,6 +42,7 @@ class PropertyService {
   factory PropertyService() => _instance;
   PropertyService._internal();
 
+  final _cache = CacheManager();
   SupabaseClient get _client => Supabase.instance.client;
   String? get _userId => _client.auth.currentUser?.id;
 
@@ -173,40 +175,58 @@ class PropertyService {
 
   /// Öne çıkan ilanları getir
   Future<List<Property>> getFeaturedProperties({int limit = 10}) async {
-    final response = await _client
-        .from('properties')
-        .select(_selectWithRealtor)
-        .eq('status', 'active')
-        .eq('is_featured', true)
-        .order('created_at', ascending: false)
-        .limit(limit);
+    return _cache.getOrFetch<List<Property>>(
+      'emlak_featured',
+      ttl: const Duration(minutes: 10),
+      fetcher: () async {
+        final response = await _client
+            .from('properties')
+            .select(_selectWithRealtor)
+            .eq('status', 'active')
+            .eq('is_featured', true)
+            .order('created_at', ascending: false)
+            .limit(limit);
 
-    return (response as List).map((json) => Property.fromJson(json)).toList();
+        return (response as List).map((json) => Property.fromJson(json)).toList();
+      },
+    );
   }
 
   /// Premium ilanları getir
   Future<List<Property>> getPremiumProperties({int limit = 10}) async {
-    final response = await _client
-        .from('properties')
-        .select(_selectWithRealtor)
-        .eq('status', 'active')
-        .eq('is_premium', true)
-        .order('created_at', ascending: false)
-        .limit(limit);
+    return _cache.getOrFetch<List<Property>>(
+      'emlak_premium',
+      ttl: const Duration(minutes: 10),
+      fetcher: () async {
+        final response = await _client
+            .from('properties')
+            .select(_selectWithRealtor)
+            .eq('status', 'active')
+            .eq('is_premium', true)
+            .order('created_at', ascending: false)
+            .limit(limit);
 
-    return (response as List).map((json) => Property.fromJson(json)).toList();
+        return (response as List).map((json) => Property.fromJson(json)).toList();
+      },
+    );
   }
 
   /// İlan detayını getir
   Future<Property?> getPropertyById(String propertyId) async {
-    final response = await _client
-        .from('properties')
-        .select(_selectWithRealtor)
-        .eq('id', propertyId)
-        .maybeSingle();
+    return _cache.getOrFetch<Property?>(
+      'emlak_property_$propertyId',
+      ttl: const Duration(minutes: 5),
+      fetcher: () async {
+        final response = await _client
+            .from('properties')
+            .select(_selectWithRealtor)
+            .eq('id', propertyId)
+            .maybeSingle();
 
-    if (response == null) return null;
-    return Property.fromJson(response);
+        if (response == null) return null;
+        return Property.fromJson(response);
+      },
+    );
   }
 
   /// Arama yap
@@ -480,99 +500,141 @@ class PropertyService {
 
   /// Aktif şehirleri DB'den getir
   Future<List<String>> getCities() async {
-    final response = await _client
-        .from('emlak_cities')
-        .select('name')
-        .eq('is_active', true)
-        .order('sort_order', ascending: true);
+    return _cache.getOrFetch<List<String>>(
+      'emlak_cities',
+      ttl: const Duration(hours: 48),
+      fetcher: () async {
+        final response = await _client
+            .from('emlak_cities')
+            .select('name')
+            .eq('is_active', true)
+            .order('sort_order', ascending: true);
 
-    return (response as List).map((row) => row['name'] as String).toList();
+        return (response as List).map((row) => row['name'] as String).toList();
+      },
+    );
   }
 
   /// Şehre göre ilçeleri DB'den getir
   Future<List<String>> getDistrictsByCity(String city) async {
-    // Önce şehir ID'sini bul
-    final cityResponse = await _client
-        .from('emlak_cities')
-        .select('id')
-        .eq('name', city)
-        .eq('is_active', true)
-        .maybeSingle();
+    return _cache.getOrFetch<List<String>>(
+      'emlak_districts_$city',
+      ttl: const Duration(hours: 48),
+      fetcher: () async {
+        // Önce şehir ID'sini bul
+        final cityResponse = await _client
+            .from('emlak_cities')
+            .select('id')
+            .eq('name', city)
+            .eq('is_active', true)
+            .maybeSingle();
 
-    if (cityResponse == null) return [];
+        if (cityResponse == null) return [];
 
-    final cityId = cityResponse['id'] as String;
+        final cityId = cityResponse['id'] as String;
 
-    // İlçeleri getir
-    final response = await _client
-        .from('emlak_districts')
-        .select('name')
-        .eq('city_id', cityId)
-        .eq('is_active', true)
-        .order('sort_order', ascending: true);
+        // İlçeleri getir
+        final response = await _client
+            .from('emlak_districts')
+            .select('name')
+            .eq('city_id', cityId)
+            .eq('is_active', true)
+            .order('sort_order', ascending: true);
 
-    return (response as List).map((row) => row['name'] as String).toList();
+        return (response as List).map((row) => row['name'] as String).toList();
+      },
+    );
   }
 
   /// Emlak türlerini DB'den getir
   Future<List<Map<String, dynamic>>> getPropertyTypes() async {
-    final response = await _client
-        .from('emlak_property_types')
-        .select()
-        .eq('is_active', true)
-        .order('sort_order', ascending: true);
+    return _cache.getOrFetch<List<Map<String, dynamic>>>(
+      'emlak_property_types',
+      ttl: const Duration(hours: 48),
+      fetcher: () async {
+        final response = await _client
+            .from('emlak_property_types')
+            .select()
+            .eq('is_active', true)
+            .order('sort_order', ascending: true);
 
-    return (response as List).cast<Map<String, dynamic>>();
+        return (response as List).cast<Map<String, dynamic>>();
+      },
+    );
   }
 
   /// İlan türlerini DB'den getir
   Future<List<Map<String, dynamic>>> getListingTypes() async {
-    final response = await _client
-        .from('emlak_listing_types')
-        .select()
-        .eq('is_active', true)
-        .order('sort_order', ascending: true);
+    return _cache.getOrFetch<List<Map<String, dynamic>>>(
+      'emlak_listing_types',
+      ttl: const Duration(hours: 48),
+      fetcher: () async {
+        final response = await _client
+            .from('emlak_listing_types')
+            .select()
+            .eq('is_active', true)
+            .order('sort_order', ascending: true);
 
-    return (response as List).cast<Map<String, dynamic>>();
+        return (response as List).cast<Map<String, dynamic>>();
+      },
+    );
   }
 
   /// Özellikleri DB'den getir
   Future<List<Map<String, dynamic>>> getAmenities({String? category}) async {
-    var query = _client
-        .from('emlak_amenities')
-        .select()
-        .eq('is_active', true);
+    return _cache.getOrFetch<List<Map<String, dynamic>>>(
+      'emlak_amenities_${category ?? 'all'}',
+      ttl: const Duration(hours: 24),
+      fetcher: () async {
+        var query = _client
+            .from('emlak_amenities')
+            .select()
+            .eq('is_active', true);
 
-    if (category != null) {
-      query = query.eq('category', category);
-    }
+        if (category != null) {
+          query = query.eq('category', category);
+        }
 
-    final response = await query.order('sort_order', ascending: true);
-    return (response as List).cast<Map<String, dynamic>>();
+        final response = await query.order('sort_order', ascending: true);
+        return (response as List).cast<Map<String, dynamic>>();
+      },
+    );
   }
 
   /// Emlak ayarlarını getir
   Future<Map<String, dynamic>> getSettings() async {
-    final response = await _client
-        .from('emlak_settings')
-        .select('key, value');
+    return _cache.getOrFetch<Map<String, dynamic>>(
+      'emlak_settings',
+      ttl: const Duration(hours: 24),
+      fetcher: () async {
+        final response = await _client
+            .from('emlak_settings')
+            .select('key, value');
 
-    final settings = <String, dynamic>{};
-    for (final row in response as List) {
-      settings[row['key'] as String] = row['value'];
-    }
-    return settings;
+        final settings = <String, dynamic>{};
+        for (final row in response as List) {
+          settings[row['key'] as String] = row['value'];
+        }
+        return settings;
+      },
+    );
   }
 
   /// Belirli bir ayarı getir
   Future<dynamic> getSetting(String key) async {
-    final response = await _client
-        .from('emlak_settings')
-        .select('value')
-        .eq('key', key)
-        .maybeSingle();
+    return _cache.getOrFetch<dynamic>(
+      'emlak_setting_$key',
+      ttl: const Duration(hours: 24),
+      fetcher: () async {
+        final response = await _client
+            .from('emlak_settings')
+            .select('value')
+            .eq('key', key)
+            .maybeSingle();
 
-    return response?['value'];
+        return response?['value'];
+      },
+    );
   }
 
   // ==================== BENZER İLANLAR ====================

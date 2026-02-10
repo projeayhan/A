@@ -235,6 +235,16 @@ interface RentalBookingStatus {
   }>;
 }
 
+interface CarListingSearchResult {
+  success: boolean; result_count: number;
+  cars: Array<{ listing_id: string; title: string; brand_name: string; model_name: string; year: number; mileage: number; body_type: string; fuel_type: string; transmission: string; traction: string; engine_cc: number; horsepower: number; exterior_color: string; condition: string; price: number; currency: string; is_price_negotiable: boolean; is_exchange_accepted: boolean; has_warranty: boolean; city: string; district: string; image_url: string | null; image_count: number; view_count: number; favorite_count: number; is_featured: boolean; is_premium: boolean; created_at: string; }>;
+}
+
+interface JobListingSearchResult {
+  success: boolean; result_count: number;
+  jobs: Array<{ job_id: string; title: string; description: string; category_id: string; subcategory: string; job_type: string; work_arrangement: string; experience_level: string; education_level: string; salary_min: number; salary_max: number; salary_currency: string; salary_period: string; is_salary_hidden: boolean; city: string; district: string; positions: number; required_skills: string[]; manual_benefits: string[]; is_urgent: boolean; is_featured: boolean; deadline: string; application_count: number; view_count: number; created_at: string; poster_name: string; company_name: string; company_logo: string; company_industry: string; company_verified: boolean; }>;
+}
+
 interface CancelResult {
   success: boolean;
   can_cancel: boolean;
@@ -477,6 +487,118 @@ function formatMerchantInfoForAI(merchant: MerchantInfo): string {
   return `İşletme: ${merchant.business_name} (${merchant.type === 'restaurant' ? 'Restoran' : 'Mağaza'}) | Komisyon: %${merchant.commission_rate} | Durum: ${merchant.is_active ? 'Aktif' : 'Pasif'}`;
 }
 
+function formatCarListingSearchForAI(result: CarListingSearchResult): string {
+  if (!result.success || result.result_count === 0) return 'Arama kriterlerinize uygun satılık araç bulunamadı.';
+  const condLabels: Record<string, string> = { new: 'Sıfır', used: 'İkinci El', certified: 'Sertifikalı' };
+  const bodyLabels: Record<string, string> = { sedan: 'Sedan', hatchback: 'Hatchback', suv: 'SUV', crossover: 'Crossover', pickup: 'Pickup', minivan: 'Minivan', wagon: 'Station Wagon', convertible: 'Cabrio', sports: 'Spor', luxury: 'Lüks' };
+  const fuelLabels: Record<string, string> = { petrol: 'Benzin', diesel: 'Dizel', lpg: 'LPG', hybrid: 'Hibrit', electric: 'Elektrik', plugin_hybrid: 'Plug-in Hibrit' };
+  const transLabels: Record<string, string> = { automatic: 'Otomatik', manual: 'Manuel' };
+  let info = `🚗 ${result.result_count} satılık araç bulundu:\n`;
+  result.cars.slice(0, 8).forEach((car, i) => {
+    info += `\n${i + 1}. ${car.title}`;
+    info += `\n   ${car.year} | ${car.mileage?.toLocaleString('tr-TR') || 0} km | ${condLabels[car.condition] || car.condition}`;
+    info += ` | ${bodyLabels[car.body_type] || car.body_type} | ${transLabels[car.transmission] || car.transmission} | ${fuelLabels[car.fuel_type] || car.fuel_type}`;
+    if (car.horsepower) info += ` | ${car.horsepower} HP`;
+    info += `\n   💰 ${Number(car.price).toLocaleString('tr-TR')} ${car.currency || 'TL'}`;
+    if (car.is_price_negotiable) info += ' (Pazarlıklı)';
+    if (car.is_exchange_accepted) info += ' | Takas Kabul';
+    if (car.has_warranty) info += ' | Garantili';
+    info += ` | 📍 ${car.city}${car.district ? '/' + car.district : ''}`;
+    if (car.image_count > 0) info += ` | 📷 ${car.image_count} foto`;
+    info += ` [LID:${car.listing_id}]`;
+  });
+  return info;
+}
+
+function formatJobListingSearchForAI(result: JobListingSearchResult): string {
+  if (!result.success || result.result_count === 0) return 'Arama kriterlerinize uygun iş ilanı bulunamadı.';
+  const typeLabels: Record<string, string> = { full_time: 'Tam Zamanlı', part_time: 'Yarı Zamanlı', contract: 'Sözleşmeli', freelance: 'Freelance', internship: 'Staj', temporary: 'Geçici' };
+  const arrLabels: Record<string, string> = { onsite: 'Ofiste', remote: 'Uzaktan', hybrid: 'Hibrit' };
+  const expLabels: Record<string, string> = { entry: 'Giriş Seviye', junior: 'Junior', mid_level: 'Mid-Level', senior: 'Senior', lead: 'Lead', director: 'Direktör', executive: 'Üst Düzey' };
+  let info = `💼 ${result.result_count} iş ilanı bulundu:\n`;
+  result.jobs.slice(0, 8).forEach((job, i) => {
+    info += `\n${i + 1}. ${job.title}`;
+    if (job.company_name) info += ` - ${job.company_name}${job.company_verified ? ' ✅' : ''}`;
+    info += `\n   ${typeLabels[job.job_type] || job.job_type} | ${arrLabels[job.work_arrangement] || job.work_arrangement}`;
+    if (job.experience_level) info += ` | ${expLabels[job.experience_level] || job.experience_level}`;
+    info += ` | 📍 ${job.city}${job.district ? '/' + job.district : ''}`;
+    if (!job.is_salary_hidden && (job.salary_min || job.salary_max)) {
+      const min = job.salary_min ? Number(job.salary_min).toLocaleString('tr-TR') : '';
+      const max = job.salary_max ? Number(job.salary_max).toLocaleString('tr-TR') : '';
+      info += `\n   💰 ${min}${min && max ? ' - ' : ''}${max} ${job.salary_currency || 'TL'}`;
+    }
+    if (job.required_skills?.length > 0) info += `\n   🔧 ${job.required_skills.slice(0, 5).join(', ')}`;
+    if (job.is_urgent) info += ' 🔴 ACİL';
+    if (job.description) info += `\n   ${job.description.substring(0, 100)}...`;
+    info += ` [JID:${job.job_id}]`;
+  });
+  return info;
+}
+
+// ========== TAXI FORMAT FUNCTIONS ==========
+
+function formatTaxiFareEstimateForAI(data: { success: boolean; destination?: string; note?: string; vehicle_types: Array<{ name: string; display_name: string; base_fare: number; per_km: number; per_minute: number; minimum_fare: number; capacity: number; icon?: string }> }): string {
+  if (!data.success || !data.vehicle_types?.length) return 'Araç tipi bilgisi alınamadı.';
+  let info = `🚕 TAKSİ ARAÇ TİPLERİ VE FİYATLAR:\n`;
+  if (data.note) info += `ℹ️ ${data.note}\n`;
+  data.vehicle_types.forEach((vt, i) => {
+    info += `\n${i + 1}. ${vt.display_name} (${vt.name})`;
+    info += ` | Açılış: ${vt.base_fare} TL | Km başı: ${vt.per_km} TL | Dk başı: ${vt.per_minute} TL`;
+    info += ` | Min: ${vt.minimum_fare} TL | ${vt.capacity} kişilik`;
+  });
+  return info;
+}
+
+function formatTaxiRideStatusForAI(data: { success: boolean; has_active_ride: boolean; message?: string; ride?: { ride_id: string; ride_number: string; status: string; pickup_address: string; dropoff_address: string; fare: number; distance_km: number; duration_minutes: number; driver_name?: string; driver_phone?: string; driver_rating?: number; vehicle_info?: string; vehicle_plate?: string; vehicle_color?: string; created_at: string; accepted_at?: string; arrived_at?: string; picked_up_at?: string } }): string {
+  if (!data.has_active_ride) return 'Aktif yolculuğunuz bulunmuyor.';
+  const r = data.ride!;
+  const statusLabels: Record<string, string> = { pending: 'Sürücü Aranıyor', accepted: 'Sürücü Yolda', arrived: 'Sürücü Kapıda', in_progress: 'Yolculuk Devam Ediyor' };
+  let info = `🚕 Yolculuk #${r.ride_number}:`;
+  info += `\n- Durum: ${statusLabels[r.status] || r.status}`;
+  info += `\n- Güzergah: ${r.pickup_address} → ${r.dropoff_address}`;
+  info += `\n- Ücret: ${r.fare} TL | ${r.distance_km} km | ~${r.duration_minutes} dk`;
+  if (r.driver_name) {
+    info += `\n- Sürücü: ${r.driver_name}`;
+    if (r.driver_rating) info += ` (⭐${Number(r.driver_rating).toFixed(1)})`;
+    if (r.vehicle_info) info += `\n- Araç: ${r.vehicle_info}`;
+    if (r.vehicle_color) info += ` (${r.vehicle_color})`;
+    if (r.vehicle_plate) info += ` | Plaka: ${r.vehicle_plate}`;
+  }
+  return info;
+}
+
+function formatTaxiRideHistoryForAI(data: { success: boolean; ride_count: number; rides: Array<{ ride_number: string; status: string; pickup_address: string; dropoff_address: string; fare: number; distance_km: number; duration_minutes: number; rating?: number; driver_name?: string; created_at: string; completed_at?: string; cancelled_at?: string; cancellation_reason?: string }> }): string {
+  if (!data.ride_count || data.rides.length === 0) return 'Henüz yolculuk geçmişiniz bulunmuyor.';
+  let info = `📋 Son ${data.rides.length} yolculuğunuz:\n`;
+  data.rides.forEach((r, i) => {
+    const date = new Date(r.completed_at || r.cancelled_at || r.created_at);
+    const daysSince = Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60 * 24));
+    const dateStr = daysSince === 0 ? 'Bugün' : daysSince === 1 ? 'Dün' : `${daysSince} gün önce`;
+    info += `\n${i + 1}. #${r.ride_number} | ${dateStr}`;
+    info += `\n   ${r.pickup_address} → ${r.dropoff_address}`;
+    info += ` | ${r.fare} TL | ${r.distance_km} km`;
+    if (r.status === 'completed') {
+      info += ` | ✅ Tamamlandı`;
+      if (r.rating) info += ` | ⭐${r.rating}`;
+      if (r.driver_name) info += ` | Sürücü: ${r.driver_name}`;
+    } else if (r.status === 'cancelled') {
+      info += ` | ❌ İptal`;
+      if (r.cancellation_reason) info += ` (${r.cancellation_reason})`;
+    }
+  });
+  return info;
+}
+
+function formatTaxiCancelForAI(data: { success: boolean; can_cancel?: boolean; reason?: string; ride_number?: string; pickup_address?: string; dropoff_address?: string; cancelled?: boolean; message?: string }, wasConfirmed: boolean = false): string {
+  if (wasConfirmed && data.cancelled) {
+    return `✅ Yolculuk #${data.ride_number} başarıyla iptal edildi.`;
+  }
+  if (data.can_cancel) {
+    return `Yolculuk #${data.ride_number} (${data.pickup_address} → ${data.dropoff_address}) iptal edilebilir. Kullanıcıdan onay iste.`;
+  }
+  return `❌ ${data.reason || data.message || 'Yolculuk iptal edilemez.'}`;
+}
+
 // ========== OPENAI TOOL DEFINITIONS (customer_app) ==========
 
 const CUSTOMER_TOOLS = [
@@ -661,6 +783,107 @@ const CUSTOMER_TOOLS = [
         },
         required: ["product_id", "name", "price", "merchant_id", "merchant_name", "merchant_type"]
       }
+    }
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "search_car_listings",
+      description: "Satılık araç ilanı ara. Kullanıcı araba almak, satılık araç bakmak istediğinde bu aracı kullan. Marka, model, fiyat aralığı, yıl, km, yakıt tipi, vites, kasa tipi, şehir ve durum filtresi yapılabilir. Örnekler: 'ikinci el BMW', '500bin altı araç', 'otomatik SUV', 'İstanbul araç ilanları', 'sıfır Tesla'",
+      parameters: {
+        type: "object",
+        properties: {
+          keywords: { type: "string", description: "Aranacak anahtar kelimeler (virgülle ayrılmış). Marka, model, özellik vb. Ör: 'BMW,X5' veya 'elektrikli araç'" },
+          brand: { type: "string", description: "Araç markası (ör: Toyota, BMW, Mercedes, Fiat)" },
+          min_price: { type: "number", description: "Minimum fiyat (TL)" },
+          max_price: { type: "number", description: "Maksimum fiyat (TL)" },
+          min_year: { type: "integer", description: "Minimum model yılı (ör: 2020)" },
+          max_year: { type: "integer", description: "Maksimum model yılı" },
+          max_mileage: { type: "integer", description: "Maksimum kilometre" },
+          body_type: { type: "string", enum: ["sedan", "hatchback", "suv", "crossover", "pickup", "minivan", "wagon", "convertible", "sports", "luxury"], description: "Kasa tipi" },
+          fuel_type: { type: "string", enum: ["petrol", "diesel", "lpg", "hybrid", "electric", "plugin_hybrid"], description: "Yakıt tipi" },
+          transmission: { type: "string", enum: ["automatic", "manual"], description: "Vites tipi" },
+          city: { type: "string", description: "Şehir (ör: İstanbul, Ankara)" },
+          condition: { type: "string", enum: ["new", "used", "certified"], description: "Araç durumu: new=Sıfır, used=İkinci el, certified=Sertifikalı" }
+        },
+      }
+    }
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "search_jobs",
+      description: "İş ilanı ara. Kullanıcı iş arıyorsa, kariyer fırsatları soruyorsa veya belirli bir pozisyon arıyorsa bu aracı kullan. Anahtar kelime, kategori, iş tipi, çalışma şekli, deneyim seviyesi, şehir ve maaş aralığına göre filtre yapılabilir. Örnekler: 'yazılım geliştirici', 'uzaktan çalışma', 'staj', 'İstanbul garson', 'part-time iş'",
+      parameters: {
+        type: "object",
+        properties: {
+          keywords: { type: "string", description: "Aranacak anahtar kelimeler (virgülle ayrılmış). Pozisyon, beceri, sektör vb. Ör: 'flutter,developer' veya 'muhasebeci'" },
+          job_type: { type: "string", enum: ["full_time", "part_time", "contract", "freelance", "internship", "temporary"], description: "İş tipi: full_time=Tam zamanlı, part_time=Yarı zamanlı, contract=Sözleşmeli, freelance=Freelance, internship=Staj, temporary=Geçici" },
+          work_arrangement: { type: "string", enum: ["onsite", "remote", "hybrid"], description: "Çalışma şekli: onsite=Ofiste, remote=Uzaktan, hybrid=Hibrit" },
+          experience_level: { type: "string", enum: ["entry", "junior", "mid_level", "senior", "lead", "director", "executive"], description: "Deneyim seviyesi" },
+          city: { type: "string", description: "Şehir (ör: İstanbul, Ankara, Lefkoşa)" },
+          min_salary: { type: "number", description: "Minimum maaş (TL)" },
+          max_salary: { type: "number", description: "Maksimum maaş (TL)" }
+        },
+      }
+    }
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "get_taxi_fare_estimate",
+      description: "Taksi araç tiplerini ve tahmini fiyatları göster. 'taksi ne kadar', 'taksi ücreti', 'araç tipleri', 'taksi fiyatları' gibi sorularda kullan.",
+      parameters: {
+        type: "object",
+        properties: {
+          vehicle_type: { type: "string", description: "Belirli bir araç tipi (economy, standard, comfort, xl, VIP, KULİS). Boş bırakılırsa tümünü gösterir." }
+        },
+      }
+    }
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "get_taxi_ride_status",
+      description: "Kullanıcının aktif taksi yolculuğunun durumunu kontrol et. 'taksim nerede', 'sürücü nerede', 'yolculuğum ne durumda', 'şoför geldi mi' gibi sorularda kullan.",
+      parameters: { type: "object", properties: {} }
+    }
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "cancel_taxi_ride",
+      description: "Kullanıcının aktif taksi yolculuğunu iptal et. İlk seferde confirmed=false ile kontrol yap, kullanıcı onaylarsa confirmed=true ile iptal et.",
+      parameters: {
+        type: "object",
+        properties: {
+          confirmed: { type: "boolean", description: "true: yolculuğu iptal et, false: iptal edilebilir mi kontrol et" }
+        },
+        required: ["confirmed"]
+      }
+    }
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "request_taxi",
+      description: "Kullanıcı için taksi çağır. 'taksi çağır', 'eve taksi', 'taksi istiyorum', 'işe git', 'taksi lazım' gibi isteklerde kullan. Hedef adres kayıtlı adreslerden (ev, iş) çözülür.",
+      parameters: {
+        type: "object",
+        properties: {
+          destination: { type: "string", description: "Hedef: kayıtlı adres adı (ev, iş, ofis) veya adres metni" },
+          vehicle_type: { type: "string", enum: ["economy", "standard", "comfort", "xl", "VIP", "KULİS"], description: "Araç tipi. Varsayılan: economy. Eşleştirmeler: ucuz/ekonomi→economy, standart→standard, konfor→comfort, büyük→xl, lüks→VIP" }
+        },
+        required: ["destination"]
+      }
+    }
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "get_taxi_ride_history",
+      description: "Kullanıcının geçmiş taksi yolculuklarını getir. 'önceki yolculuklarım', 'taksi geçmişim', 'geçen seferki taksi', 'son yolculuğum' gibi sorularda kullan.",
+      parameters: { type: "object", properties: {} }
     }
   }
 ];
@@ -1007,6 +1230,41 @@ async function executeToolCall(
       return formatRentalBookingForAI(data as RentalBookingStatus);
     }
 
+    case 'search_car_listings': {
+      const rpcParams: Record<string, unknown> = {};
+      if (args.keywords) rpcParams.p_keywords = args.keywords;
+      if (args.brand) rpcParams.p_brand = args.brand;
+      if (args.min_price) rpcParams.p_min_price = args.min_price;
+      if (args.max_price) rpcParams.p_max_price = args.max_price;
+      if (args.min_year) rpcParams.p_min_year = args.min_year;
+      if (args.max_year) rpcParams.p_max_year = args.max_year;
+      if (args.max_mileage) rpcParams.p_max_mileage = args.max_mileage;
+      if (args.body_type) rpcParams.p_body_type = args.body_type;
+      if (args.fuel_type) rpcParams.p_fuel_type = args.fuel_type;
+      if (args.transmission) rpcParams.p_transmission = args.transmission;
+      if (args.city) rpcParams.p_city = args.city;
+      if (args.condition) rpcParams.p_condition = args.condition;
+
+      const { data, error } = await supabase.rpc('ai_search_car_listings', rpcParams);
+      if (error) return 'Araç ilanı arama başarısız oldu: ' + error.message;
+      return formatCarListingSearchForAI(data as CarListingSearchResult);
+    }
+
+    case 'search_jobs': {
+      const rpcParams: Record<string, unknown> = {};
+      if (args.keywords) rpcParams.p_keywords = args.keywords;
+      if (args.job_type) rpcParams.p_job_type = args.job_type;
+      if (args.work_arrangement) rpcParams.p_work_arrangement = args.work_arrangement;
+      if (args.experience_level) rpcParams.p_experience_level = args.experience_level;
+      if (args.city) rpcParams.p_city = args.city;
+      if (args.min_salary) rpcParams.p_min_salary = args.min_salary;
+      if (args.max_salary) rpcParams.p_max_salary = args.max_salary;
+
+      const { data, error } = await supabase.rpc('ai_search_job_listings', rpcParams);
+      if (error) return 'İş ilanı arama başarısız oldu: ' + error.message;
+      return formatJobListingSearchForAI(data as JobListingSearchResult);
+    }
+
     case 'add_to_cart': {
       const productId = args.product_id as string;
       const name = args.name as string;
@@ -1038,6 +1296,64 @@ async function executeToolCall(
       }
 
       return `✅ ${name} (${quantity} adet, ${price} TL) sepete eklendi.`;
+    }
+
+    case 'get_taxi_fare_estimate': {
+      const vType = (args.vehicle_type as string) || null;
+      const { data, error } = await supabase.rpc('ai_get_taxi_fare_estimate', { p_user_id: userId, p_vehicle_type: vType });
+      if (error) return 'Taksi fiyat bilgisi alınamadı.';
+      return formatTaxiFareEstimateForAI(data as any);
+    }
+
+    case 'get_taxi_ride_status': {
+      const { data, error } = await supabase.rpc('ai_get_taxi_ride_status', { p_user_id: userId });
+      if (error) return 'Yolculuk durumu kontrol edilemedi.';
+      return formatTaxiRideStatusForAI(data as any);
+    }
+
+    case 'cancel_taxi_ride': {
+      const confirmed = args.confirmed as boolean;
+      if (confirmed) {
+        const { data, error } = await supabase.rpc('ai_cancel_taxi_ride', { p_user_id: userId });
+        if (error) return 'Yolculuk iptal edilemedi.';
+        return formatTaxiCancelForAI(data as any, true);
+      } else {
+        const { data, error } = await supabase.rpc('ai_check_taxi_cancel_eligibility', { p_user_id: userId });
+        if (error) return 'İptal durumu kontrol edilemedi.';
+        return formatTaxiCancelForAI(data as any, false);
+      }
+    }
+
+    case 'request_taxi': {
+      const destination = args.destination as string;
+      const vehicleType = (args.vehicle_type as string) || 'economy';
+      if (!destination) return 'Nereye gitmek istediğinizi belirtmelisiniz.';
+
+      const { data, error } = await supabase.rpc('ai_request_taxi_ride', {
+        p_user_id: userId,
+        p_destination_text: destination,
+        p_vehicle_type: vehicleType,
+      });
+      if (error) return 'Taksi çağırma başarısız oldu: ' + error.message;
+
+      const result = data as { success: boolean; needs_manual?: boolean; message: string; ride_id?: string; ride_number?: string; pickup_address?: string; dropoff_address?: string; fare?: number; distance_km?: number; vehicle_type?: string };
+
+      if (result.success && result.ride_id && actions) {
+        actions.push({
+          type: 'taxi_ride_created',
+          payload: { ride_id: result.ride_id, ride_number: result.ride_number }
+        });
+      } else if (result.needs_manual && actions) {
+        actions.push({ type: 'navigate', payload: { route: '/taxi' } });
+      }
+
+      return result.message;
+    }
+
+    case 'get_taxi_ride_history': {
+      const { data, error } = await supabase.rpc('ai_get_taxi_ride_history', { p_user_id: userId });
+      if (error) return 'Yolculuk geçmişi alınamadı.';
+      return formatTaxiRideHistoryForAI(data as any);
     }
 
     default:
@@ -1205,7 +1521,14 @@ Deno.serve(async (req: Request) => {
 15. ⛔ BİLGİ TEKRARLAMA: Daha önce söylediğin bilgileri (sepete eklenen ürünler, fiyatlar) tekrar etme. Kısa ve yeni bilgi odaklı yanıtlar ver.
 16. 🚗 ARAÇ KİRALAMA: Kullanıcı araç kiralamak istediğinde search_rental_cars aracını kullan. Kategori eşleştirmeleri: ekonomi/ucuz→economy, kompakt→compact, orta/sedan→midsize, jeep/arazi→suv, lüks/premium→luxury, minibüs→van. Tarih belirtilmişse pickup_date ve dropoff_date parametrelerini ISO formatında gönder. "Uygun fiyatlı" derse max_daily_price=900 gibi makul bir sınır koy.
 17. ⚡ ARAÇ KİRALAMA SONUÇLARI GÖSTERME: Araç kiralama sonuçları kullanıcıya GÖRSEL KART olarak otomatik gösterilecek. Sen sadece KISA bir giriş yaz (ör: "3 araç buldum:", "İşte uygun araçlar:"). Araçları tek tek listeleme, fiyat yazma, detay verme. Kartlar zaten marka, model, fiyat ve kirala butonu ile gösteriliyor. Sadece kısa giriş + varsa genel öneri yaz.
-18. 📋 KİRALAMA REZERVASYONU: Kullanıcı "rezervasyonum var mı", "kiralama durumum" derse get_rental_booking_status aracını kullan.`;
+18. 📋 KİRALAMA REZERVASYONU: Kullanıcı "rezervasyonum var mı", "kiralama durumum" derse get_rental_booking_status aracını kullan.
+19. 🚘 SATILIK ARAÇ: Kullanıcı araba almak, satılık araç aramak veya araç ilanlarına bakmak istediğinde search_car_listings aracını kullan. Marka eşleştirmeleri: "beemer/bimer"→BMW, "mersedes"→Mercedes. Kasa tipi eşleştirmeleri: jeep/arazi→suv, station→wagon, cabrio→convertible. "Uygun fiyatlı" derse max_price=500000, "ucuz araba" derse max_price=300000 gibi makul sınırlar koy. Sonuçları kısa özetle sun.
+20. 💼 İŞ İLANLARI: Kullanıcı iş arıyorsa, kariyer fırsatları soruyorsa veya belirli bir pozisyon arıyorsa search_jobs aracını kullan. İş tipi eşleştirmeleri: "tam zamanlı/full-time"→full_time, "yarı zamanlı/part-time"→part_time, "staj/intern"→internship, "freelance/serbest"→freelance. Çalışma şekli: "uzaktan/remote"→remote, "ofiste"→onsite, "hibrit/karma"→hybrid. Sonuçları kısa özetle sun, detaylı bilgi için kullanıcıyı yönlendir.
+21. 🚕 TAKSİ ÇAĞIRMA: Kullanıcı taksi çağırmak istediğinde request_taxi aracını kullan. Nereye gideceğini sor. Kayıtlı adresler (ev, iş) varsa doğrudan kullanılır. Araç tipi eşleştirmeleri: ucuz/ekonomi→economy, standart/normal→standard, konfor/rahat→comfort, büyük/geniş→xl, lüks/premium→VIP. Belirtilmezse economy kullan.
+22. 🚕 TAKSİ FİYAT: "Taksi ne kadar", "ücret tahmini" sorularında get_taxi_fare_estimate ile araç tiplerini ve fiyatları göster.
+23. 🚕 TAKSİ DURUM: "Taksim nerede", "sürücü nerede", "yolculuğum" sorularında get_taxi_ride_status kullan.
+24. 🚕 TAKSİ İPTAL: İptal isteğinde cancel_taxi_ride(confirmed=false) ile kontrol, kullanıcı onaylarsa confirmed=true ile iptal et. (Sipariş iptali ile aynı 2 adımlı pattern)
+25. 🚕 TAKSİ GEÇMİŞ: "Önceki yolculuklarım", "taksi geçmişim" sorularında get_taxi_ride_history kullan.`;
 
     // User preferences & allergies
     if (userPrefs) {
@@ -1239,6 +1562,8 @@ Deno.serve(async (req: Request) => {
         'store_cart': 'Mağaza Sepeti', 'food_cart': 'Yemek Sepeti', 'grocery_home': 'Market',
         'store_home': 'Mağaza', 'rental_home': 'Araç Kiralama', 'car_detail': 'Araç Detay',
         'my_bookings': 'Rezervasyonlarım', 'booking_detail': 'Rezervasyon Detay',
+        'car_sales_home': 'Araç Satış', 'car_listing_detail': 'Araç İlanı Detay',
+        'jobs_home': 'İş İlanları', 'job_detail': 'İş İlanı Detay',
         'favorites': 'Favoriler', 'orders': 'Siparişlerim', 'profile': 'Profil',
       };
       systemContent += `\n\n[EKRAN]: Kullanıcı "${screenNames[screen_type] || screen_type}" sayfasında.`;
@@ -1651,6 +1976,9 @@ function detectNavigationAction(
     'araç kiralama': '/rental', 'araba kiralama': '/rental', 'rent a car': '/rental', 'kiralama': '/rental',
     'sepet': merchantProductsData ? '/store/cart' : '/food/cart',
     'siparişlerim': '/orders-main', 'favoriler': '/favorites', 'profil': '/profile',
+    'araç satış': '/car-sales', 'araba al': '/car-sales', 'satılık araç': '/car-sales', 'araç ilanı': '/car-sales',
+    'iş ilan': '/jobs', 'iş ara': '/jobs', 'kariyer': '/jobs', 'iş bul': '/jobs',
+    'taksi': '/taxi', 'taxi': '/taxi',
     'ayarlar': '/settings', 'ana sayfa': '/',
   };
 

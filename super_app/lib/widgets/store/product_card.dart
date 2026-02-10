@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/app_theme.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../../core/theme/store_colors.dart';
 import '../../core/theme/app_responsive.dart';
 import '../../core/utils/image_utils.dart';
 import '../../models/store/store_product_model.dart';
@@ -49,14 +50,18 @@ class ProductCard extends StatelessWidget {
                   ),
                   child: AspectRatio(
                     aspectRatio: 1.15, // Wider for compact mobile look
-                    child: Image.network(
-                      ImageUtils.getProductThumbnail(product.imageUrl),
+                    child: CachedNetworkImage(
+                      imageUrl: ImageUtils.getProductThumbnail(product.imageUrl),
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
-                        color: AppColors.primary.withValues(alpha: 0.1),
+                      placeholder: (_, __) => Container(
+                        color: Colors.grey[200],
+                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                      ),
+                      errorWidget: (_, __, ___) => Container(
+                        color: StoreColors.primary.withValues(alpha: 0.1),
                         child: Icon(
                           Icons.image_outlined,
-                          color: AppColors.primary,
+                          color: StoreColors.primary,
                           size: 32,
                         ),
                       ),
@@ -176,7 +181,7 @@ class ProductCard extends StatelessWidget {
                           if (product.freeShipping) const SizedBox(width: 4),
                           _buildBadge(context,
                             'Hızlı',
-                            AppColors.primary,
+                            StoreColors.primary,
                           ),
                         ],
                       ],
@@ -198,7 +203,7 @@ class ProductCard extends StatelessWidget {
                           product.storeName,
                           style: TextStyle(
                             fontSize: context.captionSmallSize,
-                            color: AppColors.primary,
+                            color: StoreColors.primary,
                             fontWeight: FontWeight.w500,
                           ),
                           maxLines: 1,

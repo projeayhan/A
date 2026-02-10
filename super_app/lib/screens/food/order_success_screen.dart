@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/theme/app_responsive.dart';
 import 'food_home_screen.dart';
 
 class OrderSuccessScreen extends StatefulWidget {
@@ -26,6 +28,9 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
   late Animation<double> _checkAnimation;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
+
+  Timer? _autoNavigateTimer;
+  bool _hasNavigated = false;
 
   @override
   void initState() {
@@ -70,22 +75,28 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
 
   void _startAnimations() async {
     await Future.delayed(const Duration(milliseconds: 200));
+    if (!mounted) return;
     _scaleController.forward();
     await Future.delayed(const Duration(milliseconds: 300));
+    if (!mounted) return;
     _checkController.forward();
     _confettiController.forward();
     await Future.delayed(const Duration(milliseconds: 400));
+    if (!mounted) return;
     _fadeController.forward();
 
     // Auto navigate to tracking screen after 3 seconds
-    await Future.delayed(const Duration(seconds: 3));
-    if (mounted) {
-      context.go('/food/order-tracking/${widget.orderId}');
-    }
+    _autoNavigateTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted && !_hasNavigated) {
+        _hasNavigated = true;
+        context.go('/food/order-tracking/${widget.orderId}');
+      }
+    });
   }
 
   @override
   void dispose() {
+    _autoNavigateTimer?.cancel();
     _checkController.dispose();
     _scaleController.dispose();
     _fadeController.dispose();
@@ -155,7 +166,7 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
                       Text(
                         'Siparişiniz Alındı!',
                         style: TextStyle(
-                          fontSize: 28,
+                          fontSize: context.heading1Size + 4,
                           fontWeight: FontWeight.bold,
                           color: isDark ? Colors.white : const Color(0xFF1C1C1E),
                         ),
@@ -164,7 +175,7 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
                       Text(
                         'Siparişiniz restorana iletildi',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: context.heading2Size,
                           color: isDark ? Colors.grey[400] : Colors.grey[600],
                         ),
                       ),
@@ -178,7 +189,7 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
                           color: isDark
                               ? FoodColors.primary.withValues(alpha: 0.2)
                               : const Color(0xFFFFF7ED),
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(16),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -192,7 +203,7 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
                             Text(
                               'Sipariş No: #${widget.orderId}',
                               style: TextStyle(
-                                fontSize: 14,
+                                fontSize: context.bodySize,
                                 fontWeight: FontWeight.w600,
                                 color: FoodColors.primary,
                               ),
@@ -204,11 +215,11 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
 
                       // Order info card
                       Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 32),
-                        padding: const EdgeInsets.all(20),
+                        margin: EdgeInsets.symmetric(horizontal: context.pagePaddingH),
+                        padding: EdgeInsets.all(context.pagePaddingH),
                         decoration: BoxDecoration(
-                          color: isDark ? Colors.grey[850] : Colors.grey[50],
-                          borderRadius: BorderRadius.circular(20),
+                          color: isDark ? FoodColors.surfaceDark : FoodColors.backgroundLight,
+                          borderRadius: BorderRadius.circular(16),
                           border: Border.all(
                             color: isDark ? Colors.grey[700]! : Colors.grey[200]!,
                           ),
@@ -260,7 +271,7 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
                           Text(
                             'Sipariş takip ekranına yönlendiriliyorsunuz...',
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: context.captionSize,
                               color: isDark ? Colors.grey[500] : Colors.grey[500],
                             ),
                           ),
@@ -311,14 +322,14 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 12,
+                  fontSize: context.captionSize,
                   color: isDark ? Colors.grey[500] : Colors.grey[500],
                 ),
               ),
               Text(
                 value,
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: context.bodySize,
                   fontWeight: FontWeight.w600,
                   color: isHighlighted
                       ? FoodColors.primary

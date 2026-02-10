@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/app_theme.dart';
+import '../../core/theme/app_responsive.dart';
+import '../../core/theme/store_colors.dart';
 
 class StoreSearchBar extends StatelessWidget {
   final VoidCallback? onTap;
@@ -41,7 +42,7 @@ class StoreSearchBar extends StatelessWidget {
                 hintText,
                 style: TextStyle(
                   color: Colors.grey[500],
-                  fontSize: 15,
+                  fontSize: context.bodySize,
                 ),
               ),
             ),
@@ -54,7 +55,7 @@ class StoreSearchBar extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Icon(
                 Icons.camera_alt_outlined,
-                color: AppColors.primary,
+                color: StoreColors.primary,
                 size: 22,
               ),
             ),

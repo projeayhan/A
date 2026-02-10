@@ -1,22 +1,30 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supabase_service.dart';
+import '../utils/cache_helper.dart';
 
 /// Taksi servisi - Supabase ile iletişim
 class TaxiService {
   static final _client = Supabase.instance.client;
+  static final _cache = CacheManager();
 
   // ==================== VEHICLE TYPES ====================
 
   /// Araç tiplerini getir
   static Future<List<Map<String, dynamic>>> getVehicleTypes() async {
-    final response = await _client
-        .from('vehicle_types')
-        .select()
-        .eq('is_active', true)
-        .order('sort_order');
+    return _cache.getOrFetch<List<Map<String, dynamic>>>(
+      'taxi_vehicle_types',
+      ttl: const Duration(hours: 24),
+      fetcher: () async {
+        final response = await _client
+            .from('vehicle_types')
+            .select()
+            .eq('is_active', true)
+            .order('sort_order');
 
-    return List<Map<String, dynamic>>.from(response);
+        return List<Map<String, dynamic>>.from(response);
+      },
+    );
   }
 
   // ==================== RIDE OPERATIONS ====================
@@ -205,28 +213,34 @@ class TaxiService {
     final userId = SupabaseService.currentUser?.id;
     if (userId == null) return [];
 
-    final response = await _client
-        .from('taxi_rides')
-        .select('''
-          *,
-          driver:taxi_drivers(
-            id,
-            full_name,
-            rating,
-            vehicle_brand,
-            vehicle_model,
-            vehicle_plate,
-            vehicle_color,
-            vehicle_year,
-            profile_photo_url
-          )
-        ''')
-        .eq('user_id', userId)
-        .inFilter('status', ['completed', 'cancelled'])
-        .order('created_at', ascending: false)
-        .range(offset, offset + limit - 1);
+    return _cache.getOrFetch<List<Map<String, dynamic>>>(
+      'taxi_ride_history_${userId}_${offset}_$limit',
+      ttl: const Duration(minutes: 30),
+      fetcher: () async {
+        final response = await _client
+            .from('taxi_rides')
+            .select('''
+              *,
+              driver:taxi_drivers(
+                id,
+                full_name,
+                rating,
+                vehicle_brand,
+                vehicle_model,
+                vehicle_plate,
+                vehicle_color,
+                vehicle_year,
+                profile_photo_url
+              )
+            ''')
+            .eq('user_id', userId)
+            .inFilter('status', ['completed', 'cancelled'])
+            .order('created_at', ascending: false)
+            .range(offset, offset + limit - 1);
 
-    return List<Map<String, dynamic>>.from(response);
+        return List<Map<String, dynamic>>.from(response);
+      },
+    );
   }
 
   // ==================== NEARBY DRIVERS ====================
@@ -339,13 +353,24 @@ class TaxiService {
     final userId = SupabaseService.currentUser?.id;
     if (userId == null) return [];
 
-    final response = await _client
-        .from('saved_locations')
-        .select()
-        .eq('user_id', userId)
-        .order('created_at', ascending: false);
+    return _cache.getOrFetch<List<Map<String, dynamic>>>(
+      'taxi_saved_locations_$userId',
+      ttl: const Duration(minutes: 15),
+      fetcher: () async {
+        final response = await _client
+            .from('saved_locations')
+            .select()
+            .eq('user_id', userId)
+            .order('created_at', ascending: false);
 
-    return List<Map<String, dynamic>>.from(response);
+        return List<Map<String, dynamic>>.from(response);
+      },
+    );
+  }
+
+  /// Kayıtlı konumlar cache'ini temizle
+  static void invalidateSavedLocations() {
+    _cache.invalidatePrefix('taxi_saved_locations_');
   }
 
   /// Konum kaydet
@@ -597,53 +622,59 @@ class TaxiService {
   static Future<List<Map<String, dynamic>>> getFeedbackTags({
     String? category,
   }) async {
-    debugPrint('TaxiService: getFeedbackTags called with category: $category');
-    try {
-      var query = _client
-          .from('taxi_feedback_tags')
-          .select()
-          .eq('is_active', true);
+    return _cache.getOrFetch<List<Map<String, dynamic>>>(
+      'taxi_feedback_tags_${category ?? 'all'}',
+      ttl: const Duration(hours: 24),
+      fetcher: () async {
+        debugPrint('TaxiService: getFeedbackTags called with category: $category');
+        try {
+          var query = _client
+              .from('taxi_feedback_tags')
+              .select()
+              .eq('is_active', true);
 
-      if (category != null) {
-        query = query.eq('category', category);
-      }
+          if (category != null) {
+            query = query.eq('category', category);
+          }
 
-      debugPrint('TaxiService: Executing feedback tags query...');
-      final response = await query.order('sort_order');
-      debugPrint(
-        'TaxiService: Feedback tags query completed. Count: ${response.length}',
-      );
-      return List<Map<String, dynamic>>.from(response);
-    } catch (e) {
-      debugPrint('TaxiService: Error fetching feedback tags: $e');
-      // Fallback - varsayılan etiketler
-      return [
-        {
-          'id': '1',
-          'tag_key': 'clean_vehicle',
-          'tag_text_tr': 'Temiz araç',
-          'category': category ?? 'positive',
-        },
-        {
-          'id': '2',
-          'tag_key': 'safe_driving',
-          'tag_text_tr': 'Güvenli sürüş',
-          'category': category ?? 'positive',
-        },
-        {
-          'id': '3',
-          'tag_key': 'polite_driver',
-          'tag_text_tr': 'Nazik sürücü',
-          'category': category ?? 'positive',
-        },
-        {
-          'id': '4',
-          'tag_key': 'on_time',
-          'tag_text_tr': 'Zamanında varış',
-          'category': category ?? 'positive',
-        },
-      ];
-    }
+          debugPrint('TaxiService: Executing feedback tags query...');
+          final response = await query.order('sort_order');
+          debugPrint(
+            'TaxiService: Feedback tags query completed. Count: ${response.length}',
+          );
+          return List<Map<String, dynamic>>.from(response);
+        } catch (e) {
+          debugPrint('TaxiService: Error fetching feedback tags: $e');
+          // Fallback - varsayılan etiketler
+          return [
+            {
+              'id': '1',
+              'tag_key': 'clean_vehicle',
+              'tag_text_tr': 'Temiz araç',
+              'category': category ?? 'positive',
+            },
+            {
+              'id': '2',
+              'tag_key': 'safe_driving',
+              'tag_text_tr': 'Güvenli sürüş',
+              'category': category ?? 'positive',
+            },
+            {
+              'id': '3',
+              'tag_key': 'polite_driver',
+              'tag_text_tr': 'Nazik sürücü',
+              'category': category ?? 'positive',
+            },
+            {
+              'id': '4',
+              'tag_key': 'on_time',
+              'tag_text_tr': 'Zamanında varış',
+              'category': category ?? 'positive',
+            },
+          ];
+        }
+      },
+    );
   }
 
   /// Aktif promosyonları getir

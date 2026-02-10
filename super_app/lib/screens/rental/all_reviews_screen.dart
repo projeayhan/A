@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/name_masking.dart';
 import '../../models/rental/rental_models.dart';
 
 class AllReviewsScreen extends StatefulWidget {
@@ -337,7 +338,7 @@ class _AllReviewsScreenState extends State<AllReviewsScreen> {
                       : null,
                   child: review.userAvatar == null
                       ? Text(
-                          (review.userName ?? 'A')[0].toUpperCase(),
+                          maskUserName(review.userName)[0].toUpperCase(),
                           style: TextStyle(
                             color: colors.primary,
                             fontWeight: FontWeight.bold,
@@ -351,7 +352,7 @@ class _AllReviewsScreenState extends State<AllReviewsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(review.userName ?? 'Anonim',
+                      Text(maskUserName(review.userName),
                           style: theme.textTheme.titleSmall),
                       const SizedBox(height: 2),
                       Text(review.timeAgo,

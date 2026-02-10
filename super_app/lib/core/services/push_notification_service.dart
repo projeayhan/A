@@ -25,6 +25,9 @@ class PushNotificationService {
 
   StreamController<Map<String, dynamic>>? _notificationController;
   String? _fcmToken;
+  StreamSubscription? _tokenRefreshSubscription;
+  StreamSubscription? _foregroundMessageSubscription;
+  StreamSubscription? _messageOpenedSubscription;
 
   /// Stream of notification data when user taps on notification
   Stream<Map<String, dynamic>> get onNotificationTap {
@@ -57,13 +60,13 @@ class PushNotificationService {
       await _getAndSaveToken();
 
       // Listen for token refresh
-      _messaging.onTokenRefresh.listen(_saveTokenToSupabase);
+      _tokenRefreshSubscription = _messaging.onTokenRefresh.listen(_saveTokenToSupabase);
 
       // Handle foreground messages
-      FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
+      _foregroundMessageSubscription = FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
 
       // Handle notification tap when app is in background/terminated
-      FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
+      _messageOpenedSubscription = FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
 
       // Check if app was opened from a notification
       final initialMessage = await _messaging.getInitialMessage();
@@ -262,6 +265,9 @@ class PushNotificationService {
 
   /// Dispose
   void dispose() {
+    _tokenRefreshSubscription?.cancel();
+    _foregroundMessageSubscription?.cancel();
+    _messageOpenedSubscription?.cancel();
     _notificationController?.close();
     _notificationController = null;
   }

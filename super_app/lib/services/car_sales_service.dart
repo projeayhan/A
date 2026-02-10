@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../core/utils/cache_helper.dart';
 import '../models/car_sales/car_sales_models.dart';
 
 /// AI Moderasyon sonucu
@@ -49,6 +50,7 @@ class CarSalesService {
   factory CarSalesService() => _instance;
   CarSalesService._internal();
 
+  final _cache = CacheManager();
   SupabaseClient get _client => Supabase.instance.client;
   String? get _userId => _client.auth.currentUser?.id;
 
@@ -56,112 +58,202 @@ class CarSalesService {
 
   /// Markaları Supabase'den getir
   Future<List<CarBrandData>> getBrands({bool popularOnly = false}) async {
-    try {
-      var query = _client
-          .from('car_brands')
-          .select()
-          .eq('is_active', true);
+    return _cache.getOrFetch<List<CarBrandData>>(
+      'car_brands_$popularOnly',
+      ttl: const Duration(hours: 48),
+      fetcher: () async {
+        try {
+          var query = _client
+              .from('car_brands')
+              .select()
+              .eq('is_active', true);
 
-      if (popularOnly) {
-        query = query.eq('is_popular', true);
-      }
+          if (popularOnly) {
+            query = query.eq('is_popular', true);
+          }
 
-      final response = await query.order('sort_order');
+          final response = await query.order('sort_order');
 
-      return (response as List)
-          .map((json) => CarBrandData.fromJson(json))
-          .toList();
-    } catch (e) {
-      debugPrint('CarSalesService.getBrands error: $e');
-      return [];
-    }
+          return (response as List)
+              .map((json) => CarBrandData.fromJson(json))
+              .toList();
+        } catch (e) {
+          debugPrint('CarSalesService.getBrands error: $e');
+          return [];
+        }
+      },
+    );
   }
 
   // ==================== ÖZELLİKLER ====================
 
   /// Özellikleri getir
   Future<List<CarFeatureData>> getFeatures({String? category}) async {
-    try {
-      var query = _client
-          .from('car_features')
-          .select()
-          .eq('is_active', true);
+    return _cache.getOrFetch<List<CarFeatureData>>(
+      'car_features_${category ?? 'all'}',
+      ttl: const Duration(hours: 48),
+      fetcher: () async {
+        try {
+          var query = _client
+              .from('car_features')
+              .select()
+              .eq('is_active', true);
 
-      if (category != null) {
-        query = query.eq('category', category);
-      }
+          if (category != null) {
+            query = query.eq('category', category);
+          }
 
-      final response = await query.order('sort_order');
+          final response = await query.order('sort_order');
 
-      return (response as List)
-          .map((json) => CarFeatureData.fromJson(json))
-          .toList();
-    } catch (e) {
-      debugPrint('CarSalesService.getFeatures error: $e');
-      return [];
-    }
+          return (response as List)
+              .map((json) => CarFeatureData.fromJson(json))
+              .toList();
+        } catch (e) {
+          debugPrint('CarSalesService.getFeatures error: $e');
+          return [];
+        }
+      },
+    );
   }
 
   // ==================== FİLTRE TİPLERİ ====================
 
   /// Gövde tiplerini getir
   Future<List<CarBodyTypeData>> getBodyTypes() async {
-    try {
-      final response = await _client
-          .from('car_body_types')
-          .select()
-          .eq('is_active', true)
-          .order('sort_order');
+    return _cache.getOrFetch<List<CarBodyTypeData>>(
+      'car_body_types',
+      ttl: const Duration(hours: 48),
+      fetcher: () async {
+        try {
+          final response = await _client
+              .from('car_body_types')
+              .select()
+              .eq('is_active', true)
+              .order('sort_order');
 
-      return (response as List)
-          .map((json) => CarBodyTypeData.fromJson(json))
-          .toList();
-    } catch (e) {
-      debugPrint('CarSalesService.getBodyTypes error: $e');
-      return [];
-    }
+          return (response as List)
+              .map((json) => CarBodyTypeData.fromJson(json))
+              .toList();
+        } catch (e) {
+          debugPrint('CarSalesService.getBodyTypes error: $e');
+          return [];
+        }
+      },
+    );
   }
 
   /// Yakıt tiplerini getir
   Future<List<CarFuelTypeData>> getFuelTypes() async {
-    try {
-      final response = await _client
-          .from('car_fuel_types')
-          .select()
-          .eq('is_active', true)
-          .order('sort_order');
+    return _cache.getOrFetch<List<CarFuelTypeData>>(
+      'car_fuel_types',
+      ttl: const Duration(hours: 48),
+      fetcher: () async {
+        try {
+          final response = await _client
+              .from('car_fuel_types')
+              .select()
+              .eq('is_active', true)
+              .order('sort_order');
 
-      return (response as List)
-          .map((json) => CarFuelTypeData.fromJson(json))
-          .toList();
-    } catch (e) {
-      debugPrint('CarSalesService.getFuelTypes error: $e');
-      return [];
-    }
+          return (response as List)
+              .map((json) => CarFuelTypeData.fromJson(json))
+              .toList();
+        } catch (e) {
+          debugPrint('CarSalesService.getFuelTypes error: $e');
+          return [];
+        }
+      },
+    );
   }
 
   /// Vites tiplerini getir
   Future<List<CarTransmissionData>> getTransmissions() async {
-    try {
-      final response = await _client
-          .from('car_transmissions')
-          .select()
-          .eq('is_active', true)
-          .order('sort_order');
+    return _cache.getOrFetch<List<CarTransmissionData>>(
+      'car_transmissions',
+      ttl: const Duration(hours: 48),
+      fetcher: () async {
+        try {
+          final response = await _client
+              .from('car_transmissions')
+              .select()
+              .eq('is_active', true)
+              .order('sort_order');
 
-      return (response as List)
-          .map((json) => CarTransmissionData.fromJson(json))
-          .toList();
-    } catch (e) {
-      debugPrint('CarSalesService.getTransmissions error: $e');
-      return [];
-    }
+          return (response as List)
+              .map((json) => CarTransmissionData.fromJson(json))
+              .toList();
+        } catch (e) {
+          debugPrint('CarSalesService.getTransmissions error: $e');
+          return [];
+        }
+      },
+    );
   }
 
   // ==================== İLANLAR ====================
 
   /// Aktif ilanları getir (ana sayfa için)
   Future<List<CarListingData>> getActiveListings({
+    String? brandId,
+    CarBodyType? bodyType,
+    CarFuelType? fuelType,
+    String? city,
+    double? minPrice,
+    double? maxPrice,
+    int? minYear,
+    int? maxYear,
+    int? maxMileage,
+    bool featuredOnly = false,
+    String sortBy = 'newest',
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    // Only cache when called with all default params (no filters)
+    final bool isDefaultParams = brandId == null &&
+        bodyType == null &&
+        fuelType == null &&
+        city == null &&
+        minPrice == null &&
+        maxPrice == null &&
+        minYear == null &&
+        maxYear == null &&
+        maxMileage == null &&
+        !featuredOnly &&
+        sortBy == 'newest' &&
+        limit == 20 &&
+        offset == 0;
+
+    if (isDefaultParams) {
+      return _cache.getOrFetch<List<CarListingData>>(
+        'car_active_listings',
+        ttl: const Duration(minutes: 10),
+        fetcher: () => _fetchActiveListings(
+          sortBy: sortBy,
+          limit: limit,
+          offset: offset,
+        ),
+      );
+    }
+
+    return _fetchActiveListings(
+      brandId: brandId,
+      bodyType: bodyType,
+      fuelType: fuelType,
+      city: city,
+      minPrice: minPrice,
+      maxPrice: maxPrice,
+      minYear: minYear,
+      maxYear: maxYear,
+      maxMileage: maxMileage,
+      featuredOnly: featuredOnly,
+      sortBy: sortBy,
+      limit: limit,
+      offset: offset,
+    );
+  }
+
+  /// Internal fetch for active listings
+  Future<List<CarListingData>> _fetchActiveListings({
     String? brandId,
     CarBodyType? bodyType,
     CarFuelType? fuelType,
@@ -258,49 +350,61 @@ class CarSalesService {
 
   /// Premium ilanları getir
   Future<List<CarListingData>> getPremiumListings({int limit = 10}) async {
-    try {
-      final response = await _client
-          .from('car_listings')
-          .select('''
-            *,
-            dealer:dealer_id (
-              id, business_name, owner_name, phone, city, is_verified
-            )
-          ''')
-          .eq('status', 'active')
-          .eq('is_premium', true)
-          .order('created_at', ascending: false)
-          .limit(limit);
+    return _cache.getOrFetch<List<CarListingData>>(
+      'car_premium_listings_$limit',
+      ttl: const Duration(minutes: 10),
+      fetcher: () async {
+        try {
+          final response = await _client
+              .from('car_listings')
+              .select('''
+                *,
+                dealer:dealer_id (
+                  id, business_name, owner_name, phone, city, is_verified
+                )
+              ''')
+              .eq('status', 'active')
+              .eq('is_premium', true)
+              .order('created_at', ascending: false)
+              .limit(limit);
 
-      return (response as List)
-          .map((json) => CarListingData.fromJson(json))
-          .toList();
-    } catch (e) {
-      debugPrint('CarSalesService.getPremiumListings error: $e');
-      return [];
-    }
+          return (response as List)
+              .map((json) => CarListingData.fromJson(json))
+              .toList();
+        } catch (e) {
+          debugPrint('CarSalesService.getPremiumListings error: $e');
+          return [];
+        }
+      },
+    );
   }
 
   /// İlan detayını getir
   Future<CarListingData?> getListingById(String listingId) async {
-    try {
-      final response = await _client
-          .from('car_listings')
-          .select('''
-            *,
-            dealer:dealer_id (*)
-          ''')
-          .eq('id', listingId)
-          .single();
+    return _cache.getOrFetch<CarListingData?>(
+      'car_listing_$listingId',
+      ttl: const Duration(minutes: 5),
+      fetcher: () async {
+        try {
+          final response = await _client
+              .from('car_listings')
+              .select('''
+                *,
+                dealer:dealer_id (*)
+              ''')
+              .eq('id', listingId)
+              .single();
 
-      // Görüntülenme kaydet
-      _recordView(listingId);
+          // Görüntülenme kaydet
+          _recordView(listingId);
 
-      return CarListingData.fromJson(response);
-    } catch (e) {
-      debugPrint('CarSalesService.getListingById error: $e');
-      return null;
-    }
+          return CarListingData.fromJson(response);
+        } catch (e) {
+          debugPrint('CarSalesService.getListingById error: $e');
+          return null;
+        }
+      },
+    );
   }
 
   /// Görüntülenme kaydet (internal)
@@ -1037,5 +1141,69 @@ class CarListingData {
     } catch (_) {
       return CarListingStatus.pending;
     }
+  }
+
+  /// CarListingData → CarListing (UI) dönüştürücü
+  CarListing toCarListing() {
+    return CarListing(
+      id: id,
+      title: title,
+      description: description ?? '',
+      brand: CarBrand(
+        id: brandId,
+        name: brandName,
+        logoUrl: '',
+        country: '',
+      ),
+      modelName: modelName,
+      year: year,
+      mileage: mileage,
+      bodyType: bodyTypeEnum,
+      fuelType: fuelTypeEnum,
+      transmission: transmissionEnum,
+      traction: CarTraction.values.firstWhere(
+        (t) => t.name == traction,
+        orElse: () => CarTraction.fwd,
+      ),
+      engineCC: engineCc ?? 0,
+      horsePower: horsepower ?? 0,
+      exteriorColor: CarColor.values.firstWhere(
+        (c) => c.name == exteriorColor,
+        orElse: () => CarColor.white,
+      ),
+      interiorColor: CarColor.values.firstWhere(
+        (c) => c.name == interiorColor,
+        orElse: () => CarColor.black,
+      ),
+      condition: CarCondition.values.firstWhere(
+        (c) => c.name == condition,
+        orElse: () => CarCondition.good,
+      ),
+      price: price,
+      isPriceNegotiable: isPriceNegotiable,
+      isExchangeAccepted: isExchangeAccepted,
+      status: statusEnum,
+      seller: CarSeller(
+        id: dealer?.id ?? userId,
+        name: dealer?.displayName ?? '',
+        phone: dealer?.phone ?? '',
+        type: dealer?.businessName != null ? SellerType.dealer : SellerType.individual,
+        isVerified: dealer?.isVerified ?? false,
+        memberSince: DateTime.now(),
+        rating: 0,
+        totalListings: 0,
+        soldCount: 0,
+        responseRate: 0,
+      ),
+      images: images,
+      featureIds: features,
+      createdAt: createdAt,
+      viewCount: viewCount,
+      favoriteCount: favoriteCount,
+      isFeatured: isFeatured,
+      isPremiumListing: isPremium,
+      city: city,
+      district: district,
+    );
   }
 }

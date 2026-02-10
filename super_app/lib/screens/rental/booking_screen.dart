@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/rental/rental_models.dart';
@@ -85,21 +86,21 @@ class _BookingScreenState extends State<BookingScreen>
     _dropoffTime = const TimeOfDay(hour: 10, minute: 0);
 
     _mainController = AnimationController(
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 350),
       vsync: this,
     );
 
     _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(
         parent: _mainController,
-        curve: const Interval(0, 0.6, curve: Curves.easeOut),
+        curve: Curves.easeOut,
       ),
     );
 
-    _slideAnimation = Tween<double>(begin: 50, end: 0).animate(
+    _slideAnimation = Tween<double>(begin: 16, end: 0).animate(
       CurvedAnimation(
         parent: _mainController,
-        curve: const Interval(0.2, 1, curve: Curves.easeOutCubic),
+        curve: Curves.easeOutCubic,
       ),
     );
 
@@ -427,7 +428,7 @@ class _BookingScreenState extends State<BookingScreen>
 
   Widget _buildDateLocationStep() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -447,7 +448,7 @@ class _BookingScreenState extends State<BookingScreen>
             isPickup: true,
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
 
           // Same Location Toggle
           Card(
@@ -503,7 +504,7 @@ class _BookingScreenState extends State<BookingScreen>
 
           // Different Dropoff Location
           if (!_sameDropoffLocation) ...[
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             _buildSectionTitle('Teslim Noktasi'),
             const SizedBox(height: 12),
             _buildLocationSelector(
@@ -515,11 +516,11 @@ class _BookingScreenState extends State<BookingScreen>
             ),
           ],
 
-          const SizedBox(height: 32),
+          const SizedBox(height: 20),
 
           // Date & Time Selection
           _buildSectionTitle('Tarih ve Saat'),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
           Row(
             children: [
@@ -553,7 +554,7 @@ class _BookingScreenState extends State<BookingScreen>
                 gradient: LinearGradient(
                   colors: [
                     AppColors.primary.withValues(alpha: 0.1),
-                    const Color(0xFF5B8DEF).withValues(alpha: 0.05),
+                    AppColors.primary.withValues(alpha: 0.05),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(12),
@@ -610,7 +611,7 @@ class _BookingScreenState extends State<BookingScreen>
         Card(
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(12),
             side: BorderSide(color: AppColors.borderLight),
           ),
           clipBehavior: Clip.antiAlias,
@@ -648,15 +649,15 @@ class _BookingScreenState extends State<BookingScreen>
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
                           color: location.isAirport
-                              ? const Color(0xFF1E88E5).withValues(alpha: 0.15)
-                              : const Color(0xFF4CAF50).withValues(alpha: 0.15),
+                              ? AppColors.info.withValues(alpha: 0.15)
+                              : AppColors.success.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Icon(
                           location.isAirport ? Icons.flight : Icons.location_on,
                           color: location.isAirport
-                              ? const Color(0xFF1E88E5)
-                              : const Color(0xFF4CAF50),
+                              ? AppColors.info
+                              : AppColors.success,
                           size: 20,
                         ),
                       ),
@@ -709,14 +710,14 @@ class _BookingScreenState extends State<BookingScreen>
         Card(
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(12),
             side: BorderSide(
               color: isCustomAddress ? AppColors.primary : AppColors.borderLight,
               width: isCustomAddress ? 2 : 1,
             ),
           ),
           child: InkWell(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(12),
             onTap: () {
               setState(() {
                 if (isPickup) {
@@ -733,7 +734,7 @@ class _BookingScreenState extends State<BookingScreen>
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFF9800).withValues(alpha: 0.15),
+                      color: AppColors.warning.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Icon(
@@ -786,7 +787,7 @@ class _BookingScreenState extends State<BookingScreen>
           Card(
             elevation: 0,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(12),
               side: BorderSide(color: AppColors.borderLight),
             ),
             child: Padding(
@@ -840,7 +841,7 @@ class _BookingScreenState extends State<BookingScreen>
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFF9800).withValues(alpha: 0.1),
+                      color: AppColors.warning.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
@@ -947,12 +948,12 @@ class _BookingScreenState extends State<BookingScreen>
 
   Widget _buildPackageStep() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildSectionTitle('Kiralama Paketi Secin'),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             'Ihtiyaciniza uygun paketi secin',
             style: TextStyle(
@@ -960,7 +961,7 @@ class _BookingScreenState extends State<BookingScreen>
               fontSize: 14,
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           if (_isLoadingPackages)
             const Center(child: CircularProgressIndicator())
           else if (_packages.isEmpty)
@@ -979,12 +980,12 @@ class _BookingScreenState extends State<BookingScreen>
     final packagePrice = package.dailyPrice * _rentalDays;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: 10),
       child: Card(
-        elevation: isSelected ? 2 : 0,
-        shadowColor: isSelected ? AppColors.primary.withValues(alpha: 0.3) : null,
+        elevation: isSelected ? 1 : 0,
+        shadowColor: isSelected ? AppColors.primary.withValues(alpha: 0.2) : null,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(12),
           side: BorderSide(
             color: isSelected
                 ? AppColors.primary
@@ -993,10 +994,10 @@ class _BookingScreenState extends State<BookingScreen>
           ),
         ),
         child: InkWell(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(12),
           onTap: () => setState(() => _selectedPackage = package),
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1141,12 +1142,12 @@ class _BookingScreenState extends State<BookingScreen>
 
   Widget _buildServicesStep() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildSectionTitle('Ek Hizmetler'),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             'Ihtiyaciniza gore ekstra hizmetler ekleyin',
             style: TextStyle(
@@ -1154,7 +1155,7 @@ class _BookingScreenState extends State<BookingScreen>
               fontSize: 14,
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           if (_isLoadingPackages)
             const Center(child: CircularProgressIndicator())
           else if (_availableServices.isEmpty)
@@ -1173,12 +1174,12 @@ class _BookingScreenState extends State<BookingScreen>
     final totalPrice = service.dailyPrice * _rentalDays;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 8),
       child: Card(
-        elevation: isSelected ? 2 : 0,
-        shadowColor: isSelected ? AppColors.primary.withValues(alpha: 0.3) : null,
+        elevation: isSelected ? 1 : 0,
+        shadowColor: isSelected ? AppColors.primary.withValues(alpha: 0.2) : null,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           side: BorderSide(
             color: isSelected
                 ? AppColors.primary
@@ -1186,7 +1187,7 @@ class _BookingScreenState extends State<BookingScreen>
           ),
         ),
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           onTap: () {
             setState(() {
               if (isSelected) {
@@ -1285,7 +1286,7 @@ class _BookingScreenState extends State<BookingScreen>
 
   Widget _buildConfirmationStep() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1295,7 +1296,7 @@ class _BookingScreenState extends State<BookingScreen>
           Card(
             elevation: 0,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(12),
               side: BorderSide(color: AppColors.borderLight),
             ),
             child: Padding(
@@ -1304,20 +1305,26 @@ class _BookingScreenState extends State<BookingScreen>
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(12),
-                    child: Image.network(
-                      widget.car.thumbnailUrl,
+                    child: CachedNetworkImage(
+                      imageUrl: widget.car.thumbnailUrl,
                       width: 80,
                       height: 60,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          width: 80,
-                          height: 60,
-                          color: AppColors.surfaceLight,
-                          child: Icon(Icons.directions_car,
-                              color: AppColors.textSecondaryLight),
-                        );
-                      },
+                      memCacheWidth: 160,
+                      memCacheHeight: 120,
+                      placeholder: (_, __) => Container(
+                        width: 80,
+                        height: 60,
+                        color: AppColors.surfaceLight,
+                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                      ),
+                      errorWidget: (_, __, ___) => Container(
+                        width: 80,
+                        height: 60,
+                        color: AppColors.surfaceLight,
+                        child: Icon(Icons.directions_car,
+                            color: AppColors.textSecondaryLight),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -1348,7 +1355,7 @@ class _BookingScreenState extends State<BookingScreen>
             ),
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
 
           // Booking Details
           _buildSectionTitle('Rezervasyon Detaylari'),
@@ -1356,7 +1363,7 @@ class _BookingScreenState extends State<BookingScreen>
           Card(
             elevation: 0,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(12),
               side: BorderSide(color: AppColors.borderLight),
             ),
             child: Padding(
@@ -1419,7 +1426,7 @@ class _BookingScreenState extends State<BookingScreen>
             ),
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
 
           // Price Breakdown
           _buildSectionTitle('Fiyat Detayi'),
@@ -1427,7 +1434,7 @@ class _BookingScreenState extends State<BookingScreen>
           Card(
             elevation: 0,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(12),
               side: BorderSide(color: AppColors.borderLight),
             ),
             child: Padding(
@@ -1475,7 +1482,7 @@ class _BookingScreenState extends State<BookingScreen>
             ),
           ),
 
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
 
           // Terms Agreement
           Card(
@@ -1590,23 +1597,18 @@ class _BookingScreenState extends State<BookingScreen>
 
     return Container(
       padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 16,
-        bottom: MediaQuery.of(context).padding.bottom + 16,
+        left: 16,
+        right: 16,
+        top: 12,
+        bottom: MediaQuery.of(context).padding.bottom + 12,
       ),
       decoration: BoxDecoration(
         color: AppColors.backgroundLight,
-        border: Border(
-          top: BorderSide(
-            color: AppColors.borderLight,
-          ),
-        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -5),
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
           ),
         ],
       ),
@@ -1645,12 +1647,12 @@ class _BookingScreenState extends State<BookingScreen>
               foregroundColor: Colors.white,
               disabledBackgroundColor: AppColors.borderLight,
               disabledForegroundColor: AppColors.textSecondaryLight,
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(12),
               ),
-              elevation: canProceed ? 4 : 0,
-              shadowColor: AppColors.primary.withValues(alpha: 0.3),
+              elevation: canProceed ? 2 : 0,
+              shadowColor: AppColors.primary.withValues(alpha: 0.2),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -1986,10 +1988,10 @@ class _BookingSuccessDialogState extends State<_BookingSuccessDialog>
             child: Dialog(
               backgroundColor: Colors.transparent,
               child: Container(
-                padding: const EdgeInsets.all(32),
+                padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   color: AppColors.backgroundLight,
-                  borderRadius: BorderRadius.circular(28),
+                  borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.1),
@@ -2093,7 +2095,7 @@ class _BookingSuccessDialogState extends State<_BookingSuccessDialog>
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                           elevation: 2,
                           shadowColor: AppColors.primary.withValues(alpha: 0.3),

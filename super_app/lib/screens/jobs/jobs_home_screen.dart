@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -551,11 +552,18 @@ class _JobsHomeScreenState extends ConsumerState<JobsHomeScreen>
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(10),
                       child: job.companyLogo != null
-                          ? Image.network(job.companyLogo!, fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Center(
+                          ? CachedNetworkImage(
+                              imageUrl: job.companyLogo!,
+                              fit: BoxFit.cover,
+                              placeholder: (_, __) => Container(
+                                color: Colors.grey[200],
+                                child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                              ),
+                              errorWidget: (_, __, ___) => Center(
                                 child: Text(job.companyName.substring(0, 1),
                                   style: TextStyle(color: JobsColors.primary, fontSize: 16, fontWeight: FontWeight.bold)),
-                              ))
+                              ),
+                            )
                           : Center(
                               child: Text(job.companyName.substring(0, 1),
                                 style: TextStyle(color: JobsColors.primary, fontSize: 16, fontWeight: FontWeight.bold)),
@@ -1320,10 +1328,14 @@ class _JobsHomeScreenState extends ConsumerState<JobsHomeScreen>
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(14),
                           child: job.companyLogo != null
-                              ? Image.network(
-                                  job.companyLogo!,
+                              ? CachedNetworkImage(
+                                  imageUrl: job.companyLogo!,
                                   fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Center(
+                                  placeholder: (_, __) => Container(
+                                    color: Colors.grey[200],
+                                    child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                  ),
+                                  errorWidget: (_, __, ___) => Center(
                                     child: Text(
                                       job.companyName.substring(0, 1),
                                       style: TextStyle(

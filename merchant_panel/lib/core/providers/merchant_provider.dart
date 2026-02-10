@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/merchant_models.dart';
 import '../services/supabase_service.dart';
 import '../services/notification_sound_service.dart';
+import '../utils/name_masking.dart';
 
 // Unread Messages Count Provider - lightweight count + realtime events
 final unreadMessagesCountProvider = StreamProvider.family<int, String>((ref, merchantId) {
@@ -1152,7 +1153,7 @@ class NotificationsNotifier extends StateNotifier<List<MerchantNotification>> {
       // Son yorumlari bildirime cevir
       for (var review in recentReviews) {
         final createdAt = DateTime.parse(review['created_at']);
-        final customerName = review['customer_name'] ?? 'Anonim';
+        final customerName = maskUserName(review['customer_name'] as String?);
         final courier = (review['courier_rating'] as num?)?.toDouble() ?? 0;
         final service = (review['service_rating'] as num?)?.toDouble() ?? 0;
         final taste = (review['taste_rating'] as num?)?.toDouble() ?? 0;
@@ -1201,7 +1202,7 @@ class NotificationsNotifier extends StateNotifier<List<MerchantNotification>> {
           ),
           callback: (payload) {
             final review = payload.newRecord;
-            final customerName = review['customer_name'] ?? 'Anonim';
+            final customerName = maskUserName(review['customer_name'] as String?);
             // Calculate average rating from courier, service, taste
             final courier = (review['courier_rating'] as num?)?.toDouble() ?? 0;
             final service = (review['service_rating'] as num?)?.toDouble() ?? 0;

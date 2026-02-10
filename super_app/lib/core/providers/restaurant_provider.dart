@@ -8,7 +8,21 @@ final _merchantsChangeProvider = StreamProvider<void>((ref) {
   return SupabaseService.client
       .from('merchants')
       .stream(primaryKey: ['id'])
-      .map((_) {}); // Sadece değişiklik sinyali için
+      .map((_) {
+        // Merchants değiştiğinde restaurant cache'ini invalidate et
+        RestaurantService.invalidateRestaurants();
+      });
+});
+
+// Menu items tablosu değişikliklerini dinle
+final _menuItemsChangeProvider = StreamProvider<void>((ref) {
+  return SupabaseService.client
+      .from('menu_items')
+      .stream(primaryKey: ['id'])
+      .map((_) {
+        // Menu items değiştiğinde cache'i invalidate et
+        RestaurantService.invalidateMenuItems();
+      });
 });
 
 // Tüm restoranlar provider (teslimat bölgesi filtreli + realtime)
@@ -52,8 +66,10 @@ final restaurantByIdProvider = FutureProvider.family<Restaurant?, String>((ref, 
   return await RestaurantService.getRestaurantById(id);
 });
 
-// Restoran menüsü provider
+// Restoran menüsü provider (realtime ile)
 final menuItemsProvider = FutureProvider.family<List<MenuItem>, String>((ref, restaurantId) async {
+  // Menu items değişikliklerini dinle
+  ref.watch(_menuItemsChangeProvider);
   return await RestaurantService.getMenuItems(restaurantId);
 });
 

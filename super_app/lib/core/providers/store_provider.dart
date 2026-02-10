@@ -3,15 +3,39 @@ import '../../models/store/store_model.dart';
 import '../../models/store/store_category_model.dart';
 import '../../models/store/store_product_model.dart';
 import '../services/store_service.dart';
+import '../services/supabase_service.dart';
 import 'address_provider.dart';
+
+// Stores (merchants type='store') tablosu değişikliklerini dinle
+final _storesChangeProvider = StreamProvider<void>((ref) {
+  return SupabaseService.client
+      .from('merchants')
+      .stream(primaryKey: ['id'])
+      .map((_) {
+        // Stores değiştiğinde cache'i invalidate et
+        StoreService.invalidateStores();
+      });
+});
+
+// Products tablosu değişikliklerini dinle
+final _storeProductsChangeProvider = StreamProvider<void>((ref) {
+  return SupabaseService.client
+      .from('products')
+      .stream(primaryKey: ['id'])
+      .map((_) {
+        // Products değiştiğinde cache'i invalidate et
+        StoreService.invalidateProducts();
+      });
+});
 
 // Kategoriler provider
 final storeCategoriesProvider = FutureProvider<List<StoreCategory>>((ref) async {
   return await StoreService.getCategories();
 });
 
-// Tüm mağazalar provider (teslimat bölgesi filtreli)
+// Tüm mağazalar provider (realtime ile)
 final storesProvider = FutureProvider<List<Store>>((ref) async {
+  ref.watch(_storesChangeProvider);
   final selectedAddress = ref.watch(selectedAddressProvider);
   return await StoreService.getStores(
     customerLat: selectedAddress?.latitude,
@@ -19,8 +43,9 @@ final storesProvider = FutureProvider<List<Store>>((ref) async {
   );
 });
 
-// Öne çıkan mağazalar provider (teslimat bölgesi filtreli)
+// Öne çıkan mağazalar provider (realtime ile)
 final featuredStoresProvider = FutureProvider<List<Store>>((ref) async {
+  ref.watch(_storesChangeProvider);
   final selectedAddress = ref.watch(selectedAddressProvider);
   return await StoreService.getFeaturedStores(
     customerLat: selectedAddress?.latitude,
@@ -28,8 +53,9 @@ final featuredStoresProvider = FutureProvider<List<Store>>((ref) async {
   );
 });
 
-// Kategoriye göre mağazalar provider (teslimat bölgesi filtreli)
+// Kategoriye göre mağazalar provider (realtime ile)
 final storesByCategoryProvider = FutureProvider.family<List<Store>, String>((ref, categoryId) async {
+  ref.watch(_storesChangeProvider);
   final selectedAddress = ref.watch(selectedAddressProvider);
   if (categoryId.isEmpty || categoryId == 'all') {
     return await StoreService.getStores(
@@ -46,31 +72,37 @@ final storesByCategoryProvider = FutureProvider.family<List<Store>, String>((ref
 
 // Tüm ürünler provider
 final storeProductsProvider = FutureProvider<List<StoreProduct>>((ref) async {
+  ref.watch(_storeProductsChangeProvider);
   return await StoreService.getProducts();
 });
 
-// Mağazaya göre ürünler provider
+// Mağazaya göre ürünler provider (realtime ile)
 final productsByStoreProvider = FutureProvider.family<List<StoreProduct>, String>((ref, storeId) async {
+  ref.watch(_storeProductsChangeProvider);
   return await StoreService.getProductsByStore(storeId);
 });
 
 // Kategoriye göre ürünler provider
 final productsByCategoryProvider = FutureProvider.family<List<StoreProduct>, String>((ref, categoryId) async {
+  ref.watch(_storeProductsChangeProvider);
   return await StoreService.getProductsByCategory(categoryId);
 });
 
-// Flash deals provider
+// Flash deals provider (realtime ile)
 final flashDealsProvider = FutureProvider<List<StoreProduct>>((ref) async {
+  ref.watch(_storeProductsChangeProvider);
   return await StoreService.getFlashDeals();
 });
 
-// Best sellers provider
+// Best sellers provider (realtime ile)
 final bestSellersProvider = FutureProvider<List<StoreProduct>>((ref) async {
+  ref.watch(_storeProductsChangeProvider);
   return await StoreService.getBestSellers();
 });
 
-// Recommended products provider
+// Recommended products provider (realtime ile)
 final recommendedProductsProvider = FutureProvider<List<StoreProduct>>((ref) async {
+  ref.watch(_storeProductsChangeProvider);
   return await StoreService.getRecommended();
 });
 

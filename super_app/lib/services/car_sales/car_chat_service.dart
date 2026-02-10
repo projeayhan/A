@@ -246,4 +246,9 @@ class CarChatService {
         )
         .subscribe();
   }
+
+  /// Mesaj dinlemeyi durdur
+  Future<void> unsubscribeFromMessages(RealtimeChannel channel) async {
+    await channel.unsubscribe();
+  }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/emlak/emlak_models.dart';
 import '../../core/providers/unified_favorites_provider.dart';
 
@@ -349,12 +350,17 @@ class _EmlakFavoritesScreenState extends ConsumerState<EmlakFavoritesScreen>
               children: [
                 ClipRRect(
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                  child: Image.network(
-                    property.imageUrl,
+                  child: CachedNetworkImage(
+                    imageUrl: property.imageUrl,
                     height: 170,
                     width: double.infinity,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
+                    placeholder: (_, __) => Container(
+                      height: 170,
+                      color: Colors.grey[200],
+                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    ),
+                    errorWidget: (_, __, ___) => Container(
                       height: 170,
                       color: EmlakColors.surface(isDark),
                       child: Icon(

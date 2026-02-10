@@ -46,7 +46,9 @@ import '../../screens/car_sales/car_detail_screen.dart';
 import '../../screens/car_sales/car_search_screen.dart';
 import '../../screens/car_sales/add_car_listing_screen.dart';
 import '../../screens/car_sales/my_car_listings_screen.dart';
+import '../../screens/car_sales/car_favorites_screen.dart';
 import '../../models/car_sales/car_sales_models.dart';
+import '../../services/car_sales_service.dart';
 import '../../screens/jobs/jobs_home_screen.dart';
 import '../../screens/jobs/job_detail_screen.dart';
 import '../../screens/jobs/job_search_screen.dart';
@@ -57,6 +59,7 @@ import '../../screens/support/ai_chat_screen.dart';
 import '../../screens/grocery/grocery_home_screen.dart';
 import '../../models/store/store_model.dart';
 import '../../models/store/store_product_model.dart';
+import '../services/store_service.dart';
 import '../../widgets/app_scaffold.dart';
 
 // Route Names
@@ -103,6 +106,7 @@ class AppRoutes {
   static const String carSearch = '/car-sales/search';
   static const String carAdd = '/car-sales/add';
   static const String carMyListings = '/car-sales/my-listings';
+  static const String carFavorites = '/car-sales/favorites';
 
   // Jobs Routes
   static const String jobs = '/jobs';
@@ -307,7 +311,19 @@ final routerProvider = Provider<GoRouter>((ref) {
               if (store != null) {
                 return StoreDetailScreen(store: store);
               }
-              return const Center(child: Text('Mağaza bulunamadı'));
+              final storeId = state.pathParameters['id'] ?? '';
+              return FutureBuilder<Store?>(
+                future: StoreService.getStoreById(storeId),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Scaffold(body: Center(child: CircularProgressIndicator()));
+                  }
+                  if (snapshot.data != null) {
+                    return StoreDetailScreen(store: snapshot.data!);
+                  }
+                  return const Scaffold(body: Center(child: Text('Mağaza bulunamadı')));
+                },
+              );
             },
           ),
           GoRoute(
@@ -319,7 +335,19 @@ final routerProvider = Provider<GoRouter>((ref) {
               if (product != null) {
                 return StoreProductDetailScreen(product: product);
               }
-              return const Center(child: Text('Ürün bulunamadı'));
+              final productId = state.pathParameters['id'] ?? '';
+              return FutureBuilder<StoreProduct?>(
+                future: StoreService.getProductById(productId),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Scaffold(body: Center(child: CircularProgressIndicator()));
+                  }
+                  if (snapshot.data != null) {
+                    return StoreProductDetailScreen(product: snapshot.data!);
+                  }
+                  return const Scaffold(body: Center(child: Text('Ürün bulunamadı')));
+                },
+              );
             },
           ),
           GoRoute(
@@ -449,13 +477,25 @@ final routerProvider = Provider<GoRouter>((ref) {
               if (car != null) {
                 return CarDetailScreen(car: car);
               }
-              // Fallback - find by id from demo data
+              // Fallback - load by id from Supabase
               final id = state.pathParameters['id'] ?? '';
-              final foundCar = CarSalesDemoData.listings.firstWhere(
-                (c) => c.id == id,
-                orElse: () => CarSalesDemoData.listings.first,
+              return FutureBuilder<CarListingData?>(
+                future: CarSalesService.instance.getListingById(id),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Scaffold(
+                      body: Center(child: CircularProgressIndicator()),
+                    );
+                  }
+                  final data = snapshot.data;
+                  if (data == null) {
+                    return const Scaffold(
+                      body: Center(child: Text('İlan bulunamadı')),
+                    );
+                  }
+                  return CarDetailScreen(car: data.toCarListing());
+                },
               );
-              return CarDetailScreen(car: foundCar);
             },
           ),
           GoRoute(
@@ -478,6 +518,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: AppRoutes.carMyListings,
             name: 'carMyListings',
             builder: (context, state) => const MyCarListingsScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.carFavorites,
+            name: 'carFavorites',
+            builder: (context, state) => const CarFavoritesScreen(),
           ),
 
           // Jobs Routes

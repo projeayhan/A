@@ -1,6 +1,8 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'dart:math' as math;
 import '../../core/theme/app_responsive.dart';
 import '../../models/car_sales/car_sales_models.dart';
@@ -11,6 +13,10 @@ import 'car_detail_screen.dart';
 import 'add_car_listing_screen.dart';
 import 'my_car_listings_screen.dart';
 import 'car_search_screen.dart';
+import 'car_sales_painters.dart';
+import 'brand_search_sheet.dart';
+import 'advanced_filter_sheet.dart';
+import 'filter_selection_sheet.dart';
 
 class CarSalesHomeScreen extends StatefulWidget {
   const CarSalesHomeScreen({super.key});
@@ -509,7 +515,7 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
             animation: _carShowcaseController,
             builder: (context, child) {
               return CustomPaint(
-                painter: _BackgroundPainter(
+                painter: BackgroundPainter(
                   isDark: isDark,
                   animationValue: _carShowcaseController.value,
                   scrollOffset: scrollOffset,
@@ -735,7 +741,7 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(24),
                       child: CustomPaint(
-                        painter: _CardPatternPainter(),
+                        painter: CardPatternPainter(),
                       ),
                     ),
                   ),
@@ -810,11 +816,17 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                               tag: 'car_${car.id}',
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(16),
-                                child: Image.network(
-                                  car.images.first,
+                                child: CachedNetworkImage(
+                                  imageUrl: car.images.first,
                                   fit: BoxFit.cover,
                                   width: double.infinity,
-                                  errorBuilder: (_, __, ___) => Container(
+                                  memCacheWidth: 600,
+                                  memCacheHeight: 400,
+                                  placeholder: (_, __) => Container(
+                                    color: Colors.white.withValues(alpha: 0.1),
+                                    child: const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white24)),
+                                  ),
+                                  errorWidget: (_, __, ___) => Container(
                                     color: Colors.white.withValues(alpha: 0.1),
                                     child: const Icon(
                                       Icons.directions_car,
@@ -955,7 +967,7 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
               'Favoriler',
               'Kaydedilenler',
               CarSalesColors.goldGradient,
-              () {},
+              () => context.push('/car-sales/favorites'),
             ),
           ),
         ],
@@ -1165,7 +1177,7 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (context) => _FilterSelectionSheet<CarBodyTypeData>(
+      builder: (context) => FilterSelectionSheet<CarBodyTypeData>(
         isDark: isDark,
         title: 'Gövde Tipi Seçin',
         items: _bodyTypesData,
@@ -1189,7 +1201,7 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (context) => _FilterSelectionSheet<CarFuelTypeData>(
+      builder: (context) => FilterSelectionSheet<CarFuelTypeData>(
         isDark: isDark,
         title: 'Yakıt Tipi Seçin',
         items: _fuelTypesData,
@@ -1214,7 +1226,7 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (context) => _FilterSelectionSheet<CarTransmissionData>(
+      builder: (context) => FilterSelectionSheet<CarTransmissionData>(
         isDark: isDark,
         title: 'Vites Tipi Seçin',
         items: _transmissionsData,
@@ -1893,10 +1905,20 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                           borderRadius: BorderRadius.circular(8),
                           child: Padding(
                             padding: const EdgeInsets.all(4),
-                            child: Image.network(
-                              brand.logoUrl,
+                            child: CachedNetworkImage(
+                              imageUrl: brand.logoUrl,
                               fit: BoxFit.contain,
-                              errorBuilder: (_, __, ___) => Center(
+                              placeholder: (_, __) => Center(
+                                child: Text(
+                                  brand.name.substring(0, 1),
+                                  style: const TextStyle(
+                                    color: CarSalesColors.primary,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              errorWidget: (_, __, ___) => Center(
                                 child: Text(
                                   brand.name.substring(0, 1),
                                   style: const TextStyle(
@@ -1943,7 +1965,7 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _BrandSearchSheet(
+      builder: (context) => BrandSearchSheet(
         isDark: isDark,
         selectedBrandIds: _selectedBrandIds,
         onBrandSelected: (brandId) {
@@ -2070,12 +2092,19 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(20),
                   ),
-                  child: Image.network(
-                    car.images.first,
+                  child: CachedNetworkImage(
+                    imageUrl: car.images.first,
                     height: 140,
                     width: double.infinity,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
+                    memCacheWidth: 600,
+                    memCacheHeight: 280,
+                    placeholder: (_, __) => Container(
+                      height: 140,
+                      color: CarSalesColors.surface(isDark),
+                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    ),
+                    errorWidget: (_, __, ___) => Container(
                       height: 140,
                       color: CarSalesColors.surface(isDark),
                       child: Icon(
@@ -2358,11 +2387,17 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                 children: [
                   ClipRRect(
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                    child: Image.network(
-                      car.images.first,
+                    child: CachedNetworkImage(
+                      imageUrl: car.images.first,
                       width: double.infinity,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Container(
+                      memCacheWidth: 400,
+                      memCacheHeight: 300,
+                      placeholder: (_, __) => Container(
+                        color: CarSalesColors.surface(isDark),
+                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                      ),
+                      errorWidget: (_, __, ___) => Container(
                         color: CarSalesColors.surface(isDark),
                         child: Icon(
                           Icons.directions_car,
@@ -2459,12 +2494,20 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
               borderRadius: const BorderRadius.horizontal(
                 left: Radius.circular(20),
               ),
-              child: Image.network(
-                car.images.first,
+              child: CachedNetworkImage(
+                imageUrl: car.images.first,
                 width: 140,
                 height: 130,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Container(
+                memCacheWidth: 280,
+                memCacheHeight: 260,
+                placeholder: (_, __) => Container(
+                  width: 140,
+                  height: 130,
+                  color: CarSalesColors.surface(isDark),
+                  child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                ),
+                errorWidget: (_, __, ___) => Container(
                   width: 140,
                   height: 130,
                   color: CarSalesColors.surface(isDark),
@@ -2752,7 +2795,7 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _AdvancedFilterSheet(
+      builder: (context) => AdvancedFilterSheet(
         isDark: isDark,
         selectedBodyTypeIds: _selectedBodyTypeIds,
         selectedFuelTypeIds: _selectedFuelTypeIds,
@@ -2785,1089 +2828,3 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
     );
   }
 }
-
-// Custom painters
-class _BackgroundPainter extends CustomPainter {
-  final bool isDark;
-  final double animationValue;
-  final double scrollOffset;
-
-  _BackgroundPainter({
-    required this.isDark,
-    required this.animationValue,
-    required this.scrollOffset,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..style = PaintingStyle.fill;
-
-    // Animated circles in background
-    for (int i = 0; i < 3; i++) {
-      final progress = (animationValue + i * 0.33) % 1.0;
-      final x = size.width * (0.1 + 0.8 * math.sin(progress * math.pi * 2 + i));
-      final y = (size.height * 0.2 - scrollOffset * 0.1).clamp(0, size.height * 0.5);
-      final radius = 100.0 + 50 * math.sin(progress * math.pi * 2);
-
-      paint.color = (isDark
-          ? CarSalesColors.primary
-          : CarSalesColors.primaryLight).withValues(alpha: 0.05);
-
-      canvas.drawCircle(Offset(x, y + i * 100), radius, paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _BackgroundPainter oldDelegate) {
-    return animationValue != oldDelegate.animationValue ||
-        scrollOffset != oldDelegate.scrollOffset;
-  }
-}
-
-class _CardPatternPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.05)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1;
-
-    // Draw grid pattern
-    for (double i = 0; i < size.width; i += 30) {
-      canvas.drawLine(
-        Offset(i, 0),
-        Offset(i, size.height),
-        paint,
-      );
-    }
-    for (double i = 0; i < size.height; i += 30) {
-      canvas.drawLine(
-        Offset(0, i),
-        Offset(size.width, i),
-        paint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
-
-/// Marka arama ve seçme sheet'i
-class _BrandSearchSheet extends StatefulWidget {
-  final bool isDark;
-  final Set<String> selectedBrandIds;
-  final void Function(String) onBrandSelected;
-
-  const _BrandSearchSheet({
-    required this.isDark,
-    required this.selectedBrandIds,
-    required this.onBrandSelected,
-  });
-
-  @override
-  State<_BrandSearchSheet> createState() => _BrandSearchSheetState();
-}
-
-class _BrandSearchSheetState extends State<_BrandSearchSheet> {
-  final TextEditingController _searchController = TextEditingController();
-  String _searchQuery = '';
-  String _selectedCountry = 'Tümü';
-
-  final List<String> _countries = ['Tümü', 'Almanya', 'Japonya', 'ABD', 'G. Kore', 'Fransa', 'İtalya', 'İngiltere'];
-
-  List<CarBrand> get _filteredBrands {
-    var brands = CarBrand.allBrands;
-
-    // Ülke filtresi
-    if (_selectedCountry != 'Tümü') {
-      brands = brands.where((b) => b.country == _selectedCountry).toList();
-    }
-
-    // Arama filtresi
-    if (_searchQuery.isNotEmpty) {
-      brands = brands
-          .where((b) => b.name.toLowerCase().contains(_searchQuery.toLowerCase()))
-          .toList();
-    }
-
-    return brands;
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.85,
-      decoration: BoxDecoration(
-        color: CarSalesColors.card(widget.isDark),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Column(
-        children: [
-          // Drag handle
-          Container(
-            width: 40,
-            height: 4,
-            margin: const EdgeInsets.only(top: 12),
-            decoration: BoxDecoration(
-              color: CarSalesColors.border(widget.isDark),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-
-          // Header
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Marka Seç',
-                  style: TextStyle(
-                    color: CarSalesColors.textPrimary(widget.isDark),
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                if (widget.selectedBrandIds.isNotEmpty)
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text(
-                      '${widget.selectedBrandIds.length} Seçili',
-                      style: const TextStyle(
-                        color: CarSalesColors.primary,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-
-          // Arama
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: TextField(
-              controller: _searchController,
-              onChanged: (value) => setState(() => _searchQuery = value),
-              decoration: InputDecoration(
-                hintText: 'Marka ara...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() => _searchQuery = '');
-                        },
-                      )
-                    : null,
-                filled: true,
-                fillColor: CarSalesColors.surface(widget.isDark),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              ),
-            ),
-          ),
-
-          // Ülke filtreleri
-          Container(
-            height: 44,
-            margin: const EdgeInsets.only(top: 16),
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: _countries.length,
-              itemBuilder: (context, index) {
-                final country = _countries[index];
-                final isSelected = _selectedCountry == country;
-
-                return GestureDetector(
-                  onTap: () => setState(() => _selectedCountry = country),
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? CarSalesColors.primary
-                          : CarSalesColors.surface(widget.isDark),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      country,
-                      style: TextStyle(
-                        color: isSelected
-                            ? Colors.white
-                            : CarSalesColors.textSecondary(widget.isDark),
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Marka listesi
-          Expanded(
-            child: GridView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 4,
-                childAspectRatio: 0.85,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-              ),
-              itemCount: _filteredBrands.length,
-              itemBuilder: (context, index) {
-                final brand = _filteredBrands[index];
-                final isSelected = widget.selectedBrandIds.contains(brand.id);
-
-                return GestureDetector(
-                  onTap: () {
-                    widget.onBrandSelected(brand.id);
-                    setState(() {});
-                  },
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? CarSalesColors.primary.withValues(alpha: 0.1)
-                          : CarSalesColors.surface(widget.isDark),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: isSelected
-                            ? CarSalesColors.primary
-                            : CarSalesColors.border(widget.isDark),
-                        width: isSelected ? 2 : 1,
-                      ),
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // Logo
-                        Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.network(
-                              brand.logoUrl,
-                              fit: BoxFit.contain,
-                              errorBuilder: (_, __, ___) => Center(
-                                child: Text(
-                                  brand.name.substring(0, 1),
-                                  style: const TextStyle(
-                                    color: CarSalesColors.primary,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          brand.name.length > 8
-                              ? '${brand.name.substring(0, 7)}..'
-                              : brand.name,
-                          style: TextStyle(
-                            color: isSelected
-                                ? CarSalesColors.primary
-                                : CarSalesColors.textPrimary(widget.isDark),
-                            fontSize: 10,
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                          ),
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                        ),
-                        if (isSelected)
-                          const Icon(
-                            Icons.check_circle,
-                            color: CarSalesColors.primary,
-                            size: 14,
-                          ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-
-          // Alt buton
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: CarSalesColors.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: Text(
-                    widget.selectedBrandIds.isEmpty
-                        ? 'Kapat'
-                        : '${widget.selectedBrandIds.length} Marka Seçildi - Uygula',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Gelişmiş filtre sheet'i
-class _AdvancedFilterSheet extends StatefulWidget {
-  final bool isDark;
-  final Set<String> selectedBodyTypeIds;
-  final Set<String> selectedFuelTypeIds;
-  final Set<String> selectedTransmissionIds;
-  final Set<String> selectedBrandIds;
-  final RangeValues priceRange;
-  final RangeValues yearRange;
-  final RangeValues mileageRange;
-  final List<CarBodyTypeData> bodyTypesData;
-  final List<CarFuelTypeData> fuelTypesData;
-  final List<CarTransmissionData> transmissionsData;
-  final void Function(
-    Set<String>,
-    Set<String>,
-    Set<String>,
-    Set<String>,
-    RangeValues,
-    RangeValues,
-    RangeValues,
-  ) onApply;
-  final VoidCallback onClear;
-
-  const _AdvancedFilterSheet({
-    required this.isDark,
-    required this.selectedBodyTypeIds,
-    required this.selectedFuelTypeIds,
-    required this.selectedTransmissionIds,
-    required this.selectedBrandIds,
-    required this.priceRange,
-    required this.yearRange,
-    required this.mileageRange,
-    required this.bodyTypesData,
-    required this.fuelTypesData,
-    required this.transmissionsData,
-    required this.onApply,
-    required this.onClear,
-  });
-
-  @override
-  State<_AdvancedFilterSheet> createState() => _AdvancedFilterSheetState();
-}
-
-class _AdvancedFilterSheetState extends State<_AdvancedFilterSheet> {
-  late Set<String> _bodyTypeIds;
-  late Set<String> _fuelTypeIds;
-  late Set<String> _transmissionIds;
-  late Set<String> _brandIds;
-  late RangeValues _priceRange;
-  late RangeValues _yearRange;
-  late RangeValues _mileageRange;
-
-  @override
-  void initState() {
-    super.initState();
-    _bodyTypeIds = Set.from(widget.selectedBodyTypeIds);
-    _fuelTypeIds = Set.from(widget.selectedFuelTypeIds);
-    _transmissionIds = Set.from(widget.selectedTransmissionIds);
-    _brandIds = Set.from(widget.selectedBrandIds);
-    _priceRange = widget.priceRange;
-    _yearRange = widget.yearRange;
-    _mileageRange = widget.mileageRange;
-  }
-
-  String _formatPrice(double value) {
-    if (value >= 1000000) {
-      return '${(value / 1000000).toStringAsFixed(1)}M';
-    } else if (value >= 1000) {
-      return '${(value / 1000).toStringAsFixed(0)}K';
-    }
-    return value.toStringAsFixed(0);
-  }
-
-  String _formatMileage(double value) {
-    if (value >= 1000) {
-      return '${(value / 1000).toStringAsFixed(0)}K';
-    }
-    return value.toStringAsFixed(0);
-  }
-
-  int get _activeFilterCount {
-    int count = 0;
-    if (_bodyTypeIds.isNotEmpty) count++;
-    if (_fuelTypeIds.isNotEmpty) count++;
-    if (_transmissionIds.isNotEmpty) count++;
-    if (_brandIds.isNotEmpty) count++;
-    if (_priceRange.start > 0 || _priceRange.end < 50000000) count++;
-    if (_yearRange.start > 2010 || _yearRange.end < DateTime.now().year) count++;
-    if (_mileageRange.start > 0 || _mileageRange.end < 500000) count++;
-    return count;
-  }
-
-  void _clearAll() {
-    setState(() {
-      _bodyTypeIds.clear();
-      _fuelTypeIds.clear();
-      _transmissionIds.clear();
-      _brandIds.clear();
-      _priceRange = const RangeValues(0, 50000000);
-      _yearRange = RangeValues(2010, DateTime.now().year.toDouble());
-      _mileageRange = const RangeValues(0, 500000);
-    });
-  }
-
-  IconData _getIconDataForBodyType(String? iconName) {
-    const iconMap = {
-      'directions_car': Icons.directions_car,
-      'directions_car_filled': Icons.directions_car_filled,
-      'sports_motorsports': Icons.sports_motorsports,
-      'wb_sunny': Icons.wb_sunny,
-      'local_shipping': Icons.local_shipping,
-      'airport_shuttle': Icons.airport_shuttle,
-      'family_restroom': Icons.family_restroom,
-      'speed': Icons.speed,
-      'diamond': Icons.diamond,
-    };
-    return iconMap[iconName] ?? Icons.directions_car;
-  }
-
-  IconData _getIconDataForFuelType(String? iconName) {
-    const iconMap = {
-      'local_gas_station': Icons.local_gas_station,
-      'electric_bolt': Icons.electric_bolt,
-      'eco': Icons.eco,
-      'power': Icons.power,
-      'propane_tank': Icons.propane_tank,
-    };
-    return iconMap[iconName] ?? Icons.local_gas_station;
-  }
-
-  IconData _getIconDataForTransmission(String? iconName) {
-    const iconMap = {
-      'settings': Icons.settings,
-      'settings_applications': Icons.settings_applications,
-      'tune': Icons.tune,
-    };
-    return iconMap[iconName] ?? Icons.settings;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.9,
-      decoration: BoxDecoration(
-        color: CarSalesColors.card(widget.isDark),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Column(
-        children: [
-          // Drag handle
-          Container(
-            width: 40,
-            height: 4,
-            margin: const EdgeInsets.only(top: 12),
-            decoration: BoxDecoration(
-              color: CarSalesColors.border(widget.isDark),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-
-          // Header
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.tune, color: CarSalesColors.primary),
-                    const SizedBox(width: 12),
-                    Text(
-                      'Gelişmiş Filtreler',
-                      style: TextStyle(
-                        color: CarSalesColors.textPrimary(widget.isDark),
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                if (_activeFilterCount > 0)
-                  TextButton(
-                    onPressed: _clearAll,
-                    child: const Text(
-                      'Temizle',
-                      style: TextStyle(
-                        color: CarSalesColors.accent,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-
-          // Filtreler
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Fiyat Aralığı
-                  _buildSectionTitle('Fiyat Aralığı'),
-                  _buildRangeSlider(
-                    value: _priceRange,
-                    min: 0,
-                    max: 50000000,
-                    divisions: 100,
-                    onChanged: (value) => setState(() => _priceRange = value),
-                    formatLabel: _formatPrice,
-                    suffix: ' TL',
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Yıl Aralığı
-                  _buildSectionTitle('Model Yılı'),
-                  _buildRangeSlider(
-                    value: _yearRange,
-                    min: 2000,
-                    max: DateTime.now().year.toDouble(),
-                    divisions: DateTime.now().year - 2000,
-                    onChanged: (value) => setState(() => _yearRange = value),
-                    formatLabel: (v) => v.toInt().toString(),
-                    suffix: '',
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Kilometre Aralığı
-                  _buildSectionTitle('Kilometre'),
-                  _buildRangeSlider(
-                    value: _mileageRange,
-                    min: 0,
-                    max: 500000,
-                    divisions: 100,
-                    onChanged: (value) => setState(() => _mileageRange = value),
-                    formatLabel: _formatMileage,
-                    suffix: ' km',
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Gövde Tipi
-                  _buildSectionTitle('Gövde Tipi'),
-                  _buildChipGroupData<CarBodyTypeData>(
-                    items: widget.bodyTypesData,
-                    selectedIds: _bodyTypeIds,
-                    getLabel: (t) => t.name,
-                    getIcon: (t) => _getIconDataForBodyType(t.icon),
-                    getId: (t) => t.id,
-                    onTap: (t) => setState(() {
-                      if (_bodyTypeIds.contains(t.id)) {
-                        _bodyTypeIds.remove(t.id);
-                      } else {
-                        _bodyTypeIds.add(t.id);
-                      }
-                    }),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Yakıt Tipi
-                  _buildSectionTitle('Yakıt Tipi'),
-                  _buildChipGroupData<CarFuelTypeData>(
-                    items: widget.fuelTypesData,
-                    selectedIds: _fuelTypeIds,
-                    getLabel: (t) => t.name,
-                    getIcon: (t) => _getIconDataForFuelType(t.icon),
-                    getId: (t) => t.id,
-                    onTap: (t) => setState(() {
-                      if (_fuelTypeIds.contains(t.id)) {
-                        _fuelTypeIds.remove(t.id);
-                      } else {
-                        _fuelTypeIds.add(t.id);
-                      }
-                    }),
-                    getColor: (t) => t.colorValue,
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Vites Tipi
-                  _buildSectionTitle('Vites Tipi'),
-                  _buildChipGroupData<CarTransmissionData>(
-                    items: widget.transmissionsData,
-                    selectedIds: _transmissionIds,
-                    getLabel: (t) => t.name,
-                    getIcon: (t) => _getIconDataForTransmission(t.icon),
-                    getId: (t) => t.id,
-                    onTap: (t) => setState(() {
-                      if (_transmissionIds.contains(t.id)) {
-                        _transmissionIds.remove(t.id);
-                      } else {
-                        _transmissionIds.add(t.id);
-                      }
-                    }),
-                  ),
-
-                  const SizedBox(height: 100),
-                ],
-              ),
-            ),
-          ),
-
-          // Alt butonlar
-          SafeArea(
-            child: Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: CarSalesColors.card(widget.isDark),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, -5),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  // İptal butonu
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: CarSalesColors.textPrimary(widget.isDark),
-                        side: BorderSide(color: CarSalesColors.border(widget.isDark)),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text(
-                        'İptal',
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  // Uygula butonu
-                  Expanded(
-                    flex: 2,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        widget.onApply(
-                          _bodyTypeIds,
-                          _fuelTypeIds,
-                          _transmissionIds,
-                          _brandIds,
-                          _priceRange,
-                          _yearRange,
-                          _mileageRange,
-                        );
-                        Navigator.pop(context);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: CarSalesColors.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.check, size: 20),
-                          const SizedBox(width: 8),
-                          Text(
-                            _activeFilterCount > 0
-                                ? 'Uygula ($_activeFilterCount)'
-                                : 'Uygula',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Text(
-        title,
-        style: TextStyle(
-          color: CarSalesColors.textPrimary(widget.isDark),
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRangeSlider({
-    required RangeValues value,
-    required double min,
-    required double max,
-    required int divisions,
-    required void Function(RangeValues) onChanged,
-    required String Function(double) formatLabel,
-    required String suffix,
-  }) {
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: CarSalesColors.surface(widget.isDark),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                '${formatLabel(value.start)}$suffix',
-                style: TextStyle(
-                  color: CarSalesColors.textPrimary(widget.isDark),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            Text(
-              '-',
-              style: TextStyle(
-                color: CarSalesColors.textSecondary(widget.isDark),
-                fontSize: 18,
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: CarSalesColors.surface(widget.isDark),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                '${formatLabel(value.end)}$suffix',
-                style: TextStyle(
-                  color: CarSalesColors.textPrimary(widget.isDark),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        SliderTheme(
-          data: SliderTheme.of(context).copyWith(
-            activeTrackColor: CarSalesColors.primary,
-            inactiveTrackColor: CarSalesColors.border(widget.isDark),
-            thumbColor: CarSalesColors.primary,
-            overlayColor: CarSalesColors.primary.withValues(alpha: 0.2),
-            rangeThumbShape: const RoundRangeSliderThumbShape(enabledThumbRadius: 10),
-            rangeTrackShape: const RoundedRectRangeSliderTrackShape(),
-          ),
-          child: RangeSlider(
-            values: value,
-            min: min,
-            max: max,
-            divisions: divisions,
-            onChanged: onChanged,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildChipGroupData<T>({
-    required List<T> items,
-    required Set<String> selectedIds,
-    required String Function(T) getLabel,
-    required IconData Function(T) getIcon,
-    required String Function(T) getId,
-    required void Function(T) onTap,
-    Color Function(T)? getColor,
-  }) {
-    if (items.isEmpty) {
-      return Center(
-        child: Text(
-          'Yükleniyor...',
-          style: TextStyle(color: CarSalesColors.textTertiary(widget.isDark)),
-        ),
-      );
-    }
-
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: items.map((item) {
-        final itemId = getId(item);
-        final isSelected = selectedIds.contains(itemId);
-        final color = getColor?.call(item) ?? CarSalesColors.primary;
-
-        return GestureDetector(
-          onTap: () => onTap(item),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? color.withValues(alpha: 0.15)
-                  : CarSalesColors.surface(widget.isDark),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isSelected ? color : CarSalesColors.border(widget.isDark),
-                width: isSelected ? 2 : 1,
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  getIcon(item),
-                  size: 18,
-                  color: isSelected ? color : CarSalesColors.textSecondary(widget.isDark),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  getLabel(item),
-                  style: TextStyle(
-                    color: isSelected ? color : CarSalesColors.textSecondary(widget.isDark),
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                  ),
-                ),
-                if (isSelected) ...[
-                  const SizedBox(width: 6),
-                  Icon(Icons.check, size: 16, color: color),
-                ],
-              ],
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-}
-
-/// Filtre seçim sheet'i - kompakt multi-select
-class _FilterSelectionSheet<T> extends StatefulWidget {
-  final bool isDark;
-  final String title;
-  final List<T> items;
-  final Set<String> selectedIds;
-  final String Function(T) getLabel;
-  final IconData Function(T) getIcon;
-  final String Function(T) getId;
-  final Color Function(T)? getColor;
-  final void Function(Set<String>) onChanged;
-
-  const _FilterSelectionSheet({
-    required this.isDark,
-    required this.title,
-    required this.items,
-    required this.selectedIds,
-    required this.getLabel,
-    required this.getIcon,
-    required this.getId,
-    this.getColor,
-    required this.onChanged,
-  });
-
-  @override
-  State<_FilterSelectionSheet<T>> createState() => _FilterSelectionSheetState<T>();
-}
-
-class _FilterSelectionSheetState<T> extends State<_FilterSelectionSheet<T>> {
-  late Set<String> _selected;
-
-  @override
-  void initState() {
-    super.initState();
-    _selected = Set.from(widget.selectedIds);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: CarSalesColors.card(widget.isDark),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Handle
-          Container(
-            width: 40,
-            height: 4,
-            margin: const EdgeInsets.only(top: 12),
-            decoration: BoxDecoration(
-              color: CarSalesColors.border(widget.isDark),
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          // Header
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  widget.title,
-                  style: TextStyle(
-                    color: CarSalesColors.textPrimary(widget.isDark),
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Row(
-                  children: [
-                    if (_selected.isNotEmpty)
-                      TextButton(
-                        onPressed: () {
-                          setState(() => _selected.clear());
-                        },
-                        child: const Text(
-                          'Temizle',
-                          style: TextStyle(color: CarSalesColors.accent),
-                        ),
-                      ),
-                    const SizedBox(width: 8),
-                    ElevatedButton(
-                      onPressed: () {
-                        widget.onChanged(_selected);
-                        Navigator.pop(context);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: CarSalesColors.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                      ),
-                      child: Text('Uygula${_selected.isNotEmpty ? ' (${_selected.length})' : ''}'),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1),
-          // Items
-          Flexible(
-            child: widget.items.isEmpty
-                ? const Padding(
-                    padding: EdgeInsets.all(32),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                : ListView.builder(
-                    shrinkWrap: true,
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    itemCount: widget.items.length,
-                    itemBuilder: (context, index) {
-                      final item = widget.items[index];
-                      final id = widget.getId(item);
-                      final isSelected = _selected.contains(id);
-                      final color = widget.getColor?.call(item) ?? CarSalesColors.primary;
-
-                      return ListTile(
-                        onTap: () {
-                          setState(() {
-                            if (isSelected) {
-                              _selected.remove(id);
-                            } else {
-                              _selected.add(id);
-                            }
-                          });
-                        },
-                        leading: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? color.withValues(alpha: 0.15)
-                                : CarSalesColors.surface(widget.isDark),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: isSelected ? color : CarSalesColors.border(widget.isDark),
-                            ),
-                          ),
-                          child: Icon(
-                            widget.getIcon(item),
-                            size: 20,
-                            color: isSelected ? color : CarSalesColors.textSecondary(widget.isDark),
-                          ),
-                        ),
-                        title: Text(
-                          widget.getLabel(item),
-                          style: TextStyle(
-                            color: CarSalesColors.textPrimary(widget.isDark),
-                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                          ),
-                        ),
-                        trailing: isSelected
-                            ? Icon(Icons.check_circle, color: color)
-                            : Icon(
-                                Icons.circle_outlined,
-                                color: CarSalesColors.border(widget.isDark),
-                              ),
-                      );
-                    },
-                  ),
-          ),
-          SizedBox(height: MediaQuery.of(context).padding.bottom + 8),
-        ],
-      ),
-    );
-  }
-}
-

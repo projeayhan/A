@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/app_responsive.dart';
 import '../../core/utils/app_dialogs.dart';
 import '../../core/utils/image_utils.dart';
+import '../../core/utils/name_masking.dart';
 import '../../core/providers/cart_provider.dart';
 import 'food_home_screen.dart';
 import '../../widgets/food/add_to_cart_animation.dart';
@@ -175,7 +177,7 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? FoodColors.backgroundDark : const Color(0xFFF8F7F5),
+      backgroundColor: isDark ? FoodColors.backgroundDark : FoodColors.backgroundLight,
       body: Stack(
         children: [
           // Main Content
@@ -214,14 +216,16 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
             child: Container(
               color: isDark ? Colors.grey[800] : Colors.grey[200],
               child: widget.imageUrl.isNotEmpty
-                  ? Image.network(
-                      ImageUtils.getProductDetail(widget.imageUrl),
+                  ? CachedNetworkImage(
+                      imageUrl: ImageUtils.getProductDetail(widget.imageUrl),
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Center(
-                          child: Icon(Icons.fastfood, size: 48, color: Colors.grey[400]),
-                        );
-                      },
+                      placeholder: (_, __) => Container(
+                        color: Colors.grey[200],
+                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                      ),
+                      errorWidget: (_, __, ___) => Center(
+                        child: Icon(Icons.fastfood, size: 48, color: Colors.grey[400]),
+                      ),
                     )
                   : Center(
                       child: Icon(Icons.fastfood, size: 48, color: Colors.grey[400]),
@@ -330,7 +334,7 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
     return Container(
       transform: Matrix4.translationValues(0, -20, 0),
       decoration: BoxDecoration(
-        color: isDark ? FoodColors.backgroundDark : const Color(0xFFF8F7F5),
+        color: isDark ? FoodColors.backgroundDark : FoodColors.backgroundLight,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         boxShadow: [
           BoxShadow(
@@ -361,7 +365,7 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
                   ? widget.description
                   : '100% dana eti, özel şef sosu, çift katmanlı cheddar peyniri, karamelize soğan, turşu ve taze yeşillikler ile hazırlanan, brioche ekmeği arasında servis edilen enfes burger.',
               style: TextStyle(
-                fontSize: 15,
+                fontSize: context.bodySize,
                 color: isDark ? Colors.grey[300] : Colors.grey[600],
                 height: 1.6,
               ),
@@ -401,9 +405,9 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
               Text(
                 widget.name,
                 style: TextStyle(
-                  fontSize: 28,
+                  fontSize: context.heading1Size + 4,
                   fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.white : const Color(0xFF1C130D),
+                  color: isDark ? Colors.white : Colors.grey[800],
                   height: 1.2,
                 ),
               ),
@@ -411,7 +415,7 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
               Text(
                 '${widget.restaurantName} • Amerikan Mutfağı',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: context.bodySize,
                   fontWeight: FontWeight.w500,
                   color: isDark ? Colors.grey[400] : Colors.grey[500],
                 ),
@@ -439,7 +443,7 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
               Text(
                 widget.rating.toString(),
                 style: TextStyle(
-                  fontSize: 14,
+                  fontSize: context.bodySize,
                   fontWeight: FontWeight.bold,
                   color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF15803D),
                 ),
@@ -483,10 +487,10 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF2F2219) : Colors.white,
+          color: isDark ? FoodColors.surfaceDark : Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isDark ? const Color(0xFF3E2D23) : Colors.grey[100]!,
+            color: isDark ? Colors.grey[800]! : Colors.grey[100]!,
           ),
           boxShadow: [
             BoxShadow(
@@ -501,11 +505,11 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
             Text(
               value,
               style: TextStyle(
-                fontSize: 20,
+                fontSize: context.heading2Size + 2,
                 fontWeight: FontWeight.bold,
                 color: isPrimary
                     ? FoodColors.primary
-                    : (isDark ? Colors.white : const Color(0xFF1C130D)),
+                    : (isDark ? Colors.white : Colors.grey[800]),
               ),
             ),
             const SizedBox(height: 4),
@@ -519,7 +523,7 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
                   child: Text(
                     label,
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: context.captionSize,
                       fontWeight: FontWeight.w500,
                       color: Colors.grey[400],
                     ),
@@ -563,15 +567,15 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
             Text(
               group['name'] ?? 'Seçenekler',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: context.heading2Size,
                 fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white : const Color(0xFF1C130D),
+                color: isDark ? Colors.white : Colors.grey[800],
               ),
             ),
             Text(
               isRequired ? 'Zorunlu' : 'İsteğe bağlı',
               style: TextStyle(
-                fontSize: 12,
+                fontSize: context.captionSize,
                 color: isRequired ? FoodColors.primary : Colors.grey[400],
                 fontWeight: isRequired ? FontWeight.w600 : FontWeight.normal,
               ),
@@ -605,7 +609,7 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF2F2219) : Colors.white,
+                color: isDark ? FoodColors.surfaceDark : Colors.white,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: isSelected
@@ -636,17 +640,17 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
                     child: Text(
                       option['name'] ?? '',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: context.bodySize,
                         fontWeight: FontWeight.w500,
-                        color: isDark ? Colors.grey[200] : const Color(0xFF1C130D),
+                        color: isDark ? Colors.grey[200] : Colors.grey[800],
                       ),
                     ),
                   ),
                   if (price > 0)
                     Text(
                       '+${price.toInt()} TL',
-                      style: const TextStyle(
-                        fontSize: 14,
+                      style: TextStyle(
+                        fontSize: context.bodySize,
                         fontWeight: FontWeight.w600,
                         color: FoodColors.primary,
                       ),
@@ -655,7 +659,7 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
                     Text(
                       'Ücretsiz',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: context.bodySize,
                         color: Colors.grey[400],
                       ),
                     ),
@@ -675,9 +679,9 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
         Text(
           'Sipariş Notu',
           style: TextStyle(
-            fontSize: 18,
+            fontSize: context.heading2Size,
             fontWeight: FontWeight.bold,
-            color: isDark ? Colors.white : const Color(0xFF1C130D),
+            color: isDark ? Colors.white : Colors.grey[800],
           ),
         ),
         const SizedBox(height: 12),
@@ -685,8 +689,8 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
           controller: _noteController,
           maxLines: 3,
           style: TextStyle(
-            fontSize: 14,
-            color: isDark ? Colors.white : const Color(0xFF1C130D),
+            fontSize: context.bodySize,
+            color: isDark ? Colors.white : Colors.grey[800],
           ),
           decoration: InputDecoration(
             hintText: 'Örn: Turşu olmasın, sosu ayrı olsun...',
@@ -694,7 +698,7 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
               color: isDark ? Colors.grey[500] : Colors.grey[400],
             ),
             filled: true,
-            fillColor: isDark ? const Color(0xFF2F2219) : Colors.white,
+            fillColor: isDark ? FoodColors.surfaceDark : Colors.white,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(
@@ -731,9 +735,9 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
             Text(
               'Değerlendirmeler',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: context.heading2Size,
                 fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white : const Color(0xFF1C130D),
+                color: isDark ? Colors.white : Colors.grey[800],
               ),
             ),
             if (_totalReviewCount > 0)
@@ -743,8 +747,8 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
                 },
                 child: Text(
                   'Tümünü gör ($_totalReviewCount)',
-                  style: const TextStyle(
-                    fontSize: 14,
+                  style: TextStyle(
+                    fontSize: context.bodySize,
                     fontWeight: FontWeight.w600,
                     color: FoodColors.primary,
                   ),
@@ -757,7 +761,7 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF2F2219) : Colors.white,
+              color: isDark ? FoodColors.surfaceDark : Colors.white,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: isDark ? Colors.grey[800]! : Colors.grey[100]!,
@@ -775,7 +779,7 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
                   Text(
                     'Henüz değerlendirme yok',
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: context.bodySize,
                       color: Colors.grey[500],
                     ),
                   ),
@@ -783,7 +787,7 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
                   Text(
                     'Bu ürünü ilk değerlendiren siz olun!',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: context.captionSize,
                       color: Colors.grey[400],
                     ),
                   ),
@@ -800,20 +804,16 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
   Widget _buildReviewCard(Map<String, dynamic> review, bool isDark) {
     final rating = review['rating'] as int? ?? 5;
     final comment = review['comment'] as String? ?? '';
-    final customerName = review['customer_name'] as String? ?? 'Anonim';
+    final customerName = maskUserName(review['customer_name'] as String?);
 
-    // Get initials for avatar
-    final nameParts = customerName.split(' ');
-    String initials = nameParts.isNotEmpty ? nameParts[0][0] : '?';
-    if (nameParts.length > 1) {
-      initials += nameParts[1][0];
-    }
+    // Get masked letter for avatar
+    final initials = customerName[0];
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF2F2219) : Colors.white,
+        color: isDark ? FoodColors.surfaceDark : Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isDark ? Colors.grey[800]! : Colors.grey[100]!,
@@ -838,8 +838,8 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
                     backgroundColor: FoodColors.primary.withValues(alpha: 0.2),
                     child: Text(
                       initials.toUpperCase(),
-                      style: const TextStyle(
-                        fontSize: 12,
+                      style: TextStyle(
+                        fontSize: context.captionSize,
                         fontWeight: FontWeight.bold,
                         color: FoodColors.primary,
                       ),
@@ -849,9 +849,9 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
                   Text(
                     customerName,
                     style: TextStyle(
-                      fontSize: 14,
+                      fontSize: context.bodySize,
                       fontWeight: FontWeight.w600,
-                      color: isDark ? Colors.white : const Color(0xFF1C130D),
+                      color: isDark ? Colors.white : Colors.grey[800],
                     ),
                   ),
                 ],
@@ -872,7 +872,7 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
             Text(
               comment,
               style: TextStyle(
-                fontSize: 14,
+                fontSize: context.bodySize,
                 color: isDark ? Colors.grey[400] : Colors.grey[500],
               ),
               maxLines: 3,
@@ -887,7 +887,7 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
   Widget _buildBottomBar(bool isDark) {
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? FoodColors.backgroundDark : const Color(0xFFF8F7F5),
+        color: isDark ? FoodColors.backgroundDark : FoodColors.backgroundLight,
         border: Border(
           top: BorderSide(
             color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
@@ -913,7 +913,7 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
                 Container(
                   height: 48,
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF2F2219) : Colors.white,
+                    color: isDark ? FoodColors.surfaceDark : Colors.white,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
                       color: isDark ? Colors.grey[700]! : Colors.grey[200]!,
@@ -940,9 +940,9 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
                       Text(
                         _quantity.toString(),
                         style: TextStyle(
-                          fontSize: 18,
+                          fontSize: context.heading2Size,
                           fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : const Color(0xFF1C130D),
+                          color: isDark ? Colors.white : Colors.grey[800],
                         ),
                       ),
                       IconButton(
@@ -1060,12 +1060,12 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Padding(
-                            padding: EdgeInsets.only(left: 20),
+                          Padding(
+                            padding: const EdgeInsets.only(left: 20),
                             child: Text(
                               'Sepete Ekle',
                               style: TextStyle(
-                                fontSize: 16,
+                                fontSize: context.heading2Size,
                                 fontWeight: FontWeight.bold,
                                 color: Colors.white,
                               ),
@@ -1086,8 +1086,8 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
                               ),
                               child: Text(
                                 '${_totalPrice.toInt()} TL',
-                                style: const TextStyle(
-                                  fontSize: 14,
+                                style: TextStyle(
+                                  fontSize: context.bodySize,
                                   fontWeight: FontWeight.w500,
                                   color: Colors.white,
                                 ),
@@ -1151,7 +1151,7 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
             Text(
               label,
               style: TextStyle(
-                fontSize: 10,
+                fontSize: context.captionSmallSize,
                 fontWeight: FontWeight.w500,
                 color: isSelected
                     ? FoodColors.primary

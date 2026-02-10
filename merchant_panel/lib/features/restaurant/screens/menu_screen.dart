@@ -2,7 +2,7 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/theme/app_theme.dart';
@@ -641,7 +641,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
                           fileName,
                           imageBytes,
                           fileOptions: const FileOptions(
-                            cacheControl: '3600',
+                            cacheControl: '31536000',
                             upsert: true,
                           ),
                         );
@@ -770,7 +770,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
                           fileName,
                           imageBytes,
                           fileOptions: const FileOptions(
-                            cacheControl: '3600',
+                            cacheControl: '31536000',
                             upsert: true,
                           ),
                         );
@@ -1562,16 +1562,19 @@ class _MenuItemDialogState extends ConsumerState<_MenuItemDialog> {
   }
 
   Future<void> _pickImage() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.image,
-      allowMultiple: false,
-      withData: true,
+    final picker = ImagePicker();
+    final XFile? picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 85,
     );
 
-    if (result != null && result.files.isNotEmpty) {
+    if (picked != null) {
+      final bytes = await picked.readAsBytes();
       setState(() {
-        _selectedImageBytes = result.files.first.bytes;
-        _selectedImageName = result.files.first.name;
+        _selectedImageBytes = bytes;
+        _selectedImageName = picked.name;
       });
     }
   }

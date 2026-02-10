@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../../core/theme/app_theme.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../../core/theme/app_responsive.dart';
+import '../../core/theme/store_colors.dart';
 
 class CampaignItem {
   final String id;
@@ -123,14 +125,21 @@ class _CampaignCarouselState extends State<CampaignCarousel> {
                         bottom: -20,
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(16),
-                          child: Image.network(
-                            campaign.imageUrl,
+                          child: CachedNetworkImage(
+                            imageUrl: campaign.imageUrl,
                             width: 180,
                             height: 180,
                             fit: BoxFit.cover,
-                            color: Colors.white.withValues(alpha: 0.2),
-                            colorBlendMode: BlendMode.overlay,
-                            errorBuilder: (_, __, ___) => const SizedBox(),
+                            imageBuilder: (context, imageProvider) => Image(
+                              image: imageProvider,
+                              width: 180,
+                              height: 180,
+                              fit: BoxFit.cover,
+                              color: Colors.white.withValues(alpha: 0.2),
+                              colorBlendMode: BlendMode.overlay,
+                            ),
+                            placeholder: (_, __) => const SizedBox(width: 180, height: 180),
+                            errorWidget: (_, __, ___) => const SizedBox(),
                           ),
                         ),
                       ),
@@ -142,9 +151,9 @@ class _CampaignCarouselState extends State<CampaignCarousel> {
                           children: [
                             Text(
                               campaign.title,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 24,
+                                fontSize: context.heading1Size + 4,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -153,7 +162,7 @@ class _CampaignCarouselState extends State<CampaignCarousel> {
                               campaign.subtitle,
                               style: TextStyle(
                                 color: Colors.white.withValues(alpha: 0.9),
-                                fontSize: 14,
+                                fontSize: context.bodySize,
                               ),
                             ),
                             const SizedBox(height: 16),
@@ -171,7 +180,7 @@ class _CampaignCarouselState extends State<CampaignCarousel> {
                                 style: TextStyle(
                                   color: campaign.gradientColors.first,
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 13,
+                                  fontSize: context.bodySmallSize,
                                 ),
                               ),
                             ),
@@ -198,7 +207,7 @@ class _CampaignCarouselState extends State<CampaignCarousel> {
               height: 8,
               decoration: BoxDecoration(
                 color: _currentPage == index
-                    ? AppColors.primary
+                    ? StoreColors.primary
                     : Colors.grey[300],
                 borderRadius: BorderRadius.circular(4),
               ),

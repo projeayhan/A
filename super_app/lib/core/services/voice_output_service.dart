@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:audioplayers/audioplayers.dart';
@@ -15,6 +16,8 @@ class VoiceOutputService {
   bool _isSpeaking = false;
   bool _isEnabled = false;
   VoidCallback? _onComplete;
+  StreamSubscription? _completeSubscription;
+  StreamSubscription? _stateSubscription;
 
   bool get isInitialized => _isInitialized;
   bool get isSpeaking => _isSpeaking;
@@ -28,13 +31,13 @@ class VoiceOutputService {
       // Ses seviyesini maksimuma ayarla
       await _player.setVolume(1.0);
 
-      _player.onPlayerComplete.listen((_) {
+      _completeSubscription = _player.onPlayerComplete.listen((_) {
         _isSpeaking = false;
         _onComplete?.call();
         _onComplete = null;
       });
 
-      _player.onPlayerStateChanged.listen((state) {
+      _stateSubscription = _player.onPlayerStateChanged.listen((state) {
         if (state == PlayerState.playing) {
           _isSpeaking = true;
         } else if (state == PlayerState.stopped || state == PlayerState.completed) {
@@ -176,6 +179,15 @@ class VoiceOutputService {
     if (!enabled) await stop();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('tts_enabled', enabled);
+  }
+
+  /// Servisi temizle
+  Future<void> dispose() async {
+    await _completeSubscription?.cancel();
+    await _stateSubscription?.cancel();
+    await _player.dispose();
+    _isInitialized = false;
+    _isSpeaking = false;
   }
 }
 

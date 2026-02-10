@@ -2,30 +2,35 @@
 /// width ve height parametreleri ile boyutlandırma yapılır
 class ImageUtils {
   /// Supabase Storage URL'ini transform edilmiş versiyona çevirir
-  /// Örnek: https://xxx.supabase.co/storage/v1/object/public/images/products/xxx.jpeg
-  /// Dönüşür: https://xxx.supabase.co/storage/v1/render/image/public/images/products/xxx.jpeg?width=400&height=400&resize=contain
   static String getResizedImageUrl(
     String imageUrl, {
     int? width,
     int? height,
-    String resize = 'contain', // contain, cover, fill
-    int quality = 80,
+    String resize = 'cover',
+    int quality = 75,
   }) {
-    // Boş URL kontrolü
     if (imageUrl.isEmpty) return imageUrl;
+
+    // Unsplash URL'lerini direkt optimize et
+    if (imageUrl.contains('images.unsplash.com')) {
+      final uri = Uri.parse(imageUrl);
+      final params = Map<String, String>.from(uri.queryParameters);
+      if (width != null) params['w'] = width.toString();
+      params['q'] = quality.toString();
+      params['auto'] = 'format';
+      return uri.replace(queryParameters: params).toString();
+    }
 
     // Sadece Supabase Storage URL'lerini dönüştür
     if (!imageUrl.contains('supabase.co/storage/v1/object/public/')) {
       return imageUrl;
     }
 
-    // URL'i transform endpoint'ine çevir
     final transformedUrl = imageUrl.replaceFirst(
       '/storage/v1/object/public/',
       '/storage/v1/render/image/public/',
     );
 
-    // Query parametreleri ekle
     final params = <String>[];
     if (width != null) params.add('width=$width');
     if (height != null) params.add('height=$height');
@@ -37,12 +42,17 @@ class ImageUtils {
 
   /// Ürün kartları için optimize edilmiş görsel (küçük)
   static String getProductThumbnail(String imageUrl) {
-    return getResizedImageUrl(imageUrl, width: 300, height: 300);
+    return getResizedImageUrl(imageUrl, width: 200, height: 200, quality: 70);
   }
 
   /// Ürün detay sayfası için optimize edilmiş görsel (orta)
   static String getProductDetail(String imageUrl) {
-    return getResizedImageUrl(imageUrl, width: 800, height: 800);
+    return getResizedImageUrl(imageUrl, width: 600, height: 600);
+  }
+
+  /// Restoran hero/cover görseli
+  static String getHeroImage(String imageUrl) {
+    return getResizedImageUrl(imageUrl, width: 800, height: 400, quality: 75);
   }
 
   /// Tam ekran görüntüleme için (büyük)

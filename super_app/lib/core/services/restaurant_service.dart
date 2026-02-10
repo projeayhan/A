@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supabase_service.dart';
+import '../utils/cache_helper.dart';
 
 class Restaurant {
   final String id;
@@ -186,6 +187,7 @@ class MenuItem {
 
 class RestaurantService {
   static SupabaseClient get _client => SupabaseService.client;
+  static final _cache = CacheManager();
 
   // Tüm restoranları getir (müşteri konumuna göre teslimat bölgesi filtreli)
   static Future<List<Restaurant>> getRestaurants({
@@ -241,20 +243,26 @@ class RestaurantService {
 
   // Restoran kategorilerini getir
   static Future<List<RestaurantCategory>> getCategories() async {
-    try {
-      final response = await _client
-          .from('restaurant_categories')
-          .select()
-          .eq('is_active', true)
-          .order('sort_order');
+    return _cache.getOrFetch<List<RestaurantCategory>>(
+      'restaurant_categories',
+      ttl: const Duration(hours: 24),
+      fetcher: () async {
+        try {
+          final response = await _client
+              .from('restaurant_categories')
+              .select()
+              .eq('is_active', true)
+              .order('sort_order');
 
-      return (response as List)
-          .map((json) => RestaurantCategory.fromJson(json))
-          .toList();
-    } catch (e) {
-      if (kDebugMode) print('Error fetching restaurant categories: $e');
-      return [];
-    }
+          return (response as List)
+              .map((json) => RestaurantCategory.fromJson(json))
+              .toList();
+        } catch (e) {
+          if (kDebugMode) print('Error fetching restaurant categories: $e');
+          return [];
+        }
+      },
+    );
   }
 
   // Kategoriye göre restoranları getir (menü kategorilerine göre filtreler)
@@ -301,51 +309,63 @@ class RestaurantService {
 
   // Tek restoran getir
   static Future<Restaurant?> getRestaurantById(String id) async {
-    try {
-      final response = await _client
-          .from('merchants')
-          .select()
-          .eq('id', id)
-          .eq('type', 'restaurant')
-          .single();
+    return _cache.getOrFetch<Restaurant?>(
+      'restaurant_$id',
+      ttl: const Duration(minutes: 5),
+      fetcher: () async {
+        try {
+          final response = await _client
+              .from('merchants')
+              .select()
+              .eq('id', id)
+              .eq('type', 'restaurant')
+              .single();
 
-      return Restaurant.fromMerchantJson(response);
-    } catch (e) {
-      if (kDebugMode) print('Error fetching restaurant: $e');
-      return null;
-    }
+          return Restaurant.fromMerchantJson(response);
+        } catch (e) {
+          if (kDebugMode) print('Error fetching restaurant: $e');
+          return null;
+        }
+      },
+    );
   }
 
   // Restoran menüsünü getir (merchant_id kullanarak)
   static Future<List<MenuItem>> getMenuItems(String merchantId) async {
-    try {
-      final response = await _client
-          .from('menu_items')
-          .select('*, menu_categories!category_id(name, sort_order), menu_item_option_groups(option_group_id)')
-          .eq('merchant_id', merchantId)
-          .eq('is_available', true)
-          .order('sort_order');
+    return _cache.getOrFetch<List<MenuItem>>(
+      'menu_items_$merchantId',
+      ttl: const Duration(minutes: 5),
+      fetcher: () async {
+        try {
+          final response = await _client
+              .from('menu_items')
+              .select('*, menu_categories!category_id(name, sort_order), menu_item_option_groups(option_group_id)')
+              .eq('merchant_id', merchantId)
+              .eq('is_available', true)
+              .order('sort_order');
 
-      return (response as List).map((json) {
-        final categoryData = json['menu_categories'];
-        final categoryName = categoryData?['name'] as String?;
-        final categorySortOrder = categoryData?['sort_order'] as int? ?? 999;
+          return (response as List).map((json) {
+            final categoryData = json['menu_categories'];
+            final categoryName = categoryData?['name'] as String?;
+            final categorySortOrder = categoryData?['sort_order'] as int? ?? 999;
 
-        // Check if item has option groups
-        final optionGroupLinks = json['menu_item_option_groups'] as List?;
-        final hasOptionGroups = optionGroupLinks != null && optionGroupLinks.isNotEmpty;
+            // Check if item has option groups
+            final optionGroupLinks = json['menu_item_option_groups'] as List?;
+            final hasOptionGroups = optionGroupLinks != null && optionGroupLinks.isNotEmpty;
 
-        return MenuItem.fromJson(
-          json,
-          categoryName: categoryName,
-          categorySortOrder: categorySortOrder,
-          hasOptionGroups: hasOptionGroups,
-        );
-      }).toList();
-    } catch (e) {
-      if (kDebugMode) print('Error fetching menu items: $e');
-      return [];
-    }
+            return MenuItem.fromJson(
+              json,
+              categoryName: categoryName,
+              categorySortOrder: categorySortOrder,
+              hasOptionGroups: hasOptionGroups,
+            );
+          }).toList();
+        } catch (e) {
+          if (kDebugMode) print('Error fetching menu items: $e');
+          return [];
+        }
+      },
+    );
   }
 
   // Restoran ara (müşteri konumuna göre teslimat bölgesi filtreli)
@@ -398,6 +418,36 @@ class RestaurantService {
           .toList();
     } catch (e) {
       if (kDebugMode) print('Error searching restaurants: $e');
+      return [];
+    }
+  }
+
+  // Yemek ara (menu_items tablosunda)
+  static Future<List<Map<String, dynamic>>> searchMenuItems(String query) async {
+    try {
+      final response = await _client
+          .from('menu_items')
+          .select('id, name, description, price, image_url, merchant_id, merchants!inner(business_name, rating)')
+          .eq('is_available', true)
+          .ilike('name', '%$query%')
+          .order('name')
+          .limit(10);
+
+      return (response as List).map((json) {
+        final merchant = json['merchants'] as Map<String, dynamic>?;
+        return {
+          'id': json['id'] as String,
+          'name': json['name'] as String,
+          'description': json['description'] as String? ?? '',
+          'price': double.tryParse(json['price']?.toString() ?? '0') ?? 0.0,
+          'imageUrl': json['image_url'] as String? ?? '',
+          'rating': (merchant?['rating'] as num?)?.toDouble() ?? 4.5,
+          'merchantId': json['merchant_id'] as String,
+          'restaurantName': merchant?['business_name'] as String? ?? '',
+        };
+      }).toList();
+    } catch (e) {
+      if (kDebugMode) print('Error searching menu items: $e');
       return [];
     }
   }
@@ -609,25 +659,46 @@ class RestaurantService {
 
   // Tüm aktif menü kategorilerini getir (filtre seçenekleri için)
   static Future<List<String>> getAvailableMenuCategories() async {
-    try {
-      final response = await _client
-          .from('menu_categories')
-          .select('name')
-          .eq('is_active', true)
-          .order('name');
+    return _cache.getOrFetch<List<String>>(
+      'available_menu_categories',
+      ttl: const Duration(hours: 24),
+      fetcher: () async {
+        try {
+          final response = await _client
+              .from('menu_categories')
+              .select('name')
+              .eq('is_active', true)
+              .order('name');
 
-      final categories = (response as List)
-          .map((json) => json['name'] as String)
-          .toSet() // Tekrarları kaldır
-          .toList();
+          final categories = (response as List)
+              .map((json) => json['name'] as String)
+              .toSet() // Tekrarları kaldır
+              .toList();
 
-      // Kategorileri düzenli sırala
-      categories.sort((a, b) => a.compareTo(b));
+          // Kategorileri düzenli sırala
+          categories.sort((a, b) => a.compareTo(b));
 
-      return categories;
-    } catch (e) {
-      if (kDebugMode) print('Error fetching menu categories: $e');
-      return [];
+          return categories;
+        } catch (e) {
+          if (kDebugMode) print('Error fetching menu categories: $e');
+          return [];
+        }
+      },
+    );
+  }
+
+  /// Realtime invalidation: merchants tablosu değiştiğinde çağır
+  static void invalidateRestaurants() {
+    _cache.invalidatePrefix('restaurant_');
+    _cache.invalidate('popular_restaurants');
+  }
+
+  /// Realtime invalidation: menu_items tablosu değiştiğinde çağır
+  static void invalidateMenuItems([String? merchantId]) {
+    if (merchantId != null) {
+      _cache.invalidate('menu_items_$merchantId');
+    } else {
+      _cache.invalidatePrefix('menu_items_');
     }
   }
 
@@ -667,5 +738,51 @@ class RestaurantService {
       if (kDebugMode) print('Error fetching restaurants by menu category: $e');
       return [];
     }
+  }
+
+  /// Sepetteki ürünlerle birlikte en çok satın alınan ürünleri getirir
+  static Future<List<MenuItem>> getFrequentlyBoughtTogether(
+    String merchantId,
+    List<String> cartItemIds, {
+    int limit = 6,
+  }) async {
+    final cacheKey = 'fbt_${merchantId}_${cartItemIds.join(',')}';
+    return _cache.getOrFetch<List<MenuItem>>(
+      cacheKey,
+      ttl: const Duration(minutes: 10),
+      fetcher: () async {
+        try {
+          final response = await _client.rpc(
+            'get_frequently_bought_together',
+            params: {
+              'p_merchant_id': merchantId,
+              'p_cart_item_ids': cartItemIds,
+              'p_limit': limit,
+            },
+          );
+
+          if (response == null) return [];
+
+          return (response as List).map((json) {
+            final map = json as Map<String, dynamic>;
+            return MenuItem(
+              id: map['id'] as String,
+              merchantId: merchantId,
+              name: map['name'] as String,
+              description: map['description'] as String?,
+              price: double.tryParse(map['price']?.toString() ?? '0') ?? 0,
+              discountedPrice: map['discounted_price'] != null
+                  ? double.tryParse(map['discounted_price'].toString())
+                  : null,
+              imageUrl: map['image_url'] as String?,
+              category: map['category'] as String?,
+            );
+          }).toList();
+        } catch (e) {
+          if (kDebugMode) print('Error fetching frequently bought together: $e');
+          return [];
+        }
+      },
+    );
   }
 }
