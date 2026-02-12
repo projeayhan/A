@@ -5,6 +5,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'supabase_service.dart';
 
 /// Background message handler - must be top-level function
@@ -172,6 +173,27 @@ class PushNotificationService {
     }
   }
 
+  /// Check if a notification type should be shown based on user preferences
+  Future<bool> _shouldShowNotification(String type) async {
+    final prefs = await SharedPreferences.getInstance();
+    final pushEnabled = prefs.getBool('notif_push') ?? true;
+    if (!pushEnabled) return false;
+
+    switch (type) {
+      case 'order_update':
+      case 'store_order':
+        return prefs.getBool('notif_order_updates') ?? true;
+      case 'campaign':
+      case 'promotion':
+        return prefs.getBool('notif_campaigns') ?? true;
+      case 'new_feature':
+      case 'update':
+        return prefs.getBool('notif_new_features') ?? false;
+      default:
+        return true;
+    }
+  }
+
   /// Handle foreground message - show local notification
   Future<void> _handleForegroundMessage(RemoteMessage message) async {
     debugPrint('Foreground message received: ${message.messageId}');
@@ -181,6 +203,13 @@ class PushNotificationService {
 
     // Get notification type for icon/color
     final type = message.data['type'] as String? ?? 'default';
+
+    // Check user preferences before showing
+    if (!await _shouldShowNotification(type)) {
+      debugPrint('Notification suppressed by user preferences: $type');
+      return;
+    }
+
     final iconColor = _getNotificationColor(type);
 
     await _localNotifications.show(

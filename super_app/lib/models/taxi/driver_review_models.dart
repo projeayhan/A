@@ -190,14 +190,14 @@ class DriverRatingStats {
     this.rating3Count = 0,
     this.rating2Count = 0,
     this.rating1Count = 0,
-    this.rating30Days = 5.0,
+    this.rating30Days = 0.0,
     this.totalRatings30Days = 0,
   });
 
   factory DriverRatingStats.fromJson(Map<String, dynamic> json) {
     return DriverRatingStats(
       driverId: json['id'] as String,
-      overallRating: (json['rating'] as num?)?.toDouble() ?? 5.0,
+      overallRating: (json['rating'] as num?)?.toDouble() ?? 0.0,
       totalRatings: json['total_ratings'] as int? ?? 0,
       totalRides: json['total_rides'] as int? ?? 0,
       rating5Count: json['rating_count_5'] as int? ?? 0,
@@ -205,7 +205,7 @@ class DriverRatingStats {
       rating3Count: json['rating_count_3'] as int? ?? 0,
       rating2Count: json['rating_count_2'] as int? ?? 0,
       rating1Count: json['rating_count_1'] as int? ?? 0,
-      rating30Days: (json['rating_30d'] as num?)?.toDouble() ?? 5.0,
+      rating30Days: (json['rating_30d'] as num?)?.toDouble() ?? 0.0,
       totalRatings30Days: json['total_ratings_30d'] as int? ?? 0,
     );
   }

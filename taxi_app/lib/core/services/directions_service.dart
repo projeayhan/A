@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 class DirectionsResult {
@@ -25,8 +26,8 @@ class LatLng {
 }
 
 class DirectionsService {
-  static const String _edgeFunctionUrl =
-      'https://mzgtvdgwxrlhgjboolys.supabase.co/functions/v1/directions';
+  static String get _edgeFunctionUrl =>
+      '${dotenv.env['SUPABASE_URL'] ?? ''}/functions/v1/directions';
 
   static Future<DirectionsResult?> getDirections({
     required double originLat,

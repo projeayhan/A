@@ -606,7 +606,7 @@ const CUSTOMER_TOOLS = [
     type: "function" as const,
     function: {
       name: "search_food",
-      description: "Yemek, ürün, restoran, mağaza veya market ara. Kullanıcı herhangi bir şey istediğinde bu aracı kullan: yiyecek/içecek, elektronik, giyim, ev eşyası, market ürünleri vb. Hem restoranlarda hem mağaza/marketlerde arama yapar. Kavramsal aramalarda ilgili ürün türlerini anahtar kelimelere çevir. Örnekler: 'etli birşeyler' → ['kebap','köfte'], 'telefon istiyorum' → ['telefon','samsung'], 'tişört' → ['tişört'], 'marketten su' → ['su']",
+      description: "Yemek, ürün, restoran, mağaza veya market ara. Kullanıcı herhangi bir şey istediğinde bu aracı kullan: yiyecek/içecek, elektronik, giyim, ev eşyası, market ürünleri vb. Hem restoranlarda hem mağaza/marketlerde arama yapar. ⚠️ Anahtar kelimeleri KISA ve YALITILMIŞ tut (Türkçe ek EKLEME, çekim yalın halde): 'cep telefonu arıyorum' → ['telefon'], 'bilgisayar bakıyorum' → ['bilgisayar'], 'etli birşeyler' → ['kebap','köfte'], 'tişört istiyorum' → ['tişört'], 'marketten su' → ['su']. Marka belirtilmişse ekle: 'samsung telefon' → ['telefon','samsung']",
       parameters: {
         type: "object",
         properties: {
@@ -885,6 +885,23 @@ const CUSTOMER_TOOLS = [
       description: "Kullanıcının geçmiş taksi yolculuklarını getir. 'önceki yolculuklarım', 'taksi geçmişim', 'geçen seferki taksi', 'son yolculuğum' gibi sorularda kullan.",
       parameters: { type: "object", properties: {} }
     }
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "search_store_products",
+      description: "Mağaza ürünlerini ara. Kullanıcı alışveriş yapmak, ürün aramak, fiyat sorgulamak istediğinde bu aracı kullan. Elektronik, giyim, kozmetik, ev eşyası, spor, gıda vb. kategorilerde arama yapabilir. Örnekler: 'iPhone fiyatı', 'erkek gömlek', 'parfüm', 'bulaşık makinesi', 'ucuz kulaklık'",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Aranacak ürün adı veya anahtar kelime (ör: iPhone, gömlek, parfüm)" },
+          category: { type: "string", description: "Kategori filtresi (ör: Elektronik, Giyim, Kozmetik, Ev & Yaşam, Spor & Outdoor, Telefon & Aksesuar)" },
+          min_price: { type: "number", description: "Minimum fiyat (TL)" },
+          max_price: { type: "number", description: "Maksimum fiyat (TL). 'Ucuz' derse düşük sınır koy." },
+          store_name: { type: "string", description: "Mağaza adı filtresi" }
+        }
+      }
+    }
   }
 ];
 
@@ -957,17 +974,40 @@ async function executeToolCall(
         'ayakkabı': ['ayakkabı', 'sneaker', 'shoe'],
         'çanta': ['çanta', 'bag'],
         'parfüm': ['parfüm', 'perfume', 'edt', 'edp'],
-        'telefon': ['telefon', 'phone', 'iphone', 'samsung'],
-        'bilgisayar': ['bilgisayar', 'laptop', 'notebook'],
+        'telefon': ['telefon', 'phone', 'iphone', 'samsung', 'xiaomi'],
+        'cep telefonu': ['telefon', 'phone', 'iphone', 'samsung', 'xiaomi'],
+        'akıllı telefon': ['telefon', 'phone', 'iphone', 'samsung', 'xiaomi'],
+        'bilgisayar': ['bilgisayar', 'laptop', 'notebook', 'tablet'],
+        'dizüstü': ['laptop', 'notebook', 'bilgisayar'],
         'kulaklık': ['kulaklık', 'earphone', 'headphone', 'airpods'],
+        'televizyon': ['televizyon', 'tv', 'smart tv'],
+        'beyaz eşya': ['beyaz eşya', 'buzdolabı', 'çamaşır makinesi', 'bulaşık makinesi'],
+        'buzdolabı': ['buzdolabı', 'beyaz eşya'],
+        'çamaşır makinesi': ['çamaşır makinesi', 'beyaz eşya'],
+        'temizlik': ['temizlik', 'deterjan', 'çamaşır suyu'],
+        'saat': ['saat', 'akıllı saat', 'watch'],
       };
 
       const keywords = new Set<string>();
       for (const kw of rawKeywords) {
         keywords.add(kw);
         const lower = kw.toLowerCase();
+        // Check exact alias match
         if (keywordAliases[lower]) {
           for (const alias of keywordAliases[lower]) keywords.add(alias);
+        }
+        // Strip common Turkish suffixes to find base form aliases
+        // e.g., 'telefonu' → 'telefon', 'bilgisayarı' → 'bilgisayar'
+        const turkishSuffixes = ['ları', 'leri', 'lar', 'ler', 'dan', 'den', 'tan', 'ten', 'da', 'de', 'ta', 'te', 'yu', 'yü', 'yı', 'yi', 'u', 'ü', 'ı', 'i'];
+        for (const suffix of turkishSuffixes) {
+          if (lower.endsWith(suffix) && lower.length > suffix.length + 3) {
+            const stem = lower.slice(0, -suffix.length);
+            keywords.add(stem);
+            if (keywordAliases[stem]) {
+              for (const alias of keywordAliases[stem]) keywords.add(alias);
+            }
+            break; // Only strip one suffix
+          }
         }
       }
       const expandedKeywords = [...keywords];
@@ -1061,32 +1101,23 @@ async function executeToolCall(
         }
       }
 
-      let info = '';
-
-      if (allRestaurants.length > 0) {
-        info += formatRestaurantSearchForAI({
-          success: true,
-          search_query: expandedKeywords.join(', '),
-          result_count: allRestaurants.length,
-          restaurants: allRestaurants,
-        });
-      }
-
-      if (allStores.length > 0) {
-        if (info) info += '\n\n';
-        info += formatStoreSearchForAI({
-          success: true,
-          search_query: expandedKeywords.join(', '),
-          result_count: allStores.length,
-          stores: allStores,
-        });
-      }
-
-      if (!info) {
+      if (allRestaurants.length === 0 && allStores.length === 0) {
         return `"${expandedKeywords.join(', ')}" araması için sonuç bulunamadı.`;
       }
 
-      return info;
+      // Return minimal summary - visual cards already show full details to user
+      const productLines: string[] = [];
+      for (const rest of allRestaurants.slice(0, 5)) {
+        for (const item of (rest.matching_items || []).slice(0, 4)) {
+          productLines.push(`- ${item.name} ${item.discounted_price || item.price} TL | ${rest.business_name} [ID:${item.id}] [MID:${rest.merchant_id}] [restaurant]`);
+        }
+      }
+      for (const store of allStores.slice(0, 5)) {
+        for (const product of (store.matching_products || []).slice(0, 4)) {
+          productLines.push(`- ${product.name} ${product.price} TL | ${store.business_name} [ID:${product.id}] [MID:${store.merchant_id}] [${store.merchant_type || 'store'}]`);
+        }
+      }
+      return `${productLines.length} ürün bulundu ve kullanıcıya GÖRSEL KART olarak gösterildi.\nÜrün listesi (sepete eklemek için referans):\n${productLines.join('\n')}\n\n⚠️ Bu ürünler zaten görsel kartlarla gösteriliyor. Sen SADECE kısa bir giriş yaz (ör: "İşte bulduklarım:"). Ürünleri tek tek listeleme, fiyat yazma, detay verme.`;
     }
 
     case 'get_recommendations': {
@@ -1217,11 +1248,20 @@ async function executeToolCall(
             has_ac: car.has_ac,
             has_gps: car.has_gps,
             has_bluetooth: car.has_bluetooth,
+            ...(args.pickup_date && { pickup_date: args.pickup_date }),
+            ...(args.dropoff_date && { dropoff_date: args.dropoff_date }),
           });
         }
       }
 
-      return formatRentalSearchForAI(result);
+      if (!result.cars || result.cars.length === 0) {
+        return 'Belirtilen kriterlere uygun kiralık araç bulunamadı.';
+      }
+      // Return minimal summary - visual cards already show full details
+      const carLines = result.cars.slice(0, 8).map((c: { brand: string; model: string; year: number; daily_price: number; company_name: string; car_id: string }) =>
+        `- ${c.brand} ${c.model} (${c.year}) ${c.daily_price} TL/gün | ${c.company_name} [ID:${c.car_id}]`
+      );
+      return `${carLines.length} araç bulundu ve kullanıcıya GÖRSEL KART olarak gösterildi.\nAraç listesi:\n${carLines.join('\n')}\n\n⚠️ Bu araçlar zaten görsel kartlarla gösteriliyor. Sen SADECE kısa bir giriş yaz. Araçları tek tek listeleme.`;
     }
 
     case 'get_rental_booking_status': {
@@ -1354,6 +1394,48 @@ async function executeToolCall(
       const { data, error } = await supabase.rpc('ai_get_taxi_ride_history', { p_user_id: userId });
       if (error) return 'Yolculuk geçmişi alınamadı.';
       return formatTaxiRideHistoryForAI(data as any);
+    }
+
+    case 'search_store_products': {
+      const rpcParams: Record<string, unknown> = {};
+      if (args.query) rpcParams.p_query = args.query;
+      if (args.category) rpcParams.p_category = args.category;
+      if (args.min_price) rpcParams.p_min_price = args.min_price;
+      if (args.max_price) rpcParams.p_max_price = args.max_price;
+      if (args.store_name) rpcParams.p_store_name = args.store_name;
+      rpcParams.p_limit = 8;
+
+      const { data, error } = await supabase.rpc('ai_search_store_products', rpcParams);
+      if (error) return 'Ürün arama başarısız: ' + error.message;
+      const result = data as { total: number; products: Array<{ product_id: string; name: string; price: number; original_price?: number; image_url: string; category: string; store_id: string; store_name: string; store_logo: string; description: string; rating: number; review_count: number; free_shipping: boolean; fast_delivery: boolean; promotion_label?: string }> };
+
+      // Collect for visual cards (reuse searchResultsCollector)
+      if (searchResultsCollector && result.products) {
+        for (const p of result.products.slice(0, 8)) {
+          searchResultsCollector.push({
+            id: p.product_id,
+            name: p.name,
+            price: p.price,
+            original_price: p.original_price,
+            image_url: p.image_url || '',
+            merchant_id: p.store_id,
+            merchant_name: p.store_name,
+            merchant_type: 'store',
+            description: p.description,
+          });
+        }
+      }
+
+      if (!result.products || result.products.length === 0) return 'Aradığınız kriterlere uygun ürün bulunamadı.';
+      const lines = result.products.map((p, i) => {
+        let line = `${i + 1}. ${p.name} - ${p.price} TL`;
+        if (p.original_price && p.original_price > p.price) line += ` (eski: ${p.original_price} TL)`;
+        line += ` | ${p.store_name} | ${p.category}`;
+        if (p.free_shipping) line += ' | Ücretsiz kargo';
+        if (p.promotion_label) line += ` | ${p.promotion_label}`;
+        return line;
+      });
+      return `${result.total} ürün bulundu:\n${lines.join('\n')}`;
     }
 
     default:
@@ -1519,7 +1601,7 @@ Deno.serve(async (req: Request) => {
 13. ⛔ ÜRÜN EŞLEŞME KURALI: add_to_cart çağırırken product_id, name, price, merchant_id bilgilerinin TUTARLI olduğundan emin ol. Ayran için onay verdiyse ayranın ID'sini gönder, Somon Izgara'nın değil. Sohbet geçmişindeki son assistant mesajında hangi ürünü önerdiysen SADECE onu ekle.
 14. ⛔ ASLA kullanıcı yerine seçim YAPMA. "Ben X'i seçiyorum", "X'i ekliyorum" gibi kendi kararını verme. Seçenekleri sun ve kullanıcının seçmesini bekle. Sadece kullanıcı açıkça bir ürün adı söylediğinde veya onay verdiğinde add_to_cart çağır.
 15. ⛔ BİLGİ TEKRARLAMA: Daha önce söylediğin bilgileri (sepete eklenen ürünler, fiyatlar) tekrar etme. Kısa ve yeni bilgi odaklı yanıtlar ver.
-16. 🚗 ARAÇ KİRALAMA: Kullanıcı araç kiralamak istediğinde search_rental_cars aracını kullan. Kategori eşleştirmeleri: ekonomi/ucuz→economy, kompakt→compact, orta/sedan→midsize, jeep/arazi→suv, lüks/premium→luxury, minibüs→van. Tarih belirtilmişse pickup_date ve dropoff_date parametrelerini ISO formatında gönder. "Uygun fiyatlı" derse max_daily_price=900 gibi makul bir sınır koy.
+16. 🚗 ARAÇ KİRALAMA: Kullanıcı araç kiralamak istediğinde search_rental_cars aracını kullan. Kategori eşleştirmeleri: ekonomi/ucuz→economy, kompakt→compact, orta/sedan→midsize, jeep/arazi→suv, lüks/premium→luxury, minibüs→van. ⚠️ ZORUNLU: Kullanıcı tarih belirtmişse pickup_date ve dropoff_date parametrelerini KESİNLİKLE ISO formatında gönder (ör: "5-15 şubat"→pickup_date:"2026-02-05T10:00:00Z",dropoff_date:"2026-02-15T10:00:00Z"). Tarih göndermezsen rezervasyon ekranında yanlış toplam fiyat gösterilir! "Uygun fiyatlı" derse max_daily_price=900 gibi makul bir sınır koy.
 17. ⚡ ARAÇ KİRALAMA SONUÇLARI GÖSTERME: Araç kiralama sonuçları kullanıcıya GÖRSEL KART olarak otomatik gösterilecek. Sen sadece KISA bir giriş yaz (ör: "3 araç buldum:", "İşte uygun araçlar:"). Araçları tek tek listeleme, fiyat yazma, detay verme. Kartlar zaten marka, model, fiyat ve kirala butonu ile gösteriliyor. Sadece kısa giriş + varsa genel öneri yaz.
 18. 📋 KİRALAMA REZERVASYONU: Kullanıcı "rezervasyonum var mı", "kiralama durumum" derse get_rental_booking_status aracını kullan.
 19. 🚘 SATILIK ARAÇ: Kullanıcı araba almak, satılık araç aramak veya araç ilanlarına bakmak istediğinde search_car_listings aracını kullan. Marka eşleştirmeleri: "beemer/bimer"→BMW, "mersedes"→Mercedes. Kasa tipi eşleştirmeleri: jeep/arazi→suv, station→wagon, cabrio→convertible. "Uygun fiyatlı" derse max_price=500000, "ucuz araba" derse max_price=300000 gibi makul sınırlar koy. Sonuçları kısa özetle sun.
@@ -1528,7 +1610,8 @@ Deno.serve(async (req: Request) => {
 22. 🚕 TAKSİ FİYAT: "Taksi ne kadar", "ücret tahmini" sorularında get_taxi_fare_estimate ile araç tiplerini ve fiyatları göster.
 23. 🚕 TAKSİ DURUM: "Taksim nerede", "sürücü nerede", "yolculuğum" sorularında get_taxi_ride_status kullan.
 24. 🚕 TAKSİ İPTAL: İptal isteğinde cancel_taxi_ride(confirmed=false) ile kontrol, kullanıcı onaylarsa confirmed=true ile iptal et. (Sipariş iptali ile aynı 2 adımlı pattern)
-25. 🚕 TAKSİ GEÇMİŞ: "Önceki yolculuklarım", "taksi geçmişim" sorularında get_taxi_ride_history kullan.`;
+25. 🚕 TAKSİ GEÇMİŞ: "Önceki yolculuklarım", "taksi geçmişim" sorularında get_taxi_ride_history kullan.
+26. 🛍️ MAĞAZA ÜRÜN ARAMA: Kullanıcı alışveriş yapmak, ürün aramak veya fiyat sorgulamak istediğinde search_store_products aracını kullan. Kategoriler: Elektronik, Giyim, Kozmetik, Ev & Yaşam, Spor & Outdoor, Telefon & Aksesuar, Ayakkabı & Çanta, vb. "Ucuz" derse max_price ile düşük sınır koy. Sonuçlar kullanıcıya GÖRSEL KART olarak otomatik gösterilecek. Sen sadece kısa giriş yaz, ürünleri tek tek listeleme.`;
 
     // User preferences & allergies
     if (userPrefs) {
@@ -1597,7 +1680,7 @@ Deno.serve(async (req: Request) => {
 
     // Include previous search results context so AI can use product IDs for add_to_cart
     if (lastSearchContext) {
-      systemContent += `\n\n[ÖNCEKİ ARAMA SONUÇLARI - Kullanıcı onay verdiğinde add_to_cart için bu ürün bilgilerini kullan, tekrar arama YAPMA]:\n${lastSearchContext.substring(0, 2000)}`;
+      systemContent += `\n\n[ÖNCEKİ ARAMA SONUÇLARI - Kullanıcı "evet/tamam/ekle/onaylıyorum" gibi ONAY verirse bu bilgilerden add_to_cart çağır. ANCAK kullanıcı farklı/yeni bir ürün istiyorsa veya önceki sonuçlarda olmayan bir ürün soruyorsa YENİDEN search_food çağır]:\n${lastSearchContext.substring(0, 2000)}`;
     }
     if (lastCartContext) {
       systemContent += `\n\n[SEPET DURUMU]:\n${lastCartContext}`;
@@ -1894,9 +1977,12 @@ Deno.serve(async (req: Request) => {
 
             controller.enqueue(encoder.encode(`event: done\ndata: ${JSON.stringify({ message: fullMessage, tokens_used: totalTokens })}\n\n`));
 
-            // Save to DB (fire and forget)
+            // Save to DB (fire and forget) - include search/rental results in metadata
+            const msgMetadata: Record<string, unknown> = {};
+            if (searchResultProducts.length > 0) msgMetadata.search_results = searchResultProducts.slice(0, 8);
+            if (rentalResultProducts.length > 0) msgMetadata.rental_results = rentalResultProducts.slice(0, 8);
             Promise.all([
-              supabase.from('support_chat_messages').insert({ session_id: currentSessionId, role: 'assistant', content: fullMessage, tokens_used: totalTokens }),
+              supabase.from('support_chat_messages').insert({ session_id: currentSessionId, role: 'assistant', content: fullMessage, tokens_used: totalTokens, ...(Object.keys(msgMetadata).length > 0 && { metadata: msgMetadata }) }),
               supabase.from('support_chat_sessions').update({ updated_at: new Date().toISOString() }).eq('id', currentSessionId),
             ]).catch(err => console.error('DB save error:', err));
 
@@ -1937,9 +2023,12 @@ Deno.serve(async (req: Request) => {
       audioBase64 = await generateTTSAudio(aiMessage, OPENAI_API_KEY);
     }
 
-    // Save
+    // Save - include search/rental results in metadata
+    const nsMeta: Record<string, unknown> = {};
+    if (searchResultProducts.length > 0) nsMeta.search_results = searchResultProducts.slice(0, 8);
+    if (rentalResultProducts.length > 0) nsMeta.rental_results = rentalResultProducts.slice(0, 8);
     await Promise.all([
-      supabase.from('support_chat_messages').insert({ session_id: currentSessionId, role: 'assistant', content: aiMessage, tokens_used: tokensUsed }),
+      supabase.from('support_chat_messages').insert({ session_id: currentSessionId, role: 'assistant', content: aiMessage, tokens_used: tokensUsed, ...(Object.keys(nsMeta).length > 0 && { metadata: nsMeta }) }),
       supabase.from('support_chat_sessions').update({ updated_at: new Date().toISOString() }).eq('id', currentSessionId),
     ]);
 

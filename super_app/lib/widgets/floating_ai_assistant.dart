@@ -17,6 +17,14 @@ import '../core/router/app_router.dart';
 import '../models/taxi/taxi_models.dart';
 import '../screens/taxi/taxi_ride_screen.dart' hide AnimatedBuilder;
 
+class _PendingVoiceResults {
+  final String userMessage;
+  final String aiMessage;
+  final List<Map<String, dynamic>>? products;
+  final List<Map<String, dynamic>>? rentalCars;
+  const _PendingVoiceResults({required this.userMessage, required this.aiMessage, this.products, this.rentalCars});
+}
+
 class FloatingAIAssistant extends ConsumerStatefulWidget {
   const FloatingAIAssistant({super.key});
 
@@ -78,6 +86,7 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
   Timer? _voiceResponseDismissTimer;
   String? _voiceSessionId;
   bool _voiceServicesInitialized = false;
+  _PendingVoiceResults? _pendingVoiceResults;
 
   @override
   void initState() {
@@ -312,7 +321,7 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
     setState(() => _isVoiceMode = false);
 
     // Ses tanıyıcıya son sesleri işlemesi için kısa süre ver
-    await Future.delayed(const Duration(milliseconds: 600));
+    await Future.delayed(const Duration(milliseconds: 300));
     await voiceInputService.stopListening();
 
     final text = _voicePartialText.trim();
@@ -344,7 +353,6 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
         message: text,
         sessionId: _voiceSessionId,
         screenContext: screenContext.toJson(),
-        generateAudio: true,
       );
 
       if (!mounted) return;
@@ -353,25 +361,51 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
         _voiceSessionId = response['session_id'];
         final aiMsg = response['message'] ?? '';
 
-        setState(() {
-          _isVoiceProcessing = false;
-          _voiceResponseText = aiMsg;
-          _showVoiceResponse = true;
-        });
-
-        // Inline audio varsa doğrudan çal, yoksa ayrı TTS çağrısı yap
-        voiceOutputService.setEnabled(true);
-        final inlineAudio = response['audio'] as String?;
-        void onAudioComplete() {
-          if (!mounted) return;
-          _voiceResponseDismissTimer?.cancel();
-          _voiceResponseDismissTimer = Timer(const Duration(seconds: 5), () {
-            if (mounted) _dismissVoiceResponse();
-          });
+        // Store search/rental results from voice response for chat dialog
+        final searchResults = (response['search_results'] as List<dynamic>?)
+            ?.map((e) => Map<String, dynamic>.from(e as Map))
+            .toList();
+        final rentalResults = (response['rental_results'] as List<dynamic>?)
+            ?.map((e) => Map<String, dynamic>.from(e as Map))
+            .toList();
+        if (searchResults != null && searchResults.isNotEmpty || rentalResults != null && rentalResults.isNotEmpty) {
+          _pendingVoiceResults = _PendingVoiceResults(
+            userMessage: text,
+            aiMessage: aiMsg,
+            products: searchResults,
+            rentalCars: rentalResults,
+          );
         }
-        if (inlineAudio != null && inlineAudio.isNotEmpty) {
-          voiceOutputService.playBase64Audio(inlineAudio, onComplete: onAudioComplete);
+
+        // Ürün/araç sonucu varsa bottom sheet ile göster, sesi arkadan çal
+        if (_pendingVoiceResults != null) {
+          final voiceResults = _pendingVoiceResults!;
+          _pendingVoiceResults = null;
+          setState(() {
+            _isVoiceProcessing = false;
+            _showVoiceResponse = false;
+          });
+          // Bottom sheet ile sonuçları göster
+          _showSearchResultsBottomSheet(voiceResults);
+          // Sesi arkadan çalmaya devam et
+          voiceOutputService.setEnabled(true);
+          voiceOutputService.speak(aiMsg);
         } else {
+          setState(() {
+            _isVoiceProcessing = false;
+            _voiceResponseText = aiMsg;
+            _showVoiceResponse = true;
+          });
+
+          // TTS: Ayrı çağrı ile paralel ses üret
+          voiceOutputService.setEnabled(true);
+          void onAudioComplete() {
+            if (!mounted) return;
+            _voiceResponseDismissTimer?.cancel();
+            _voiceResponseDismissTimer = Timer(const Duration(seconds: 5), () {
+              if (mounted) _dismissVoiceResponse();
+            });
+          }
           voiceOutputService.speak(aiMsg, onComplete: onAudioComplete);
         }
 
@@ -460,6 +494,128 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
         merchantName: merchantName,
       ));
     }
+  }
+
+  void _showSearchResultsBottomSheet(_PendingVoiceResults results) {
+    final navContext = rootNavigatorKey.currentContext;
+    if (navContext == null) return;
+
+    final products = results.products;
+    final rentalCars = results.rentalCars;
+    final hasProducts = products != null && products.isNotEmpty;
+    final hasRentals = rentalCars != null && rentalCars.isNotEmpty;
+    if (!hasProducts && !hasRentals) return;
+
+    final totalCount = (products?.length ?? 0) + (rentalCars?.length ?? 0);
+
+    showModalBottomSheet(
+      context: navContext,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.45,
+        maxChildSize: 0.85,
+        minChildSize: 0.2,
+        builder: (sheetContext, scrollController) => Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFF1a1a2e),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: ListView(
+            controller: scrollController,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            children: [
+              // Drag handle
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.only(top: 10, bottom: 8),
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(60),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              // Header
+              Row(
+                children: [
+                  const Icon(Icons.search, color: Color(0xFF00D4FF), size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    hasProducts ? 'Bulunan Urunler' : 'Bulunan Araclar',
+                    style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF00D4FF).withAlpha(30),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text('$totalCount', style: const TextStyle(color: Color(0xFF00D4FF), fontSize: 12, fontWeight: FontWeight.bold)),
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(sheetContext),
+                    child: const Icon(Icons.close, color: Colors.white54, size: 22),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              // Product cards
+              if (hasProducts)
+                _AiProductCardList(
+                  products: products,
+                  onAddToCart: _addToCart,
+                  onProductTap: (product) {
+                    Navigator.pop(sheetContext);
+                    final id = product['id'] as String? ?? '';
+                    if (id.isEmpty) return;
+                    final merchantType = product['merchant_type'] as String? ?? 'restaurant';
+                    final isStore = merchantType == 'store' || merchantType == 'market';
+                    Future.delayed(const Duration(milliseconds: 200), () {
+                      final ctx = rootNavigatorKey.currentContext;
+                      if (ctx == null) return;
+                      if (isStore) {
+                        GoRouter.of(ctx).push('/store/product/$id');
+                      } else {
+                        GoRouter.of(ctx).push('/food/item/$id', extra: {
+                          'name': product['name'] ?? '',
+                          'price': (product['price'] as num?)?.toDouble() ?? 0.0,
+                          'imageUrl': product['image_url'] ?? '',
+                          'restaurantName': product['merchant_name'] ?? '',
+                        });
+                      }
+                    });
+                  },
+                ),
+              // Rental car cards
+              if (hasRentals)
+                _AiRentalCardList(
+                  cars: rentalCars,
+                  onBookNow: (car) {
+                    Navigator.pop(sheetContext);
+                    final carId = car['car_id'] as String? ?? '';
+                    if (carId.isEmpty) return;
+                    final pickupDate = car['pickup_date'] as String?;
+                    final dropoffDate = car['dropoff_date'] as String?;
+                    Future.delayed(const Duration(milliseconds: 200), () {
+                      final ctx = rootNavigatorKey.currentContext;
+                      if (ctx != null) {
+                        GoRouter.of(ctx).push('/rental/car/$carId', extra: {
+                          if (pickupDate != null) 'pickup_date': pickupDate,
+                          if (dropoffDate != null) 'dropoff_date': dropoffDate,
+                        });
+                      }
+                    });
+                  },
+                ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _dismissVoiceResponse() {
@@ -576,12 +732,15 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
             onClose: _closeChat,
             screenContext: screenContext,
             onAddToCart: _addToCart,
+            pendingVoiceResults: _pendingVoiceResults,
           ),
         ),
       ),
     );
 
     Overlay.of(context, rootOverlay: true).insert(_chatOverlayEntry!);
+    // Clear pending voice results after passing to dialog
+    _pendingVoiceResults = null;
   }
 
   void _closeChat() {
@@ -1563,7 +1722,8 @@ class _AIChatDialog extends StatefulWidget {
   final VoidCallback onClose;
   final AiScreenContext screenContext;
   final void Function(Map<String, dynamic> payload)? onAddToCart;
-  const _AIChatDialog({required this.onClose, required this.screenContext, this.onAddToCart});
+  final _PendingVoiceResults? pendingVoiceResults;
+  const _AIChatDialog({required this.onClose, required this.screenContext, this.onAddToCart, this.pendingVoiceResults});
 
   @override
   State<_AIChatDialog> createState() => _AIChatDialogState();
@@ -1625,14 +1785,56 @@ class _AIChatDialogState extends State<_AIChatDialog> {
             final content = msg['content'] as String? ?? '';
             return !_isInternalMessage(content);
           })
-          .map((msg) => _ChatMessage(
-            role: msg['role'],
-            content: msg['content'],
-            timestamp: DateTime.tryParse(msg['created_at'] ?? ''),
-          )));
+          .map((msg) {
+            final metadata = msg['metadata'] as Map<String, dynamic>?;
+            final products = (metadata?['search_results'] as List<dynamic>?)
+                ?.map((e) => Map<String, dynamic>.from(e as Map))
+                .toList();
+            final rentalCars = (metadata?['rental_results'] as List<dynamic>?)
+                ?.map((e) => Map<String, dynamic>.from(e as Map))
+                .toList();
+            return _ChatMessage(
+              role: msg['role'],
+              content: _cleanInternalTags(msg['content'] ?? ''),
+              timestamp: DateTime.tryParse(msg['created_at'] ?? ''),
+              products: products,
+              rentalCars: rentalCars,
+            );
+          }));
       });
     } else {
       _messages.add(_ChatMessage(role: 'assistant', content: 'Merhaba! Size nasil yardimci olabilirim?', timestamp: DateTime.now()));
+    }
+
+    // Append pending voice results (search/rental cards from voice mode)
+    final pending = widget.pendingVoiceResults;
+    if (pending != null) {
+      final cleanedMsg = _cleanInternalTags(pending.aiMessage);
+      bool handled = false;
+      // Check if message is already in history (edge function saves to DB before responding)
+      for (int i = _messages.length - 1; i >= 0; i--) {
+        if (_messages[i].role == 'assistant') {
+          if (_messages[i].content == cleanedMsg) {
+            // Same message in history - attach products if missing
+            if (_messages[i].products == null || _messages[i].products!.isEmpty) {
+              _messages[i].products = pending.products;
+              _messages[i].rentalCars = pending.rentalCars;
+            }
+            handled = true;
+          }
+          break;
+        }
+      }
+      if (!handled) {
+        _messages.add(_ChatMessage(role: 'user', content: pending.userMessage, timestamp: DateTime.now()));
+        _messages.add(_ChatMessage(
+          role: 'assistant',
+          content: cleanedMsg,
+          timestamp: DateTime.now(),
+          products: pending.products,
+          rentalCars: pending.rentalCars,
+        ));
+      }
     }
 
     setState(() => _isInitializing = false);
@@ -1811,6 +2013,28 @@ class _AIChatDialogState extends State<_AIChatDialog> {
       ));
     });
     _scrollToBottom();
+  }
+
+  void _handleProductTap(Map<String, dynamic> product) {
+    final id = product['id'] as String? ?? '';
+    if (id.isEmpty) return;
+    final merchantType = product['merchant_type'] as String? ?? 'restaurant';
+    final isStore = merchantType == 'store' || merchantType == 'market';
+    widget.onClose();
+    Future.delayed(const Duration(milliseconds: 300), () {
+      final navContext = rootNavigatorKey.currentContext;
+      if (navContext == null) return;
+      if (isStore) {
+        GoRouter.of(navContext).push('/store/product/$id');
+      } else {
+        GoRouter.of(navContext).push('/food/item/$id', extra: {
+          'name': product['name'] ?? '',
+          'price': (product['price'] as num?)?.toDouble() ?? 0.0,
+          'imageUrl': product['image_url'] ?? '',
+          'restaurantName': product['merchant_name'] ?? '',
+        });
+      }
+    });
   }
 
   void _handleNavigate(Map<String, dynamic> payload) {
@@ -2012,6 +2236,7 @@ class _AIChatDialogState extends State<_AIChatDialog> {
                     _AiProductCardList(
                       products: message.products!,
                       onAddToCart: (payload) => _handleAddToCart(payload),
+                      onProductTap: (product) => _handleProductTap(product),
                     ),
                   if (hasRentalCars)
                     _AiRentalCardList(
@@ -2019,7 +2244,18 @@ class _AIChatDialogState extends State<_AIChatDialog> {
                       onBookNow: (car) {
                         final carId = car['car_id'] as String? ?? '';
                         if (carId.isNotEmpty) {
-                          context.push('/rental/car/$carId');
+                          final pickupDate = car['pickup_date'] as String?;
+                          final dropoffDate = car['dropoff_date'] as String?;
+                          widget.onClose();
+                          Future.delayed(const Duration(milliseconds: 300), () {
+                            final navContext = rootNavigatorKey.currentContext;
+                            if (navContext != null) {
+                              GoRouter.of(navContext).push('/rental/car/$carId', extra: {
+                                if (pickupDate != null) 'pickup_date': pickupDate,
+                                if (dropoffDate != null) 'dropoff_date': dropoffDate,
+                              });
+                            }
+                          });
                         }
                       },
                     ),
@@ -2184,8 +2420,9 @@ class _ChatMessage {
 class _AiProductCardList extends StatelessWidget {
   final List<Map<String, dynamic>> products;
   final void Function(Map<String, dynamic> payload) onAddToCart;
+  final void Function(Map<String, dynamic> product)? onProductTap;
 
-  const _AiProductCardList({required this.products, required this.onAddToCart});
+  const _AiProductCardList({required this.products, required this.onAddToCart, this.onProductTap});
 
   @override
   Widget build(BuildContext context) {
@@ -2209,6 +2446,7 @@ class _AiProductCardList extends StatelessWidget {
                 'quantity': 1,
               });
             },
+            onTap: onProductTap != null ? () => onProductTap!(product) : null,
           );
         }).toList(),
       ),
@@ -2219,8 +2457,9 @@ class _AiProductCardList extends StatelessWidget {
 class _AiProductCard extends StatelessWidget {
   final Map<String, dynamic> product;
   final VoidCallback onAddToCart;
+  final VoidCallback? onTap;
 
-  const _AiProductCard({required this.product, required this.onAddToCart});
+  const _AiProductCard({required this.product, required this.onAddToCart, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -2232,7 +2471,9 @@ class _AiProductCard extends StatelessWidget {
     final hasDiscount = originalPrice != null && originalPrice > price;
     final hasId = (product['id'] as String? ?? '').isNotEmpty;
 
-    return Container(
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
       margin: const EdgeInsets.only(bottom: 5),
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
@@ -2289,6 +2530,7 @@ class _AiProductCard extends StatelessWidget {
               ),
             ),
         ],
+      ),
       ),
     );
   }

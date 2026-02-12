@@ -1,0 +1,52 @@
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body { margin: 0; padding: 0; background-color: #f4f6f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    .wrapper { max-width: 600px; margin: 0 auto; padding: 40px 20px; }
+    .card { background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
+    .header { background: linear-gradient(135deg, #256AF4 0%, #5B8DEF 100%); padding: 40px 32px; text-align: center; }
+    .header h1 { color: #ffffff; font-size: 28px; font-weight: 700; margin: 0 0 4px 0; letter-spacing: -0.5px; }
+    .header p { color: rgba(255,255,255,0.85); font-size: 14px; margin: 0; }
+    .body { padding: 40px 32px; }
+    .body h2 { color: #1a1a2e; font-size: 22px; font-weight: 600; margin: 0 0 12px 0; }
+    .body p { color: #4a5568; font-size: 15px; line-height: 1.6; margin: 0 0 16px 0; }
+    .btn-wrapper { text-align: center; margin: 32px 0; }
+    .btn { display: inline-block; background: linear-gradient(135deg, #256AF4 0%, #5B8DEF 100%); color: #ffffff !important; text-decoration: none; padding: 14px 40px; border-radius: 12px; font-size: 16px; font-weight: 600; letter-spacing: 0.3px; }
+    .info-box { background: #f0f5ff; border: 1px solid #d4e3ff; border-radius: 12px; padding: 16px; margin: 24px 0; }
+    .info-box p { color: #4a6fa5; font-size: 13px; margin: 0; line-height: 1.5; }
+    .divider { height: 1px; background: #e8ecf1; margin: 24px 0; }
+    .footer { padding: 24px 32px; text-align: center; }
+    .footer p { color: #9ca3af; font-size: 12px; margin: 0 0 4px 0; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="card">
+      <div class="header">
+        <h1>SuperCyp</h1>
+        <p>Davet</p>
+      </div>
+      <div class="body">
+        <h2>SuperCyp'e Davet Edildiniz!</h2>
+        <p>Merhaba,</p>
+        <p>SuperCyp ailesine katilmaniz icin davet edildiniz. Hesabinizi olusturmak ve hizmetlerimizden yararlanmaya baslamak icin asagidaki butona tiklayin.</p>
+        <div class="btn-wrapper">
+          <a href="{{ .ConfirmationURL }}" class="btn" target="_blank">Daveti Kabul Et</a>
+        </div>
+        <div class="info-box">
+          <p><strong>SuperCyp nedir?</strong> Yemek siparisi, taksi, kurye, emlak, arac kiralama ve daha fazlasi - 8 hizmeti tek uygulamada birlestiren platform.</p>
+        </div>
+        <div class="divider"></div>
+        <p style="font-size:13px; color:#9ca3af;">Buton calismiyorsa asagidaki linki tarayiciniza kopyalayip yapistirin:</p>
+        <p style="font-size:12px; color:#256AF4; word-break:break-all;">{{ .ConfirmationURL }}</p>
+      </div>
+      <div class="footer">
+        <p><strong>SuperCyp</strong> - 8 Hizmeti Tek Uygulamada</p>
+        <p>Bu otomatik bir e-postadir, lutfen yanit vermeyiniz.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

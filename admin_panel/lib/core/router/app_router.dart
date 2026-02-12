@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../features/auth/screens/login_screen.dart';
+import '../../features/auth/screens/forgot_password_screen.dart';
 import '../../features/dashboard/screens/dashboard_screen.dart';
 import '../../features/users/screens/users_screen.dart';
 import '../../features/merchants/screens/merchants_screen.dart';
@@ -57,6 +58,7 @@ import '../../shared/widgets/admin_shell.dart';
 
 class AppRoutes {
   static const String login = '/login';
+  static const String forgotPassword = '/forgot-password';
   static const String dashboard = '/';
   static const String users = '/users';
   static const String merchants = '/merchants';
@@ -137,6 +139,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.login,
         name: 'login',
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.forgotPassword,
+        name: 'forgot-password',
+        builder: (context, state) => const ForgotPasswordScreen(),
       ),
       ShellRoute(
         builder: (context, state, child) => AdminShell(child: child),

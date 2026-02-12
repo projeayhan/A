@@ -193,6 +193,7 @@ class TaxiDriver {
   final String fullName;
   final String? phone;
   final double rating;
+  final int totalRatings;
   final int totalRides;
   final double? currentLatitude;
   final double? currentLongitude;
@@ -207,7 +208,8 @@ class TaxiDriver {
     required this.id,
     required this.fullName,
     this.phone,
-    this.rating = 5.0,
+    this.rating = 0.0,
+    this.totalRatings = 0,
     this.totalRides = 0,
     this.currentLatitude,
     this.currentLongitude,
@@ -219,12 +221,15 @@ class TaxiDriver {
     this.avatarUrl,
   });
 
+  bool get isNewDriver => totalRatings < 5;
+
   factory TaxiDriver.fromJson(Map<String, dynamic> json) {
     return TaxiDriver(
       id: json['id'] as String,
       fullName: json['full_name'] as String? ?? 'Sürücü',
       phone: json['phone'] as String?,
-      rating: (json['rating'] as num?)?.toDouble() ?? 5.0,
+      rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
+      totalRatings: json['total_ratings'] as int? ?? 0,
       totalRides: json['total_rides'] as int? ?? 0,
       currentLatitude: (json['current_latitude'] as num?)?.toDouble(),
       currentLongitude: (json['current_longitude'] as num?)?.toDouble(),

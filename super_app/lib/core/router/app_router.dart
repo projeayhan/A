@@ -33,6 +33,8 @@ import '../../screens/store/store_checkout_screen.dart';
 import '../../screens/taxi/taxi_home_screen.dart';
 import '../../screens/rental/rental_home_screen.dart';
 import '../../screens/rental/my_bookings_screen.dart';
+import '../../screens/rental/car_detail_screen.dart' as rental_detail;
+import '../services/rental_service.dart';
 import '../../screens/emlak/emlak_home_screen.dart';
 import '../../screens/emlak/property_detail_screen.dart';
 import '../../screens/emlak/property_search_screen.dart';
@@ -56,6 +58,7 @@ import '../../screens/jobs/add_job_listing_screen.dart';
 import '../../screens/jobs/my_job_listings_screen.dart';
 import '../../models/jobs/job_models.dart';
 import '../../screens/support/ai_chat_screen.dart';
+import '../../screens/support/help_center_screen.dart';
 import '../../screens/grocery/grocery_home_screen.dart';
 import '../../models/store/store_model.dart';
 import '../../models/store/store_product_model.dart';
@@ -126,19 +129,39 @@ class AppRoutes {
 
   // Support Routes
   static const String aiChat = '/support/ai-chat';
+  static const String helpCenter = '/help-center';
 }
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
 
-// Router Provider
+// Auth state listenable for GoRouter refresh
+class AuthNotifierListenable extends ChangeNotifier {
+  AuthStatus _status = AuthStatus.initial;
+
+  void update(AuthState authState) {
+    if (_status != authState.status) {
+      _status = authState.status;
+      notifyListeners();
+    }
+  }
+}
+
+final _authListenable = AuthNotifierListenable();
+
+// Router Provider - GoRouter sadece BİR KEZ oluşturulur
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authProvider);
+  // Auth değişikliklerini dinle ama GoRouter'ı yeniden OLUŞTURMA
+  ref.listen(authProvider, (_, next) {
+    _authListenable.update(next);
+  });
 
   return GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: AppRoutes.login,
     debugLogDiagnostics: true,
+    refreshListenable: _authListenable,
     redirect: (context, state) {
+      final authState = ref.read(authProvider);
       final isLoggedIn = authState.status == AuthStatus.authenticated;
       final isLoggingIn =
           state.matchedLocation == AppRoutes.login ||
@@ -394,6 +417,34 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const MyBookingsScreen(),
           ),
           GoRoute(
+            path: '/rental/car/:id',
+            name: 'rentalCarDetail',
+            builder: (context, state) {
+              final carId = state.pathParameters['id'] ?? '';
+              final extra = state.extra as Map<String, dynamic>?;
+              final pickupDateStr = extra?['pickup_date'] as String?;
+              final dropoffDateStr = extra?['dropoff_date'] as String?;
+              final pickupDate = pickupDateStr != null ? DateTime.tryParse(pickupDateStr) : null;
+              final dropoffDate = dropoffDateStr != null ? DateTime.tryParse(dropoffDateStr) : null;
+              return FutureBuilder(
+                future: RentalService.getCarById(carId),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Scaffold(body: Center(child: CircularProgressIndicator()));
+                  }
+                  if (snapshot.data != null) {
+                    return rental_detail.CarDetailScreen(
+                      car: snapshot.data!,
+                      pickupDate: pickupDate,
+                      dropoffDate: dropoffDate,
+                    );
+                  }
+                  return const Scaffold(body: Center(child: Text('Araç bulunamadı')));
+                },
+              );
+            },
+          ),
+          GoRoute(
             path: AppRoutes.service,
             name: 'service',
             builder: (context, state) =>
@@ -607,6 +658,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: AppRoutes.aiChat,
             name: 'aiChat',
             builder: (context, state) => const AiChatScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.helpCenter,
+            name: 'helpCenter',
+            builder: (context, state) => const HelpCenterScreen(),
           ),
         ],
       ),

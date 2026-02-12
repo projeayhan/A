@@ -143,19 +143,31 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
     try {
       final supabase = Supabase.instance.client;
 
-      // Get reviews for this menu item
+      // Get merchant_id for this menu item
+      final menuItem = await supabase
+          .from('menu_items')
+          .select('merchant_id')
+          .eq('id', widget.itemId)
+          .maybeSingle();
+
+      if (menuItem == null) return;
+      final merchantId = menuItem['merchant_id'] as String;
+
+      // Get reviews for this merchant (order reviews)
       final reviewsResponse = await supabase
-          .from('menu_item_reviews')
+          .from('reviews')
           .select('id, rating, comment, customer_name, created_at')
-          .eq('menu_item_id', widget.itemId)
+          .eq('merchant_id', merchantId)
+          .not('comment', 'is', null)
           .order('created_at', ascending: false)
           .limit(5);
 
       // Get total count
       final countResponse = await supabase
-          .from('menu_item_reviews')
+          .from('reviews')
           .select('id')
-          .eq('menu_item_id', widget.itemId);
+          .eq('merchant_id', merchantId)
+          .not('comment', 'is', null);
 
       setState(() {
         _reviews = List<Map<String, dynamic>>.from(reviewsResponse);

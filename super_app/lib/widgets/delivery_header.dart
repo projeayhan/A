@@ -8,6 +8,7 @@ import '../core/providers/address_provider.dart';
 import '../core/providers/store_follow_provider.dart';
 import '../core/providers/notification_provider.dart';
 import '../core/providers/cart_provider.dart';
+import '../core/providers/store_cart_provider.dart';
 
 class DeliveryHeader extends ConsumerStatefulWidget {
   final Color? backgroundColor;
@@ -749,7 +750,9 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
     final selectedAddress = ref.watch(selectedAddressProvider);
     final notificationState = ref.watch(notificationProvider);
     final storeNotificationState = ref.watch(storeNotificationProvider);
-    final cartCount = ref.watch(cartItemCountProvider);
+    final foodCartCount = ref.watch(cartItemCountProvider);
+    final storeCartCount = ref.watch(storeCartItemCountProvider);
+    final cartCount = foodCartCount + storeCartCount;
     final generalUnreadCount = notificationState.unreadCount;
     final storeUnreadCount = storeNotificationState.unreadCount;
     final unreadCount = generalUnreadCount + storeUnreadCount;
@@ -926,7 +929,7 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
             if (widget.showCart) ...[
               const SizedBox(width: 8),
               GestureDetector(
-                onTap: widget.onCartTap ?? () => context.push('/food/cart'),
+                onTap: widget.onCartTap ?? () => context.push(foodCartCount > 0 ? '/food/cart' : '/store/cart'),
                 child: Container(
                   width: 44,
                   height: 44,

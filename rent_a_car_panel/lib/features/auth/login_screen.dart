@@ -1,3 +1,4 @@
+import 'dart:math' show sin, pi;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -22,6 +23,7 @@ class _LoginScreenState extends State<LoginScreen>
   late AnimationController _entranceController;
   late Animation<double> _fadeIn;
   late Animation<Offset> _slideUp;
+  late AnimationController _shimmerController;
 
   static const _accent = Color(0xFFFF6B6B);
   static const _accentLight = Color(0xFFFF8A8A);
@@ -34,6 +36,11 @@ class _LoginScreenState extends State<LoginScreen>
       vsync: this,
       duration: const Duration(seconds: 3),
     )..repeat(reverse: true);
+
+    _shimmerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3000),
+    )..repeat();
 
     _entranceController = AnimationController(
       vsync: this,
@@ -240,40 +247,27 @@ class _LoginScreenState extends State<LoginScreen>
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // Animated logo
+                        // Logo with animated glow
                         AnimatedBuilder(
                           animation: _glowController,
-                          builder: (context, child) {
-                            final glow =
-                                0.2 + _glowController.value * 0.15;
-                            return Container(
-                              width: 76,
-                              height: 76,
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [_accent, _accentSecondary],
+                          builder: (context, child) => Container(
+                            decoration: BoxDecoration(
+                              boxShadow: [
+                                BoxShadow(
+                                  color: _accent.withValues(alpha: 0.1 + _glowController.value * 0.1),
+                                  blurRadius: 60,
+                                  spreadRadius: 20,
                                 ),
-                                borderRadius: BorderRadius.circular(22),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: _accent.withValues(
-                                        alpha: glow),
-                                    blurRadius: 32,
-                                    spreadRadius: 2,
-                                  ),
-                                ],
-                              ),
-                              child: const Icon(
-                                Icons.car_rental_rounded,
-                                size: 38,
-                                color: Colors.white,
-                              ),
-                            );
-                          },
+                              ],
+                            ),
+                            child: child,
+                          ),
+                          child: Image.asset(
+                            'assets/images/supercyp_logo.png',
+                            width: 280,
+                          ),
                         ),
-                        const SizedBox(height: 28),
+                        const SizedBox(height: 16),
 
                         // Gradient title
                         ShaderMask(
@@ -429,7 +423,22 @@ class _LoginScreenState extends State<LoginScreen>
                                     return null;
                                   },
                                 ),
-                                const SizedBox(height: 24),
+                                const SizedBox(height: 8),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: TextButton(
+                                    onPressed: () => context.push('/forgot-password'),
+                                    child: const Text(
+                                      'Şifremi Unuttum',
+                                      style: TextStyle(
+                                        color: _accentLight,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
 
                                 // Login button
                                 Container(

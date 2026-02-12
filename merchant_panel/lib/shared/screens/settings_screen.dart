@@ -538,17 +538,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     try {
       final supabase = ref.read(supabaseProvider);
+      final minPrep = int.tryParse(_minPrepTimeController.text) ?? 20;
+      final maxPrep = int.tryParse(_maxPrepTimeController.text) ?? 45;
+
       await supabase
           .from('merchant_settings')
           .update({
             'min_order_amount': double.tryParse(_minOrderController.text) ?? 50,
             'delivery_fee': double.tryParse(_deliveryFeeController.text) ?? 15,
             'free_delivery_threshold': double.tryParse(_freeDeliveryController.text) ?? 150,
-            'min_preparation_time': int.tryParse(_minPrepTimeController.text) ?? 20,
-            'max_preparation_time': int.tryParse(_maxPrepTimeController.text) ?? 45,
+            'min_preparation_time': minPrep,
+            'max_preparation_time': maxPrep,
             'updated_at': DateTime.now().toIso8601String(),
           })
           .eq('merchant_id', merchant.id);
+
+      // Update delivery_time on merchants table so customers see the correct time
+      await supabase
+          .from('merchants')
+          .update({'delivery_time': '$minPrep-$maxPrep dk'})
+          .eq('id', merchant.id);
 
       setState(() => _isLoading = false);
 

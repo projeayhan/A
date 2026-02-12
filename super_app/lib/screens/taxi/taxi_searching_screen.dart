@@ -680,12 +680,29 @@ class _TaxiSearchingScreenState extends ConsumerState<TaxiSearchingScreen>
               ),
               Row(
                 children: [
-                  Icon(Icons.star_rounded, color: Colors.amber, size: 16),
-                  const SizedBox(width: 4),
-                  Text(
-                    driver.rating.toStringAsFixed(1),
-                    style: theme.textTheme.bodySmall,
-                  ),
+                  if (driver.isNewDriver) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.green.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        'Yeni Sürücü',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: Colors.green.shade700,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ] else ...[
+                    Icon(Icons.star_rounded, color: Colors.amber, size: 16),
+                    const SizedBox(width: 4),
+                    Text(
+                      driver.rating.toStringAsFixed(1),
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ],
                   const SizedBox(width: 8),
                   Text(
                     driver.vehicleInfo,

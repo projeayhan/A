@@ -25,6 +25,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   late Animation<double> _fadeIn;
   late Animation<Offset> _slideUp;
   late AnimationController _glowController;
+  late AnimationController _shimmerController;
 
   static const _accent = Color(0xFF06B6D4);
   static const _accentLight = Color(0xFF22D3EE);
@@ -54,6 +55,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       duration: const Duration(seconds: 4),
     )..repeat(reverse: true);
 
+    _shimmerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3000),
+    )..repeat();
+
     Future.delayed(const Duration(milliseconds: 200), () {
       if (mounted) _entranceController.forward();
     });
@@ -63,6 +69,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   void dispose() {
     _entranceController.dispose();
     _glowController.dispose();
+    _shimmerController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -232,7 +239,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   ),
                 ),
               ),
-              Positioned.fill(child: CustomPaint(painter: _GridPainter())),
+
               // Subtle glow
               Positioned(
                 top: -150,
@@ -288,55 +295,38 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
+                          // Logo with effects
                           AnimatedBuilder(
-                            animation: _glowController,
-                            builder: (context, _) {
-                              final glow =
-                                  0.15 + _glowController.value * 0.15;
-                              return Container(
-                                width: 80,
-                                height: 80,
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                    colors: [_accent, _accentSecondary],
-                                  ),
-                                  borderRadius: BorderRadius.circular(22),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color:
-                                          _accent.withValues(alpha: glow),
-                                      blurRadius: 40,
-                                      spreadRadius: 4,
-                                    ),
-                                  ],
-                                ),
-                                child: const Icon(
-                                  Icons.admin_panel_settings_rounded,
-                                  color: Colors.white,
-                                  size: 40,
-                                ),
+                            animation: Listenable.merge([_entranceController, _shimmerController]),
+                            builder: (context, child) {
+                              final scale = Curves.elasticOut.transform(_entranceController.value.clamp(0.0, 1.0));
+                              final sv = _shimmerController.value;
+                              final showShimmer = sv <= 0.3;
+                              final sp = showShimmer ? sv / 0.3 : 0.0;
+                              Widget logo = child!;
+                              if (showShimmer) {
+                                logo = ShaderMask(
+                                  shaderCallback: (bounds) => LinearGradient(
+                                    begin: Alignment(sp * 4 - 2, -0.3),
+                                    end: Alignment(sp * 4 - 1, 0.3),
+                                    colors: const [
+                                      Color(0x00FFFFFF),
+                                      Color(0x40FFFFFF),
+                                      Color(0x00FFFFFF),
+                                    ],
+                                  ).createShader(bounds),
+                                  blendMode: BlendMode.srcATop,
+                                  child: logo,
+                                );
+                              }
+                              return Transform.scale(
+                                scale: scale,
+                                child: logo,
                               );
                             },
-                          ),
-                          const SizedBox(height: 32),
-                          ShaderMask(
-                            shaderCallback: (bounds) =>
-                                const LinearGradient(
-                              colors: [
-                                Color(0xFFF9FAFB),
-                                _accentLight,
-                              ],
-                            ).createShader(bounds),
-                            child: const Text(
-                              'SuperCyp',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 44,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -1.5,
-                              ),
+                            child: Image.asset(
+                              'assets/images/supercyp_logo.png',
+                              width: 320,
                             ),
                           ),
                           const SizedBox(height: 8),
@@ -423,49 +413,43 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               children: [
                 if (showLogo) ...[
                   Center(
+                    // Logo with effects
                     child: AnimatedBuilder(
-                      animation: _glowController,
-                      builder: (context, _) {
-                        final glow = 0.15 + _glowController.value * 0.15;
-                        return Container(
-                          width: 64,
-                          height: 64,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [_accent, _accentSecondary],
-                            ),
-                            borderRadius: BorderRadius.circular(18),
-                            boxShadow: [
-                              BoxShadow(
-                                color: _accent.withValues(alpha: glow),
-                                blurRadius: 30,
-                                spreadRadius: 2,
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.admin_panel_settings_rounded,
-                            color: Colors.white,
-                            size: 32,
-                          ),
+                      animation: Listenable.merge([_entranceController, _shimmerController]),
+                      builder: (context, child) {
+                        final scale = Curves.elasticOut.transform(_entranceController.value.clamp(0.0, 1.0));
+                        final sv = _shimmerController.value;
+                        final showShimmer = sv <= 0.3;
+                        final sp = showShimmer ? sv / 0.3 : 0.0;
+                        Widget logo = child!;
+                        if (showShimmer) {
+                          logo = ShaderMask(
+                            shaderCallback: (bounds) => LinearGradient(
+                              begin: Alignment(sp * 4 - 2, -0.3),
+                              end: Alignment(sp * 4 - 1, 0.3),
+                              colors: const [
+                                Color(0x00FFFFFF),
+                                Color(0x40FFFFFF),
+                                Color(0x00FFFFFF),
+                              ],
+                            ).createShader(bounds),
+                            blendMode: BlendMode.srcATop,
+                            child: logo,
+                          );
+                        }
+                        return Transform.scale(
+                          scale: scale,
+                          child: logo,
                         );
                       },
+                      child: Image.asset(
+                        'assets/images/supercyp_logo.png',
+                        width: 280,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
                 ],
-                const Text(
-                  'Hoş Geldiniz',
-                  style: TextStyle(
-                    color: Color(0xFFF9FAFB),
-                    fontSize: 28,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.5,
-                  ),
-                ),
-                const SizedBox(height: 6),
                 const Text(
                   'Devam etmek için giriş yapın',
                   style: TextStyle(
@@ -527,7 +511,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                           return null;
                         },
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () => context.push('/forgot-password'),
+                          child: const Text(
+                            'Şifremi Unuttum',
+                            style: TextStyle(
+                              color: _accentLight,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
                       // Button
                       Container(
                         height: 50,
@@ -648,24 +647,4 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             ))
         .toList();
   }
-}
-
-class _GridPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFF1F2937).withValues(alpha: 0.2)
-      ..strokeWidth = 0.5;
-
-    const spacing = 50.0;
-    for (double x = 0; x < size.width; x += spacing) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
-    }
-    for (double y = 0; y < size.height; y += spacing) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

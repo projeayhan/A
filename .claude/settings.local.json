@@ -291,7 +291,30 @@
       "Bash(powershell -File:*)",
       "Bash(git -C c:/A status -s)",
       "Bash(git -C c:/A log --oneline -5)",
-      "Bash(git -C c:/A diff --stat)"
+      "Bash(git -C c:/A diff --stat)",
+      "Bash(perl:*)",
+      "Bash(cmd /c \"cd /d c:\\\\A\\\\super_app && flutter analyze 2>&1\")",
+      "Bash(cmd /c \"cd /d c:\\\\A\\\\super_app && flutter analyze\")",
+      "Bash(cmd /c \"set SUPABASE_ACCESS_TOKEN=sbp_fbe8fa99062a7be7ba9c4bbc3ffaade3e2780bb9 && supabase functions deploy ai-chat --project-ref mzgtvdgwxrlhgjboolys --no-verify-jwt 2>&1\")",
+      "Bash(SUPABASE_ACCESS_TOKEN=sbp_fbe8fa99062a7be7ba9c4bbc3ffaade3e2780bb9 supabase functions deploy:*)",
+      "Bash(SUPABASE_ACCESS_TOKEN=sbp_fbe8fa99062a7be7ba9c4bbc3ffaade3e2780bb9 /c/A/super_app/supabase/bin/supabase functions deploy:*)",
+      "Bash(supabase functions deploy:*)",
+      "Bash(supabase link:*)",
+      "Bash(supabase login:*)",
+      "WebFetch(domain:website-oc0e0lol4-ayhan-yildizs-projects-6b7fb8fa.vercel.app)",
+      "Bash(vercel domains inspect:*)",
+      "Bash(vercel logs:*)",
+      "WebFetch(domain:website-eight-beta-11.vercel.app)",
+      "Bash(git -C c:/A log:*)",
+      "Bash(git -C c:/A show 8ab6b21 --stat)",
+      "Bash(git -C c:/A stash list)",
+      "Bash(git -C c:/A reflog:*)",
+      "Bash(vercel projects ls:*)",
+      "Bash(vercel teams ls:*)",
+      "Bash(vercel switch:*)",
+      "WebFetch(domain:website-6jide5uwb-ayhan-yildizs-projects-6b7fb8fa.vercel.app)",
+      "Bash(cloc:*)",
+      "Bash(pip install:*)"
     ]
   }
 }

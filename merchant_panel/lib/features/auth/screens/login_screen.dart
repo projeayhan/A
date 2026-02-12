@@ -25,7 +25,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   late AnimationController _entranceController;
   late Animation<double> _fadeIn;
   late Animation<Offset> _slideUp;
-  late AnimationController _glowController;
+
+  late AnimationController _shimmerController;
 
   static const _accent = Color(0xFF6366F1);
   static const _accentLight = Color(0xFF818CF8);
@@ -49,10 +50,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       curve: Curves.easeOutCubic,
     ));
 
-    _glowController = AnimationController(
+    _shimmerController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 3),
-    )..repeat(reverse: true);
+      duration: const Duration(milliseconds: 3000),
+    )..repeat();
 
     Future.delayed(const Duration(milliseconds: 200), () {
       if (mounted) _entranceController.forward();
@@ -62,7 +63,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   @override
   void dispose() {
     _entranceController.dispose();
-    _glowController.dispose();
+    _shimmerController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -262,38 +263,41 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // Logo
+                        // Logo with effects
                         AnimatedBuilder(
-                          animation: _glowController,
-                          builder: (context, _) {
-                            final glow = 0.15 + _glowController.value * 0.15;
-                            return Container(
-                              width: 68,
-                              height: 68,
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [_accent, _accentLight],
-                                ),
-                                borderRadius: BorderRadius.circular(18),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: _accent.withValues(alpha: glow),
-                                    blurRadius: 30,
-                                    spreadRadius: 2,
-                                  ),
-                                ],
-                              ),
-                              child: const Icon(
-                                Icons.storefront_rounded,
-                                size: 32,
-                                color: Colors.white,
-                              ),
+                          animation: Listenable.merge([_entranceController, _shimmerController]),
+                          builder: (context, child) {
+                            final scale = Curves.elasticOut.transform(_entranceController.value.clamp(0.0, 1.0));
+                            final sv = _shimmerController.value;
+                            final showShimmer = sv <= 0.3;
+                            final sp = showShimmer ? sv / 0.3 : 0.0;
+                            Widget logo = child!;
+                            if (showShimmer) {
+                              logo = ShaderMask(
+                                shaderCallback: (bounds) => LinearGradient(
+                                  begin: Alignment(sp * 4 - 2, -0.3),
+                                  end: Alignment(sp * 4 - 1, 0.3),
+                                  colors: const [
+                                    Color(0x00FFFFFF),
+                                    Color(0x40FFFFFF),
+                                    Color(0x00FFFFFF),
+                                  ],
+                                ).createShader(bounds),
+                                blendMode: BlendMode.srcATop,
+                                child: logo,
+                              );
+                            }
+                            return Transform.scale(
+                              scale: scale,
+                              child: logo,
                             );
                           },
+                          child: Image.asset(
+                            'assets/images/supercyp_logo.png',
+                            width: 280,
+                          ),
                         ),
-                        const SizedBox(height: 28),
+                        const SizedBox(height: 16),
                         // Title
                         ShaderMask(
                           shaderCallback: (bounds) => const LinearGradient(

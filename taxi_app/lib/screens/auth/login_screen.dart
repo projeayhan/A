@@ -11,15 +11,34 @@ class LoginScreen extends ConsumerStatefulWidget {
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends ConsumerState<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen>
+    with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _isLoading = false;
 
+  late AnimationController _logoEntrance;
+  late AnimationController _logoShimmer;
+
+  @override
+  void initState() {
+    super.initState();
+    _logoEntrance = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..forward();
+    _logoShimmer = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3000),
+    )..repeat();
+  }
+
   @override
   void dispose() {
+    _logoEntrance.dispose();
+    _logoShimmer.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -69,43 +88,50 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               children: [
                 const SizedBox(height: 40),
 
-                // Logo
-                Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.3),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.local_taxi,
-                    size: 56,
-                    color: AppColors.secondary,
+                // Animated logo with robot mascot
+                AnimatedBuilder(
+                  animation: Listenable.merge([_logoEntrance, _logoShimmer]),
+                  builder: (context, child) {
+                    final scale = Curves.elasticOut.transform(_logoEntrance.value.clamp(0.0, 1.0));
+                    final sv = _logoShimmer.value;
+                    final showShimmer = sv <= 0.3;
+                    final sp = showShimmer ? sv / 0.3 : 0.0;
+                    Widget logo = child!;
+                    if (showShimmer) {
+                      logo = ShaderMask(
+                        shaderCallback: (bounds) => LinearGradient(
+                          begin: Alignment(sp * 4 - 2, -0.3),
+                          end: Alignment(sp * 4 - 1, 0.3),
+                          colors: const [
+                            Color(0x00FFFFFF),
+                            Color(0x40FFFFFF),
+                            Color(0x00FFFFFF),
+                          ],
+                        ).createShader(bounds),
+                        blendMode: BlendMode.srcATop,
+                        child: logo,
+                      );
+                    }
+                    return Transform.scale(
+                      scale: scale,
+                      child: logo,
+                    );
+                  },
+                  child: Image.asset(
+                    'assets/images/supercyp_logo.png',
+                    width: 280,
                   ),
                 ),
 
-                const SizedBox(height: 32),
+                const SizedBox(height: 16),
 
-                Text(
-                  'Tekrar Hoşgeldiniz',
-                  style: Theme.of(context).textTheme.headlineMedium,
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 8),
                 Text(
                   'Sürücü hesabınıza giriş yapın',
                   style: Theme.of(context).textTheme.bodyMedium,
                   textAlign: TextAlign.center,
                 ),
 
-                const SizedBox(height: 40),
+                const SizedBox(height: 36),
 
                 // Email
                 TextFormField(
@@ -157,7 +183,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   },
                 ),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 8),
+
+                // Forgot Password
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => context.push('/forgot-password'),
+                    child: Text(
+                      'Şifremi Unuttum',
+                      style: TextStyle(
+                        color: AppColors.secondary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 8),
 
                 // Login Button
                 SizedBox(

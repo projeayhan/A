@@ -667,7 +667,7 @@ class SecureDriverInfo {
       vehicleBrand: json['vehicle_brand'] as String? ?? '',
       vehicleModel: json['vehicle_model'] as String? ?? '',
       vehicleColor: json['vehicle_color'] as String? ?? '',
-      rating: (json['rating'] as num?)?.toDouble() ?? 5.0,
+      rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
       canCall: json['can_call'] as bool? ?? true,
       canMessage: json['can_message'] as bool? ?? true,
     );
@@ -846,6 +846,11 @@ class CommunicationPreferences {
   final bool sharePhoneWithDriver;
   final bool sharePhoneWithCustomer;
   final bool autoShareRideEnabled;
+  final bool notifyNewRides;
+  final bool notifyRideUpdates;
+  final bool notifyEarnings;
+  final bool notifyCampaigns;
+  final bool notifySystemUpdates;
 
   const CommunicationPreferences({
     this.allowCalls = true,
@@ -853,6 +858,11 @@ class CommunicationPreferences {
     this.sharePhoneWithDriver = false,
     this.sharePhoneWithCustomer = false,
     this.autoShareRideEnabled = false,
+    this.notifyNewRides = true,
+    this.notifyRideUpdates = true,
+    this.notifyEarnings = true,
+    this.notifyCampaigns = true,
+    this.notifySystemUpdates = true,
   });
 
   factory CommunicationPreferences.fromJson(Map<String, dynamic> json) {
@@ -862,6 +872,11 @@ class CommunicationPreferences {
       sharePhoneWithDriver: json['share_phone_with_driver'] as bool? ?? false,
       sharePhoneWithCustomer: json['share_phone_with_customer'] as bool? ?? false,
       autoShareRideEnabled: json['auto_share_ride_enabled'] as bool? ?? false,
+      notifyNewRides: json['notify_new_rides'] as bool? ?? true,
+      notifyRideUpdates: json['notify_ride_updates'] as bool? ?? true,
+      notifyEarnings: json['notify_earnings'] as bool? ?? true,
+      notifyCampaigns: json['notify_campaigns'] as bool? ?? true,
+      notifySystemUpdates: json['notify_system_updates'] as bool? ?? true,
     );
   }
 
@@ -871,6 +886,11 @@ class CommunicationPreferences {
     'share_phone_with_driver': sharePhoneWithDriver,
     'share_phone_with_customer': sharePhoneWithCustomer,
     'auto_share_ride_enabled': autoShareRideEnabled,
+    'notify_new_rides': notifyNewRides,
+    'notify_ride_updates': notifyRideUpdates,
+    'notify_earnings': notifyEarnings,
+    'notify_campaigns': notifyCampaigns,
+    'notify_system_updates': notifySystemUpdates,
   };
 
   CommunicationPreferences copyWith({
@@ -879,6 +899,11 @@ class CommunicationPreferences {
     bool? sharePhoneWithDriver,
     bool? sharePhoneWithCustomer,
     bool? autoShareRideEnabled,
+    bool? notifyNewRides,
+    bool? notifyRideUpdates,
+    bool? notifyEarnings,
+    bool? notifyCampaigns,
+    bool? notifySystemUpdates,
   }) {
     return CommunicationPreferences(
       allowCalls: allowCalls ?? this.allowCalls,
@@ -886,6 +911,11 @@ class CommunicationPreferences {
       sharePhoneWithDriver: sharePhoneWithDriver ?? this.sharePhoneWithDriver,
       sharePhoneWithCustomer: sharePhoneWithCustomer ?? this.sharePhoneWithCustomer,
       autoShareRideEnabled: autoShareRideEnabled ?? this.autoShareRideEnabled,
+      notifyNewRides: notifyNewRides ?? this.notifyNewRides,
+      notifyRideUpdates: notifyRideUpdates ?? this.notifyRideUpdates,
+      notifyEarnings: notifyEarnings ?? this.notifyEarnings,
+      notifyCampaigns: notifyCampaigns ?? this.notifyCampaigns,
+      notifySystemUpdates: notifySystemUpdates ?? this.notifySystemUpdates,
     );
   }
 }

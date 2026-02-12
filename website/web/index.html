@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <base href="$FLUTTER_BASE_HREF">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SuperCyp - Tek Uygulama, Sinirsiz Hizmet</title>
+  <meta name="description" content="Yemek siparisi, taksi, kurye, emlak, arac satis ve kiralama - hepsi tek uygulamada. Yapay zeka destekli super uygulama platformu.">
+  <meta name="keywords" content="SuperCyp, yemek siparisi, taksi, kurye, emlak, arac kiralama, super app">
+  <meta property="og:title" content="SuperCyp - Tek Uygulama, Sinirsiz Hizmet">
+  <meta property="og:description" content="Yapay zeka destekli super uygulama platformu">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://supercyp.com">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="manifest" href="manifest.json">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <style>
+    body{background:#050A15;margin:0;overflow:hidden}
+    .loading{display:flex;justify-content:center;align-items:center;height:100vh;flex-direction:column}
+    .loading-text{font-size:2.5rem;font-weight:700;background:linear-gradient(135deg,#6366F1,#00D4FF);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-family:'Inter',sans-serif}
+    .loading-sub{color:#94A3B8;font-family:'Inter',sans-serif;margin-top:8px;font-size:0.9rem}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
+    .loading-text{animation:pulse 2s ease-in-out infinite}
+  </style>
+</head>
+<body>
+  <div class="loading">
+    <span class="loading-text">SuperCyp</span>
+    <span class="loading-sub">Yukleniyor...</span>
+  </div>
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>

@@ -7,12 +7,32 @@ import 'supabase_service.dart';
 class TaxiService {
   static SupabaseClient get _client => SupabaseService.client;
 
+  // ==================== DRIVER PROFILE CACHE ====================
+
+  static Map<String, dynamic>? _cachedDriverProfile;
+  static DateTime? _cacheTimestamp;
+  static const _cacheTtl = Duration(seconds: 60);
+
+  /// Cache'i temizle (profil guncellemelerinde kullanilir)
+  static void invalidateProfileCache() {
+    _cachedDriverProfile = null;
+    _cacheTimestamp = null;
+  }
+
   // ==================== DRIVER PROFILE ====================
 
-  /// Surucu profilini getir
-  static Future<Map<String, dynamic>?> getDriverProfile() async {
+  /// Surucu profilini getir (60s cache ile)
+  static Future<Map<String, dynamic>?> getDriverProfile({bool forceRefresh = false}) async {
     final userId = SupabaseService.currentUser?.id;
     if (userId == null) return null;
+
+    // Cache kontrolu
+    if (!forceRefresh &&
+        _cachedDriverProfile != null &&
+        _cacheTimestamp != null &&
+        DateTime.now().difference(_cacheTimestamp!) < _cacheTtl) {
+      return _cachedDriverProfile;
+    }
 
     try {
       final response = await _client
@@ -21,6 +41,8 @@ class TaxiService {
           .eq('user_id', userId)
           .maybeSingle();
 
+      _cachedDriverProfile = response;
+      _cacheTimestamp = DateTime.now();
       return response;
     } catch (e) {
       debugPrint('getDriverProfile error: $e');
@@ -75,7 +97,7 @@ class TaxiService {
             'status': 'pending',
             'is_online': false,
             'is_verified': false,
-            'rating': 5.0,
+            'rating': 0.0,
             'total_ratings': 0,
             'total_rides': 0,
             'total_earnings': 0.0,
@@ -126,6 +148,7 @@ class TaxiService {
           .update({...updates, 'updated_at': DateTime.now().toIso8601String()})
           .eq('id', driver['id']);
 
+      invalidateProfileCache();
       return true;
     } catch (e) {
       debugPrint('updateDriverProfile error: $e');
@@ -149,6 +172,7 @@ class TaxiService {
           })
           .eq('id', driver['id']);
 
+      invalidateProfileCache();
       return true;
     } catch (e) {
       debugPrint('updateOnlineStatus error: $e');
@@ -353,6 +377,8 @@ class TaxiService {
               'updated_at': DateTime.now().toIso8601String(),
             })
             .eq('id', driver['id']);
+
+        invalidateProfileCache();
       }
 
       return true;
@@ -533,7 +559,7 @@ class TaxiService {
         'week_rides': weekRides.length,
         'month_rides': monthRides.length,
         'total_rides': driver['total_rides'] ?? 0,
-        'rating': (driver['rating'] as num?)?.toDouble() ?? 5.0,
+        'rating': (driver['rating'] as num?)?.toDouble() ?? 0.0,
       };
     } catch (e) {
       debugPrint('getEarningsSummary error: $e');
@@ -549,7 +575,7 @@ class TaxiService {
         'week_rides': 0,
         'month_rides': 0,
         'total_rides': driver['total_rides'] ?? 0,
-        'rating': (driver['rating'] as num?)?.toDouble() ?? 5.0,
+        'rating': (driver['rating'] as num?)?.toDouble() ?? 0.0,
       };
     }
   }

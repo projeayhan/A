@@ -1,0 +1,11 @@
+{
+  "name": "SuperCyp",
+  "short_name": "SuperCyp",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#050A15",
+  "theme_color": "#6366F1",
+  "description": "Yapay zeka destekli super uygulama platformu",
+  "orientation": "portrait-primary",
+  "prefer_related_applications": false
+}

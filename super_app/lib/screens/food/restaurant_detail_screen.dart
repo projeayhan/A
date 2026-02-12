@@ -533,32 +533,34 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
       body: Stack(
         children: [
           // Main Content
-          SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Hero Image Section
-                _buildHeroSection(isDark),
+          CustomScrollView(
+            slivers: [
+              // Hero Image Section
+              SliverToBoxAdapter(child: _buildHeroSection(isDark)),
 
-                // Restaurant Info
-                _buildRestaurantInfo(isDark),
+              // Restaurant Info
+              SliverToBoxAdapter(child: _buildRestaurantInfo(isDark)),
 
-                // Store Info Card
-                _buildStoreInfoCard(isDark),
+              // Store Info Card
+              SliverToBoxAdapter(child: _buildStoreInfoCard(isDark)),
 
-                // Search Bar
-                _buildSearchBar(isDark),
+              // Search Bar
+              SliverToBoxAdapter(child: _buildSearchBar(isDark)),
 
-                // Category Tabs
-                _buildCategoryTabs(isDark),
+              // Category Tabs - Sticky
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _CategoryTabDelegate(
+                  child: _buildCategoryTabs(isDark),
+                ),
+              ),
 
-                // Menu Items
-                _buildMenuSection(isDark),
+              // Menu Items
+              SliverToBoxAdapter(child: _buildMenuSection(isDark)),
 
-                // Bottom padding for cart button
-                SizedBox(height: context.bottomNavPadding + 80),
-              ],
-            ),
+              // Bottom padding for cart button
+              SliverToBoxAdapter(child: SizedBox(height: context.bottomNavPadding + 80)),
+            ],
           ),
 
           // Promo banner - free delivery achieved
@@ -1978,4 +1980,23 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
       ),
     );
   }
+}
+
+class _CategoryTabDelegate extends SliverPersistentHeaderDelegate {
+  final Widget child;
+  const _CategoryTabDelegate({required this.child});
+
+  @override
+  double get minExtent => 44;
+
+  @override
+  double get maxExtent => 44;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return child;
+  }
+
+  @override
+  bool shouldRebuild(covariant _CategoryTabDelegate oldDelegate) => true;
 }

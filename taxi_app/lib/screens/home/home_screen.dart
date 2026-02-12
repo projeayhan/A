@@ -113,7 +113,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   void _startPolling() {
     _pollingTimer?.cancel();
-    _pollingTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+    _pollingTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       if (mounted && ref.read(isOnlineProvider)) {
         ref.invalidate(pendingRidesProvider);
         ref.invalidate(activeRideProvider);
@@ -139,9 +139,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   Future<void> _playNotificationSound() async {
     try {
       await _audioPlayer.setVolume(1.0);
-      await _audioPlayer.play(
-        UrlSource('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'),
-      );
+      await _audioPlayer.play(AssetSource('sounds/notification.wav'));
     } catch (e) {
       debugPrint('Notification sound error: $e');
       HapticFeedback.vibrate();

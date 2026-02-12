@@ -347,7 +347,7 @@ class Driver {
       status: json['status'] as String? ?? 'pending',
       isOnline: json['is_online'] as bool? ?? false,
       isVerified: json['is_verified'] as bool? ?? false,
-      rating: (json['rating'] as num?)?.toDouble() ?? 5.0,
+      rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
       totalRatings: json['total_ratings'] as int? ?? 0,
       totalRides: json['total_rides'] as int? ?? 0,
       totalEarnings: (json['total_earnings'] as num?)?.toDouble() ?? 0.0,
@@ -415,7 +415,7 @@ class EarningsSummary {
       weekRides: json['week_rides'] as int? ?? 0,
       monthRides: json['month_rides'] as int? ?? 0,
       totalRides: json['total_rides'] as int? ?? 0,
-      rating: (json['rating'] as num?)?.toDouble() ?? 5.0,
+      rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
     );
   }
 
@@ -429,7 +429,7 @@ class EarningsSummary {
       weekRides: 0,
       monthRides: 0,
       totalRides: 0,
-      rating: 5.0,
+      rating: 0.0,
     );
   }
 }

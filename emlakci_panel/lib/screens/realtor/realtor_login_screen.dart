@@ -1,3 +1,4 @@
+import 'dart:math' show sin, pi;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -31,6 +32,7 @@ class _RealtorLoginScreenState extends ConsumerState<RealtorLoginScreen>
   late Animation<double> _fadeIn;
   late Animation<Offset> _slideUp;
   late AnimationController _glowController;
+  late AnimationController _shimmerController;
 
   static const _accent = Color(0xFF0EA5E9);
   static const _accentSecondary = Color(0xFF14B8A6);
@@ -58,6 +60,11 @@ class _RealtorLoginScreenState extends ConsumerState<RealtorLoginScreen>
       vsync: this,
       duration: const Duration(seconds: 3),
     )..repeat(reverse: true);
+
+    _shimmerController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3000),
+    )..repeat();
 
     Future.delayed(const Duration(milliseconds: 200), () {
       if (mounted) _entranceController.forward();
@@ -169,40 +176,27 @@ class _RealtorLoginScreenState extends ConsumerState<RealtorLoginScreen>
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // Logo
+                        // Logo with animated glow
                         AnimatedBuilder(
                           animation: _glowController,
-                          builder: (context, _) {
-                            final glow =
-                                0.15 + _glowController.value * 0.15;
-                            return Container(
-                              width: 68,
-                              height: 68,
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: [_accent, _accentSecondary],
+                          builder: (context, child) => Container(
+                            decoration: BoxDecoration(
+                              boxShadow: [
+                                BoxShadow(
+                                  color: _accent.withValues(alpha: 0.1 + _glowController.value * 0.1),
+                                  blurRadius: 60,
+                                  spreadRadius: 20,
                                 ),
-                                borderRadius: BorderRadius.circular(18),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color:
-                                        _accent.withValues(alpha: glow),
-                                    blurRadius: 30,
-                                    spreadRadius: 2,
-                                  ),
-                                ],
-                              ),
-                              child: const Icon(
-                                Icons.real_estate_agent_rounded,
-                                size: 32,
-                                color: Colors.white,
-                              ),
-                            );
-                          },
+                              ],
+                            ),
+                            child: child,
+                          ),
+                          child: Image.asset(
+                            'assets/images/supercyp_logo.png',
+                            width: 280,
+                          ),
                         ),
-                        const SizedBox(height: 28),
+                        const SizedBox(height: 16),
                         // Title
                         ShaderMask(
                           shaderCallback: (bounds) =>

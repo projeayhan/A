@@ -6,12 +6,15 @@ class PaymentOption {
   final IconData icon;
   final String title;
   final String subtitle;
+  /// Backend value: 'card', 'cash', 'wallet', 'credit_card_on_delivery'
+  final String paymentMethodKey;
 
   const PaymentOption({
     required this.index,
     required this.icon,
     required this.title,
     required this.subtitle,
+    required this.paymentMethodKey,
   });
 }
 
@@ -21,21 +24,16 @@ class PaymentOptions {
     index: 0,
     icon: Icons.credit_card,
     title: 'Kredi Kartı',
-    subtitle: 'Mastercard •••• 4242',
+    subtitle: 'Kapıda Kredi Kartı',
+    paymentMethodKey: 'credit_card_on_delivery',
   );
 
   static const cashOnDelivery = PaymentOption(
     index: 1,
     icon: Icons.payments_outlined,
-    title: 'Kapıda Ödeme',
-    subtitle: 'Nakit veya Kart',
-  );
-
-  static const digitalWallet = PaymentOption(
-    index: 2,
-    icon: Icons.account_balance_wallet_outlined,
-    title: 'Dijital Cüzdan',
-    subtitle: 'Bakiye: 250,00 TL',
+    title: 'Nakit',
+    subtitle: 'Kapıda Nakit Ödeme',
+    paymentMethodKey: 'cash',
   );
 
   static List<PaymentOption> get defaultOptions => [creditCard, cashOnDelivery];
@@ -46,21 +44,24 @@ class PaymentOptions {
       index: 0,
       icon: Icons.credit_card,
       title: 'Kredi/Banka Kartı',
-      subtitle: '**** **** **** 4242',
+      subtitle: 'Kapıda Kredi Kartı',
+      paymentMethodKey: 'credit_card_on_delivery',
     ),
     const PaymentOption(
       index: 1,
-      icon: Icons.account_balance_wallet_outlined,
-      title: 'Dijital Cüzdan',
-      subtitle: 'Apple Pay, Google Pay',
-    ),
-    const PaymentOption(
-      index: 2,
       icon: Icons.payments_outlined,
       title: 'Kapıda Ödeme',
-      subtitle: 'Nakit veya Kart',
+      subtitle: 'Nakit Ödeme',
+      paymentMethodKey: 'cash',
     ),
   ];
+
+  /// Resolves the paymentMethodKey for a given index from a list of options.
+  static String resolvePaymentMethod(List<PaymentOption> options, int selectedIndex) {
+    final match = options.where((o) => o.index == selectedIndex);
+    if (match.isNotEmpty) return match.first.paymentMethodKey;
+    return options.first.paymentMethodKey;
+  }
 }
 
 /// Reusable payment method selector widget.

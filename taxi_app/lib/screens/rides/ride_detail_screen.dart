@@ -12,7 +12,6 @@ import '../../core/services/directions_service.dart';
 import '../../core/services/communication_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/ride_models.dart';
-import '../../widgets/animated_map_markers.dart';
 import '../../widgets/secure_communication_widgets.dart';
 
 class RideDetailScreen extends ConsumerStatefulWidget {
@@ -40,10 +39,6 @@ class _RideDetailScreenState extends ConsumerState<RideDetailScreen>
   late AnimationController _pulseController;
   late Animation<Offset> _slideAnimation;
 
-  // Custom Markers & Style
-  gmaps.BitmapDescriptor? _pickupMarker;
-  String? _mapStyle;
-
   @override
   void initState() {
     super.initState();
@@ -51,120 +46,6 @@ class _RideDetailScreenState extends ConsumerState<RideDetailScreen>
     _loadRide();
     _subscribeToRide();
     _startPolling();
-    _loadMapStyle();
-    _initCustomMarkers();
-  }
-
-  void _loadMapStyle() {
-    _mapStyle = '''
-    [
-      {
-        "elementType": "geometry",
-        "stylers": [{"color": "#212121"}]
-      },
-      {
-        "elementType": "labels.icon",
-        "stylers": [{"visibility": "off"}]
-      },
-      {
-        "elementType": "labels.text.fill",
-        "stylers": [{"color": "#757575"}]
-      },
-      {
-        "elementType": "labels.text.stroke",
-        "stylers": [{"color": "#212121"}]
-      },
-      {
-        "featureType": "administrative",
-        "elementType": "geometry",
-        "stylers": [{"color": "#757575"}]
-      },
-      {
-        "featureType": "administrative.country",
-        "elementType": "labels.text.fill",
-        "stylers": [{"color": "#9e9e9e"}]
-      },
-      {
-        "featureType": "administrative.land_parcel",
-        "stylers": [{"visibility": "off"}]
-      },
-      {
-        "featureType": "administrative.locality",
-        "elementType": "labels.text.fill",
-        "stylers": [{"color": "#bdbdbd"}]
-      },
-      {
-        "featureType": "poi",
-        "elementType": "labels.text.fill",
-        "stylers": [{"color": "#757575"}]
-      },
-      {
-        "featureType": "poi.park",
-        "elementType": "geometry",
-        "stylers": [{"color": "#181818"}]
-      },
-      {
-        "featureType": "poi.park",
-        "elementType": "labels.text.fill",
-        "stylers": [{"color": "#616161"}]
-      },
-      {
-        "featureType": "poi.park",
-        "elementType": "labels.text.stroke",
-        "stylers": [{"color": "#1b1b1b"}]
-      },
-      {
-        "featureType": "road",
-        "elementType": "geometry.fill",
-        "stylers": [{"color": "#2c2c2c"}]
-      },
-      {
-        "featureType": "road",
-        "elementType": "labels.text.fill",
-        "stylers": [{"color": "#8a8a8a"}]
-      },
-      {
-        "featureType": "road.arterial",
-        "elementType": "geometry",
-        "stylers": [{"color": "#373737"}]
-      },
-      {
-        "featureType": "road.highway",
-        "elementType": "geometry",
-        "stylers": [{"color": "#3c3c3c"}]
-      },
-      {
-        "featureType": "road.highway.controlled_access",
-        "elementType": "geometry",
-        "stylers": [{"color": "#4e4e4e"}]
-      },
-      {
-        "featureType": "road.local",
-        "elementType": "labels.text.fill",
-        "stylers": [{"color": "#616161"}]
-      },
-      {
-        "featureType": "transit",
-        "elementType": "labels.text.fill",
-        "stylers": [{"color": "#757575"}]
-      },
-      {
-        "featureType": "water",
-        "elementType": "geometry",
-        "stylers": [{"color": "#000000"}]
-      },
-      {
-        "featureType": "water",
-        "elementType": "labels.text.fill",
-        "stylers": [{"color": "#3d3d3d"}]
-      }
-    ]
-    ''';
-  }
-
-  Future<void> _initCustomMarkers() async {
-    _pickupMarker = await AnimatedMapMarkers.createPickupMarker(size: 80);
-    if (mounted) setState(() {});
   }
 
   void _initAnimations() {
@@ -527,9 +408,8 @@ class _RideDetailScreenState extends ConsumerState<RideDetailScreen>
       backgroundColor: AppColors.background,
       body: Stack(
         children: [
-          // Map
+          // Map - tam ekran
           Positioned.fill(
-            bottom: MediaQuery.of(context).size.height * 0.45,
             child: _buildMap(),
           ),
 
@@ -575,15 +455,19 @@ class _RideDetailScreenState extends ConsumerState<RideDetailScreen>
               ),
             ),
 
-          // Bottom Sheet
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: SlideTransition(
-              position: _slideAnimation,
-              child: _buildBottomSheet(),
-            ),
+          // Draggable Bottom Sheet
+          DraggableScrollableSheet(
+            initialChildSize: 0.45,
+            minChildSize: 0.10,
+            maxChildSize: 0.85,
+            snap: true,
+            snapSizes: const [0.10, 0.45, 0.85],
+            builder: (context, scrollController) {
+              return SlideTransition(
+                position: _slideAnimation,
+                child: _buildBottomSheet(scrollController),
+              );
+            },
           ),
         ],
       ),
@@ -636,6 +520,9 @@ class _RideDetailScreenState extends ConsumerState<RideDetailScreen>
       myLocationButtonEnabled: false,
       zoomControlsEnabled: false,
       mapToolbarEnabled: false,
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).size.height * 0.4,
+      ),
     );
   }
 
@@ -701,7 +588,7 @@ class _RideDetailScreenState extends ConsumerState<RideDetailScreen>
     );
   }
 
-  Widget _buildBottomSheet() {
+  Widget _buildBottomSheet(ScrollController scrollController) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -714,37 +601,41 @@ class _RideDetailScreenState extends ConsumerState<RideDetailScreen>
           ),
         ],
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Handle
-          Container(
-            width: 40,
-            height: 4,
-            margin: const EdgeInsets.only(top: 12),
-            decoration: BoxDecoration(
-              color: AppColors.border,
-              borderRadius: BorderRadius.circular(2),
+      child: SingleChildScrollView(
+        controller: scrollController,
+        child: Column(
+          children: [
+            // Handle
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(top: 12, bottom: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.border,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
             ),
-          ),
 
-          // Status Header
-          _buildStatusHeader(),
+            // Status Header
+            _buildStatusHeader(),
 
-          // Customer Info
-          _buildCustomerInfo(),
+            // Customer Info
+            _buildCustomerInfo(),
 
-          // Route Info
-          _buildRouteInfo(),
+            // Route Info
+            _buildRouteInfo(),
 
-          // Fare
-          _buildFareInfo(),
+            // Fare
+            _buildFareInfo(),
 
-          // Action Buttons
-          _buildActionButtons(),
+            // Action Buttons
+            _buildActionButtons(),
 
-          SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
-        ],
+            SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
+          ],
+        ),
       ),
     );
   }
@@ -768,19 +659,19 @@ class _RideDetailScreenState extends ConsumerState<RideDetailScreen>
             animation: _pulseController,
             builder: (context, child) {
               return Container(
-                width: 48,
-                height: 48,
+                width: 40,
+                height: 40,
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(
                     alpha: 0.2 + (_pulseController.value * 0.1),
                   ),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(_ride!.status.icon, color: Colors.white, size: 24),
+                child: Icon(_ride!.status.icon, color: Colors.white, size: 20),
               );
             },
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -789,33 +680,42 @@ class _RideDetailScreenState extends ConsumerState<RideDetailScreen>
                   _ride!.status.displayName,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 18,
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 Text(
                   _getStatusSubtitle(),
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.9),
-                    fontSize: 13,
+                    fontSize: 12,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
           if (_ride!.rideNumber != null)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                _ride!.rideNumber!,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w500,
-                  fontSize: 12,
+            Flexible(
+              flex: 0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  _ride!.rideNumber!,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 11,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ),
@@ -977,61 +877,51 @@ class _RideDetailScreenState extends ConsumerState<RideDetailScreen>
         border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppColors.success.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(
-                  Icons.account_balance_wallet,
-                  color: AppColors.success,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Yolculuk Ucreti',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  Row(
-                    children: [
-                      Text(
-                        _ride!.formattedDistance,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textHint,
-                        ),
-                      ),
-                      Text(' - ', style: TextStyle(color: AppColors.textHint)),
-                      Text(
-                        _ride!.formattedDuration,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppColors.textHint,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ],
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppColors.success.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(
+              Icons.account_balance_wallet,
+              color: AppColors.success,
+              size: 18,
+            ),
           ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Yolculuk Ucreti',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  '${_ride!.formattedDistance} - ${_ride!.formattedDuration}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textHint,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
           Text(
             _ride!.formattedFare,
             style: TextStyle(
-              fontSize: 28,
+              fontSize: 24,
               fontWeight: FontWeight.bold,
               color: AppColors.success,
             ),

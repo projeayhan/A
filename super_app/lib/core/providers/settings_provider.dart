@@ -5,24 +5,39 @@ import 'package:shared_preferences/shared_preferences.dart';
 // Keys for SharedPreferences
 const _themeModeKey = 'theme_mode';
 const _localeKey = 'locale';
+const _biometricKey = 'biometric_login';
+const _autoUpdateKey = 'auto_update';
+const _currencyKey = 'currency';
 
 // Settings state class
 class AppSettings {
   final ThemeMode themeMode;
   final Locale locale;
+  final bool biometricLogin;
+  final bool autoUpdate;
+  final String currency;
 
   const AppSettings({
     this.themeMode = ThemeMode.system,
     this.locale = const Locale('tr', 'TR'),
+    this.biometricLogin = false,
+    this.autoUpdate = true,
+    this.currency = 'TRY (₺)',
   });
 
   AppSettings copyWith({
     ThemeMode? themeMode,
     Locale? locale,
+    bool? biometricLogin,
+    bool? autoUpdate,
+    String? currency,
   }) {
     return AppSettings(
       themeMode: themeMode ?? this.themeMode,
       locale: locale ?? this.locale,
+      biometricLogin: biometricLogin ?? this.biometricLogin,
+      autoUpdate: autoUpdate ?? this.autoUpdate,
+      currency: currency ?? this.currency,
     );
   }
 }
@@ -36,17 +51,17 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
 
-    // Load theme mode
     final themeModeIndex = prefs.getInt(_themeModeKey) ?? 0;
     final themeMode = ThemeMode.values[themeModeIndex];
-
-    // Load locale
     final localeCode = prefs.getString(_localeKey) ?? 'tr';
     final locale = _getLocaleFromCode(localeCode);
 
     state = AppSettings(
       themeMode: themeMode,
       locale: locale,
+      biometricLogin: prefs.getBool(_biometricKey) ?? false,
+      autoUpdate: prefs.getBool(_autoUpdateKey) ?? true,
+      currency: prefs.getString(_currencyKey) ?? 'TRY (₺)',
     );
   }
 
@@ -60,6 +75,24 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_localeKey, locale.languageCode);
     state = state.copyWith(locale: locale);
+  }
+
+  Future<void> setBiometricLogin(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_biometricKey, value);
+    state = state.copyWith(biometricLogin: value);
+  }
+
+  Future<void> setAutoUpdate(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_autoUpdateKey, value);
+    state = state.copyWith(autoUpdate: value);
+  }
+
+  Future<void> setCurrency(String value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_currencyKey, value);
+    state = state.copyWith(currency: value);
   }
 
   Future<void> toggleDarkMode() async {

@@ -89,11 +89,8 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
 
   // Filter states
   String _selectedSorting = 'Önerilen';
-  String? _selectedCuisine;
   double? _minRating;
   final bool _showFiltersPanel = false;
-  List<String> _availableCategories = []; // Veritabanından yüklenen kategoriler
-  Set<String> _cuisineMatchingIds = {}; // Seçilen kategoriye uyan restoran ID'leri
 
   // Address dropdown state
   bool _showAddressDropdown = false;
@@ -108,32 +105,6 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
     super.initState();
     _searchController.addListener(_onSearchChanged);
     _searchFocusNode.addListener(_onFocusChanged);
-    _loadAvailableCategories();
-  }
-
-  Future<void> _loadAvailableCategories() async {
-    final categories = await RestaurantService.getAvailableMenuCategories();
-    if (mounted) {
-      setState(() {
-        _availableCategories = categories;
-      });
-    }
-  }
-
-  Future<void> _onCuisineFilterChanged(String? cuisine) async {
-    setState(() {
-      _selectedCuisine = cuisine;
-      _cuisineMatchingIds = {}; // Reset
-    });
-
-    if (cuisine != null) {
-      final ids = await RestaurantService.getRestaurantIdsByMenuCategory(cuisine);
-      if (mounted) {
-        setState(() {
-          _cuisineMatchingIds = ids.toSet();
-        });
-      }
-    }
   }
 
   @override
@@ -195,7 +166,6 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
                     onPressed: () {
                       setState(() {
                         _selectedSorting = 'Önerilen';
-                        _selectedCuisine = null;
                         _minRating = null;
                       });
                       Navigator.pop(ctx);
@@ -236,48 +206,6 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
                                   isDark,
                                   () =>
                                       setState(() => _selectedSorting = option),
-                                ),
-                              )
-                              .toList(),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Cuisine Section
-                    Text(
-                      'Mutfak Türü',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : Colors.black,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children:
-                          [
-                                'Türk',
-                                'İtalyan',
-                                'Japon',
-                                'Çin',
-                                'Fast Food',
-                                'Tatlı',
-                                'Kahvaltı',
-                                'Akdeniz',
-                              ]
-                              .map(
-                                (option) => _buildFilterOption(
-                                  option,
-                                  _selectedCuisine == option,
-                                  isDark,
-                                  () => setState(() {
-                                    if (_selectedCuisine == option) {
-                                      _selectedCuisine = null;
-                                    } else {
-                                      _selectedCuisine = option;
-                                    }
-                                  }),
                                 ),
                               )
                               .toList(),
@@ -1489,14 +1417,6 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
       }).toList();
     }
 
-    // Cuisine filter (from filter bar) - menü kategorilerine göre filtrele
-    if (_selectedCuisine != null && _cuisineMatchingIds.isNotEmpty) {
-      results = results.where((r) {
-        final id = r['id'] as String;
-        return _cuisineMatchingIds.contains(id);
-      }).toList();
-    }
-
     // Rating filter
     if (_minRating != null) {
       results = results.where((r) => (r['rating'] as double) >= _minRating!).toList();
@@ -1574,14 +1494,11 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
           delegate: _FilterBarDelegate(
             isDark: isDark,
             selectedSorting: _selectedSorting,
-            selectedCuisine: _selectedCuisine,
             minRating: _minRating,
             onFilterTap: _showAdvancedFilters,
             onSortingChanged: (value) =>
                 setState(() => _selectedSorting = value),
-            onCuisineChanged: _onCuisineFilterChanged,
             onRatingChanged: (value) => setState(() => _minRating = value),
-            availableCategories: _availableCategories,
           ),
         ),
 
@@ -1960,14 +1877,6 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
       }).toList();
     }
 
-    // Mutfak filtresi - menü kategorilerine göre
-    if (_selectedCuisine != null && _cuisineMatchingIds.isNotEmpty) {
-      results = results.where((r) {
-        final id = r['id'] as String;
-        return _cuisineMatchingIds.contains(id);
-      }).toList();
-    }
-
     // Puan filtresi
     if (_minRating != null) {
       results = results.where((r) {
@@ -2274,24 +2183,18 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
 class _FilterBarDelegate extends SliverPersistentHeaderDelegate {
   final bool isDark;
   final String selectedSorting;
-  final String? selectedCuisine;
   final double? minRating;
   final VoidCallback onFilterTap;
   final Function(String) onSortingChanged;
-  final Function(String?) onCuisineChanged;
   final Function(double?) onRatingChanged;
-  final List<String> availableCategories;
 
   _FilterBarDelegate({
     required this.isDark,
     required this.selectedSorting,
-    required this.selectedCuisine,
     required this.minRating,
     required this.onFilterTap,
     required this.onSortingChanged,
-    required this.onCuisineChanged,
     required this.onRatingChanged,
-    required this.availableCategories,
   });
 
   @override
@@ -2300,7 +2203,7 @@ class _FilterBarDelegate extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) {
-    final hasActiveFilters = selectedCuisine != null || minRating != null;
+    final hasActiveFilters = minRating != null;
 
     return Container(
       color: isDark
@@ -2328,16 +2231,6 @@ class _FilterBarDelegate extends SliverPersistentHeaderDelegate {
             isDark,
             hasDropdown: true,
             onTap: () => _showSortingDialog(context),
-          ),
-          const SizedBox(width: 8),
-          _buildFilterChip(
-            context,
-            selectedCuisine ?? 'Mutfak',
-            null,
-            selectedCuisine != null,
-            isDark,
-            hasDropdown: true,
-            onTap: () => _showCuisineDialog(context),
           ),
           const SizedBox(width: 8),
           _buildFilterChip(
@@ -2413,75 +2306,6 @@ class _FilterBarDelegate extends SliverPersistentHeaderDelegate {
                   onSortingChanged(option);
                   Navigator.pop(ctx);
                 },
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showCuisineDialog(BuildContext context) {
-    // Dinamik kategoriler - null ilk sırada "Tümü" için
-    final cuisineOptions = <String?>[null, ...availableCategories];
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        decoration: BoxDecoration(
-          color: isDark ? FoodColors.surfaceDark : Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 12),
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey[400],
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Text(
-                'Mutfak Türü',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.white : Colors.black,
-                ),
-              ),
-            ),
-            SizedBox(
-              height: 300,
-              child: ListView(
-                children: cuisineOptions
-                    .map(
-                      (option) => ListTile(
-                        title: Text(
-                          option ?? 'Tümü',
-                          style: TextStyle(
-                            color: isDark ? Colors.white : Colors.black,
-                            fontWeight: option == selectedCuisine
-                                ? FontWeight.bold
-                                : FontWeight.normal,
-                          ),
-                        ),
-                        trailing: option == selectedCuisine
-                            ? Icon(Icons.check, color: FoodColors.primary)
-                            : null,
-                        onTap: () {
-                          onCuisineChanged(option);
-                          Navigator.pop(ctx);
-                        },
-                      ),
-                    )
-                    .toList(),
               ),
             ),
             const SizedBox(height: 16),
@@ -2655,7 +2479,6 @@ class _FilterBarDelegate extends SliverPersistentHeaderDelegate {
   @override
   bool shouldRebuild(covariant _FilterBarDelegate oldDelegate) =>
       oldDelegate.selectedSorting != selectedSorting ||
-      oldDelegate.selectedCuisine != selectedCuisine ||
       oldDelegate.minRating != minRating ||
       oldDelegate.isDark != isDark;
 }

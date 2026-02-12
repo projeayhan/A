@@ -1055,18 +1055,36 @@ class _TaxiDriverScreenState extends ConsumerState<TaxiDriverScreen>
                           ),
                           Row(
                             children: [
-                              Icon(
-                                Icons.star_rounded,
-                                color: Colors.amber,
-                                size: 14,
-                              ),
-                              const SizedBox(width: 2),
-                              Text(
-                                (_driverProfile?['rating'] as num?)
-                                        ?.toStringAsFixed(1) ??
-                                    '5.0',
-                                style: theme.textTheme.labelSmall,
-                              ),
+                              if ((_driverProfile?['total_ratings'] as int? ?? 0) < 5) ...[
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    'Yeni',
+                                    style: theme.textTheme.labelSmall?.copyWith(
+                                      color: Colors.green.shade700,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 10,
+                                    ),
+                                  ),
+                                ),
+                              ] else ...[
+                                Icon(
+                                  Icons.star_rounded,
+                                  color: Colors.amber,
+                                  size: 14,
+                                ),
+                                const SizedBox(width: 2),
+                                Text(
+                                  (_driverProfile?['rating'] as num?)
+                                          ?.toStringAsFixed(1) ??
+                                      '0.0',
+                                  style: theme.textTheme.labelSmall,
+                                ),
+                              ],
                               const SizedBox(width: 4),
                               Icon(
                                 Icons.chevron_right_rounded,

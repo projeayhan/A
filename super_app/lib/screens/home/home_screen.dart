@@ -782,28 +782,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Column(
       children: [
         // Section Header
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Hizmetlerimiz',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white : const Color(0xFF111827),
-              ),
-            ),
-            TextButton(
-              onPressed: () {},
-              child: const Text(
-                'Tümünü gör',
-                style: TextStyle(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
+        Text(
+          'Hizmetlerimiz',
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white : const Color(0xFF111827),
+          ),
         ),
 
         SizedBox(height: context.itemGap + 4),

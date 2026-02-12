@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/services/supabase_service.dart';
 import '../../core/providers/user_provider.dart';
 import '../../core/utils/app_dialogs.dart';
 
@@ -21,6 +23,7 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
   late TextEditingController _birthDateController;
   String _selectedGender = 'Erkek';
   bool _isEditing = false;
+  int _actualOrderCount = 0;
 
   @override
   void initState() {
@@ -37,7 +40,22 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
       if (userProfile != null) {
         _populateControllers(userProfile);
       }
+      _loadActualOrderCount();
     });
+  }
+
+  Future<void> _loadActualOrderCount() async {
+    final user = SupabaseService.currentUser;
+    if (user == null) return;
+    try {
+      final response = await SupabaseService.client
+          .from('orders')
+          .select('id')
+          .eq('user_id', user.id);
+      if (mounted) {
+        setState(() => _actualOrderCount = (response as List).length);
+      }
+    } catch (_) {}
   }
 
   void _populateControllers(UserProfile profile) {
@@ -214,7 +232,7 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
                 enabled: _isEditing,
                 isDark: isDark,
                 suffix: TextButton(
-                  onPressed: _isEditing ? () => _showVerifyPhoneDialog() : null,
+                  onPressed: () => _showVerifyPhoneDialog(),
                   style: TextButton.styleFrom(
                     padding: EdgeInsets.zero,
                     minimumSize: Size.zero,
@@ -224,7 +242,7 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
                     'Doğrula',
                     style: TextStyle(
                       fontSize: 12,
-                      color: _isEditing ? AppColors.primary : Colors.grey,
+                      color: AppColors.primary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -244,7 +262,7 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
                   final formattedDate = createdAt != null
                       ? '${createdAt.day} ${_getMonthName(createdAt.month)} ${createdAt.year}'
                       : '-';
-                  final totalOrders = profile?.totalOrders ?? 0;
+                  final totalOrders = _actualOrderCount;
                   final memberId = profile?.id.substring(0, 8).toUpperCase() ?? '-';
 
                   return _buildInfoCard(isDark, [
@@ -530,9 +548,9 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
   }
 
   Widget _buildDateField(bool isDark) {
-    // Doğum tarihi daha önce girilmişse değiştirilemez
+    // Doğum tarihi daha önce girilmişse değiştirilemez, boşsa her zaman düzenlenebilir
     final hasDateOfBirth = _birthDateController.text.isNotEmpty;
-    final canEdit = _isEditing && !hasDateOfBirth;
+    final canEdit = !hasDateOfBirth;
 
     return GestureDetector(
       onTap: canEdit ? () => _selectDate() : null,
@@ -841,47 +859,123 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
   }
 
   void _showVerifyPhoneDialog() {
+    final phoneInputController = TextEditingController(text: _phoneController.text);
+    final otpController = TextEditingController();
+    bool codeSent = false;
+    bool isLoading = false;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
-          children: [
-            Icon(Icons.phone_android, color: AppColors.primary),
-            SizedBox(width: 12),
-            Text('Telefon Doğrulama'),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              const Icon(Icons.phone_android, color: AppColors.primary),
+              const SizedBox(width: 12),
+              Text(codeSent ? 'Kodu Girin' : 'Telefon Doğrulama'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (!codeSent) ...[
+                const Text('Telefon numaranızı girin, SMS ile doğrulama kodu göndereceğiz.'),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: phoneInputController,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    hintText: '+90 5XX XXX XX XX',
+                    prefixIcon: const Icon(Icons.phone),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ] else ...[
+                Text('${phoneInputController.text} numarasına gönderilen 6 haneli kodu girin.'),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: otpController,
+                  keyboardType: TextInputType.number,
+                  maxLength: 6,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 24, letterSpacing: 8, fontWeight: FontWeight.bold),
+                  decoration: InputDecoration(
+                    hintText: '------',
+                    counterText: '',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: isLoading ? null : () => Navigator.pop(context),
+              child: Text('İptal', style: TextStyle(color: Colors.grey[600])),
+            ),
+            ElevatedButton(
+              onPressed: isLoading ? null : () async {
+                if (!codeSent) {
+                  final phone = phoneInputController.text.trim();
+                  if (phone.isEmpty) return;
+                  setDialogState(() => isLoading = true);
+                  try {
+                    await SupabaseService.client.auth.signInWithOtp(phone: phone);
+                    setDialogState(() { codeSent = true; isLoading = false; });
+                  } catch (e) {
+                    setDialogState(() => isLoading = false);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Kod gönderilemedi: $e'), backgroundColor: Colors.red),
+                      );
+                    }
+                  }
+                } else {
+                  final otp = otpController.text.trim();
+                  if (otp.length != 6) return;
+                  setDialogState(() => isLoading = true);
+                  try {
+                    await SupabaseService.client.auth.verifyOTP(
+                      phone: phoneInputController.text.trim(),
+                      token: otp,
+                      type: OtpType.sms,
+                    );
+                    // Telefonu users tablosuna da kaydet
+                    final user = SupabaseService.currentUser;
+                    if (user != null) {
+                      await SupabaseService.client.from('users').update({
+                        'phone': phoneInputController.text.trim(),
+                      }).eq('id', user.id);
+                    }
+                    setState(() {
+                      _phoneController.text = phoneInputController.text.trim();
+                    });
+                    if (context.mounted) Navigator.pop(context);
+                    if (mounted) {
+                      await AppDialogs.showSuccess(context, 'Telefon numaranız doğrulandı!');
+                      ref.read(userProfileProvider.notifier).refresh();
+                    }
+                  } catch (e) {
+                    setDialogState(() => isLoading = false);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Doğrulama başarısız: $e'), backgroundColor: Colors.red),
+                      );
+                    }
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: isLoading
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : Text(codeSent ? 'Doğrula' : 'Kod Gönder', style: const TextStyle(color: Colors.white)),
+            ),
           ],
         ),
-        content: const Text(
-          'Telefon numaranıza bir doğrulama kodu gönderilecektir.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('İptal', style: TextStyle(color: Colors.grey[600])),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Doğrulama kodu gönderildi'),
-                  backgroundColor: AppColors.primary,
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            child: const Text(
-              'Kod Gönder',
-              style: TextStyle(color: Colors.white),
-            ),
-          ),
-        ],
       ),
     );
   }

@@ -205,13 +205,46 @@ class AuthNotifier extends Notifier<AuthState> {
     state = state.copyWith(status: AuthStatus.loading);
 
     try {
-      final response = await SupabaseService.signUp(
-        email: email,
-        password: password,
-        data: {'full_name': fullName, 'phone': phone},
-      );
+      User? user;
 
-      if (response.user != null) {
+      // Önce kayıt dene
+      try {
+        final response = await SupabaseService.signUp(
+          email: email,
+          password: password,
+          data: {'full_name': fullName, 'phone': phone},
+        );
+        user = response.user;
+      } on AuthException catch (e) {
+        if (e.message.contains('User already registered')) {
+          // Kullanıcı zaten var (başka uygulamadan kayıtlı olabilir)
+          // Verilen şifre ile giriş yapmayı dene
+          try {
+            final signInResponse = await SupabaseService.signIn(
+              email: email,
+              password: password,
+            );
+            user = signInResponse.user;
+          } on AuthException {
+            state = state.copyWith(
+              status: AuthStatus.error,
+              errorMessage: 'Bu e-posta başka bir uygulamamızda kayıtlı. Lütfen o uygulamada kullandığınız şifre ile deneyin veya farklı bir e-posta kullanın.',
+            );
+            return false;
+          }
+        } else {
+          rethrow;
+        }
+      }
+
+      if (user != null) {
+        // Zaten kurye profili var mı kontrol et
+        final existingProfile = await CourierService.getCourierProfile();
+        if (existingProfile != null) {
+          await _loadCourierProfile(user);
+          return true;
+        }
+
         // Kurye profili oluştur
         final success = await CourierService.createCourierProfile(
           fullName: fullName,
@@ -226,7 +259,7 @@ class AuthNotifier extends Notifier<AuthState> {
         );
 
         if (success) {
-          await _loadCourierProfile(response.user!);
+          await _loadCourierProfile(user);
           return true;
         }
       }
@@ -272,6 +305,9 @@ class AuthNotifier extends Notifier<AuthState> {
   String _getErrorMessage(String message) {
     if (message.contains('Invalid login credentials')) {
       return 'E-posta veya şifre hatalı';
+    }
+    if (message.contains('Email not confirmed')) {
+      return 'E-posta adresinizi doğrulayınız. Lütfen e-postanızı kontrol edin.';
     }
     if (message.contains('User already registered')) {
       return 'Bu e-posta zaten kayıtlı';

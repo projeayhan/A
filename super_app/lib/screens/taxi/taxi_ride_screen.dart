@@ -601,12 +601,8 @@ class _TaxiRideScreenState extends ConsumerState<TaxiRideScreen>
       backgroundColor: colorScheme.surface,
       body: Stack(
         children: [
-          // Map
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: MediaQuery.of(context).size.height * 0.4,
+          // Map - tam ekran (sheet arkasinda)
+          Positioned.fill(
             child: gmaps.GoogleMap(
               initialCameraPosition: gmaps.CameraPosition(
                 target: gmaps.LatLng(
@@ -624,6 +620,9 @@ class _TaxiRideScreenState extends ConsumerState<TaxiRideScreen>
               myLocationButtonEnabled: false,
               zoomControlsEnabled: false,
               mapToolbarEnabled: false,
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).size.height * 0.4,
+              ),
               onCameraMove: (_) {
                 // Kullanıcı haritayı hareket ettirdiğinde takibi kapat
                 if (!_isProgrammaticCameraMove && _followDriver) {
@@ -646,7 +645,7 @@ class _TaxiRideScreenState extends ConsumerState<TaxiRideScreen>
           // Takip butonu - Takip kapalıysa göster
           if (!_followDriver && _driverLat != null)
             Positioned(
-              top: MediaQuery.of(context).size.height * 0.6 - 70,
+              top: MediaQuery.of(context).size.height * 0.45,
               right: 16,
               child: _buildFollowButton(colorScheme),
             ),
@@ -727,67 +726,75 @@ class _TaxiRideScreenState extends ConsumerState<TaxiRideScreen>
             ),
           ),
 
-          // Bottom sheet
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: SlideTransition(
-              position: _slideAnimation,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: colorScheme.surface,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(28),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 20,
-                      offset: const Offset(0, -4),
+          // Draggable Bottom Sheet
+          DraggableScrollableSheet(
+            initialChildSize: 0.45,
+            minChildSize: 0.10,
+            maxChildSize: 0.85,
+            snap: true,
+            snapSizes: const [0.10, 0.45, 0.85],
+            builder: (context, scrollController) {
+              return SlideTransition(
+                position: _slideAnimation,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: colorScheme.surface,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(28),
                     ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Handle
-                    Container(
-                      width: 40,
-                      height: 4,
-                      margin: const EdgeInsets.only(top: 12),
-                      decoration: BoxDecoration(
-                        color: colorScheme.outlineVariant,
-                        borderRadius: BorderRadius.circular(2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 20,
+                        offset: const Offset(0, -4),
                       ),
-                    ),
-
-                    // Driver info - driverId varsa SecureDriverCard göster
-                    if (_ride.driverId != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 16),
-                        child: SecureDriverCard(
-                          rideId: _ride.id,
-                          onCallPressed: _callDriver,
-                          onMessagePressed: _messageDriver,
+                    ],
+                  ),
+                  child: SingleChildScrollView(
+                    controller: scrollController,
+                    child: Column(
+                      children: [
+                        // Handle
+                        Center(
+                          child: Container(
+                            width: 40,
+                            height: 4,
+                            margin: const EdgeInsets.only(top: 12, bottom: 4),
+                            decoration: BoxDecoration(
+                              color: colorScheme.outlineVariant,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
                         ),
-                      )
-                    else if (_ride.driver != null)
-                      _buildDriverCard(theme, colorScheme),
 
-                    // Ride details
-                    _buildRideDetails(theme, colorScheme),
+                        // Driver info - driverId varsa SecureDriverCard göster
+                        if (_ride.driverId != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 12),
+                            child: SecureDriverCard(
+                              rideId: _ride.id,
+                              onCallPressed: _callDriver,
+                              onMessagePressed: _messageDriver,
+                            ),
+                          )
+                        else if (_ride.driver != null)
+                          _buildDriverCard(theme, colorScheme),
 
-                    // Action buttons
-                    _buildActionButtons(theme, colorScheme),
+                        // Ride details
+                        _buildRideDetails(theme, colorScheme),
 
-                    SizedBox(
-                      height: MediaQuery.of(context).padding.bottom + 16,
+                        // Action buttons
+                        _buildActionButtons(theme, colorScheme),
+
+                        SizedBox(
+                          height: MediaQuery.of(context).padding.bottom + 16,
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-            ),
+              );
+            },
           ),
         ],
       ),
@@ -942,12 +949,20 @@ class _TaxiRideScreenState extends ConsumerState<TaxiRideScreen>
                     // Rating and rides
                     Row(
                       children: [
-                        _buildStatChip(
-                          icon: Icons.star_rounded,
-                          value: driver.rating.toStringAsFixed(1),
-                          color: Colors.amber,
-                          theme: theme,
-                        ),
+                        if (driver.isNewDriver)
+                          _buildStatChip(
+                            icon: Icons.fiber_new_rounded,
+                            value: 'Yeni',
+                            color: Colors.green,
+                            theme: theme,
+                          )
+                        else
+                          _buildStatChip(
+                            icon: Icons.star_rounded,
+                            value: driver.rating.toStringAsFixed(1),
+                            color: Colors.amber,
+                            theme: theme,
+                          ),
                         const SizedBox(width: 8),
                         _buildStatChip(
                           icon: Icons.route_rounded,

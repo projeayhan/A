@@ -265,7 +265,7 @@ class AiChatService {
     if (dataStr == null) return null;
 
     try {
-      final data = jsonDecode(dataStr) as Map<String, dynamic>;
+      final data = jsonDecode(dataStr.trim()) as Map<String, dynamic>;
 
       switch (eventType) {
         case 'session':
@@ -274,15 +274,15 @@ class AiChatService {
           return AiStreamEvent.chunk(data['text'] as String);
         case 'actions':
           return AiStreamEvent.actions(
-            (data['actions'] as List).cast<Map<String, dynamic>>(),
+            (data['actions'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList(),
           );
         case 'search_results':
           return AiStreamEvent.searchResults(
-            (data['products'] as List).cast<Map<String, dynamic>>(),
+            (data['products'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList(),
           );
         case 'rental_results':
           return AiStreamEvent.rentalResults(
-            (data['cars'] as List).cast<Map<String, dynamic>>(),
+            (data['cars'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList(),
           );
         case 'done':
           return AiStreamEvent.done(
@@ -294,7 +294,8 @@ class AiChatService {
         default:
           return null;
       }
-    } catch (_) {
+    } catch (e) {
+      print('SSE parse error [$eventType]: $e | data: ${dataStr.length > 200 ? dataStr.substring(0, 200) : dataStr}');
       return null;
     }
   }
@@ -304,7 +305,7 @@ class AiChatService {
     try {
       final response = await _client
           .from('support_chat_messages')
-          .select('id, role, content, created_at')
+          .select('id, role, content, created_at, metadata')
           .eq('session_id', sessionId)
           .order('created_at', ascending: true);
 

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
 import '../../screens/auth/login_screen.dart';
 import '../../screens/auth/register_screen.dart';
+import '../../screens/auth/forgot_password_screen.dart';
 import '../../screens/auth/pending_screen.dart';
 import '../../screens/home/home_screen.dart';
 import '../../screens/rides/rides_screen.dart';
@@ -12,6 +13,11 @@ import '../../screens/earnings/earnings_screen.dart';
 import '../../screens/profile/profile_screen.dart';
 import '../../screens/profile/reviews_screen.dart';
 import '../../screens/profile/emergency_contacts_screen.dart';
+import '../../screens/profile/personal_info_screen.dart';
+import '../../screens/profile/vehicle_info_screen.dart';
+import '../../screens/profile/payment_info_screen.dart';
+import '../../screens/profile/notification_settings_screen.dart';
+import '../../screens/profile/help_support_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authProvider);
@@ -53,6 +59,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const RegisterScreen(),
       ),
       GoRoute(
+        path: '/forgot-password',
+        builder: (context, state) => const ForgotPasswordScreen(),
+      ),
+      GoRoute(
         path: '/pending',
         builder: (context, state) => const PendingScreen(),
       ),
@@ -88,6 +98,26 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/emergency-contacts',
             builder: (context, state) => const EmergencyContactsScreen(),
+          ),
+          GoRoute(
+            path: '/personal-info',
+            builder: (context, state) => const PersonalInfoScreen(),
+          ),
+          GoRoute(
+            path: '/vehicle-info',
+            builder: (context, state) => const VehicleInfoScreen(),
+          ),
+          GoRoute(
+            path: '/payment-info',
+            builder: (context, state) => const PaymentInfoScreen(),
+          ),
+          GoRoute(
+            path: '/notification-settings',
+            builder: (context, state) => const NotificationSettingsScreen(),
+          ),
+          GoRoute(
+            path: '/help-support',
+            builder: (context, state) => const HelpSupportScreen(),
           ),
         ],
       ),

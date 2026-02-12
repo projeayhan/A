@@ -594,7 +594,7 @@ class SecureDriverInfo {
       vehicleBrand: json['vehicle_brand'] as String? ?? '',
       vehicleModel: json['vehicle_model'] as String? ?? '',
       vehicleColor: json['vehicle_color'] as String? ?? '',
-      rating: (json['rating'] as num?)?.toDouble() ?? 5.0,
+      rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
       canCall: json['can_call'] as bool? ?? true,
       canMessage: json['can_message'] as bool? ?? true,
     );

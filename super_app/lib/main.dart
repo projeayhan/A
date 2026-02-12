@@ -6,6 +6,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:local_auth/local_auth.dart';
 import 'core/theme/app_theme.dart';
 import 'core/services/supabase_service.dart';
 import 'core/services/order_notification_service.dart';
@@ -56,19 +57,53 @@ class SuperApp extends ConsumerStatefulWidget {
   ConsumerState<SuperApp> createState() => _SuperAppState();
 }
 
-class _SuperAppState extends ConsumerState<SuperApp> {
+class _SuperAppState extends ConsumerState<SuperApp> with WidgetsBindingObserver {
   StreamSubscription<OrderStatusUpdate>? _orderNotificationSubscription;
   StreamSubscription<ReviewReplyUpdate>? _reviewNotificationSubscription;
   StreamSubscription<Map<String, dynamic>>? _pushNotificationTapSubscription;
 
+  bool _isLocked = false;
+  bool _isAuthenticating = false;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Initialize after first frame to ensure widget tree is ready
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeNotifications();
       _checkActiveRide();
     });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      if (ref.read(settingsProvider).biometricLogin) {
+        setState(() => _isLocked = true);
+      }
+    } else if (state == AppLifecycleState.resumed && _isLocked) {
+      _authenticateBiometric();
+    }
+  }
+
+  Future<void> _authenticateBiometric() async {
+    if (_isAuthenticating) return;
+    _isAuthenticating = true;
+    try {
+      final auth = LocalAuthentication();
+      final authenticated = await auth.authenticate(
+        localizedReason: 'Uygulamaya erişmek için kimliğinizi doğrulayın',
+        options: const AuthenticationOptions(biometricOnly: true),
+      );
+      if (authenticated && mounted) {
+        setState(() => _isLocked = false);
+      }
+    } catch (e) {
+      debugPrint('Biometric auth error: $e');
+    } finally {
+      _isAuthenticating = false;
+    }
   }
 
   Future<void> _checkActiveRide() async {
@@ -192,6 +227,10 @@ class _SuperAppState extends ConsumerState<SuperApp> {
       case 'rental_reservation':
         router.push('/rental/my-bookings');
         break;
+      case 'ride_message':
+        // Sürücüden mesaj geldiğinde taksi ekranına git
+        router.push('/taxi');
+        break;
       default:
         // Open notifications screen
         router.push('/notifications');
@@ -273,6 +312,7 @@ class _SuperAppState extends ConsumerState<SuperApp> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _orderNotificationSubscription?.cancel();
     _reviewNotificationSubscription?.cancel();
     _pushNotificationTapSubscription?.cancel();
@@ -299,6 +339,86 @@ class _SuperAppState extends ConsumerState<SuperApp> {
       ],
       supportedLocales: supportedLocales,
       locale: settings.locale,
+      builder: (context, child) {
+        return Stack(
+          children: [
+            child!,
+            if (_isLocked) _buildLockScreen(context),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildLockScreen(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Positioned.fill(
+      child: Material(
+        color: isDark ? const Color(0xFF1A1A2E) : Colors.white,
+        child: SafeArea(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppColors.primary, Color(0xFF60A5FA)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(28),
+                ),
+                child: const Icon(Icons.lock_outline, color: Colors.white, size: 48),
+              ),
+              const SizedBox(height: 32),
+              Text(
+                'Uygulama Kilitli',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : const Color(0xFF1F2937),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Devam etmek için kimliğinizi doğrulayın',
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Colors.grey[500],
+                ),
+              ),
+              const SizedBox(height: 48),
+              GestureDetector(
+                onTap: _authenticateBiometric,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.fingerprint, color: Colors.white, size: 28),
+                      SizedBox(width: 12),
+                      Text(
+                        'Kilidi Aç',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

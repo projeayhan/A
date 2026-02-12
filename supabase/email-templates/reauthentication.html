@@ -1,0 +1,50 @@
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body { margin: 0; padding: 0; background-color: #f4f6f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    .wrapper { max-width: 600px; margin: 0 auto; padding: 40px 20px; }
+    .card { background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
+    .header { background: linear-gradient(135deg, #256AF4 0%, #5B8DEF 100%); padding: 40px 32px; text-align: center; }
+    .header h1 { color: #ffffff; font-size: 28px; font-weight: 700; margin: 0 0 4px 0; letter-spacing: -0.5px; }
+    .header p { color: rgba(255,255,255,0.85); font-size: 14px; margin: 0; }
+    .body { padding: 40px 32px; }
+    .body h2 { color: #1a1a2e; font-size: 22px; font-weight: 600; margin: 0 0 12px 0; }
+    .body p { color: #4a5568; font-size: 15px; line-height: 1.6; margin: 0 0 16px 0; }
+    .otp-box { text-align: center; margin: 32px 0; }
+    .otp-code { display: inline-block; background: #f0f5ff; border: 2px solid #256AF4; border-radius: 12px; padding: 16px 40px; font-size: 32px; font-weight: 700; color: #256AF4; letter-spacing: 8px; }
+    .info-box { background: #fff8f0; border: 1px solid #ffe4c4; border-radius: 12px; padding: 16px; margin: 24px 0; }
+    .info-box p { color: #b45309; font-size: 13px; margin: 0; line-height: 1.5; }
+    .divider { height: 1px; background: #e8ecf1; margin: 24px 0; }
+    .footer { padding: 24px 32px; text-align: center; }
+    .footer p { color: #9ca3af; font-size: 12px; margin: 0 0 4px 0; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="card">
+      <div class="header">
+        <h1>SuperCyp</h1>
+        <p>Guvenlik Dogrulamasi</p>
+      </div>
+      <div class="body">
+        <h2>Kimliginizi Dogrulayin</h2>
+        <p>Merhaba,</p>
+        <p>Hassas bir islem gerceklestirmek icin kimlik dogrulamasi gerekiyor. Asagidaki tek kullanimlik kodu kullanin:</p>
+        <div class="otp-box">
+          <div class="otp-code">{{ .Token }}</div>
+        </div>
+        <p style="text-align:center; color:#9ca3af; font-size:13px;">Bu kod kisa sure icinde gecerliligini yitirecektir.</p>
+        <div class="info-box">
+          <p><strong>Bu kodu kimseyle paylasmayiniz.</strong> SuperCyp calisanlari sizden asla bu kodu istemez.</p>
+        </div>
+      </div>
+      <div class="footer">
+        <p><strong>SuperCyp</strong> - 8 Hizmeti Tek Uygulamada</p>
+        <p>Bu otomatik bir e-postadir, lutfen yanit vermeyiniz.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

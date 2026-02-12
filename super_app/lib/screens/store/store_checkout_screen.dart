@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/providers/store_cart_provider.dart';
 import '../../core/providers/address_provider.dart';
+import '../../core/providers/payment_method_provider.dart';
 import '../../core/services/store_service.dart';
 import '../../core/theme/app_responsive.dart';
 import '../../core/theme/store_colors.dart';
@@ -129,7 +130,8 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
             deliveryAddress: selectedAddress.fullAddress,
             deliveryLatitude: selectedAddress.latitude,
             deliveryLongitude: selectedAddress.longitude,
-            paymentMethod: 'card',
+            paymentMethod: PaymentOptions.resolvePaymentMethod(
+              _getAvailableStorePaymentOptions(), _selectedPaymentMethod),
           );
 
           if (result != null) {
@@ -679,7 +681,48 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
     );
   }
 
+  List<PaymentOption> _getAvailableStorePaymentOptions() {
+    final paymentState = ref.read(paymentMethodProvider);
+    final options = <PaymentOption>[];
+    int idx = 0;
+    if (paymentState.creditCardOnDeliveryEnabled) {
+      options.add(PaymentOption(
+        index: idx++,
+        icon: Icons.credit_card,
+        title: 'Kredi/Banka Kartı',
+        subtitle: 'Kapıda Kredi Kartı',
+        paymentMethodKey: 'credit_card_on_delivery',
+      ));
+    }
+    if (paymentState.cashEnabled) {
+      options.add(PaymentOption(
+        index: idx++,
+        icon: Icons.payments_outlined,
+        title: 'Kapıda Ödeme',
+        subtitle: 'Nakit Ödeme',
+        paymentMethodKey: 'cash',
+      ));
+    }
+    if (options.isEmpty) {
+      options.add(const PaymentOption(
+        index: 0,
+        icon: Icons.payments_outlined,
+        title: 'Kapıda Ödeme',
+        subtitle: 'Nakit Ödeme',
+        paymentMethodKey: 'cash',
+      ));
+    }
+    return options;
+  }
+
   Widget _buildPaymentStep(bool isDark) {
+    final options = _getAvailableStorePaymentOptions();
+    if (!options.any((o) => o.index == _selectedPaymentMethod)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _selectedPaymentMethod = options.first.index);
+      });
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -704,7 +747,7 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
             onChanged: (index) => setState(() => _selectedPaymentMethod = index),
             primaryColor: StoreColors.primary,
             isDark: isDark,
-            options: PaymentOptions.storeOptions,
+            options: options,
             showAddNew: false,
           ),
           const SizedBox(height: 24),

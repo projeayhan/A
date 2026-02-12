@@ -114,8 +114,38 @@ class ProfileScreen extends ConsumerWidget {
             style: Theme.of(context).textTheme.bodyMedium,
           ),
 
-          if (profile?['rating'] != null) ...[
-            const SizedBox(height: 16),
+          const SizedBox(height: 16),
+          if ((profile?['total_ratings'] as int? ?? 0) < 5) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.green.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.fiber_new_rounded, color: Colors.green.shade700, size: 20),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Yeni Sürücü',
+                    style: TextStyle(
+                      color: Colors.green.shade700,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${5 - (profile?['total_ratings'] as int? ?? 0)} değerlendirme sonra puanınız görünür olacak',
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.textHint,
+              ),
+            ),
+          ] else if (profile?['rating'] != null) ...[
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -202,6 +232,7 @@ class ProfileScreen extends ConsumerWidget {
 
     final totalRides = profile['total_rides'] as int? ?? 0;
     final rating = (profile['rating'] as num?)?.toDouble() ?? 0;
+    final totalRatings = profile['total_ratings'] as int? ?? 0;
     final totalEarnings = (profile['total_earnings'] as num?)?.toDouble() ?? 0;
 
     return Container(
@@ -228,13 +259,21 @@ class ProfileScreen extends ConsumerWidget {
             color: AppColors.border,
           ),
           Expanded(
-            child: _buildStatItem(
-              context,
-              Icons.star,
-              rating.toStringAsFixed(1),
-              'Puan',
-              AppColors.warning,
-            ),
+            child: totalRatings < 5
+                ? _buildStatItem(
+                    context,
+                    Icons.fiber_new_rounded,
+                    'Yeni',
+                    'Puan',
+                    Colors.green,
+                  )
+                : _buildStatItem(
+                    context,
+                    Icons.star,
+                    rating.toStringAsFixed(1),
+                    'Puan',
+                    AppColors.warning,
+                  ),
           ),
           Container(
             width: 1,
@@ -288,21 +327,21 @@ class ProfileScreen extends ConsumerWidget {
             context,
             icon: Icons.person_outline,
             title: 'Kişisel Bilgiler',
-            onTap: () {},
+            onTap: () => context.push('/personal-info'),
           ),
           const Divider(height: 1),
           _buildMenuItem(
             context,
             icon: Icons.directions_car_outlined,
             title: 'Araç Bilgileri',
-            onTap: () {},
+            onTap: () => context.push('/vehicle-info'),
           ),
           const Divider(height: 1),
           _buildMenuItem(
             context,
             icon: Icons.account_balance_wallet_outlined,
             title: 'Ödeme Bilgileri',
-            onTap: () {},
+            onTap: () => context.push('/payment-info'),
           ),
           const Divider(height: 1),
           _buildMenuItem(
@@ -324,14 +363,14 @@ class ProfileScreen extends ConsumerWidget {
             context,
             icon: Icons.notifications_outlined,
             title: 'Bildirimler',
-            onTap: () {},
+            onTap: () => context.push('/notification-settings'),
           ),
           const Divider(height: 1),
           _buildMenuItem(
             context,
             icon: Icons.help_outline,
             title: 'Yardım & Destek',
-            onTap: () {},
+            onTap: () => context.push('/help-support'),
           ),
           const Divider(height: 1),
           _buildMenuItem(

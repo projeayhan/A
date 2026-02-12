@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../core/utils/name_masking.dart';
 
 class ReviewsScreen extends StatefulWidget {
   const ReviewsScreen({super.key});
@@ -287,7 +288,7 @@ class _ReviewsScreenState extends State<ReviewsScreen> with SingleTickerProvider
   Widget _buildReviewCard(Map<String, dynamic> review) {
     final car = review['rental_cars'] as Map<String, dynamic>?;
     final booking = review['rental_bookings'] as Map<String, dynamic>?;
-    final userName = review['user_name'] as String? ?? 'Anonim';
+    final userName = maskUserName(review['user_name'] as String?);
     final rating = review['overall_rating'] as int;
     final comment = review['comment'] as String?;
     final companyReply = review['company_reply'] as String?;

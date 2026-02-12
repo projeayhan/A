@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/services/taxi_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/utils/name_masking.dart';
 
 // Reviews provider
 final driverReviewsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
@@ -286,7 +287,7 @@ class _ReviewsScreenState extends ConsumerState<ReviewsScreen> {
   Widget _buildReviewCard(BuildContext context, Map<String, dynamic> review) {
     final rating = (review['rating'] as num?)?.toInt() ?? 0;
     final comment = review['rating_comment'] as String?;
-    final customerName = review['customer_name'] as String? ?? 'Müşteri';
+    final customerName = maskUserName(review['customer_name'] as String?);
     final createdAt = review['completed_at'] != null
         ? DateTime.tryParse(review['completed_at'].toString())
         : null;

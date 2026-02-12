@@ -278,7 +278,7 @@ class _FloatingAIAssistantState extends State<FloatingAIAssistant>
     setState(() => _isVoiceMode = false);
 
     // Ses tanıyıcıya son sesleri işlemesi için kısa süre ver
-    await Future.delayed(const Duration(milliseconds: 600));
+    await Future.delayed(const Duration(milliseconds: 300));
     await voiceInputService.stopListening();
 
     final text = _voicePartialText.trim();
@@ -307,7 +307,6 @@ class _FloatingAIAssistantState extends State<FloatingAIAssistant>
       final response = await AiChatService.sendMessage(
         message: text,
         sessionId: _voiceSessionId,
-        generateAudio: true,
       );
 
       if (!mounted) return;
@@ -322,9 +321,8 @@ class _FloatingAIAssistantState extends State<FloatingAIAssistant>
           _showVoiceResponse = true;
         });
 
-        // Inline audio varsa doğrudan çal, yoksa ayrı TTS çağrısı yap
+        // TTS: Ayrı çağrı ile paralel ses üret
         voiceOutputService.setEnabled(true);
-        final inlineAudio = response['audio'] as String?;
         void onAudioComplete() {
           if (!mounted) return;
           _voiceResponseDismissTimer?.cancel();
@@ -332,11 +330,7 @@ class _FloatingAIAssistantState extends State<FloatingAIAssistant>
             if (mounted) _dismissVoiceResponse();
           });
         }
-        if (inlineAudio != null && inlineAudio.isNotEmpty) {
-          voiceOutputService.playBase64Audio(inlineAudio, onComplete: onAudioComplete);
-        } else {
-          voiceOutputService.speak(aiMsg, onComplete: onAudioComplete);
-        }
+        voiceOutputService.speak(aiMsg, onComplete: onAudioComplete);
 
         // Fallback: TTS hata verirse 3 dk sonra kapat
         _voiceResponseDismissTimer?.cancel();

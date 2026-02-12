@@ -25,11 +25,21 @@ class SecureDriverCard extends StatefulWidget {
 class _SecureDriverCardState extends State<SecureDriverCard> {
   SecureDriverInfo? _driverInfo;
   bool _isLoading = true;
+  int _unreadCount = 0;
+  dynamic _messageChannel;
 
   @override
   void initState() {
     super.initState();
     _loadDriverInfo();
+    _loadUnreadCount();
+    _subscribeToMessages();
+  }
+
+  @override
+  void dispose() {
+    _messageChannel?.unsubscribe();
+    super.dispose();
   }
 
   Future<void> _loadDriverInfo() async {
@@ -39,6 +49,32 @@ class _SecureDriverCardState extends State<SecureDriverCard> {
         _driverInfo = info;
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _loadUnreadCount() async {
+    final messages = await CommunicationService.getMessages(widget.rideId);
+    if (mounted) {
+      final unread = messages.where((m) => m.senderType == 'driver' && !m.isRead).length;
+      setState(() => _unreadCount = unread);
+    }
+  }
+
+  void _subscribeToMessages() {
+    _messageChannel = CommunicationService.subscribeToMessages(widget.rideId, (message) {
+      if (mounted && message.senderType == 'driver') {
+        setState(() => _unreadCount++);
+      }
+    });
+  }
+
+  void _onMessageTap() {
+    setState(() => _unreadCount = 0);
+    CommunicationService.markMessagesAsRead(widget.rideId);
+    if (widget.onMessagePressed != null) {
+      widget.onMessagePressed!();
+    } else {
+      _openMessaging();
     }
   }
 
@@ -160,7 +196,8 @@ class _SecureDriverCardState extends State<SecureDriverCard> {
                 _ActionButton(
                   icon: Icons.message,
                   color: theme.primaryColor,
-                  onTap: widget.onMessagePressed ?? () => _openMessaging(),
+                  onTap: _onMessageTap,
+                  badgeCount: _unreadCount,
                 ),
             ],
           ),
@@ -258,25 +295,55 @@ class _ActionButton extends StatelessWidget {
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
+  final int badgeCount;
 
   const _ActionButton({
     required this.icon,
     required this.color,
     required this.onTap,
+    this.badgeCount = 0,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Icon(icon, color: color, size: 20),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          if (badgeCount > 0)
+            Positioned(
+              top: -4,
+              right: -4,
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                decoration: const BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text(
+                    badgeCount > 9 ? '9+' : '$badgeCount',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

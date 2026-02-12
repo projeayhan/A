@@ -16,13 +16,31 @@ class LoginScreen extends ConsumerStatefulWidget {
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends ConsumerState<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> with TickerProviderStateMixin {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
 
+  late AnimationController _logoEntrance;
+  late AnimationController _logoShimmer;
+
+  @override
+  void initState() {
+    super.initState();
+    _logoEntrance = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..forward();
+    _logoShimmer = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3000),
+    )..repeat();
+  }
+
   @override
   void dispose() {
+    _logoEntrance.dispose();
+    _logoShimmer.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -93,45 +111,46 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               children: [
                 const SizedBox(height: 48),
 
-                // Logo
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.3),
-                        blurRadius: 16,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.hexagon_outlined,
-                    color: Colors.white,
-                    size: 40,
+                // Logo with effects and robot mascot
+                AnimatedBuilder(
+                  animation: Listenable.merge([_logoEntrance, _logoShimmer]),
+                  builder: (context, child) {
+                    final scale = Curves.elasticOut.transform(_logoEntrance.value.clamp(0.0, 1.0));
+                    final sv = _logoShimmer.value;
+                    final showShimmer = sv <= 0.3;
+                    final sp = showShimmer ? sv / 0.3 : 0.0;
+                    Widget logo = child!;
+                    if (showShimmer) {
+                      logo = ShaderMask(
+                        shaderCallback: (bounds) => LinearGradient(
+                          begin: Alignment(sp * 4 - 2, -0.3),
+                          end: Alignment(sp * 4 - 1, 0.3),
+                          colors: const [
+                            Color(0x00FFFFFF),
+                            Color(0x40FFFFFF),
+                            Color(0x00FFFFFF),
+                          ],
+                        ).createShader(bounds),
+                        blendMode: BlendMode.srcATop,
+                        child: logo,
+                      );
+                    }
+                    return Transform.scale(
+                      scale: scale,
+                      child: logo,
+                    );
+                  },
+                  child: Image.asset(
+                    'assets/images/supercyp_logo.png',
+                    width: 280,
                   ),
                 ),
 
-                const SizedBox(height: 24),
-
-                // Title
-                Text(
-                  'Hoş Geldiniz',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.white : AppColors.textPrimaryLight,
-                  ),
-                ),
-
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
 
                 // Subtitle
                 Text(
-                  'Yemekten alışverişe, 7 farklı hizmet dünyasına tek bir hesaptan erişin.',
+                  'Yemekten alışverişe, 8 farklı hizmet dünyasına tek bir hesaptan erişin.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 14,

@@ -7,8 +7,10 @@ import '../../core/utils/app_dialogs.dart';
 import 'food_home_screen.dart';
 import '../../core/providers/address_provider.dart';
 import '../../core/providers/cart_provider.dart';
+import '../../core/providers/payment_method_provider.dart';
 import '../../core/services/restaurant_service.dart';
 import '../../core/services/delivery_service.dart';
+import '../../widgets/common/payment_method_selector.dart';
 
 class CartScreen extends ConsumerStatefulWidget {
   const CartScreen({super.key});
@@ -1025,7 +1027,50 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     );
   }
 
+  List<PaymentOption> _getAvailableFoodPaymentOptions() {
+    final paymentState = ref.read(paymentMethodProvider);
+    final options = <PaymentOption>[];
+    int idx = 0;
+    if (paymentState.creditCardOnDeliveryEnabled) {
+      options.add(PaymentOption(
+        index: idx++,
+        icon: Icons.credit_card,
+        title: 'Kredi Kartı',
+        subtitle: 'Kapıda Kredi Kartı',
+        paymentMethodKey: 'credit_card_on_delivery',
+      ));
+    }
+    if (paymentState.cashEnabled) {
+      options.add(PaymentOption(
+        index: idx++,
+        icon: Icons.payments_outlined,
+        title: 'Nakit',
+        subtitle: 'Kapıda Nakit Ödeme',
+        paymentMethodKey: 'cash',
+      ));
+    }
+    // Fallback: en az bir seçenek olsun
+    if (options.isEmpty) {
+      options.add(const PaymentOption(
+        index: 0,
+        icon: Icons.payments_outlined,
+        title: 'Nakit',
+        subtitle: 'Kapıda Nakit Ödeme',
+        paymentMethodKey: 'cash',
+      ));
+    }
+    return options;
+  }
+
   Widget _buildPaymentSection(bool isDark) {
+    final options = _getAvailableFoodPaymentOptions();
+    // Seçili index geçerli değilse sıfırla
+    if (!options.any((o) => o.index == _selectedPaymentMethod)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _selectedPaymentMethod = options.first.index);
+      });
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1038,21 +1083,16 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        _buildPaymentOption(
-          index: 0,
-          icon: Icons.credit_card,
-          title: 'Kredi Kartı',
-          subtitle: 'Kapıda Kredi Kartı',
-          isDark: isDark,
-        ),
-        const SizedBox(height: 12),
-        _buildPaymentOption(
-          index: 1,
-          icon: Icons.payments_outlined,
-          title: 'Nakit',
-          subtitle: 'Kapıda Nakit Ödeme',
-          isDark: isDark,
-        ),
+        ...options.map((option) => Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: _buildPaymentOption(
+            index: option.index,
+            icon: option.icon,
+            title: option.title,
+            subtitle: option.subtitle,
+            isDark: isDark,
+          ),
+        )),
       ],
     );
   }
@@ -1478,7 +1518,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         deliveryAddress: selectedAddress.fullAddress,
         deliveryLatitude: selectedAddress.latitude,
         deliveryLongitude: selectedAddress.longitude,
-        paymentMethod: 'cash', // TODO: ödeme yöntemi seçimi eklenecek
+        paymentMethod: PaymentOptions.resolvePaymentMethod(
+          _getAvailableFoodPaymentOptions(), _selectedPaymentMethod),
         deliveryInstructions: _noteController.text.trim().isEmpty
             ? null
             : _noteController.text.trim(),
