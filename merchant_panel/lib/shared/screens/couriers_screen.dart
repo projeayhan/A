@@ -23,13 +23,12 @@ final merchantCouriersProvider = StreamProvider<List<Map<String, dynamic>>>((ref
   Future<List<Map<String, dynamic>>> fetchCouriers() async {
     debugPrint('fetchCouriers: fetching for merchant ${merchant.id}');
 
-    // merchant_id eşleşen ve restoran/hem ikisi modunda olan kuryeler
+    // merchant_id eşleşen tüm kuryeler (onaylanmış)
     final response = await supabase
         .from('couriers')
         .select()
         .eq('merchant_id', merchant.id)
         .eq('status', 'approved')
-        .inFilter('work_mode', ['restaurant', 'both'])
         .order('created_at', ascending: false);
 
     debugPrint('fetchCouriers: got ${response.length} couriers');
@@ -485,10 +484,14 @@ class _CouriersScreenState extends ConsumerState<CouriersScreen>
           .update({'status': 'approved', 'updated_at': DateTime.now().toIso8601String()})
           .eq('id', requestId);
 
-      // Kurye'nin merchant_id'sini güncelle
+      // Kurye'nin merchant_id'sini ve work_mode'unu güncelle
       await supabase
           .from('couriers')
-          .update({'merchant_id': merchant.id, 'updated_at': DateTime.now().toIso8601String()})
+          .update({
+            'merchant_id': merchant.id,
+            'work_mode': 'both',
+            'updated_at': DateTime.now().toIso8601String(),
+          })
           .eq('id', courierId);
 
       // Provider'ları yenile
