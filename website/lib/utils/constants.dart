@@ -1,9 +1,9 @@
 class AppUrls {
-  static const String adminPanel = 'https://admin-panel-tau-wine.vercel.app';
-  static const String merchantPanel = 'https://merchant-panel-wine.vercel.app';
-  static const String emlakciPanel = 'https://emlakci-panel.vercel.app';
-  static const String aracSatisPanel = 'https://arac-satis-panel.vercel.app';
-  static const String rentACarPanel = 'https://rent-a-car-panel.vercel.app';
+  static const String adminPanel = 'https://admin.supercyp.com';
+  static const String merchantPanel = 'https://panel.supercyp.com';
+  static const String emlakciPanel = 'https://emlakci.supercyp.com';
+  static const String aracSatisPanel = 'https://arac.supercyp.com';
+  static const String rentACarPanel = 'https://rentacar.supercyp.com';
 }
 
 class SectionKeys {

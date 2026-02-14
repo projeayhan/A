@@ -10,11 +10,11 @@ class BusinessPanelsSection extends StatelessWidget {
   const BusinessPanelsSection({super.key});
 
   static const _panels = [
-    _Panel('Admin Panel', 'Tum sistemi tek merkezden yonetin', Icons.admin_panel_settings, AppColors.adminGradient, 'https://admin-panel-tau-wine.vercel.app'),
-    _Panel('Restoran & Magaza Paneli', 'Menu, siparis ve musteri yonetimi', Icons.storefront, AppColors.foodGradient, 'https://merchant-panel-wine.vercel.app'),
-    _Panel('Emlakci Paneli', 'Emlak ilan ve portfoy yonetimi', Icons.real_estate_agent, AppColors.realEstateGradient, 'https://emlakci-panel.vercel.app'),
-    _Panel('Arac Satis Paneli', 'Arac ilan ve galeri yonetimi', Icons.directions_car, AppColors.carSalesGradient, 'https://arac-satis-panel.vercel.app'),
-    _Panel('Rent a Car Paneli', 'Filo ve rezervasyon yonetimi', Icons.car_rental, AppColors.rentalGradient, 'https://rent-a-car-panel.vercel.app'),
+    _Panel('Admin Panel', 'Tum sistemi tek merkezden yonetin', Icons.admin_panel_settings, AppColors.adminGradient, 'https://admin.supercyp.com'),
+    _Panel('Restoran & Magaza Paneli', 'Menu, siparis ve musteri yonetimi', Icons.storefront, AppColors.foodGradient, 'https://panel.supercyp.com'),
+    _Panel('Emlakci Paneli', 'Emlak ilan ve portfoy yonetimi', Icons.real_estate_agent, AppColors.realEstateGradient, 'https://emlakci.supercyp.com'),
+    _Panel('Arac Satis Paneli', 'Arac ilan ve galeri yonetimi', Icons.directions_car, AppColors.carSalesGradient, 'https://arac.supercyp.com'),
+    _Panel('Rent a Car Paneli', 'Filo ve rezervasyon yonetimi', Icons.car_rental, AppColors.rentalGradient, 'https://rentacar.supercyp.com'),
   ];
 
   @override
