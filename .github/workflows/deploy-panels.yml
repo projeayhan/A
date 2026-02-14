@@ -15,7 +15,6 @@ jobs:
           - panel: emlakci_panel
           - panel: arac_satis_panel
           - panel: rent_a_car_panel
-          - panel: super_app
           - panel: website
     steps:
       - uses: actions/checkout@v4
@@ -24,11 +23,6 @@ jobs:
         with:
           channel: stable
           cache: true
-
-      - name: Create .env for super_app
-        if: matrix.panel == 'super_app'
-        run: |
-          printf "SUPABASE_URL=%s\nSUPABASE_ANON_KEY=%s\n" "${{ secrets.SUPABASE_URL }}" "${{ secrets.SUPABASE_ANON_KEY }}" > super_app/.env
 
       - name: Build ${{ matrix.panel }}
         run: |
@@ -44,7 +38,6 @@ jobs:
             emlakci_panel) echo "PROJ_ID=${{ secrets.VERCEL_EMLAKCI_PROJECT_ID }}" >> $GITHUB_ENV ;;
             arac_satis_panel) echo "PROJ_ID=${{ secrets.VERCEL_ARAC_SATIS_PROJECT_ID }}" >> $GITHUB_ENV ;;
             rent_a_car_panel) echo "PROJ_ID=${{ secrets.VERCEL_RENT_A_CAR_PROJECT_ID }}" >> $GITHUB_ENV ;;
-            super_app) echo "PROJ_ID=${{ secrets.VERCEL_SUPER_APP_PROJECT_ID }}" >> $GITHUB_ENV ;;
             website) echo "PROJ_ID=${{ secrets.VERCEL_WEBSITE_PROJECT_ID }}" >> $GITHUB_ENV ;;
           esac
 
