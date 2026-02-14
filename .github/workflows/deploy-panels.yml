@@ -25,6 +25,11 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Create .env for super_app
+        if: matrix.panel == 'super_app'
+        run: |
+          printf "SUPABASE_URL=%s\nSUPABASE_ANON_KEY=%s\n" "${{ secrets.SUPABASE_URL }}" "${{ secrets.SUPABASE_ANON_KEY }}" > super_app/.env
+
       - name: Build ${{ matrix.panel }}
         run: |
           cd ${{ matrix.panel }}

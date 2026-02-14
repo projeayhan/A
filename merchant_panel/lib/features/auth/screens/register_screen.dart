@@ -71,10 +71,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           'is_approved': false,
         });
 
+        // Sign out auto-confirmed session and send verification email
+        await supabase.auth.signOut();
+        await supabase.auth.resend(
+          type: OtpType.signup,
+          email: _emailController.text.trim(),
+        );
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Kayit basarili! Hesabiniz onay bekliyor.'),
+              content: Text('Kayit basarili! E-posta adresinize gelen dogrulama linkine tiklayin.'),
               backgroundColor: AppColors.success,
             ),
           );

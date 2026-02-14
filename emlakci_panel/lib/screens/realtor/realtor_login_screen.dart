@@ -827,32 +827,31 @@ class _RealtorLoginScreenState extends ConsumerState<RealtorLoginScreen>
 
       HapticFeedback.mediumImpact();
 
-      if (response.session == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content:
-                Text('Kayıt başarılı! E-posta doğrulama linkine tıklayın.'),
-            backgroundColor: Color(0xFF22C55E),
-            duration: Duration(seconds: 5),
-          ),
-        );
-        setState(() {
-          _showRegister = false;
-          _emailController.clear();
-          _passwordController.clear();
-          _confirmPasswordController.clear();
-        });
-        return;
+      // Sign out auto-confirmed session and send verification email
+      if (response.session != null) {
+        await Supabase.instance.client.auth.signOut();
       }
+      await Supabase.instance.client.auth.resend(
+        type: OtpType.signup,
+        email: _emailController.text.trim(),
+      );
 
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-              'Kayıt başarılı! Şimdi emlakçı başvurusu yapabilirsiniz.'),
+          content:
+              Text('Kayıt başarılı! E-posta doğrulama linkine tıklayın.'),
           backgroundColor: Color(0xFF22C55E),
+          duration: Duration(seconds: 5),
         ),
       );
-      context.go('/application');
+      setState(() {
+        _showRegister = false;
+        _emailController.clear();
+        _passwordController.clear();
+        _confirmPasswordController.clear();
+      });
+      return;
     } on AuthException catch (e) {
       if (!mounted) return;
       String message;

@@ -259,7 +259,9 @@ class AuthNotifier extends Notifier<AuthState> {
         );
 
         if (success) {
-          await _loadCourierProfile(user);
+          // Sign out and require email verification
+          await SupabaseService.signOut();
+          state = const AuthState(status: AuthStatus.unauthenticated);
           return true;
         }
       }

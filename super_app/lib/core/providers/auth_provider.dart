@@ -257,13 +257,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
 
       if (response.user != null) {
-        // Only set as authenticated if we have a session (email confirmed or not required)
-        if (response.session != null) {
-          state = AuthState(
-            status: AuthStatus.authenticated,
-            user: response.user,
-          );
-        }
+        // After signup, always require email verification
+        // (signOut + resend is handled in SupabaseService.signUp)
+        state = const AuthState(status: AuthStatus.unauthenticated);
         return true;
       }
 

@@ -38,10 +38,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     });
 
     try {
-      await Supabase.instance.client.auth.signUp(
+      final response = await Supabase.instance.client.auth.signUp(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
+
+      // Sign out auto-confirmed session and send verification email
+      if (response.session != null) {
+        await Supabase.instance.client.auth.signOut();
+      }
+      if (response.user != null) {
+        await Supabase.instance.client.auth.resend(
+          type: OtpType.signup,
+          email: _emailController.text.trim(),
+        );
+      }
 
       if (!mounted) return;
 

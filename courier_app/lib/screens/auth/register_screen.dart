@@ -183,8 +183,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         );
 
     if (success && mounted) {
-      // Başarılı kayıt - pending sayfasına yönlendir
-      context.go('/pending');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Kayıt başarılı! E-posta adresinize gelen doğrulama linkine tıklayın.'),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 5),
+        ),
+      );
+      context.go('/login');
     }
   }
 

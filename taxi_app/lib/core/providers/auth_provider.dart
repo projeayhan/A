@@ -254,7 +254,9 @@ class AuthNotifier extends Notifier<AuthState> {
         );
 
         if (driverProfile != null) {
-          await _loadDriverProfile(user);
+          // Sign out and require email verification
+          await SupabaseService.signOut();
+          state = const AuthState(status: AuthStatus.unauthenticated);
           return true;
         }
       }

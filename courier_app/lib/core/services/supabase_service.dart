@@ -25,11 +25,18 @@ class SupabaseService {
     required String password,
     Map<String, dynamic>? data,
   }) async {
-    return await client.auth.signUp(
+    final response = await client.auth.signUp(
       email: email,
       password: password,
       data: data,
     );
+
+    // GoTrue auto-confirms on signup, so resend confirmation email
+    if (response.user != null && response.session != null) {
+      await client.auth.resend(type: OtpType.signup, email: email);
+    }
+
+    return response;
   }
 
   static Future<void> signOut() async {

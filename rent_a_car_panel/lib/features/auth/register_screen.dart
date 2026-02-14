@@ -94,8 +94,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
         'total_reviews': 0,
       });
 
-      // Sign out until approved
+      // Sign out until approved and send verification email
       await Supabase.instance.client.auth.signOut();
+      await Supabase.instance.client.auth.resend(
+        type: OtpType.signup,
+        email: _emailController.text.trim(),
+      );
 
       if (mounted) {
         setState(() {

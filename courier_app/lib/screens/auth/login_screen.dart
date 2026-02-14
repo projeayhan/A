@@ -242,7 +242,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                       final sp = showShimmer ? sv / 0.3 : 0.0;
                       Widget logo = Image.asset(
                         'assets/images/supercyp_logo.png',
-                        width: 180,
+                        width: 150,
                       );
                       if (showShimmer) {
                         logo = ShaderMask(
