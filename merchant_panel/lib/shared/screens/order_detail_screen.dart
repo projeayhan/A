@@ -490,6 +490,15 @@ class OrderDetailScreen extends ConsumerWidget {
                           item.name,
                           style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
+                        if (item.options != null && item.options!.isNotEmpty)
+                          Text(
+                            item.options!.join(', '),
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                         if (item.notes != null)
                           Text(
                             item.notes!,

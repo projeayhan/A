@@ -62,20 +62,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       );
 
       if (authResponse.user != null) {
-        // Sign out and send verification email
+        // Auto-confirm email (no email verification for merchants)
+        try { await supabase.rpc('auto_confirm_email', params: {'p_user_id': authResponse.user!.id}); } catch (_) {}
         try { await supabase.auth.signOut(); } catch (_) {}
-        try {
-          await supabase.auth.resend(
-            type: OtpType.signup,
-            email: _emailController.text.trim(),
-          );
-        } catch (_) {}
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Kayit basarili! E-posta adresinize gelen dogrulama linkine tiklayin.'),
+              content: Text('Kayit basarili! Admin onayindan sonra giris yapabilirsiniz.'),
               backgroundColor: AppColors.success,
+              duration: Duration(seconds: 5),
             ),
           );
           context.go('/auth/login');
@@ -105,7 +101,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   String _getAuthErrorMessage(String message) {
     if (message.contains('already registered') || message.contains('already exists')) {
       return 'Bu e-posta adresi zaten kayitli.';
-    } else if (message.contains('Invalid email')) {
+    } else if (message.contains('rate limit') || message.contains('429')) {
+      return 'Cok fazla deneme yaptiniz. Lutfen 1 saat sonra tekrar deneyin.';
+    } else if (message.contains('Invalid email') || message.contains('invalid format')) {
       return 'Gecersiz e-posta adresi.';
     } else if (message.contains('Password')) {
       return 'Sifre en az 6 karakter olmali.';

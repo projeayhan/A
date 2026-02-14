@@ -34,13 +34,9 @@ class SupabaseService {
       data: data,
     );
 
-    // GoTrue auto-confirms on signup, so we need to:
-    // 1. Sign out the auto-confirmed session
-    // 2. Resend confirmation email
-    // 3. Return response with session cleared
+    // signUp() already sends confirmation email, just sign out the auto-session
     if (response.user != null && response.session != null) {
       await client.auth.signOut();
-      await client.auth.resend(type: OtpType.signup, email: email);
     }
 
     return response;

@@ -1499,13 +1499,19 @@ class _CartScreenState extends ConsumerState<CartScreen> {
 
     try {
       // Convert cart items to order items format
-      final orderItems = cartState.items.map((item) => {
-        'id': item.id,
-        'name': item.name,
-        'price': item.price,
-        'quantity': item.quantity,
-        'total': item.totalPrice,
-        'image_url': item.imageUrl,
+      final orderItems = cartState.items.map((item) {
+        final map = {
+          'id': item.id,
+          'name': item.name,
+          'price': item.price,
+          'quantity': item.quantity,
+          'total': item.totalPrice,
+          'image_url': item.imageUrl,
+        };
+        if (item.extra != null && item.extra!.isNotEmpty) {
+          map['options'] = item.extra!;
+        }
+        return map;
       }).toList();
 
       // Create order in Supabase
@@ -1533,7 +1539,13 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         if (mounted) {
           context.go(
             '/food/order-success/$orderId',
-            extra: {'totalAmount': total},
+            extra: {
+              'totalAmount': total,
+              'restaurantName': cartState.merchantName ?? 'Restoran',
+              'deliveryTime': cartState.estimatedDeliveryMin != null
+                  ? '~${cartState.estimatedDeliveryMin} dakika'
+                  : '25-35 dakika',
+            },
           );
         }
       } else {

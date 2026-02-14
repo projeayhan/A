@@ -1286,7 +1286,25 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
             final name = item['name'] ?? 'Ürün';
             final quantity = item['quantity'] ?? 1;
             final price = (item['price'] as num?)?.toDouble() ?? 0;
-            return _buildOrderItem('${quantity}x $name', '₺${(price * quantity).toStringAsFixed(2)}', isDark);
+            final rawOptions = item['options'];
+            final optionsText = rawOptions is String && rawOptions.isNotEmpty ? rawOptions : (rawOptions is List && rawOptions.isNotEmpty ? rawOptions.join(', ') : null);
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildOrderItem('${quantity}x $name', '₺${(price * quantity).toStringAsFixed(2)}', isDark),
+                if (optionsText != null)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8, bottom: 4),
+                    child: Text(
+                      optionsText,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? Colors.grey[400] : Colors.grey[600],
+                      ),
+                    ),
+                  ),
+              ],
+            );
           }),
 
           if (items.isEmpty) ...[

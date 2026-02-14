@@ -124,6 +124,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
           return;
         }
 
+        // Check if merchant is approved
+        if (roles.contains('merchant')) {
+          final merchant = await supabase
+              .from('merchants')
+              .select('is_approved')
+              .eq('user_id', response.user!.id)
+              .maybeSingle();
+          if (merchant != null && merchant['is_approved'] != true) {
+            await supabase.auth.signOut();
+            setState(() {
+              _errorMessage =
+                  'Hesabınız henüz admin tarafından onaylanmadı. Lütfen onay için bekleyin.';
+              _isLoading = false;
+            });
+            return;
+          }
+        }
+
         await SecurityService.clearLoginBlocks(email);
         if (mounted) context.go('/');
       }
@@ -158,7 +176,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     if (message.contains('Invalid login credentials')) {
       return 'E-posta veya şifre hatalı.';
     } else if (message.contains('Email not confirmed')) {
-      return 'E-posta adresiniz doğrulanmamış.';
+      return 'Hesabınız henüz aktif değil. Lütfen admin onayını bekleyin.';
     } else if (message.contains('Too many requests')) {
       return 'Çok fazla deneme yaptınız. Lütfen bekleyin.';
     } else if (message.contains('User not found')) {

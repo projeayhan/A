@@ -41,6 +41,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
     final user = SupabaseService.currentUser;
     if (user != null) {
       state = AuthState(status: AuthStatus.authenticated, user: user);
+      // Validate session on startup - if refresh token is invalid, force logout
+      _validateSessionOnStartup();
     } else {
       state = const AuthState(status: AuthStatus.unauthenticated);
     }
@@ -77,6 +79,20 @@ class AuthNotifier extends StateNotifier<AuthState> {
         state = const AuthState(status: AuthStatus.unauthenticated);
       }
     });
+  }
+
+  Future<void> _validateSessionOnStartup() async {
+    try {
+      final valid = await SupabaseService.ensureValidSession();
+      if (!valid) {
+        await SupabaseService.signOut();
+        state = const AuthState(status: AuthStatus.unauthenticated);
+      }
+    } catch (e) {
+      // Refresh token invalid - force logout
+      try { await SupabaseService.signOut(); } catch (_) {}
+      state = const AuthState(status: AuthStatus.unauthenticated);
+    }
   }
 
   @override

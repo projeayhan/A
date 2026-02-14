@@ -1,7 +1,7 @@
 import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
@@ -1161,19 +1161,15 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
 
   Future<void> _pickImage() async {
     try {
-      final picker = ImagePicker();
-      final pickedFile = await picker.pickImage(
-        source: ImageSource.gallery,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 85,
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.image,
+        withData: true,
       );
 
-      if (pickedFile != null) {
-        final bytes = await pickedFile.readAsBytes();
+      if (result != null && result.files.single.bytes != null) {
         setState(() {
-          _selectedImageBytes = bytes;
-          _selectedImageName = pickedFile.name;
+          _selectedImageBytes = result.files.single.bytes!;
+          _selectedImageName = result.files.single.name;
         });
       }
     } catch (e) {

@@ -549,8 +549,15 @@ class OrderItem {
       price: (json['price'] ?? 0).toDouble(),
       total: (json['total'] ?? (json['price'] ?? 0) * (json['quantity'] ?? 1)).toDouble(),
       notes: json['notes'],
-      options: (json['options'] as List?)?.cast<String>(),
+      options: _parseOptions(json['options']),
     );
+  }
+
+  static List<String>? _parseOptions(dynamic raw) {
+    if (raw == null) return null;
+    if (raw is List) return raw.cast<String>();
+    if (raw is String && raw.isNotEmpty) return raw.split(', ');
+    return null;
   }
 }
 

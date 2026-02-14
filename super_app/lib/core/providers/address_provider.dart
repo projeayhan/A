@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/supabase_service.dart';
+import 'auth_provider.dart';
 
 // Merkezi Adres Modeli
 class UserAddress {
@@ -337,8 +338,9 @@ class AddressNotifier extends StateNotifier<AddressState> {
   }
 }
 
-// Provider
+// Provider - rebuilds when auth state changes (login/logout)
 final addressProvider = StateNotifierProvider<AddressNotifier, AddressState>((ref) {
+  ref.watch(authProvider);
   return AddressNotifier();
 });
 
