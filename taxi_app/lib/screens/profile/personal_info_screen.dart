@@ -203,17 +203,15 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
                   const Divider(height: 24),
                   _buildField(
                     controller: _tcController,
-                    label: 'TC Kimlik No',
+                    label: 'Kimlik Numarası',
                     icon: Icons.badge_outlined,
                     enabled: _isEditing,
                     keyboardType: TextInputType.number,
                     inputFormatters: [
                       FilteringTextInputFormatter.digitsOnly,
-                      LengthLimitingTextInputFormatter(11),
                     ],
                     validator: (v) {
-                      if (v == null || v.trim().isEmpty) return 'TC Kimlik No gerekli';
-                      if (v.length != 11) return 'TC Kimlik No 11 haneli olmali';
+                      if (v == null || v.trim().isEmpty) return 'Kimlik Numarası gerekli';
                       return null;
                     },
                   ),

@@ -210,7 +210,7 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
             ),
             _buildInfoRow(
               icon: Icons.badge_outlined,
-              label: 'TC Kimlik No',
+              label: 'Kimlik Numarası',
               value: _maskTcNo(tcNo),
               isSensitive: true,
             ),
@@ -373,7 +373,7 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
   }
 
   String _maskTcNo(String tcNo) {
-    if (tcNo.length < 11) return tcNo;
+    if (tcNo.length < 6) return tcNo;
     return '${tcNo.substring(0, 3)}*****${tcNo.substring(tcNo.length - 3)}';
   }
 

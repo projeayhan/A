@@ -49,7 +49,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     try {
       final supabase = ref.read(supabaseClientProvider);
 
-      // Create auth user with is_merchant flag to prevent customer record creation
+      // Create auth user - trigger handles merchant record creation
       final authResponse = await supabase.auth.signUp(
         email: _emailController.text.trim(),
         password: _passwordController.text,
@@ -57,26 +57,19 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           'full_name': _businessNameController.text.trim(),
           'phone': _phoneController.text.trim(),
           'is_merchant': 'true',
+          'merchant_type': _selectedType.name,
         },
       );
 
       if (authResponse.user != null) {
-        // Create merchant record
-        await supabase.from('merchants').insert({
-          'user_id': authResponse.user!.id,
-          'type': _selectedType.name,
-          'business_name': _businessNameController.text.trim(),
-          'email': _emailController.text.trim(),
-          'phone': _phoneController.text.trim(),
-          'is_approved': false,
-        });
-
-        // Sign out auto-confirmed session and send verification email
-        await supabase.auth.signOut();
-        await supabase.auth.resend(
-          type: OtpType.signup,
-          email: _emailController.text.trim(),
-        );
+        // Sign out and send verification email
+        try { await supabase.auth.signOut(); } catch (_) {}
+        try {
+          await supabase.auth.resend(
+            type: OtpType.signup,
+            email: _emailController.text.trim(),
+          );
+        } catch (_) {}
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

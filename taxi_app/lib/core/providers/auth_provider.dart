@@ -203,24 +203,41 @@ class AuthNotifier extends Notifier<AuthState> {
     try {
       User? user;
 
-      // Önce kayıt dene
+      // Kayıt - trigger sürücü profilini otomatik oluşturur
       try {
         final response = await SupabaseService.signUp(
           email: email,
           password: password,
-          data: {'full_name': fullName, 'phone': phone},
+          data: {
+            'full_name': fullName,
+            'phone': phone,
+            'is_taxi_driver': 'true',
+            'tc_no': tcNo,
+            'vehicle_brand': vehicleBrand,
+            'vehicle_model': vehicleModel,
+            'vehicle_plate': vehiclePlate,
+            'vehicle_color': vehicleColor,
+            'vehicle_year': vehicleYear.toString(),
+            'vehicle_type': vehicleType,
+          },
         );
         user = response.user;
       } on AuthException catch (e) {
         if (e.message.contains('User already registered')) {
           // Kullanıcı zaten var (başka uygulamadan kayıtlı olabilir)
-          // Verilen şifre ile giriş yapmayı dene
           try {
             final signInResponse = await SupabaseService.signIn(
               email: email,
               password: password,
             );
             user = signInResponse.user;
+
+            // Zaten sürücü profili var mı kontrol et
+            final existingProfile = await TaxiService.getDriverProfile();
+            if (existingProfile != null) {
+              await _loadDriverProfile(user!);
+              return true;
+            }
           } on AuthException {
             state = state.copyWith(
               status: AuthStatus.error,
@@ -234,31 +251,11 @@ class AuthNotifier extends Notifier<AuthState> {
       }
 
       if (user != null) {
-        // Zaten sürücü profili var mı kontrol et
-        final existingProfile = await TaxiService.getDriverProfile();
-        if (existingProfile != null) {
-          await _loadDriverProfile(user);
-          return true;
-        }
-
-        final driverProfile = await TaxiService.createDriverProfile(
-          fullName: fullName,
-          phone: phone,
-          tcNo: tcNo,
-          vehicleBrand: vehicleBrand,
-          vehicleModel: vehicleModel,
-          vehiclePlate: vehiclePlate,
-          vehicleColor: vehicleColor,
-          vehicleYear: vehicleYear,
-          vehicleType: vehicleType,
-        );
-
-        if (driverProfile != null) {
-          // Sign out and require email verification
-          await SupabaseService.signOut();
-          state = const AuthState(status: AuthStatus.unauthenticated);
-          return true;
-        }
+        // Sign out and require email verification
+        try { await SupabaseService.signOut(); } catch (_) {}
+        try { await SupabaseService.resendConfirmation(email); } catch (_) {}
+        state = const AuthState(status: AuthStatus.unauthenticated);
+        return true;
       }
 
       state = state.copyWith(

@@ -94,8 +94,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       }
     } else if (_currentPage == 1) {
       // İkinci sayfa validasyonu
-      if (_tcNoController.text.length != 11) {
-        _showError('TC Kimlik No 11 haneli olmalı');
+      if (_tcNoController.text.isEmpty) {
+        _showError('Kimlik Numarası gerekli');
         return;
       }
       if (_vehiclePlateController.text.isEmpty) {
@@ -417,17 +417,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // TC Kimlik No
+          // Kimlik Numarası
           TextFormField(
             controller: _tcNoController,
             enabled: !isLoading,
             keyboardType: TextInputType.number,
             inputFormatters: [
               FilteringTextInputFormatter.digitsOnly,
-              LengthLimitingTextInputFormatter(11),
             ],
             decoration: const InputDecoration(
-              labelText: 'TC Kimlik No',
+              labelText: 'Kimlik Numarası',
               prefixIcon: Icon(Icons.badge_outlined),
             ),
           ),

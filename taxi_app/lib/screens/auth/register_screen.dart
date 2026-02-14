@@ -297,15 +297,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           TextFormField(
             controller: _tcNoController,
             keyboardType: TextInputType.number,
-            maxLength: 11,
             decoration: const InputDecoration(
-              labelText: 'TC Kimlik No',
+              labelText: 'Kimlik Numarası',
               prefixIcon: Icon(Icons.badge_outlined),
-              counterText: '',
             ),
             validator: (value) {
-              if (value?.isEmpty ?? true) return 'TC Kimlik No gerekli';
-              if (value!.length != 11) return 'TC Kimlik No 11 haneli olmalı';
+              if (value?.isEmpty ?? true) return 'Kimlik Numarası gerekli';
               return null;
             },
           ),
