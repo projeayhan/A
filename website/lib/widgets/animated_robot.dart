@@ -86,11 +86,12 @@ class _AnimatedRobotState extends State<AnimatedRobot> with TickerProviderStateM
 
           return Transform.translate(
             offset: Offset(0, floatOffset),
-            child: SizedBox(
-              width: widget.size,
-              height: widget.size,
-              child: CustomPaint(
-                painter: RobotPainter(
+            child: ClipRect(
+              child: SizedBox(
+                width: widget.size,
+                height: widget.size,
+                child: CustomPaint(
+                  painter: RobotPainter(
                   glowIntensity: 0.5 + _glowController.value * 0.5,
                   isHovered: _isHovered,
                   glowColor: _getCurrentGlowColor(),
@@ -100,6 +101,7 @@ class _AnimatedRobotState extends State<AnimatedRobot> with TickerProviderStateM
                   headTilt: headTilt,
                 ),
               ),
+            ),
             ),
           );
         },
