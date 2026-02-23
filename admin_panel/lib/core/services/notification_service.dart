@@ -248,6 +248,7 @@ class NotificationService extends StateNotifier<PendingApplicationCounts> {
           .eq('application_type', type);
       return (response as List).length;
     } catch (e) {
+      debugPrint('Notification count error: $e');
       return 0;
     }
   }
@@ -260,6 +261,7 @@ class NotificationService extends StateNotifier<PendingApplicationCounts> {
           .eq('status', 'pending');
       return (response as List).length;
     } catch (e) {
+      debugPrint('Notification count error: $e');
       return 0;
     }
   }
@@ -272,6 +274,7 @@ class NotificationService extends StateNotifier<PendingApplicationCounts> {
           .eq('is_approved', false);
       return (response as List).length;
     } catch (e) {
+      debugPrint('Notification count error: $e');
       return 0;
     }
   }
@@ -284,6 +287,7 @@ class NotificationService extends StateNotifier<PendingApplicationCounts> {
           .eq('status', 'pending');
       return (response as List).length;
     } catch (e) {
+      debugPrint('Notification count error: $e');
       return 0;
     }
   }
@@ -296,6 +300,7 @@ class NotificationService extends StateNotifier<PendingApplicationCounts> {
           .eq('status', 'pending');
       return (response as List).length;
     } catch (e) {
+      debugPrint('Notification count error: $e');
       return 0;
     }
   }
@@ -308,6 +313,7 @@ class NotificationService extends StateNotifier<PendingApplicationCounts> {
           .eq('is_approved', false);
       return (response as List).length;
     } catch (e) {
+      debugPrint('Notification count error: $e');
       return 0;
     }
   }
@@ -320,6 +326,7 @@ class NotificationService extends StateNotifier<PendingApplicationCounts> {
           .eq('status', 'pending');
       return (response as List).length;
     } catch (e) {
+      debugPrint('Notification count error: $e');
       return 0;
     }
   }

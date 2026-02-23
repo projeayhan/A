@@ -1,3 +1,15 @@
+class VariantOption {
+  final String value;
+  final double priceModifier;
+  final int stock;
+
+  const VariantOption({
+    required this.value,
+    this.priceModifier = 0,
+    this.stock = 0,
+  });
+}
+
 class StoreProduct {
   final String id;
   final String storeId;
@@ -14,7 +26,7 @@ class StoreProduct {
   final bool freeShipping;
   final bool fastDelivery;
   final List<String> images;
-  final Map<String, List<String>>? variants;
+  final Map<String, List<VariantOption>>? variants;
   final int stock;
   final String category;
   final int categorySortOrder;
@@ -63,7 +75,7 @@ class StoreProduct {
       freeShipping: json['free_shipping'] as bool? ?? false,
       fastDelivery: json['fast_delivery'] as bool? ?? false,
       images: (json['images'] as List<dynamic>?)?.cast<String>() ?? [],
-      variants: null,
+      variants: _parseVariants(json['variants']),
       stock: json['stock'] as int? ?? 100,
       category: categoryName ?? json['category'] as String? ?? 'Diğer',
       categorySortOrder: categorySortOrder,
@@ -91,6 +103,26 @@ class StoreProduct {
       return '$soldCount satış';
     }
     return '';
+  }
+
+  static Map<String, List<VariantOption>>? _parseVariants(dynamic json) {
+    if (json == null) return null;
+    final list = json as List<dynamic>;
+    if (list.isEmpty) return null;
+    final map = <String, List<VariantOption>>{};
+    for (final item in list) {
+      final name = item['name'] as String?;
+      final value = item['value'] as String?;
+      if (name != null && value != null) {
+        final option = VariantOption(
+          value: value,
+          priceModifier: (item['price_modifier'] as num?)?.toDouble() ?? 0,
+          stock: item['stock'] as int? ?? 0,
+        );
+        map.putIfAbsent(name, () => []).add(option);
+      }
+    }
+    return map.isEmpty ? null : map;
   }
 
   // Veriler Supabase'den yüklenir

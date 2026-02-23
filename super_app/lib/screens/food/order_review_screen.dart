@@ -32,6 +32,11 @@ class _OrderReviewScreenState extends ConsumerState<OrderReviewScreen>
   bool _isLoading = true;
   bool _isSubmitting = false;
 
+  // Merchant/courier type
+  bool _isMarket = false; // market or store (not restaurant)
+  bool _isPlatformCourier = true; // platform vs restaurant courier
+  String? _courierId;
+
   // Animations
   late AnimationController _fadeController;
   late AnimationController _starController;
@@ -56,13 +61,19 @@ class _OrderReviewScreenState extends ConsumerState<OrderReviewScreen>
     try {
       final response = await SupabaseService.client
           .from('orders')
-          .select('*, merchants(business_name, logo_url)')
+          .select('*, merchants(business_name, logo_url, type)')
           .eq('id', widget.orderId)
           .single();
 
       if (mounted) {
+        final merchantType = response['merchants']?['type'] as String?;
+        final courierType = response['courier_type'] as String?;
+
         setState(() {
           _orderData = response;
+          _isMarket = merchantType == 'market' || merchantType == 'store';
+          _isPlatformCourier = courierType != 'restaurant';
+          _courierId = response['courier_id'] as String?;
           _isLoading = false;
         });
       }
@@ -97,8 +108,15 @@ class _OrderReviewScreenState extends ConsumerState<OrderReviewScreen>
       final merchantId = _orderData?['merchant_id'];
       if (merchantId == null) throw Exception('Restoran bulunamadı');
 
-      // Calculate average rating
-      final avgRating = ((_courierRating + _serviceRating + _tasteRating) / 3).round();
+      // Calculate merchant average rating
+      // Platform courier: courier rating excluded from merchant avg
+      // Restaurant courier: all 3 included in merchant avg
+      final int avgRating;
+      if (_isPlatformCourier) {
+        avgRating = ((_serviceRating + _tasteRating) / 2).round();
+      } else {
+        avgRating = ((_courierRating + _serviceRating + _tasteRating) / 3).round();
+      }
 
       // Get customer name from order or user metadata
       String? customerName = _orderData?['customer_name'];
@@ -113,6 +131,7 @@ class _OrderReviewScreenState extends ConsumerState<OrderReviewScreen>
         'order_id': widget.orderId,
         'user_id': userId,
         'merchant_id': merchantId,
+        'courier_id': _courierId,
         'rating': avgRating,
         'courier_rating': _courierRating,
         'service_rating': _serviceRating,
@@ -267,9 +286,11 @@ class _OrderReviewScreenState extends ConsumerState<OrderReviewScreen>
 
                     _buildRatingSection(
                       isDark: isDark,
-                      icon: Icons.room_service,
-                      title: 'Servis',
-                      subtitle: 'Paketleme ve sunum kalitesi',
+                      icon: _isMarket ? Icons.inventory_2 : Icons.room_service,
+                      title: _isMarket ? 'Ürün Kalitesi' : 'Servis',
+                      subtitle: _isMarket
+                          ? 'Ürünlerin tazeliği ve kalitesi'
+                          : 'Paketleme ve sunum kalitesi',
                       rating: _serviceRating,
                       onRatingChanged: (rating) {
                         setState(() => _serviceRating = rating);
@@ -281,9 +302,11 @@ class _OrderReviewScreenState extends ConsumerState<OrderReviewScreen>
 
                     _buildRatingSection(
                       isDark: isDark,
-                      icon: Icons.restaurant,
-                      title: 'Lezzet',
-                      subtitle: 'Yemeklerin tadı ve kalitesi',
+                      icon: _isMarket ? Icons.shopping_bag : Icons.restaurant,
+                      title: _isMarket ? 'Paketleme' : 'Lezzet',
+                      subtitle: _isMarket
+                          ? 'Paketleme ve ürünlerin düzeni'
+                          : 'Yemeklerin tadı ve kalitesi',
                       rating: _tasteRating,
                       onRatingChanged: (rating) {
                         setState(() => _tasteRating = rating);
@@ -316,7 +339,7 @@ class _OrderReviewScreenState extends ConsumerState<OrderReviewScreen>
   }
 
   Widget _buildRestaurantCard(bool isDark) {
-    final merchantName = _orderData?['merchants']?['business_name'] ?? 'Restoran';
+    final merchantName = _orderData?['merchants']?['business_name'] ?? (_isMarket ? 'Market' : 'Restoran');
     final orderNumber = _orderData?['order_number'] ?? '';
 
     return Container(
@@ -341,7 +364,7 @@ class _OrderReviewScreenState extends ConsumerState<OrderReviewScreen>
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
-              Icons.restaurant,
+              _isMarket ? Icons.storefront : Icons.restaurant,
               color: FoodColors.primary,
               size: 32,
             ),
@@ -501,58 +524,120 @@ class _OrderReviewScreenState extends ConsumerState<OrderReviewScreen>
   }
 
   Widget _buildAverageScore(bool isDark) {
-    final average = (_courierRating + _serviceRating + _tasteRating) / 3;
+    // Platform kuryesinde: merchant avg = sadece servis+lezzet (veya ürün kalitesi+paketleme)
+    // Restaurant kuryesinde: merchant avg = kurye+servis+lezzet (hepsi)
+    final double merchantAvg;
+    if (_isPlatformCourier) {
+      merchantAvg = (_serviceRating + _tasteRating) / 2;
+    } else {
+      merchantAvg = (_courierRating + _serviceRating + _tasteRating) / 3;
+    }
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [FoodColors.primary, FoodColors.primary.withValues(alpha: 0.8)],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: FoodColors.primary.withValues(alpha: 0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.star, color: Colors.white, size: 32),
-          const SizedBox(width: 12),
-          Text(
-            average.toStringAsFixed(1),
-            style: TextStyle(
-              fontSize: context.heading1Size + 4,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+    final merchantLabel = _isMarket ? 'market' : 'restoran';
+
+    return Column(
+      children: [
+        // Merchant average
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [FoodColors.primary, FoodColors.primary.withValues(alpha: 0.8)],
             ),
-          ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Ortalama Puan',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Text(
-                'Bu restoran için verilecek',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.8),
-                  fontSize: context.captionSize,
-                ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: FoodColors.primary.withValues(alpha: 0.3),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
               ),
             ],
           ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.star, color: Colors.white, size: 32),
+              const SizedBox(width: 12),
+              Text(
+                merchantAvg.toStringAsFixed(1),
+                style: TextStyle(
+                  fontSize: context.heading1Size + 4,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _isMarket ? 'Market Puanı' : 'Restoran Puanı',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    'Bu $merchantLabel için verilecek',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.8),
+                      fontSize: context.captionSize,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        // Platform courier - show separate courier score
+        if (_isPlatformCourier) ...[
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [const Color(0xFF3B82F6), const Color(0xFF3B82F6).withValues(alpha: 0.8)],
+              ),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.delivery_dining, color: Colors.white, size: 28),
+                const SizedBox(width: 12),
+                Text(
+                  _courierRating.toStringAsFixed(1),
+                  style: TextStyle(
+                    fontSize: context.heading1Size,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Kurye Puanı',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      '$merchantLabel puanını etkilemez',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.8),
+                        fontSize: context.captionSize,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ],
-      ),
+      ],
     );
   }
 

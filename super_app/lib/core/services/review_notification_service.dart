@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supabase_service.dart';
+import 'notification_sound_service.dart';
 
 /// Service to handle real-time review reply notifications
 class ReviewNotificationService {
@@ -78,13 +79,11 @@ class ReviewNotificationService {
         .subscribe();
   }
 
-  /// Play notification sound using system feedback
+  /// Play notification sound + haptic feedback
   Future<void> _playNotificationSound() async {
     try {
-      // Use haptic feedback as notification
+      NotificationSoundService.playNotificationSound();
       await HapticFeedback.mediumImpact();
-      // Also trigger a vibration pattern if available
-      await HapticFeedback.vibrate();
     } catch (e) {
       debugPrint('Could not play notification feedback: $e');
     }

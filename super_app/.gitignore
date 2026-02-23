@@ -47,3 +47,5 @@ app.*.map.json
 # Environment files - GİZLİ!
 .env
 .env.*
+
+.vercel

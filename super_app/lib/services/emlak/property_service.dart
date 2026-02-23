@@ -108,8 +108,9 @@ class PropertyService {
 
     // Ek filtreleri uygula
     if (filter != null) {
-      if (filter.type != null) {
-        query = query.eq('property_type', filter.type!.name);
+      // Emlak tipi - çoklu seçim
+      if (filter.selectedPropertyTypes?.isNotEmpty == true) {
+        query = query.inFilter('property_type', filter.selectedPropertyTypes!.toList());
       }
       if (filter.listingType != null) {
         query = query.eq('listing_type', filter.listingType!.name);
@@ -126,11 +127,9 @@ class PropertyService {
       if (filter.maxPrice != null) {
         query = query.lte('price', filter.maxPrice!);
       }
-      if (filter.minRooms != null) {
-        query = query.gte('rooms', filter.minRooms!);
-      }
-      if (filter.maxRooms != null) {
-        query = query.lte('rooms', filter.maxRooms!);
+      // Oda tipi - çoklu seçim
+      if (filter.roomTypes?.isNotEmpty == true) {
+        query = query.inFilter('room_type', filter.roomTypes!.toList());
       }
       if (filter.minSquareMeters != null) {
         query = query.gte('square_meters', filter.minSquareMeters!);
@@ -138,14 +137,100 @@ class PropertyService {
       if (filter.maxSquareMeters != null) {
         query = query.lte('square_meters', filter.maxSquareMeters!);
       }
-      if (filter.hasParking == true) {
-        query = query.eq('has_parking', true);
+      // Kat - çoklu seçim
+      if (filter.floors?.isNotEmpty == true) {
+        query = query.inFilter('floor', filter.floors!.toList());
       }
-      if (filter.hasPool == true) {
-        query = query.eq('has_pool', true);
+      // Eşya durumu - çoklu seçim
+      if (filter.furnitureStatuses?.isNotEmpty == true) {
+        query = query.inFilter('interior_status', filter.furnitureStatuses!.toList());
       }
-      if (filter.hasFurniture == true) {
-        query = query.eq('has_furniture', true);
+      // İlan sahibi
+      if (filter.ownerTypes?.isNotEmpty == true) {
+        query = query.inFilter('owner_type', filter.ownerTypes!.toList());
+      }
+      // İlan tarihi filtresi
+      if (filter.listingDateRange != null) {
+        final now = DateTime.now();
+        DateTime? threshold;
+        switch (filter.listingDateRange) {
+          case 'last_24h':
+            threshold = now.subtract(const Duration(hours: 24));
+            break;
+          case 'last_3d':
+            threshold = now.subtract(const Duration(days: 3));
+            break;
+          case 'last_1w':
+            threshold = now.subtract(const Duration(days: 7));
+            break;
+          case 'last_15d':
+            threshold = now.subtract(const Duration(days: 15));
+            break;
+        }
+        if (threshold != null) {
+          query = query.gte('created_at', threshold.toIso8601String());
+        }
+      }
+      // Toggle'lar
+      if (filter.isInComplex == true) query = query.eq('is_in_complex', true);
+      if (filter.isOpenToTrade == true) query = query.eq('is_open_to_trade', true);
+      // Dış özellikler
+      if (filter.hasGarage == true) query = query.eq('has_garage', true);
+      if (filter.hasGarden == true) query = query.eq('has_garden', true);
+      if (filter.hasPrivatePool == true) query = query.eq('has_private_pool', true);
+      if (filter.hasSharedPool == true) query = query.eq('has_shared_pool', true);
+      if (filter.hasSecurityCamera == true) query = query.eq('has_security_camera', true);
+      if (filter.hasTerrace == true) query = query.eq('has_terrace', true);
+      if (filter.hasInsulation == true) query = query.eq('has_insulation', true);
+      if (filter.hasWaterTank == true) query = query.eq('has_water_tank', true);
+      if (filter.hasWell == true) query = query.eq('has_well', true);
+      if (filter.hasBarbeque == true) query = query.eq('has_barbeque', true);
+      if (filter.hasDoubleGlazing == true) query = query.eq('has_double_glazing', true);
+      if (filter.hasCoveredParking == true) query = query.eq('has_covered_parking', true);
+      if (filter.hasGenerator == true) query = query.eq('has_generator', true);
+      if (filter.hasElevator == true) query = query.eq('has_elevator', true);
+      if (filter.hasParking == true) query = query.eq('has_parking', true);
+      if (filter.hasSandstoneHouse == true) query = query.eq('has_sandstone_house', true);
+      // İç özellikler
+      if (filter.isDuplex == true) query = query.eq('is_duplex', true);
+      if (filter.hasAirConditioning == true) query = query.eq('has_air_conditioning', true);
+      if (filter.hasBalcony == true) query = query.eq('has_balcony', true);
+      if (filter.hasShutter == true) query = query.eq('has_shutter', true);
+      if (filter.hasBuiltinKitchen == true) query = query.eq('has_builtin_kitchen', true);
+      if (filter.hasBuiltinWardrobe == true) query = query.eq('has_builtin_wardrobe', true);
+      if (filter.hasIntercom == true) query = query.eq('has_intercom', true);
+      if (filter.hasFireplace == true) query = query.eq('has_fireplace', true);
+      if (filter.hasCrown == true) query = query.eq('has_crown', true);
+      if (filter.hasLaundryRoom == true) query = query.eq('has_laundry_room', true);
+      if (filter.hasParentBathroom == true) query = query.eq('has_parent_bathroom', true);
+      if (filter.hasParentCloset == true) query = query.eq('has_parent_closet', true);
+      if (filter.hasNaturalMarble == true) query = query.eq('has_natural_marble', true);
+      if (filter.hasPanelDoor == true) query = query.eq('has_panel_door', true);
+      if (filter.hasParquet == true) query = query.eq('has_parquet', true);
+      if (filter.hasShower == true) query = query.eq('has_shower', true);
+      if (filter.hasSteelDoor == true) query = query.eq('has_steel_door', true);
+      if (filter.hasTvInfra == true) query = query.eq('has_tv_infra', true);
+      if (filter.hasVestibule == true) query = query.eq('has_vestibule', true);
+      if (filter.hasWallpaper == true) query = query.eq('has_wallpaper', true);
+      if (filter.hasCeramic == true) query = query.eq('has_ceramic', true);
+      if (filter.hasFireAlarm == true) query = query.eq('has_fire_alarm', true);
+      if (filter.hasPantry == true) query = query.eq('has_pantry', true);
+      if (filter.hasSolarPower == true) query = query.eq('has_solar_power', true);
+      if (filter.hasHydrophore == true) query = query.eq('has_hydrophore', true);
+      // Konum özellikleri
+      if (filter.hasCityView == true) query = query.eq('has_city_view', true);
+      if (filter.isEastFacing == true) query = query.eq('is_east_facing', true);
+      if (filter.isCityCenter == true) query = query.eq('is_city_center', true);
+      if (filter.hasMountainView == true) query = query.eq('has_mountain_view', true);
+      if (filter.hasNatureView == true) query = query.eq('has_nature_view', true);
+      if (filter.isNorthFacing == true) query = query.eq('is_north_facing', true);
+      if (filter.isSeafront == true) query = query.eq('is_seafront', true);
+      if (filter.hasSeaView == true) query = query.eq('has_sea_view', true);
+      if (filter.isSouthFacing == true) query = query.eq('is_south_facing', true);
+      if (filter.isWestFacing == true) query = query.eq('is_west_facing', true);
+      // Anahtar kelime araması
+      if (filter.keyword != null && filter.keyword!.isNotEmpty) {
+        query = query.or('title.ilike.%${filter.keyword}%,description.ilike.%${filter.keyword}%');
       }
     }
 
@@ -269,8 +354,8 @@ class PropertyService {
       if (filter.listingType != null) {
         query = query.eq('listing_type', filter.listingType!.name);
       }
-      if (filter.type != null) {
-        query = query.eq('property_type', filter.type!.name);
+      if (filter.selectedPropertyTypes?.isNotEmpty == true) {
+        query = query.inFilter('property_type', filter.selectedPropertyTypes!.toList());
       }
       if (filter.minPrice != null) {
         query = query.gte('price', filter.minPrice!);

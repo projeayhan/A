@@ -3,7 +3,7 @@ class Store {
   final String name;
   final String logoUrl;
   final String coverUrl;
-  final String categoryId;
+  final List<String> categoryIds;
   final double rating;
   final int reviewCount;
   final int followerCount;
@@ -21,7 +21,7 @@ class Store {
     required this.name,
     required this.logoUrl,
     required this.coverUrl,
-    required this.categoryId,
+    this.categoryIds = const [],
     required this.rating,
     required this.reviewCount,
     this.followerCount = 0,
@@ -41,7 +41,7 @@ class Store {
       name: json['name'] as String,
       logoUrl: json['logo_url'] as String? ?? '',
       coverUrl: json['cover_url'] as String? ?? '',
-      categoryId: json['category_id'] as String? ?? '',
+      categoryIds: (json['category_ids'] as List<dynamic>?)?.cast<String>() ?? [],
       rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
       reviewCount: json['review_count'] as int? ?? 0,
       followerCount: json['follower_count'] as int? ?? 0,
@@ -63,10 +63,10 @@ class Store {
       name: json['business_name'] as String? ?? '',
       logoUrl: json['logo_url'] as String? ?? '',
       coverUrl: json['cover_url'] as String? ?? '',
-      categoryId: '', // merchants tablosunda category_id yok, category_tags var
+      categoryIds: (json['store_category_ids'] as List<dynamic>?)?.cast<String>() ?? [],
       rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
       reviewCount: json['total_reviews'] as int? ?? 0,
-      followerCount: 0,
+      followerCount: json['follower_count'] as int? ?? 0,
       productCount: _extractProductCount(json),
       isVerified: json['is_approved'] as bool? ?? false,
       isFavorite: false,

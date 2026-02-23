@@ -453,10 +453,14 @@ class _TaxiDriverScreenState extends ConsumerState<TaxiDriverScreen>
     if (!_isOnline || _activeRide != null) return;
 
     try {
+      final driverTypes = _driverProfile?['vehicle_types'] != null
+          ? List<String>.from(_driverProfile!['vehicle_types'])
+          : null;
       final requests = await TaxiService.getPendingRideRequests(
         latitude: _currentLat,
         longitude: _currentLng,
         radiusKm: 10,
+        driverVehicleTypes: driverTypes,
       );
 
       if (mounted) {

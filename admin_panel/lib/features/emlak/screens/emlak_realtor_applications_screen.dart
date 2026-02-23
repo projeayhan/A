@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
+import '../../../core/services/supabase_service.dart';
 
 /// Emlakçı Başvuru Modeli
 class RealtorApplication {
@@ -71,7 +72,9 @@ class RealtorApplication {
 
 /// Başvuru Servisi
 class RealtorApplicationService {
-  final SupabaseClient _client = Supabase.instance.client;
+  final SupabaseClient _client;
+
+  RealtorApplicationService(this._client);
 
   Future<List<RealtorApplication>> getApplications({String? status}) async {
     var query = _client.from('realtor_applications').select();
@@ -148,7 +151,7 @@ class RealtorApplicationService {
 /// Provider
 final realtorApplicationServiceProvider =
     Provider<RealtorApplicationService>((ref) {
-  return RealtorApplicationService();
+  return RealtorApplicationService(ref.watch(supabaseProvider));
 });
 
 final realtorApplicationsProvider =
@@ -175,7 +178,6 @@ class _EmlakRealtorApplicationsScreenState
     extends ConsumerState<EmlakRealtorApplicationsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final _service = RealtorApplicationService();
 
   @override
   void initState() {
@@ -743,7 +745,7 @@ class _EmlakRealtorApplicationsScreenState
 
   Future<void> _approveApplication(RealtorApplication application) async {
     try {
-      await _service.approveApplication(application.id, application.userId);
+      await ref.read(realtorApplicationServiceProvider).approveApplication(application.id, application.userId);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -771,7 +773,7 @@ class _EmlakRealtorApplicationsScreenState
   Future<void> _rejectApplication(
       RealtorApplication application, String reason) async {
     try {
-      await _service.rejectApplication(application.id, reason);
+      await ref.read(realtorApplicationServiceProvider).rejectApplication(application.id, reason);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -189,11 +189,12 @@ class RealtorService {
     DateTime? fromDate,
     DateTime? toDate,
     int limit = 50,
-    bool activeOnly = true, // Varsayılan olarak sadece aktif randevuları getir
+    bool activeOnly = true,
   }) async {
     if (_userId == null) return [];
 
-    var query = _client
+    // 1. Müşteri randevuları (appointments tablosu)
+    var customerQuery = _client
         .from('appointments')
         .select('''
           *,
@@ -203,36 +204,102 @@ class RealtorService {
         .eq('owner_id', _userId!);
 
     if (status != null) {
-      query = query.eq('status', status);
+      customerQuery = customerQuery.eq('status', status);
     } else if (activeOnly) {
-      // Sadece bekleyen ve onaylanmış randevuları getir (iptal/tamamlanan hariç)
-      query = query.inFilter('status', ['pending', 'confirmed']);
+      customerQuery = customerQuery.inFilter('status', ['pending', 'confirmed']);
     }
 
     if (fromDate != null) {
-      query = query.gte('appointment_date', fromDate.toIso8601String().split('T').first);
+      customerQuery = customerQuery.gte('appointment_date', fromDate.toIso8601String().split('T').first);
     }
-
     if (toDate != null) {
-      query = query.lte('appointment_date', toDate.toIso8601String().split('T').first);
+      customerQuery = customerQuery.lte('appointment_date', toDate.toIso8601String().split('T').first);
     }
 
-    final response = await query
+    final customerResponse = await customerQuery
         .order('appointment_date', ascending: true)
         .order('appointment_time', ascending: true)
         .limit(limit);
 
-    return (response as List).cast<Map<String, dynamic>>();
+    final customerAppointments = (customerResponse as List)
+        .cast<Map<String, dynamic>>()
+        .map((a) => {...a, 'source': 'customer'})
+        .toList();
+
+    // 2. Kendi randevuları (realtor_appointments tablosu)
+    final realtorId = await _getRealtorId();
+    List<Map<String, dynamic>> realtorAppointments = [];
+
+    if (realtorId != null) {
+      var realtorQuery = _client
+          .from('realtor_appointments')
+          .select('''
+            *,
+            properties:property_id (id, title, images, price, city, district),
+            client:realtor_clients!client_id (name, phone, email)
+          ''')
+          .eq('realtor_id', realtorId);
+
+      if (status != null) {
+        realtorQuery = realtorQuery.eq('status', status);
+      } else if (activeOnly) {
+        realtorQuery = realtorQuery.inFilter('status', ['scheduled', 'confirmed']);
+      }
+
+      if (fromDate != null) {
+        realtorQuery = realtorQuery.gte('scheduled_at', fromDate.toIso8601String());
+      }
+      if (toDate != null) {
+        realtorQuery = realtorQuery.lte('scheduled_at', toDate.toIso8601String());
+      }
+
+      final realtorResponse = await realtorQuery
+          .order('scheduled_at', ascending: true)
+          .limit(limit);
+
+      realtorAppointments = (realtorResponse as List)
+          .cast<Map<String, dynamic>>()
+          .map((a) {
+            // Normalize: scheduled_at → appointment_date/appointment_time
+            final scheduledAt = DateTime.tryParse(a['scheduled_at'] ?? '');
+            return {
+              ...a,
+              'source': 'realtor',
+              'appointment_date': scheduledAt?.toIso8601String().split('T').first,
+              'appointment_time': scheduledAt != null
+                  ? '${scheduledAt.hour.toString().padLeft(2, '0')}:${scheduledAt.minute.toString().padLeft(2, '0')}'
+                  : null,
+            };
+          })
+          .toList();
+    }
+
+    // Birleştir ve tarihe göre sırala
+    final all = [...customerAppointments, ...realtorAppointments];
+    all.sort((a, b) {
+      final dateA = a['appointment_date'] as String? ?? '';
+      final dateB = b['appointment_date'] as String? ?? '';
+      final cmp = dateA.compareTo(dateB);
+      if (cmp != 0) return cmp;
+      final timeA = a['appointment_time']?.toString() ?? '';
+      final timeB = b['appointment_time']?.toString() ?? '';
+      return timeA.compareTo(timeB);
+    });
+
+    return all.take(limit).toList();
   }
 
-  /// Bugünkü randevuları getir (sadece aktif olanlar)
+  /// Bugünkü randevuları getir (her iki tablodan)
   Future<List<Map<String, dynamic>>> getTodayAppointments() async {
     if (_userId == null) return [];
 
     final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day).toIso8601String().split('T').first;
+    final today = DateTime(now.year, now.month, now.day);
+    final tomorrow = today.add(const Duration(days: 1));
+    final todayStr = today.toIso8601String().split('T').first;
 
-    final response = await _client
+    // 1. Müşteri randevuları
+    final customerResponse = await _client
         .from('appointments')
         .select('''
           *,
@@ -240,11 +307,57 @@ class RealtorService {
           requester:user_profiles!requester_id (full_name, phone, email, avatar_url)
         ''')
         .eq('owner_id', _userId!)
-        .eq('appointment_date', today)
-        .inFilter('status', ['pending', 'confirmed']) // Sadece bekleyen ve onaylanmış
+        .eq('appointment_date', todayStr)
+        .inFilter('status', ['pending', 'confirmed'])
         .order('appointment_time', ascending: true);
 
-    return (response as List).cast<Map<String, dynamic>>();
+    final customerAppointments = (customerResponse as List)
+        .cast<Map<String, dynamic>>()
+        .map((a) => {...a, 'source': 'customer'})
+        .toList();
+
+    // 2. Kendi randevuları
+    final realtorId = await _getRealtorId();
+    List<Map<String, dynamic>> realtorAppointments = [];
+
+    if (realtorId != null) {
+      final realtorResponse = await _client
+          .from('realtor_appointments')
+          .select('''
+            *,
+            properties:property_id (id, title, images, price, city, district),
+            client:realtor_clients!client_id (name, phone, email)
+          ''')
+          .eq('realtor_id', realtorId)
+          .gte('scheduled_at', today.toIso8601String())
+          .lt('scheduled_at', tomorrow.toIso8601String())
+          .inFilter('status', ['scheduled', 'confirmed'])
+          .order('scheduled_at', ascending: true);
+
+      realtorAppointments = (realtorResponse as List)
+          .cast<Map<String, dynamic>>()
+          .map((a) {
+            final scheduledAt = DateTime.tryParse(a['scheduled_at'] ?? '');
+            return {
+              ...a,
+              'source': 'realtor',
+              'appointment_date': todayStr,
+              'appointment_time': scheduledAt != null
+                  ? '${scheduledAt.hour.toString().padLeft(2, '0')}:${scheduledAt.minute.toString().padLeft(2, '0')}'
+                  : null,
+            };
+          })
+          .toList();
+    }
+
+    final all = [...customerAppointments, ...realtorAppointments];
+    all.sort((a, b) {
+      final timeA = a['appointment_time']?.toString() ?? '';
+      final timeB = b['appointment_time']?.toString() ?? '';
+      return timeA.compareTo(timeB);
+    });
+
+    return all;
   }
 
   /// Randevu ekle
@@ -285,50 +398,65 @@ class RealtorService {
     return response;
   }
 
-  /// Randevu güncelle (appointments tablosu)
+  /// Randevu güncelle - source'a göre doğru tabloyu günceller
   Future<Map<String, dynamic>?> updateAppointment(
     String appointmentId,
-    Map<String, dynamic> updates,
-  ) async {
+    Map<String, dynamic> updates, {
+    String source = 'customer',
+  }) async {
     if (_userId == null) return null;
 
     updates['updated_at'] = DateTime.now().toIso8601String();
 
-    final response = await _client
-        .from('appointments')
-        .update(updates)
-        .eq('id', appointmentId)
-        .eq('owner_id', _userId!)
-        .select()
-        .single();
-
-    return response;
+    if (source == 'realtor') {
+      // Emlakçının kendi oluşturduğu randevu
+      final realtorId = await _getRealtorId();
+      if (realtorId == null) return null;
+      final response = await _client
+          .from('realtor_appointments')
+          .update(updates)
+          .eq('id', appointmentId)
+          .eq('realtor_id', realtorId)
+          .select()
+          .single();
+      return response;
+    } else {
+      // Müşteriden gelen randevu
+      final response = await _client
+          .from('appointments')
+          .update(updates)
+          .eq('id', appointmentId)
+          .eq('owner_id', _userId!)
+          .select()
+          .single();
+      return response;
+    }
   }
 
   /// Randevu onayla
-  Future<bool> confirmAppointment(String appointmentId, String? responseNote) async {
+  Future<bool> confirmAppointment(String appointmentId, String? responseNote, {String source = 'customer'}) async {
     final result = await updateAppointment(appointmentId, {
       'status': 'confirmed',
       'response_note': responseNote,
-    });
+    }, source: source);
     return result != null;
   }
 
   /// Randevu iptal et
-  Future<bool> cancelAppointment(String appointmentId, String? reason) async {
+  Future<bool> cancelAppointment(String appointmentId, String? reason, {String source = 'customer'}) async {
     final result = await updateAppointment(appointmentId, {
       'status': 'cancelled',
       'response_note': reason,
-    });
+    }, source: source);
     return result != null;
   }
 
   /// Randevuyu tamamla
-  Future<bool> completeAppointment(String appointmentId, String? outcome) async {
+  Future<bool> completeAppointment(String appointmentId, String? outcome, {String source = 'customer'}) async {
     final result = await updateAppointment(appointmentId, {
       'status': 'completed',
       'response_note': outcome,
-    });
+    }, source: source);
     return result != null;
   }
 
@@ -379,19 +507,20 @@ class RealtorService {
         .eq('status', 'potential')
         .count();
 
-    // Randevu sayıları (appointments tablosundan - SuperCyp'ten gelen randevular)
+    // Randevu sayıları - hem müşteri (appointments) hem emlakçının kendi (realtor_appointments)
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day).toIso8601String().split('T').first;
     final weekEnd = DateTime(now.year, now.month, now.day + 7).toIso8601String().split('T').first;
 
-    final todayAppointments = await _client
+    // Müşteri randevuları
+    final todayCustomerAppts = await _client
         .from('appointments')
         .select('id')
         .eq('owner_id', _userId!)
         .eq('appointment_date', today)
         .count();
 
-    final weekAppointments = await _client
+    final weekCustomerAppts = await _client
         .from('appointments')
         .select('id')
         .eq('owner_id', _userId!)
@@ -399,13 +528,30 @@ class RealtorService {
         .lt('appointment_date', weekEnd)
         .count();
 
+    // Emlakçının kendi randevuları
+    final todayRealtorAppts = await _client
+        .from('realtor_appointments')
+        .select('id')
+        .eq('realtor_id', realtorId)
+        .gte('scheduled_at', '${today}T00:00:00')
+        .lt('scheduled_at', '${today}T23:59:59')
+        .count();
+
+    final weekRealtorAppts = await _client
+        .from('realtor_appointments')
+        .select('id')
+        .eq('realtor_id', realtorId)
+        .gte('scheduled_at', '${today}T00:00:00')
+        .lt('scheduled_at', '${weekEnd}T00:00:00')
+        .count();
+
     return {
       'active_listings': activeListings.count,
       'pending_listings': pendingListings.count,
       'total_clients': totalClients.count,
       'potential_clients': potentialClients.count,
-      'today_appointments': todayAppointments.count,
-      'this_week_appointments': weekAppointments.count,
+      'today_appointments': todayCustomerAppts.count + todayRealtorAppts.count,
+      'this_week_appointments': weekCustomerAppts.count + weekRealtorAppts.count,
       'total_views': 0,
       'total_messages': 0,
     };
@@ -426,7 +572,7 @@ class RealtorService {
       // Kullanıcının ilanlarını al
       final propertiesResponse = await _client
           .from('properties')
-          .select('id, title, images, city, district, status, view_count, favorite_count')
+          .select('id, title, images, city, district, status, view_count, favorite_count, is_featured, is_premium')
           .eq('user_id', _userId!)
           .eq('status', 'active');
 
@@ -468,6 +614,37 @@ class RealtorService {
       for (var view in prevViewsList) {
         final propId = view['property_id'] as String;
         prevViewsPerProperty[propId] = (prevViewsPerProperty[propId] ?? 0) + 1;
+      }
+
+      // Bu dönem favori sayıları (property_favorites tablosundan)
+      final favoritesResponse = await _client
+          .from('property_favorites')
+          .select('property_id')
+          .inFilter('property_id', propertyIds)
+          .gte('created_at', startDate.toIso8601String());
+
+      final favoritesList = (favoritesResponse as List).cast<Map<String, dynamic>>();
+
+      final Map<String, int> favoritesPerProperty = {};
+      for (var fav in favoritesList) {
+        final propId = fav['property_id'] as String;
+        favoritesPerProperty[propId] = (favoritesPerProperty[propId] ?? 0) + 1;
+      }
+
+      // Önceki dönem favori sayıları
+      final prevFavoritesResponse = await _client
+          .from('property_favorites')
+          .select('property_id')
+          .inFilter('property_id', propertyIds)
+          .gte('created_at', previousStartDate.toIso8601String())
+          .lt('created_at', startDate.toIso8601String());
+
+      final prevFavoritesList = (prevFavoritesResponse as List).cast<Map<String, dynamic>>();
+
+      final Map<String, int> prevFavoritesPerProperty = {};
+      for (var fav in prevFavoritesList) {
+        final propId = fav['property_id'] as String;
+        prevFavoritesPerProperty[propId] = (prevFavoritesPerProperty[propId] ?? 0) + 1;
       }
 
       // Bu dönem randevu sayıları (appointments tablosundan - ilan ziyaret randevuları)
@@ -535,7 +712,8 @@ class RealtorService {
         final propId = property['id'] as String;
         final views = viewsPerProperty[propId] ?? 0;
         final prevViews = prevViewsPerProperty[propId] ?? 0;
-        final favorites = property['favorite_count'] as int? ?? 0;
+        final favorites = favoritesPerProperty[propId] ?? 0;
+        final prevFavorites = prevFavoritesPerProperty[propId] ?? 0;
         final appointments = appointmentsPerProperty[propId] ?? 0;
         final prevAppointments = prevAppointmentsPerProperty[propId] ?? 0;
 
@@ -543,6 +721,7 @@ class RealtorService {
         totalFavorites += favorites;
         totalAppointments += appointments;
         prevTotalViews += prevViews;
+        prevTotalFavorites += prevFavorites;
         prevTotalAppointments += prevAppointments;
 
         // Son 7 günlük veriyi diziye çevir
@@ -562,9 +741,12 @@ class RealtorService {
           'views': views,
           'previousViews': prevViews,
           'favorites': favorites,
+          'previousFavorites': prevFavorites,
           'appointments': appointments,
           'previousAppointments': prevAppointments,
           'dailyViews': last7DaysViews,
+          'is_featured': property['is_featured'] as bool? ?? false,
+          'is_premium': property['is_premium'] as bool? ?? false,
         });
       }
 
@@ -712,8 +894,8 @@ class RealtorService {
       for (final promo in promotions) {
         final propertyData = promo['properties'] as Map<String, dynamic>?;
         final propertyId = promo['property_id'] as String?;
-        final startDate = promo['starts_at'] != null
-            ? DateTime.parse(promo['starts_at'])
+        final startDate = promo['started_at'] != null
+            ? DateTime.parse(promo['started_at'])
             : DateTime.now();
 
         int viewsBefore = 0;
@@ -747,7 +929,7 @@ class RealtorService {
           ...promo,
           'property_title': propertyData?['title'] ?? 'İlan',
           'property_images': propertyData?['images'] ?? [],
-          'start_date': promo['starts_at'],
+          'start_date': promo['started_at'],
           'end_date': promo['expires_at'],
           'views_before': viewsBefore,
           'views_during': viewsDuring,
@@ -844,11 +1026,12 @@ class RealtorService {
             'user_id': _userId,
             'promotion_type': promotionType,
             'duration_days': durationDays,
+            'started_at': DateTime.now().toIso8601String(),
             'expires_at': expiresAt.toIso8601String(),
             'amount_paid': amountPaid,
             'payment_method': paymentMethod,
             'payment_reference': paymentReference,
-            'status': 'active', // Ödeme yapıldıysa direkt aktif
+            'status': 'active',
             'views_before': viewsBefore,
             'appointments_before': appointmentsBefore,
           })

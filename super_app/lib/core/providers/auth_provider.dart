@@ -57,8 +57,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
           final roleCheck = await _checkUserRole(user.id);
           final roles = List<String>.from(roleCheck['roles'] ?? []);
 
-          // Kullanıcının rolleri var ama customer veya admin değilse engelle
-          if (roles.isNotEmpty && !roles.contains('customer') && !roles.contains('admin')) {
+          // Sadece destek temsilcileri müşteri uygulamasına giremez
+          if (roles.contains('support_agent')) {
             await SupabaseService.signOut();
             state = AuthState(
               status: AuthStatus.error,
@@ -187,6 +187,107 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  // Phone OTP - Send OTP via Twilio Verify
+  Future<bool> sendOtp({required String phone}) async {
+    state = state.copyWith(status: AuthStatus.loading);
+    try {
+      await SupabaseService.sendPhoneOtp(phone: phone);
+      state = const AuthState(status: AuthStatus.unauthenticated);
+      return true;
+    } catch (e) {
+      state = AuthState(
+        status: AuthStatus.error,
+        errorMessage: e.toString().replaceAll('Exception: ', ''),
+      );
+      return false;
+    }
+  }
+
+  // Phone OTP - Verify code & establish session
+  Future<Map<String, dynamic>> verifyOtp({required String phone, required String code}) async {
+    state = state.copyWith(status: AuthStatus.loading);
+    try {
+      final result = await SupabaseService.verifyPhoneOtp(phone: phone, code: code);
+
+      // Session set by setSession() in supabase_service, auth listener will pick it up
+      final user = SupabaseService.currentUser;
+      if (user != null) {
+        // Rol kontrolü
+        final roleCheck = await _checkUserRole(user.id);
+        final roles = List<String>.from(roleCheck['roles'] ?? []);
+
+        if (roles.contains('support_agent')) {
+          await SupabaseService.signOut();
+          state = AuthState(
+            status: AuthStatus.error,
+            errorMessage: 'Bu hesapla müşteri uygulamasına giriş yapamazsınız.',
+          );
+          return {'success': false};
+        }
+
+        await _syncUserProfile(user);
+        state = AuthState(status: AuthStatus.authenticated, user: user);
+      }
+
+      return {
+        'success': true,
+        'is_new_user': result['is_new_user'] ?? false,
+      };
+    } catch (e) {
+      state = AuthState(
+        status: AuthStatus.error,
+        errorMessage: e.toString().replaceAll('Exception: ', ''),
+      );
+      return {'success': false};
+    }
+  }
+
+  // Update profile after OTP registration (name)
+  Future<bool> updateProfile({
+    required String firstName,
+    required String lastName,
+  }) async {
+    try {
+      await SupabaseService.updateUserProfile(
+        firstName: firstName,
+        lastName: lastName,
+      );
+
+      // users tablosuna da kaydet
+      final user = SupabaseService.currentUser;
+      if (user != null) {
+        final existing = await SupabaseService.client
+            .from('users')
+            .select('id')
+            .eq('id', user.id)
+            .maybeSingle();
+
+        if (existing == null) {
+          await SupabaseService.client.from('users').insert({
+            'id': user.id,
+            'phone': user.phone,
+            'first_name': firstName,
+            'last_name': lastName,
+            'created_at': DateTime.now().toIso8601String(),
+          });
+        } else {
+          await SupabaseService.client
+              .from('users')
+              .update({
+                'first_name': firstName,
+                'last_name': lastName,
+                'updated_at': DateTime.now().toIso8601String(),
+              })
+              .eq('id', user.id);
+        }
+      }
+      return true;
+    } catch (e) {
+      debugPrint('updateProfile error: $e');
+      return false;
+    }
+  }
+
   // Email/Password Sign In with brute force protection
   Future<bool> signIn({required String email, required String password}) async {
     state = state.copyWith(status: AuthStatus.loading);
@@ -220,8 +321,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
         final roleCheck = await _checkUserRole(response.user!.id);
         final roles = List<String>.from(roleCheck['roles'] ?? []);
 
-        // Kullanıcının rolleri var ama customer veya admin değilse engelle
-        if (roles.isNotEmpty && !roles.contains('customer') && !roles.contains('admin')) {
+        // Sadece destek temsilcileri müşteri uygulamasına giremez
+        if (roles.contains('support_agent')) {
           await SupabaseService.signOut();
           state = AuthState(
             status: AuthStatus.error,
@@ -377,16 +478,26 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   String _getErrorMessage(dynamic error) {
     if (error is AuthException) {
-      switch (error.message) {
-        case 'Invalid login credentials':
-          return 'E-posta veya şifre hatalı';
-        case 'Email not confirmed':
-          return 'E-posta adresinizi onaylayın';
-        case 'User already registered':
-          return 'Bu e-posta zaten kayıtlı';
-        default:
-          return error.message;
+      final msg = error.message.toLowerCase();
+      if (msg.contains('invalid login credentials')) {
+        return 'E-posta veya şifre hatalı';
       }
+      if (msg.contains('email not confirmed')) {
+        return 'E-posta adresinizi onaylayın';
+      }
+      if (msg.contains('user already registered')) {
+        return 'Bu e-posta zaten kayıtlı';
+      }
+      if (msg.contains('otp') && msg.contains('expired')) {
+        return 'Doğrulama kodu süresi doldu. Tekrar gönderin.';
+      }
+      if (msg.contains('token has expired or is invalid')) {
+        return 'Doğrulama kodu geçersiz veya süresi dolmuş.';
+      }
+      if (msg.contains('sms send rate') || msg.contains('rate limit')) {
+        return 'Çok fazla SMS gönderildi. Lütfen biraz bekleyin.';
+      }
+      return error.message;
     }
     return 'Bir hata oluştu';
   }

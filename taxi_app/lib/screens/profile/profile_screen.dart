@@ -368,13 +368,6 @@ class ProfileScreen extends ConsumerWidget {
           const Divider(height: 1),
           _buildMenuItem(
             context,
-            icon: Icons.help_outline,
-            title: 'Yardım & Destek',
-            onTap: () => context.push('/help-support'),
-          ),
-          const Divider(height: 1),
-          _buildMenuItem(
-            context,
             icon: Icons.info_outline,
             title: 'Hakkında',
             onTap: () => _showAboutDialog(context),

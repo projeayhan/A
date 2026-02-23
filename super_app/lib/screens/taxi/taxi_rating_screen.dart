@@ -23,7 +23,6 @@ class _TaxiRatingScreenState extends ConsumerState<TaxiRatingScreen>
     with TickerProviderStateMixin {
   int _rating = 5;
   String _comment = '';
-  double _tipAmount = 0;
   List<String> _selectedTagKeys = [];
   bool _isSubmitting = false;
 
@@ -47,8 +46,6 @@ class _TaxiRatingScreenState extends ConsumerState<TaxiRatingScreen>
     TaxiFeedbackTag(id: '8', tagKey: 'unsafe_driving', tagText: 'Tehlikeli sürüş', category: 'negative'),
   ];
 
-  // Tip options
-  final List<double> _tipOptions = [0, 5, 10, 20];
 
   @override
   void initState() {
@@ -122,7 +119,6 @@ class _TaxiRatingScreenState extends ConsumerState<TaxiRatingScreen>
         rideId: widget.ride.id,
         rating: _rating,
         comment: _comment.isNotEmpty ? _comment : null,
-        tipAmount: _tipAmount > 0 ? _tipAmount : null,
         feedbackTags: _selectedTagKeys.isNotEmpty ? _selectedTagKeys : null,
       );
 
@@ -259,11 +255,6 @@ class _TaxiRatingScreenState extends ConsumerState<TaxiRatingScreen>
 
               // Comment field
               _buildCommentField(theme, colorScheme),
-
-              const SizedBox(height: 32),
-
-              // Tip section
-              _buildTipSection(theme, colorScheme),
 
               const SizedBox(height: 32),
 
@@ -530,77 +521,6 @@ class _TaxiRatingScreenState extends ConsumerState<TaxiRatingScreen>
     );
   }
 
-  Widget _buildTipSection(ThemeData theme, ColorScheme colorScheme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(
-              Icons.volunteer_activism_rounded,
-              color: colorScheme.primary,
-              size: 24,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              'Bahşiş bırak',
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Sürücüye teşekkür etmek ister misiniz?',
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: colorScheme.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: _tipOptions.map((amount) {
-            final isSelected = _tipAmount == amount;
-            return Expanded(
-              child: GestureDetector(
-                onTap: () => setState(() => _tipAmount = amount),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  margin: EdgeInsets.only(
-                    right: amount != _tipOptions.last ? 8 : 0,
-                  ),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? colorScheme.primary
-                        : colorScheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isSelected
-                          ? colorScheme.primary
-                          : colorScheme.outlineVariant,
-                      width: 2,
-                    ),
-                  ),
-                  child: Text(
-                    amount == 0 ? 'Yok' : '${amount.toInt()} TL',
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: isSelected
-                          ? colorScheme.onPrimary
-                          : colorScheme.onSurface,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
-
   Widget _buildSubmitButton(ThemeData theme, ColorScheme colorScheme) {
     return SizedBox(
       width: double.infinity,
@@ -627,9 +547,7 @@ class _TaxiRatingScreenState extends ConsumerState<TaxiRatingScreen>
                   const Icon(Icons.send_rounded),
                   const SizedBox(width: 8),
                   Text(
-                    _tipAmount > 0
-                        ? 'Gönder (${_tipAmount.toInt()} TL bahşiş)'
-                        : 'Değerlendirmeyi Gönder',
+                    'Değerlendirmeyi Gönder',
                     style: theme.textTheme.titleMedium?.copyWith(
                       color: colorScheme.onPrimary,
                       fontWeight: FontWeight.bold,

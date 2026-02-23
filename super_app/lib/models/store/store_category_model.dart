@@ -4,6 +4,7 @@ class StoreCategory {
   final String id;
   final String name;
   final String iconName;
+  final String? imageUrl;
   final Color color;
   final int storeCount;
 
@@ -11,15 +12,14 @@ class StoreCategory {
     required this.id,
     required this.name,
     required this.iconName,
+    this.imageUrl,
     required this.color,
     this.storeCount = 0,
   });
 
   factory StoreCategory.fromJson(Map<String, dynamic> json) {
-    // Renk formatı: #RRGGBB -> 0xFFRRGGBB
     String colorStr = json['color'] as String? ?? '#2196F3';
     colorStr = colorStr.replaceFirst('#', '');
-    // 6 karakter ise başına FF (alpha) ekle
     if (colorStr.length == 6) {
       colorStr = 'FF$colorStr';
     }
@@ -28,6 +28,7 @@ class StoreCategory {
       id: json['id'] as String,
       name: json['name'] as String,
       iconName: json['icon_name'] as String? ?? 'category',
+      imageUrl: json['image_url'] as String?,
       color: Color(int.parse(colorStr, radix: 16)),
       storeCount: json['store_count'] as int? ?? 0,
     );

@@ -491,7 +491,8 @@ final rentalStatsProvider = FutureProvider<RentalStats>((ref) async {
       monthlyRevenue: monthlyRevenue,
     );
   } catch (e) {
-    return RentalStats.empty();
+    // Hata durumunda Riverpod error state göstersin
+    throw Exception('Rental istatistikleri yüklenemedi: $e');
   }
 });
 
@@ -499,86 +500,70 @@ final rentalStatsProvider = FutureProvider<RentalStats>((ref) async {
 final recentBookingsProvider = FutureProvider<List<RentalBookingView>>((ref) async {
   final client = ref.watch(supabaseClientProvider);
 
-  try {
-    final response = await client
-        .from('rental_bookings')
-        .select('''
-          *,
-          rental_cars(brand, model, image_url),
-          rental_companies(company_name),
-          pickup_location:rental_locations!pickup_location_id(name),
-          dropoff_location:rental_locations!dropoff_location_id(name)
-        ''')
-        .order('created_at', ascending: false)
-        .limit(50);
+  final response = await client
+      .from('rental_bookings')
+      .select('''
+        *,
+        rental_cars(brand, model, image_url),
+        rental_companies(company_name),
+        pickup_location:rental_locations!pickup_location_id(name),
+        dropoff_location:rental_locations!dropoff_location_id(name)
+      ''')
+      .order('created_at', ascending: false)
+      .limit(50);
 
-    return List<Map<String, dynamic>>.from(response)
-        .map((json) => RentalBookingView.fromJson(json))
-        .toList();
-  } catch (e) {
-    return [];
-  }
+  return List<Map<String, dynamic>>.from(response)
+      .map((json) => RentalBookingView.fromJson(json))
+      .toList();
 });
 
 // All Cars Provider
 final allCarsProvider = FutureProvider<List<RentalCarView>>((ref) async {
   final client = ref.watch(supabaseClientProvider);
 
-  try {
-    final response = await client
-        .from('rental_cars')
-        .select('''
-          *,
-          rental_companies(company_name),
-          rental_locations(name)
-        ''')
-        .order('created_at', ascending: false);
+  final response = await client
+      .from('rental_cars')
+      .select('''
+        *,
+        rental_companies(company_name),
+        rental_locations(name)
+      ''')
+      .order('created_at', ascending: false);
 
-    return List<Map<String, dynamic>>.from(response)
-        .map((json) => RentalCarView.fromJson(json))
-        .toList();
-  } catch (e) {
-    return [];
-  }
+  return List<Map<String, dynamic>>.from(response)
+      .map((json) => RentalCarView.fromJson(json))
+      .toList();
 });
 
 // All Locations Provider
 final allLocationsProvider = FutureProvider<List<RentalLocationView>>((ref) async {
   final client = ref.watch(supabaseClientProvider);
 
-  try {
-    final response = await client
-        .from('rental_locations')
-        .select('''
-          *,
-          rental_companies(company_name)
-        ''')
-        .order('name');
+  final response = await client
+      .from('rental_locations')
+      .select('''
+        *,
+        rental_companies(company_name)
+      ''')
+      .order('name');
 
-    return List<Map<String, dynamic>>.from(response)
-        .map((json) => RentalLocationView.fromJson(json))
-        .toList();
-  } catch (e) {
-    return [];
-  }
+  return List<Map<String, dynamic>>.from(response)
+      .map((json) => RentalLocationView.fromJson(json))
+      .toList();
 });
 
 // All Companies Provider
 final allCompaniesProvider = FutureProvider<List<RentalCompanyView>>((ref) async {
   final client = ref.watch(supabaseClientProvider);
 
-  try {
-    final response = await client
-        .from('rental_companies')
-        .select('*')
-        .order('created_at', ascending: false);
+  final response = await client
+      .from('rental_companies')
+      .select('*')
+      .order('created_at', ascending: false);
 
-    return List<Map<String, dynamic>>.from(response)
-        .map((json) => RentalCompanyView.fromJson(json))
-        .toList();
-  } catch (e) {
-    return [];
-  }
+  return List<Map<String, dynamic>>.from(response)
+      .map((json) => RentalCompanyView.fromJson(json))
+      .toList();
 });
 
 // Top Rental Car Model

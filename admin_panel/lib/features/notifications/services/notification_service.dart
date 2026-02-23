@@ -40,11 +40,21 @@ class NotificationService {
       'body': body,
       'target_type': targetType,
       'target_id': targetId,
-      'status': 'sent',
+      'status': 'pending',
       'created_at': DateTime.now().toIso8601String(),
     });
 
-    // 2. Call Edge Function to actually send FCM/OneSignal (Mock for now)
-    // await _supabase.functions.invoke('send-push-notification', body: { ... });
+    // 2. Call Edge Function to send push notification
+    try {
+      await _supabase.functions.invoke('send-push-notification', body: {
+        'title': title,
+        'body': body,
+        'target_type': targetType,
+        'target_id': targetId,
+      });
+    } catch (e) {
+      // Edge function çağrısı başarısız olsa bile DB kaydı mevcut
+      rethrow;
+    }
   }
 }

@@ -17,16 +17,25 @@ import '../../screens/profile/personal_info_screen.dart';
 import '../../screens/profile/vehicle_info_screen.dart';
 import '../../screens/profile/payment_info_screen.dart';
 import '../../screens/profile/notification_settings_screen.dart';
-import '../../screens/profile/help_support_screen.dart';
+
+class _RouterRefreshNotifier extends ChangeNotifier {
+  void notify() => notifyListeners();
+}
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authProvider);
+  final refreshNotifier = _RouterRefreshNotifier();
+  ref.listen(authProvider, (_, __) {
+    refreshNotifier.notify();
+  });
 
   return GoRouter(
     initialLocation: '/login',
+    refreshListenable: refreshNotifier,
     redirect: (context, state) {
+      final authState = ref.read(authProvider);
       final isLoggedIn = authState.status == AuthStatus.authenticated;
       final isPending = authState.status == AuthStatus.pendingApproval;
+      final needsReg = authState.status == AuthStatus.needsRegistration;
       final isLoggingIn = state.matchedLocation == '/login';
       final isRegistering = state.matchedLocation == '/register';
       final isPendingPage = state.matchedLocation == '/pending';
@@ -35,14 +44,22 @@ final routerProvider = Provider<GoRouter>((ref) {
         return null;
       }
 
+      // Kayıt gerekli → kayıt sayfasına yönlendir
+      if (needsReg && !isRegistering) {
+        return '/register';
+      }
+
+      // Onay bekliyor → pending sayfasına yönlendir
       if (isPending && !isPendingPage) {
         return '/pending';
       }
 
-      if (!isLoggedIn && !isPending && !isLoggingIn && !isRegistering) {
+      // Giriş yapılmamış → login'e yönlendir
+      if (!isLoggedIn && !isPending && !needsReg && !isLoggingIn && !isRegistering) {
         return '/login';
       }
 
+      // Giriş yapılmış ve auth sayfasında → ana sayfaya yönlendir
       if (isLoggedIn && (isLoggingIn || isRegistering || isPendingPage)) {
         return '/';
       }
@@ -114,10 +131,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/notification-settings',
             builder: (context, state) => const NotificationSettingsScreen(),
-          ),
-          GoRoute(
-            path: '/help-support',
-            builder: (context, state) => const HelpSupportScreen(),
           ),
         ],
       ),

@@ -1268,55 +1268,43 @@ class _OrderCardState extends ConsumerState<OrderCard>
   }
 
   Widget _buildMenuButton() {
-    return PopupMenuButton<String>(
-      icon: Icon(Icons.more_vert, color: AppColors.textMuted, size: 20),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      onSelected: (value) {
-        switch (value) {
-          case 'print':
-            _printOrder();
-            break;
-          case 'print_thermal':
-            _printThermalReceipt();
-            break;
-          case 'copy':
-            _copyOrderNumber();
-            break;
-        }
-      },
-      itemBuilder:
-          (context) => [
-            const PopupMenuItem(
-              value: 'print',
-              child: Row(
-                children: [
-                  Icon(Icons.print_outlined, size: 20),
-                  SizedBox(width: 12),
-                  Text('A4 Yazdir'),
-                ],
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'print_thermal',
-              child: Row(
-                children: [
-                  Icon(Icons.receipt_long_outlined, size: 20),
-                  SizedBox(width: 12),
-                  Text('Termal Fis Yazdir'),
-                ],
-              ),
-            ),
-            const PopupMenuItem(
-              value: 'copy',
-              child: Row(
-                children: [
-                  Icon(Icons.copy_outlined, size: 20),
-                  SizedBox(width: 12),
-                  Text('Siparis No Kopyala'),
-                ],
-              ),
-            ),
-          ],
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildActionIcon(
+          icon: Icons.receipt_long_outlined,
+          tooltip: 'Termal Fis',
+          onTap: _printThermalReceipt,
+        ),
+        _buildActionIcon(
+          icon: Icons.print_outlined,
+          tooltip: 'A4 Yazdir',
+          onTap: _printOrder,
+        ),
+        _buildActionIcon(
+          icon: Icons.copy_outlined,
+          tooltip: 'Kopyala',
+          onTap: _copyOrderNumber,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionIcon({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onTap,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.all(6),
+          child: Icon(icon, size: 20, color: AppColors.textSecondary),
+        ),
+      ),
     );
   }
 
@@ -1633,7 +1621,12 @@ class _OrderCardState extends ConsumerState<OrderCard>
   Future<void> _printThermalReceipt() async {
     final merchant = ref.read(currentMerchantProvider).valueOrNull;
 
-    final pdf = pw.Document();
+    // Load Turkish-compatible font
+    final font = await PdfGoogleFonts.notoSansRegular();
+    final fontBold = await PdfGoogleFonts.notoSansBold();
+    final fontItalic = await PdfGoogleFonts.notoSansItalic();
+
+    final pdf = pw.Document(theme: pw.ThemeData.withFont(base: font, bold: fontBold, italic: fontItalic));
 
     // 80mm thermal paper width = ~72mm printable = ~204 points
     const receiptWidth = 204.0;
@@ -2023,7 +2016,12 @@ class _OrderCardState extends ConsumerState<OrderCard>
   Future<void> _printOrder() async {
     final merchant = ref.read(currentMerchantProvider).valueOrNull;
 
-    final pdf = pw.Document();
+    // Load Turkish-compatible font
+    final font = await PdfGoogleFonts.notoSansRegular();
+    final fontBold = await PdfGoogleFonts.notoSansBold();
+    final fontItalic = await PdfGoogleFonts.notoSansItalic();
+
+    final pdf = pw.Document(theme: pw.ThemeData.withFont(base: font, bold: fontBold, italic: fontItalic));
 
     pdf.addPage(
       pw.Page(

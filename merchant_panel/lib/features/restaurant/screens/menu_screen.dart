@@ -1,8 +1,11 @@
 import 'dart:typed_data';
+import 'package:excel/excel.dart' as exc;
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:printing/printing.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/theme/app_theme.dart';
@@ -77,6 +80,28 @@ class MenuCategoriesNotifier
     } catch (e) {
       if (kDebugMode) print('Add category error: $e');
       return false;
+    }
+  }
+
+  /// Kategori ekle ve oluşturulan kategoriyi döndür (toplu yükleme için)
+  Future<MenuCategory?> addCategoryAndReturn(String merchantId, String name) async {
+    try {
+      final supabase = ref.read(supabaseClientProvider);
+      final response = await supabase.from('menu_categories').insert({
+        'merchant_id': merchantId,
+        'name': name,
+        'sort_order': 0,
+        'is_active': true,
+      }).select().single();
+
+      await loadCategories(merchantId);
+      return MenuCategory.fromJson({
+        ...response,
+        'restaurant_id': response['merchant_id'],
+      });
+    } catch (e) {
+      if (kDebugMode) print('Add category and return error: $e');
+      return null;
     }
   }
 
@@ -289,6 +314,14 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
                 error: (_, __) => const SizedBox(),
               ),
               const SizedBox(width: 16),
+
+              // Bulk Upload Button
+              OutlinedButton.icon(
+                onPressed: () => _showBulkImportDialog(context),
+                icon: const Icon(Icons.upload_file, size: 20),
+                label: const Text('Toplu Yukle'),
+              ),
+              const SizedBox(width: 8),
 
               // Add Button
               ElevatedButton.icon(
@@ -599,6 +632,25 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
   }
 
   // ===================== DIALOGS =====================
+  void _showBulkImportDialog(BuildContext context) {
+    final merchant = ref.read(currentMerchantProvider).valueOrNull;
+    if (merchant == null) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => _MenuImportDialog(
+        merchantId: merchant.id,
+        onImport: (items) async {
+          final count = await ref
+              .read(menuItemsProvider.notifier)
+              .bulkAddMenuItems(items, merchant.id);
+          return count;
+        },
+      ),
+    );
+  }
+
   void _showAddItemDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -651,6 +703,25 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
                   } catch (e) {
                     if (kDebugMode) print('Image upload failed (continuing without image): $e');
                     // Continue without image
+                  }
+                }
+
+                // Resim yoksa havuzdan otomatik bul
+                if (imageUrl == null && item.name.isNotEmpty) {
+                  try {
+                    final poolResult = await ref.read(supabaseClientProvider).rpc(
+                      'match_product_image',
+                      params: {'p_barcode': null, 'p_name': item.name, 'p_brand': null},
+                    );
+                    if (poolResult != null && poolResult is List && poolResult.isNotEmpty) {
+                      final poolUrl = poolResult[0]['image_url'] as String?;
+                      if (poolUrl != null && poolUrl.isNotEmpty) {
+                        imageUrl = poolUrl;
+                        if (kDebugMode) print('Pool image found: $imageUrl');
+                      }
+                    }
+                  } catch (e) {
+                    if (kDebugMode) print('Pool check error: $e');
                   }
                 }
 
@@ -2174,5 +2245,1015 @@ class _MenuItemDialogState extends ConsumerState<_MenuItemDialog> {
 
     // Call onSave first, it will handle closing dialogs
     widget.onSave(item, _selectedImageBytes, _selectedImageName, _optionGroups);
+  }
+}
+
+// ===================== TOPLU MENU YUKLEME DIALOG =====================
+class _MenuImportDialog extends ConsumerStatefulWidget {
+  final String merchantId;
+  final Future<int> Function(List<Map<String, dynamic>>) onImport;
+
+  const _MenuImportDialog({required this.merchantId, required this.onImport});
+
+  @override
+  ConsumerState<_MenuImportDialog> createState() => _MenuImportDialogState();
+}
+
+class _MenuImportDialogState extends ConsumerState<_MenuImportDialog> {
+  List<MenuCategory> get _categories =>
+      ref.watch(menuCategoriesProvider).valueOrNull ?? [];
+
+  int _step = 0; // 0: sablon, 1: yukle, 2: onizleme, 3: sonuc
+  List<Map<String, dynamic>> _parsedItems = [];
+  Map<String, List<Map<String, dynamic>>> _groupedItems = {};
+  String? _errorMessage;
+  String? _fileName;
+  bool _isLoading = false;
+  bool _isUploading = false;
+  int _uploadedCount = 0;
+
+  // ========== SABLON INDIRME ==========
+  Future<void> _downloadTemplate() async {
+    setState(() => _isLoading = true);
+    try {
+      final excel = exc.Excel.createExcel();
+
+      final headerStyle = exc.CellStyle(
+        bold: true,
+        fontSize: 11,
+        backgroundColorHex: exc.ExcelColor.fromHexString('#FF5722'),
+        fontColorHex: exc.ExcelColor.fromHexString('#FFFFFF'),
+        horizontalAlign: exc.HorizontalAlign.Center,
+      );
+
+      final exampleStyle = exc.CellStyle(
+        fontSize: 10,
+        fontColorHex: exc.ExcelColor.fromHexString('#999999'),
+        italic: true,
+      );
+
+      final categoryHintStyle = exc.CellStyle(
+        fontSize: 10,
+        fontColorHex: exc.ExcelColor.fromHexString('#666666'),
+        italic: true,
+      );
+
+      final headers = [
+        exc.TextCellValue('Yemek Adi *'),
+        exc.TextCellValue('Fiyat *'),
+        exc.TextCellValue('Kategori'),
+        exc.TextCellValue('Aciklama'),
+        exc.TextCellValue('Indirimli Fiyat'),
+        exc.TextCellValue('Populer (evet/hayir)'),
+        exc.TextCellValue('Hazirlama Suresi (dk)'),
+      ];
+
+      final categoryNames = _categories.map((c) => c.name).join(', ');
+
+      final exampleRow = [
+        exc.TextCellValue('Adana Kebap'),
+        exc.DoubleCellValue(120.00),
+        exc.TextCellValue(
+            _categories.isNotEmpty ? _categories.first.name : 'Ana Yemekler'),
+        exc.TextCellValue('Aci sis kebap, lavash ile servis'),
+        exc.DoubleCellValue(99.90),
+        exc.TextCellValue('evet'),
+        exc.IntCellValue(25),
+      ];
+
+      final sheet = excel['Menu'];
+      sheet.setColumnWidth(0, 25);
+      sheet.setColumnWidth(1, 12);
+      sheet.setColumnWidth(2, 20);
+      sheet.setColumnWidth(3, 35);
+      sheet.setColumnWidth(4, 16);
+      sheet.setColumnWidth(5, 22);
+      sheet.setColumnWidth(6, 22);
+
+      // Header
+      sheet.appendRow(headers);
+      for (int col = 0; col < headers.length; col++) {
+        sheet
+            .cell(exc.CellIndex.indexByColumnRow(
+                columnIndex: col, rowIndex: 0))
+            .cellStyle = headerStyle;
+      }
+
+      // Ornek satir
+      sheet.appendRow(exampleRow);
+      for (int col = 0; col < exampleRow.length; col++) {
+        sheet
+            .cell(exc.CellIndex.indexByColumnRow(
+                columnIndex: col, rowIndex: 1))
+            .cellStyle = exampleStyle;
+      }
+
+      // Kategori ipucu
+      final hintRow = List<exc.CellValue>.generate(
+          headers.length, (_) => exc.TextCellValue(''));
+      hintRow[2] = exc.TextCellValue('Kategoriler: $categoryNames');
+      sheet.appendRow(hintRow);
+      sheet
+          .cell(
+              exc.CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: 2))
+          .cellStyle = categoryHintStyle;
+
+      excel.delete('Sheet1');
+
+      final bytes = excel.encode();
+      if (bytes == null) throw Exception('Excel olusturulamadi');
+
+      await Printing.sharePdf(
+        bytes: Uint8List.fromList(bytes),
+        filename: 'menu_sablonu.xlsx',
+      );
+
+      if (mounted) {
+        setState(() {
+          _step = 1;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Sablon olusturma hatasi: $e';
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  // ========== EXCEL PARSE ==========
+  Future<void> _pickAndParseExcel() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+      _parsedItems = [];
+      _groupedItems = {};
+    });
+
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['xlsx', 'xls', 'csv'],
+        withData: true,
+      );
+
+      if (result == null || result.files.isEmpty) {
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      final bytes = result.files.first.bytes;
+      if (bytes == null) {
+        setState(() {
+          _errorMessage = 'Dosya okunamadi';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      _fileName = result.files.first.name;
+      final isCsv = _fileName!.toLowerCase().endsWith('.csv');
+
+      List<List<String>> dataRows = [];
+
+      if (isCsv) {
+        final csvStr = String.fromCharCodes(bytes);
+        final lines =
+            csvStr.split('\n').where((l) => l.trim().isNotEmpty).toList();
+        for (final line in lines) {
+          dataRows.add(line.split(';').map((c) => c.trim()).toList());
+        }
+      } else {
+        exc.Excel excel;
+        try {
+          excel = exc.Excel.decodeBytes(bytes);
+        } catch (e) {
+          setState(() {
+            _errorMessage =
+                'Excel okunamadi: ${e.toString().length > 100 ? e.toString().substring(0, 100) : e}';
+            _isLoading = false;
+          });
+          return;
+        }
+
+        for (final sheetName in excel.tables.keys) {
+          if (sheetName.trim().toLowerCase() == 'bilgi') continue;
+          final sheet = excel.tables[sheetName];
+          if (sheet == null || sheet.rows.length < 2) continue;
+          for (final row in sheet.rows) {
+            dataRows.add(
+                row.map((c) => c?.value?.toString().trim() ?? '').toList());
+          }
+          break;
+        }
+      }
+
+      // Kategori eslestirme
+      final categoryMap = <String, String?>{};
+      for (final cat in _categories) {
+        categoryMap[cat.name.trim().toLowerCase()] = cat.id;
+      }
+
+      final allItems = <Map<String, dynamic>>[];
+      final grouped = <String, List<Map<String, dynamic>>>{};
+      final newCategoryNames = <String>{};
+
+      if (dataRows.length < 2) {
+        setState(() {
+          _errorMessage = 'Dosyada yeterli veri bulunamadi';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // Kolon tespiti
+      int colName = 0, colPrice = -1, colCategory = -1, colDescription = -1;
+      int colDiscountedPrice = -1, colPopular = -1, colPrepTime = -1;
+      int dataStartRow = 1;
+
+      final headerRow = dataRows[0];
+
+      final h0 = headerRow.isNotEmpty ? headerRow[0].toLowerCase() : '';
+      final h1 = headerRow.length > 1 ? headerRow[1].toLowerCase() : '';
+      if ((h0.contains('yemek') || h0.contains('urun')) &&
+          h1.contains('fiyat')) {
+        // Bizim sablon
+        colName = 0;
+        colPrice = 1;
+        colCategory = 2;
+        colDescription = 3;
+        colDiscountedPrice = 4;
+        colPopular = 5;
+        colPrepTime = 6;
+        dataStartRow = 2;
+      } else {
+        // Akilli kolon tespiti
+        for (int c = 0; c < headerRow.length; c++) {
+          final h = headerRow[c]
+              .toLowerCase()
+              .replaceAll(RegExp('[^a-z0-9]'), '');
+          if (h.contains('yemek') ||
+              h.contains('urun') ||
+              h.contains('isim') ||
+              h == 'ad' ||
+              h == 'adi' ||
+              h.contains('name')) {
+            if (colName == 0 && c > 0) colName = c;
+          } else if (h.contains('indirimli') || h.contains('discount')) {
+            colDiscountedPrice = c;
+          } else if (h.contains('fiyat') ||
+              h.contains('price') ||
+              h.contains('tutar')) {
+            colPrice = c;
+          } else if (h.contains('kategori') ||
+              h.contains('category') ||
+              h.contains('grup')) {
+            colCategory = c;
+          } else if (h.contains('aciklama') || h.contains('desc')) {
+            colDescription = c;
+          } else if (h.contains('populer') || h.contains('popular')) {
+            colPopular = c;
+          } else if (h.contains('hazirlama') ||
+              h.contains('sure') ||
+              h.contains('prep')) {
+            colPrepTime = c;
+          }
+        }
+        if (dataRows.length > 1) {
+          final firstVal = dataRows[1].isNotEmpty
+              ? dataRows[1][0].toLowerCase().trim()
+              : '';
+          if (firstVal.contains('ornek') ||
+              firstVal.contains('adana') ||
+              firstVal.isEmpty) {
+            dataStartRow = 2;
+          }
+        }
+      }
+
+      for (int i = dataStartRow; i < dataRows.length; i++) {
+        final row = dataRows[i];
+        if (row.isEmpty || row.every((c) => c.isEmpty)) continue;
+
+        String col(int idx) =>
+            (idx >= 0 && idx < row.length) ? row[idx].trim() : '';
+
+        final name = col(colName);
+        final priceStr = col(colPrice);
+        final price = priceStr.isNotEmpty
+            ? (double.tryParse(priceStr.replaceAll(',', '.')) ?? 0.0)
+            : 0.0;
+
+        if (name.toLowerCase().contains('ornek')) continue;
+        if (name.isEmpty) continue;
+
+        final categoryStr =
+            col(colCategory).isNotEmpty ? col(colCategory) : null;
+        final description =
+            col(colDescription).isNotEmpty ? col(colDescription) : null;
+        final discountStr = col(colDiscountedPrice);
+        final discountedPrice = discountStr.isNotEmpty
+            ? double.tryParse(discountStr.replaceAll(',', '.'))
+            : null;
+        final popularStr = col(colPopular).toLowerCase();
+        final isPopular =
+            popularStr == 'evet' || popularStr == 'yes' || popularStr == '1';
+        final prepTimeStr = col(colPrepTime);
+        final prepTime = int.tryParse(prepTimeStr) ?? 15;
+
+        // Kategori eslestir
+        String? categoryId;
+        String categoryLabel = 'Kategorisiz';
+        if (categoryStr != null && categoryStr.isNotEmpty) {
+          final catKey = categoryStr.trim().toLowerCase();
+          if (categoryMap.containsKey(catKey)) {
+            categoryId = categoryMap[catKey];
+            categoryLabel = categoryStr.trim();
+          } else {
+            newCategoryNames.add(categoryStr.trim());
+            categoryLabel = categoryStr.trim();
+          }
+        }
+
+        final item = <String, dynamic>{
+          'merchant_id': widget.merchantId,
+          'name': name,
+          'price': price,
+          'category_id': categoryId,
+          'description': description,
+          'discounted_price': discountedPrice,
+          'is_popular': isPopular,
+          'preparation_time': prepTime,
+          'is_available': true,
+          'sort_order': 0,
+          '_category_label': categoryLabel,
+        };
+
+        allItems.add(item);
+        grouped.putIfAbsent(categoryLabel, () => []).add(item);
+      }
+
+      if (allItems.isEmpty) {
+        setState(() {
+          _errorMessage = 'Dosyada gecerli urun bulunamadi';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // Yeni kategorileri otomatik olustur
+      if (newCategoryNames.isNotEmpty) {
+        final catNotifier = ref.read(menuCategoriesProvider.notifier);
+        for (final catName in newCategoryNames) {
+          final created =
+              await catNotifier.addCategoryAndReturn(widget.merchantId, catName);
+          if (created != null) {
+            categoryMap[catName.toLowerCase()] = created.id;
+            // Urunlere ID ata
+            for (int j = 0; j < allItems.length; j++) {
+              if (allItems[j]['_category_label']?.toString().toLowerCase() ==
+                  catName.toLowerCase()) {
+                allItems[j]['category_id'] = created.id;
+              }
+            }
+          }
+        }
+      }
+
+      setState(() {
+        _parsedItems = allItems;
+        _groupedItems = grouped;
+        _step = 2;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'Excel okuma hatasi: $e';
+        _isLoading = false;
+      });
+    }
+  }
+
+  // ========== TOPLU YUKLEME ==========
+  Future<void> _doImport() async {
+    setState(() => _isUploading = true);
+
+    // _category_label'i cikar (DB'ye gitmemeli)
+    final cleanItems = _parsedItems.map((item) {
+      final clean = Map<String, dynamic>.from(item);
+      clean.remove('_category_label');
+      return clean;
+    }).toList();
+
+    final count = await widget.onImport(cleanItems);
+    if (mounted) {
+      setState(() {
+        _isUploading = false;
+        _uploadedCount = count;
+        _step = 3;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: AppColors.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Container(
+        width: 750,
+        constraints: const BoxConstraints(maxHeight: 650),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Baslik
+            Row(
+              children: [
+                const Icon(Icons.upload_file, size: 28),
+                const SizedBox(width: 12),
+                Text('Toplu Menu Yukleme',
+                    style: Theme.of(context).textTheme.titleLarge),
+                const Spacer(),
+                _buildStepIndicator(),
+                const SizedBox(width: 12),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // Hata mesaji
+            if (_errorMessage != null) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withAlpha(25),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.error.withAlpha(60)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.error_outline,
+                        color: AppColors.error, size: 18),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(_errorMessage!,
+                          style: TextStyle(
+                              color: AppColors.error, fontSize: 13)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            // Adim icerigi
+            Flexible(child: _buildStepContent()),
+
+            const SizedBox(height: 20),
+
+            // Alt butonlar
+            _buildActions(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStepIndicator() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (int i = 0; i < 4; i++) ...[
+          if (i > 0)
+            Container(
+                width: 20,
+                height: 2,
+                color:
+                    i <= _step ? AppColors.primary : AppColors.border),
+          Container(
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color:
+                  i <= _step ? AppColors.primary : AppColors.background,
+              border: Border.all(
+                  color: i <= _step
+                      ? AppColors.primary
+                      : AppColors.border),
+            ),
+            child: Center(
+              child: i < _step
+                  ? const Icon(Icons.check, size: 14, color: Colors.white)
+                  : Text(
+                      '${i + 1}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: i <= _step
+                            ? Colors.white
+                            : AppColors.textMuted,
+                      ),
+                    ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildStepContent() {
+    switch (_step) {
+      case 0:
+        return _buildStep0Template();
+      case 1:
+        return _buildStep1Upload();
+      case 2:
+        return _buildStep2Preview();
+      case 3:
+        return _buildStep3Result();
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  // ========== ADIM 0: SABLON INDIR ==========
+  Widget _buildStep0Template() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withAlpha(15),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.primary.withAlpha(40)),
+          ),
+          child: Column(
+            children: [
+              Icon(Icons.restaurant_menu,
+                  size: 48, color: AppColors.primary),
+              const SizedBox(height: 12),
+              Text(
+                'Menu Sablonunu Indirin',
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Sablondaki sutunlari doldurun:\n'
+                'Yemek Adi, Fiyat, Kategori, Aciklama, Indirimli Fiyat, Populer, Hazirlama Suresi',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                    height: 1.5),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: _isLoading ? null : _downloadTemplate,
+                icon: _isLoading
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.download, size: 20),
+                label: Text(_isLoading
+                    ? 'Hazirlaniyor...'
+                    : 'Sablon Indir (.xlsx)'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 24, vertical: 14),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        Text('Mevcut Kategoriler:',
+            style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+                fontSize: 13)),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 6,
+          children: [
+            for (final cat in _categories)
+              Chip(
+                label: Text(cat.name, style: const TextStyle(fontSize: 12)),
+                backgroundColor: AppColors.primary.withAlpha(20),
+                side: BorderSide(color: AppColors.primary.withAlpha(40)),
+                visualDensity: VisualDensity.compact,
+              ),
+            Chip(
+              label: const Text('Kategorisiz',
+                  style: TextStyle(fontSize: 12)),
+              backgroundColor: AppColors.background,
+              side: BorderSide(color: AppColors.border),
+              visualDensity: VisualDensity.compact,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // ========== ADIM 1: EXCEL YUKLE ==========
+  Widget _buildStep1Upload() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          onTap: _isLoading ? null : _pickAndParseExcel,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 48),
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: AppColors.primary.withAlpha(80),
+                width: 2,
+                strokeAlign: BorderSide.strokeAlignCenter,
+              ),
+            ),
+            child: Column(
+              children: [
+                if (_isLoading)
+                  const CircularProgressIndicator()
+                else ...[
+                  Icon(Icons.cloud_upload_outlined,
+                      size: 56, color: AppColors.primary.withAlpha(180)),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Excel Dosyasi Sec',
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Doldurdugunuz .xlsx dosyasini secin',
+                    style: TextStyle(
+                        color: AppColors.textSecondary, fontSize: 13),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        if (_fileName != null) ...[
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Icon(Icons.insert_drive_file,
+                  size: 18, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Text(_fileName!,
+                  style: TextStyle(
+                      color: AppColors.textSecondary, fontSize: 13)),
+            ],
+          ),
+        ],
+        const SizedBox(height: 20),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.background,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.lightbulb_outline,
+                      size: 18, color: AppColors.warning),
+                  const SizedBox(width: 8),
+                  Text('Ipuclari',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                          fontSize: 13)),
+                ],
+              ),
+              const SizedBox(height: 8),
+              _tipRow('Zorunlu alan: Yemek Adi (Fiyat yoksa 0 olarak eklenir)'),
+              _tipRow('Ilk iki satir (baslik + ornek) otomatik atlanir'),
+              _tipRow('Yeni kategori isimleri otomatik olusturulur'),
+              _tipRow('Excel veya CSV dosyasi yukleyebilirsiniz'),
+              _tipRow('Populer icin: evet/hayir yazin'),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _tipRow(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('  •  ',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+          Expanded(
+              child: Text(text,
+                  style: TextStyle(
+                      color: AppColors.textSecondary, fontSize: 12))),
+        ],
+      ),
+    );
+  }
+
+  // ========== ADIM 2: ONIZLEME ==========
+  Widget _buildStep2Preview() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.success.withAlpha(25),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                '${_parsedItems.length} yemek hazir',
+                style: TextStyle(
+                    color: AppColors.success,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '${_groupedItems.length} kategori',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+            ),
+            if (_fileName != null) ...[
+              const Spacer(),
+              Icon(Icons.insert_drive_file,
+                  size: 16, color: AppColors.textMuted),
+              const SizedBox(width: 4),
+              Text(_fileName!,
+                  style: TextStyle(
+                      color: AppColors.textMuted, fontSize: 12)),
+            ],
+          ],
+        ),
+        const SizedBox(height: 12),
+        Expanded(
+          child: ListView.builder(
+            itemCount: _groupedItems.keys.length,
+            itemBuilder: (context, catIndex) {
+              final categoryName =
+                  _groupedItems.keys.elementAt(catIndex);
+              final items = _groupedItems[categoryName]!;
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  border: Border.all(color: AppColors.border),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withAlpha(15),
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(11),
+                          topRight: Radius.circular(11),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.restaurant,
+                              size: 18, color: AppColors.primary),
+                          const SizedBox(width: 8),
+                          Text(
+                            categoryName,
+                            style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                                fontSize: 13),
+                          ),
+                          const Spacer(),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withAlpha(25),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '${items.length} yemek',
+                              style: TextStyle(
+                                  color: AppColors.primary,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    for (int i = 0; i < items.length; i++)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          border: i < items.length - 1
+                              ? Border(
+                                  bottom: BorderSide(
+                                      color:
+                                          AppColors.border.withAlpha(80)))
+                              : null,
+                        ),
+                        child: Row(
+                          children: [
+                            if (items[i]['is_popular'] == true)
+                              Padding(
+                                padding:
+                                    const EdgeInsets.only(right: 6),
+                                child: Icon(Icons.star,
+                                    size: 14, color: AppColors.warning),
+                              ),
+                            Expanded(
+                              flex: 3,
+                              child: Text(
+                                items[i]['name'] as String,
+                                style: TextStyle(
+                                    color: AppColors.textPrimary,
+                                    fontSize: 13),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (items[i]['discounted_price'] != null) ...[
+                              Text(
+                                '${(items[i]['price'] as num).toStringAsFixed(2)} TL',
+                                style: TextStyle(
+                                  color: AppColors.textMuted,
+                                  fontSize: 11,
+                                  decoration: TextDecoration.lineThrough,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                '${(items[i]['discounted_price'] as num).toStringAsFixed(2)} TL',
+                                style: TextStyle(
+                                    color: AppColors.success,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600),
+                              ),
+                            ] else
+                              Text(
+                                '${(items[i]['price'] as num).toStringAsFixed(2)} TL',
+                                style: TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 12),
+                                textAlign: TextAlign.right,
+                              ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ========== ADIM 3: SONUC ==========
+  Widget _buildStep3Result() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: AppColors.success.withAlpha(15),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.success.withAlpha(40)),
+          ),
+          child: Column(
+            children: [
+              Icon(Icons.check_circle,
+                  size: 48, color: AppColors.success),
+              const SizedBox(height: 12),
+              Text(
+                '$_uploadedCount yemek basariyla yuklendi!',
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Havuzda eslesme bulunan yemeklere otomatik resim atandi.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActions() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        // Sol: Geri
+        if (_step > 0 && _step < 3)
+          TextButton.icon(
+            onPressed: () => setState(() {
+              _step = _step - 1;
+              if (_step < 2) {
+                _parsedItems = [];
+                _groupedItems = {};
+              }
+            }),
+            icon: const Icon(Icons.arrow_back, size: 18),
+            label: const Text('Geri'),
+          )
+        else
+          const SizedBox.shrink(),
+
+        // Sag
+        Row(
+          children: [
+            if (_step < 3)
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Iptal'),
+              ),
+            const SizedBox(width: 12),
+            if (_step == 0)
+              OutlinedButton.icon(
+                onPressed: () => setState(() => _step = 1),
+                icon: const Icon(Icons.arrow_forward, size: 18),
+                label: const Text('Zaten Sablonum Var'),
+              ),
+            if (_step == 1)
+              ElevatedButton.icon(
+                onPressed: _isLoading ? null : _pickAndParseExcel,
+                icon: const Icon(Icons.upload_file, size: 18),
+                label: const Text('Excel Sec'),
+              ),
+            if (_step == 2)
+              ElevatedButton.icon(
+                onPressed: _isUploading ? null : _doImport,
+                icon: _isUploading
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.check, size: 18),
+                label: Text(_isUploading
+                    ? 'Yukleniyor...'
+                    : '${_parsedItems.length} Yemek Yukle'),
+              ),
+            if (_step == 3)
+              ElevatedButton.icon(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.done_all, size: 18),
+                label: const Text('Tamamla'),
+              ),
+          ],
+        ),
+      ],
+    );
   }
 }

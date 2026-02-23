@@ -10,7 +10,7 @@ final driverEarningsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) 
   final supabase = ref.watch(supabaseProvider);
   final response = await supabase
       .from('driver_earnings')
-      .select('*, drivers(*)')
+      .select('*, taxi_drivers(*)')
       .order('created_at', ascending: false)
       .limit(100);
   return List<Map<String, dynamic>>.from(response);
@@ -32,7 +32,7 @@ final driverPayoutsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) a
   final supabase = ref.watch(supabaseProvider);
   final response = await supabase
       .from('driver_payouts')
-      .select('*, drivers(*)')
+      .select('*, taxi_drivers(*)')
       .order('created_at', ascending: false)
       .limit(50);
   return List<Map<String, dynamic>>.from(response);
@@ -340,7 +340,7 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> with SingleTick
                             rows: earnings.map((e) {
                               return DataRow2(
                                 cells: [
-                                  DataCell(Text(e['drivers']?['full_name'] ?? e['driver_id']?.toString().substring(0, 8) ?? '-')),
+                                  DataCell(Text(e['taxi_drivers']?['full_name'] ?? e['driver_id']?.toString().substring(0, 8) ?? '-')),
                                   DataCell(Text(_formatDate(e['earning_date'] ?? e['created_at']))),
                                   DataCell(_buildTypeBadge(e['type'])),
                                   DataCell(Text('${e['gross_amount']} TL')),
@@ -506,7 +506,7 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> with SingleTick
                       return DataRow2(
                         cells: [
                           DataCell(Text('#${payout['id']?.toString().substring(0, 6) ?? ''}')),
-                          DataCell(Text(payout['drivers']?['full_name'] ?? '-')),
+                          DataCell(Text(payout['taxi_drivers']?['full_name'] ?? '-')),
                           DataCell(Text('${payout['amount']} TL', style: const TextStyle(fontWeight: FontWeight.bold))),
                           DataCell(Text(payout['bank_name'] ?? '-')),
                           DataCell(Text(payout['iban'] ?? '-')),
@@ -819,28 +819,67 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> with SingleTick
   }
 
   Future<void> _payEarning(Map<String, dynamic> earning) async {
-    final supabase = ref.read(supabaseProvider);
-    await supabase.from('partner_earnings').update({
-      'status': 'paid',
-      'paid_at': DateTime.now().toIso8601String(),
-    }).eq('id', earning['id']);
-    ref.invalidate(partnerEarningsProvider);
+    try {
+      final supabase = ref.read(supabaseProvider);
+      await supabase.from('partner_earnings').update({
+        'status': 'paid',
+        'paid_at': DateTime.now().toIso8601String(),
+      }).eq('id', earning['id']);
+      ref.invalidate(partnerEarningsProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ödeme yapıldı'), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ödeme hatası: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   Future<void> _approvePayment(Map<String, dynamic> payout) async {
-    final supabase = ref.read(supabaseProvider);
-    await supabase.from('driver_payouts').update({
-      'status': 'completed',
-    }).eq('id', payout['id']);
-    ref.invalidate(driverPayoutsProvider);
+    try {
+      final supabase = ref.read(supabaseProvider);
+      await supabase.from('driver_payouts').update({
+        'status': 'completed',
+      }).eq('id', payout['id']);
+      ref.invalidate(driverPayoutsProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ödeme onaylandı'), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Onaylama hatası: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   Future<void> _rejectPayment(Map<String, dynamic> payout) async {
-    final supabase = ref.read(supabaseProvider);
-    await supabase.from('driver_payouts').update({
-      'status': 'rejected',
-    }).eq('id', payout['id']);
-    ref.invalidate(driverPayoutsProvider);
+    try {
+      final supabase = ref.read(supabaseProvider);
+      await supabase.from('driver_payouts').update({
+        'status': 'rejected',
+      }).eq('id', payout['id']);
+      ref.invalidate(driverPayoutsProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ödeme reddedildi')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Reddetme hatası: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   Widget _buildEarningsChart(EarningsStats stats) {

@@ -12,6 +12,7 @@ import 'core/services/supabase_service.dart';
 import 'core/services/order_notification_service.dart';
 import 'core/services/review_notification_service.dart';
 import 'core/services/push_notification_service.dart';
+import 'core/services/notification_sound_service.dart';
 import 'core/router/app_router.dart';
 import 'core/providers/settings_provider.dart';
 import 'widgets/notification_overlays.dart';
@@ -46,6 +47,9 @@ void main() async {
 
   // Initialize Supabase
   await SupabaseService.initialize();
+
+  // Initialize notification sound service
+  await notificationSoundService.initialize();
 
   runApp(const ProviderScope(child: SuperApp()));
 }
@@ -227,6 +231,12 @@ class _SuperAppState extends ConsumerState<SuperApp> with WidgetsBindingObserver
       case 'rental_reservation':
         router.push('/rental/my-bookings');
         break;
+      case 'store_message':
+        final merchantId = data['merchant_id'] as String?;
+        if (merchantId != null) {
+          router.push('/store/detail/$merchantId');
+        }
+        break;
       case 'ride_message':
         // Sürücüden mesaj geldiğinde taksi ekranına git
         router.push('/taxi');
@@ -238,6 +248,9 @@ class _SuperAppState extends ConsumerState<SuperApp> with WidgetsBindingObserver
   }
 
   void _showOrderNotification(OrderStatusUpdate update) {
+    // Play notification sound
+    NotificationSoundService.playOrderSound();
+
     // Show in-app notification
     final context = rootNavigatorKey.currentContext;
     if (context != null) {
@@ -246,6 +259,9 @@ class _SuperAppState extends ConsumerState<SuperApp> with WidgetsBindingObserver
   }
 
   void _showReviewReplyNotification(ReviewReplyUpdate update) {
+    // Play notification sound
+    NotificationSoundService.playNotificationSound();
+
     // Show in-app notification for merchant reply
     final context = rootNavigatorKey.currentContext;
     if (context != null) {

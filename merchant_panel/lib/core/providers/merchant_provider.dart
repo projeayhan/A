@@ -13,14 +13,20 @@ final unreadMessagesCountProvider = StreamProvider.family<int, String>((ref, mer
 
   Future<void> loadCount() async {
     try {
-      final result = await Supabase.instance.client
+      final orderResult = await Supabase.instance.client
           .from('order_messages')
           .select('id')
           .eq('merchant_id', merchantId)
           .eq('sender_type', 'customer')
           .eq('is_read', false);
+      final storeResult = await Supabase.instance.client
+          .from('store_messages')
+          .select('id')
+          .eq('merchant_id', merchantId)
+          .eq('sender_type', 'customer')
+          .eq('is_read', false);
       if (!controller.isClosed) {
-        controller.add((result as List).length);
+        controller.add((orderResult as List).length + (storeResult as List).length);
       }
     } catch (e) {
       if (!controller.isClosed) controller.add(0);
@@ -30,9 +36,9 @@ final unreadMessagesCountProvider = StreamProvider.family<int, String>((ref, mer
   // Initial count
   loadCount();
 
-  // Listen for changes via postgres realtime (no bulk data transfer)
-  final channel = Supabase.instance.client
-      .channel('unread_count_$merchantId')
+  // Listen for order_messages changes
+  final orderChannel = Supabase.instance.client
+      .channel('unread_order_msgs_$merchantId')
       .onPostgresChanges(
         event: PostgresChangeEvent.all,
         schema: 'public',
@@ -46,9 +52,26 @@ final unreadMessagesCountProvider = StreamProvider.family<int, String>((ref, mer
       )
       .subscribe();
 
+  // Listen for store_messages changes
+  final storeChannel = Supabase.instance.client
+      .channel('unread_store_msgs_$merchantId')
+      .onPostgresChanges(
+        event: PostgresChangeEvent.all,
+        schema: 'public',
+        table: 'store_messages',
+        filter: PostgresChangeFilter(
+          type: PostgresChangeFilterType.eq,
+          column: 'merchant_id',
+          value: merchantId,
+        ),
+        callback: (_) => loadCount(),
+      )
+      .subscribe();
+
   ref.onDispose(() {
     controller.close();
-    Supabase.instance.client.removeChannel(channel);
+    Supabase.instance.client.removeChannel(orderChannel);
+    Supabase.instance.client.removeChannel(storeChannel);
   });
 
   return controller.stream;
@@ -107,6 +130,7 @@ class CurrentMerchantNotifier extends StateNotifier<AsyncValue<Merchant?>> {
           } else {
             ref.read(storeProductsProvider.notifier).loadProducts(merchant.id);
             ref.read(productCategoriesProvider.notifier).loadCategories(merchant.id);
+            ref.read(stockMovementsProvider.notifier).loadMovements(merchant.id);
           }
 
           ref.read(reviewsProvider.notifier).loadReviews(merchant.id);
@@ -440,10 +464,20 @@ class MenuItemsNotifier extends StateNotifier<AsyncValue<List<MenuItem>>> {
   Future<void> addMenuItem(MenuItem item) async {
     try {
       final supabase = ref.read(supabaseClientProvider);
+
+      // Resmi yoksa havuzdan otomatik bul
+      var itemData = item.toJson();
+      if ((item.imageUrl == null || item.imageUrl!.isEmpty) && item.name.isNotEmpty) {
+        final poolImage = await _checkMenuItemPool(item.name);
+        if (poolImage != null) {
+          itemData['image_url'] = poolImage;
+        }
+      }
+
       final response =
           await supabase
               .from('menu_items')
-              .insert(item.toJson())
+              .insert(itemData)
               .select()
               .single();
 
@@ -472,6 +506,56 @@ class MenuItemsNotifier extends StateNotifier<AsyncValue<List<MenuItem>>> {
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
+  }
+
+  /// Toplu menü öğesi ekleme (Excel/CSV import)
+  Future<int> bulkAddMenuItems(List<Map<String, dynamic>> items, String merchantId) async {
+    try {
+      final supabase = ref.read(supabaseClientProvider);
+
+      // Havuzdan resim bul (resimsizler için)
+      for (int i = 0; i < items.length; i++) {
+        final item = items[i];
+        if ((item['image_url'] == null || (item['image_url'] as String? ?? '').isEmpty) &&
+            item['name'] != null && (item['name'] as String).isNotEmpty) {
+          final poolImage = await _checkMenuItemPool(item['name'] as String);
+          if (poolImage != null) {
+            items[i] = {...item, 'image_url': poolImage};
+          }
+        }
+      }
+
+      // Toplu insert
+      await supabase.from('menu_items').insert(items);
+
+      // Listeyi yeniden yükle
+      await loadMenuItems(merchantId);
+
+      return items.length;
+    } catch (e, st) {
+      if (kDebugMode) print('Bulk add menu items error: $e');
+      state = AsyncValue.error(e, st);
+      return 0;
+    }
+  }
+
+  /// Paylaşılan havuzdan yemek resmi bul (isim fuzzy eşleşme, barkod yok)
+  Future<String?> _checkMenuItemPool(String name) async {
+    try {
+      final supabase = ref.read(supabaseClientProvider);
+      final result = await supabase.rpc('match_product_image', params: {
+        'p_barcode': null,
+        'p_name': name,
+        'p_brand': null,
+      });
+      if (result != null && result is List && result.isNotEmpty) {
+        final imageUrl = result[0]['image_url'] as String?;
+        if (imageUrl != null && imageUrl.isNotEmpty) return imageUrl;
+      }
+    } catch (e) {
+      if (kDebugMode) print('Menu item pool check error: $e');
+    }
+    return null;
   }
 
   Future<void> deleteMenuItem(String itemId) async {
@@ -534,10 +618,20 @@ class StoreProductsNotifier
   Future<void> addProduct(StoreProduct product) async {
     try {
       final supabase = ref.read(supabaseClientProvider);
+
+      // Resmi yoksa havuzdan otomatik bul
+      var productData = product.toJson();
+      if ((product.imageUrl == null || product.imageUrl!.isEmpty) && product.name.isNotEmpty) {
+        final poolImage = await _checkSharedPool(product.barcode, product.name, product.brand);
+        if (poolImage != null) {
+          productData['image_url'] = poolImage;
+        }
+      }
+
       final response =
           await supabase
               .from('products')
-              .insert(product.toJson())
+              .insert(productData)
               .select()
               .single();
 
@@ -545,6 +639,7 @@ class StoreProductsNotifier
       state.whenData((products) {
         state = AsyncValue.data([...products, newProduct]);
       });
+      _upsertToSharedPool(newProduct);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
@@ -566,16 +661,32 @@ class StoreProductsNotifier
           state = AsyncValue.data(newList);
         }
       });
+      _upsertToSharedPool(product);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
     }
   }
 
-  Future<void> updateStock(String productId, int newStock) async {
+  Future<void> updateStock(String productId, int newStock, {String? note}) async {
     state.whenData((products) async {
       final product = products.firstWhere((p) => p.id == productId);
+      final previousStock = product.stock;
       final updated = product.copyWith(stockQuantity: newStock);
       await updateProduct(updated);
+
+      // Record stock movement
+      final diff = newStock - previousStock;
+      final movementType = diff > 0 ? 'in' : diff < 0 ? 'out' : 'adjustment';
+      ref.read(stockMovementsProvider.notifier).addMovement(
+        merchantId: product.storeId,
+        productId: productId,
+        movementType: movementType,
+        quantity: diff,
+        previousStock: previousStock,
+        newStock: newStock,
+        referenceType: 'manual',
+        note: note ?? (diff > 0 ? 'Manuel stok ekleme' : 'Manuel stok dusme'),
+      );
     });
   }
 
@@ -584,12 +695,31 @@ class StoreProductsNotifier
     int updatedCount = 0;
     try {
       final supabase = ref.read(supabaseClientProvider);
+      final currentProducts = state.valueOrNull ?? [];
+
       for (final entry in stockUpdates.entries) {
         await supabase
             .from('products')
             .update({'stock': entry.value})
             .eq('id', entry.key);
         updatedCount++;
+
+        // Record stock movement
+        final product = currentProducts.where((p) => p.id == entry.key).firstOrNull;
+        if (product != null) {
+          final diff = entry.value - product.stock;
+          final movementType = diff > 0 ? 'in' : diff < 0 ? 'out' : 'adjustment';
+          await supabase.from('stock_movements').insert({
+            'merchant_id': product.storeId,
+            'product_id': entry.key,
+            'movement_type': movementType,
+            'quantity': diff,
+            'previous_stock': product.stock,
+            'new_stock': entry.value,
+            'reference_type': 'bulk_update',
+            'note': 'Toplu stok guncelleme',
+          });
+        }
       }
       // Reload products
       state.whenData((products) {
@@ -601,24 +731,357 @@ class StoreProductsNotifier
         }).toList();
         state = AsyncValue.data(newList);
       });
+
+      // Reload movements
+      final merchant = ref.read(currentMerchantProvider).valueOrNull;
+      if (merchant != null) {
+        ref.read(stockMovementsProvider.notifier).loadMovements(merchant.id);
+      }
     } catch (e) {
       if (kDebugMode) print('Bulk update error: $e');
     }
     return updatedCount;
   }
 
-  Future<void> deleteProduct(String productId) async {
+  /// Toplu urun ekleme/guncelleme (upsert)
+  /// Mevcut urunleri barkod/SKU/isim ile eslestirir:
+  /// - Eslesen → fiyat, stok, aciklama vb. guncellenir
+  /// - Eslesmeyen → yeni urun olarak eklenir
+  Future<int> bulkAddProducts(List<StoreProduct> products) async {
+    int processedCount = 0;
     try {
       final supabase = ref.read(supabaseClientProvider);
-      await supabase.from('products').delete().eq('id', productId);
+      final existing = state.valueOrNull ?? [];
 
-      state.whenData((products) {
-        state = AsyncValue.data(
-          products.where((p) => p.id != productId).toList(),
-        );
+      final toInsert = <Map<String, dynamic>>[];
+      final toUpdate = <Map<String, dynamic>>[]; // [{id, updates}]
+
+      for (final product in products) {
+        // Eslestirme: barkod > SKU > isim (case-insensitive)
+        StoreProduct? match;
+        if (product.barcode != null && product.barcode!.isNotEmpty) {
+          match = existing.where((e) => e.barcode == product.barcode).firstOrNull;
+        }
+        if (match == null && product.sku != null && product.sku!.isNotEmpty) {
+          match = existing.where((e) => e.sku == product.sku).firstOrNull;
+        }
+        if (match == null) {
+          match = existing.where(
+            (e) => e.name.trim().toLowerCase() == product.name.trim().toLowerCase(),
+          ).firstOrNull;
+        }
+
+        if (match != null) {
+          // Mevcut urun → guncelle (sadece degisen alanlari)
+          final updates = <String, dynamic>{};
+          if (product.price != match.price) updates['price'] = product.price;
+          if (product.stock != match.stock) updates['stock'] = product.stock;
+          if (product.description != null && product.description != match.description) {
+            updates['description'] = product.description;
+          }
+          if (product.barcode != null && product.barcode != match.barcode) {
+            updates['barcode'] = product.barcode;
+          }
+          if (product.sku != null && product.sku != match.sku) {
+            updates['sku'] = product.sku;
+          }
+          if (product.brand != null && product.brand != match.brand) {
+            updates['brand'] = product.brand;
+          }
+          if (product.categoryId != null && product.categoryId != match.categoryId) {
+            updates['category_id'] = product.categoryId;
+          }
+
+          if (updates.isNotEmpty) {
+            toUpdate.add({'id': match.id, ...updates});
+          }
+          processedCount++;
+        } else {
+          // Yeni urun → ekle
+          toInsert.add(product.toJson());
+        }
+      }
+
+      // Yeni ürünlerin resimsizleri için havuzdan otomatik resim bul
+      for (int i = 0; i < toInsert.length; i++) {
+        final item = toInsert[i];
+        if ((item['image_url'] == null || (item['image_url'] as String).isEmpty) &&
+            item['name'] != null && (item['name'] as String).isNotEmpty) {
+          final poolImage = await _checkSharedPool(
+            item['barcode'] as String?,
+            item['name'] as String,
+            item['brand'] as String?,
+          );
+          if (poolImage != null) {
+            toInsert[i] = {...item, 'image_url': poolImage};
+          }
+        }
+      }
+
+      // Batch insert - yeni urunler
+      if (toInsert.isNotEmpty) {
+        await supabase.from('products').insert(toInsert).select();
+        processedCount += toInsert.length;
+      }
+
+      // Tek tek update - mevcut urunler
+      for (final update in toUpdate) {
+        final id = update.remove('id');
+        if (update.isNotEmpty) {
+          await supabase.from('products').update(update).eq('id', id);
+        }
+      }
+
+      // State'i yenile
+      final merchant = ref.read(currentMerchantProvider).valueOrNull;
+      if (merchant != null) await loadProducts(merchant.id);
+
+      // Resimli ürünleri paylaşılan havuza kaydet
+      for (final p in products) {
+        if (p.imageUrl != null && p.imageUrl!.isNotEmpty) {
+          _upsertToSharedPool(p);
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) print('Bulk add error: $e');
+    }
+    return processedCount;
+  }
+
+  /// Otomatik resim bulma - Open Food Facts API
+  /// Resimsiz urunler icin barkod/isim ile arama yapar
+  /// [onProgress] her urun icin (bulunan, toplam) cagrilir
+  Future<int> autoFetchProductImages({
+    List<String>? productIds,
+    void Function(int found, int total)? onProgress,
+  }) async {
+    int foundCount = 0;
+    try {
+      final supabase = ref.read(supabaseClientProvider);
+      final products = state.valueOrNull ?? [];
+
+      // Resimsiz urunleri filtrele
+      final targets = products.where((p) {
+        if (p.imageUrl != null && p.imageUrl!.isNotEmpty) return false;
+        if (productIds != null && !productIds.contains(p.id)) return false;
+        return true;
+      }).toList();
+
+      if (targets.isEmpty) return 0;
+
+      // 5'erli batch'ler halinde edge function'a gonder
+      const batchSize = 5;
+      for (int i = 0; i < targets.length; i += batchSize) {
+        final batch = targets.skip(i).take(batchSize).toList();
+        final payload = batch.map((p) => {
+          'id': p.id,
+          'name': p.name,
+          'barcode': p.barcode,
+          'brand': p.brand,
+        }).toList();
+
+        try {
+          final response = await supabase.functions.invoke(
+            'auto-product-images',
+            body: {'products': payload},
+          );
+
+          if (response.status == 200 && response.data != null) {
+            final results = (response.data['results'] as Map?)?.cast<String, dynamic>() ?? {};
+            for (final entry in results.entries) {
+              final productId = entry.key;
+              final imageUrl = entry.value as String;
+
+              // DB guncelle
+              await supabase
+                  .from('products')
+                  .update({'image_url': imageUrl})
+                  .eq('id', productId);
+
+              foundCount++;
+            }
+          }
+        } catch (e) {
+          if (kDebugMode) print('Auto image batch error: $e');
+        }
+
+        onProgress?.call(foundCount, targets.length);
+      }
+
+      // State'i yenile
+      final merchant = ref.read(currentMerchantProvider).valueOrNull;
+      if (merchant != null) await loadProducts(merchant.id);
+    } catch (e) {
+      if (kDebugMode) print('Auto fetch images error: $e');
+    }
+    return foundCount;
+  }
+
+  /// Paylaşılan havuzdan resim bul (barcode exact + name fuzzy)
+  Future<String?> _checkSharedPool(String? barcode, String name, String? brand) async {
+    try {
+      final supabase = ref.read(supabaseClientProvider);
+      final result = await supabase.rpc('match_product_image', params: {
+        'p_barcode': barcode,
+        'p_name': name,
+        'p_brand': brand,
       });
+      if (result != null && result is List && result.isNotEmpty) {
+        final imageUrl = result[0]['image_url'] as String?;
+        if (imageUrl != null && imageUrl.isNotEmpty) return imageUrl;
+      }
+    } catch (e) {
+      if (kDebugMode) print('Shared pool check error: $e');
+    }
+    return null;
+  }
+
+  /// Ürün resmini paylaşılan havuza kaydet (cross-merchant reuse)
+  Future<void> _upsertToSharedPool(StoreProduct product) async {
+    if (product.imageUrl == null || product.imageUrl!.isEmpty) return;
+    if (product.name.isEmpty) return;
+
+    try {
+      final supabase = ref.read(supabaseClientProvider);
+      await supabase.rpc('upsert_shared_product_image', params: {
+        'p_barcode': product.barcode,
+        'p_name': product.name,
+        'p_brand': product.brand,
+        'p_image_url': product.imageUrl,
+        'p_source': 'merchant',
+      });
+    } catch (e) {
+      if (kDebugMode) print('Shared pool upsert error: $e');
+    }
+  }
+
+  Future<void> deleteProduct(String productId) async {
+    final supabase = ref.read(supabaseClientProvider);
+    await supabase.from('products').delete().eq('id', productId);
+
+    state.whenData((products) {
+      state = AsyncValue.data(
+        products.where((p) => p.id != productId).toList(),
+      );
+    });
+  }
+}
+
+// Stock Movement model
+class StockMovement {
+  final String id;
+  final String merchantId;
+  final String productId;
+  final String movementType; // in, out, adjustment
+  final int quantity;
+  final int previousStock;
+  final int newStock;
+  final String? referenceType;
+  final String? referenceId;
+  final String? note;
+  final DateTime createdAt;
+  // Joined field
+  final String? productName;
+
+  StockMovement({
+    required this.id,
+    required this.merchantId,
+    required this.productId,
+    required this.movementType,
+    required this.quantity,
+    required this.previousStock,
+    required this.newStock,
+    this.referenceType,
+    this.referenceId,
+    this.note,
+    required this.createdAt,
+    this.productName,
+  });
+
+  factory StockMovement.fromJson(Map<String, dynamic> json) {
+    final product = json['products'];
+    return StockMovement(
+      id: json['id'],
+      merchantId: json['merchant_id'],
+      productId: json['product_id'],
+      movementType: json['movement_type'] ?? 'adjustment',
+      quantity: json['quantity'] ?? 0,
+      previousStock: json['previous_stock'] ?? 0,
+      newStock: json['new_stock'] ?? 0,
+      referenceType: json['reference_type'],
+      referenceId: json['reference_id'],
+      note: json['note'],
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'])
+          : DateTime.now(),
+      productName: product is Map ? product['name'] : null,
+    );
+  }
+}
+
+// Stock Movements Provider
+final stockMovementsProvider = StateNotifierProvider<
+  StockMovementsNotifier,
+  AsyncValue<List<StockMovement>>
+>((ref) {
+  return StockMovementsNotifier(ref);
+});
+
+class StockMovementsNotifier
+    extends StateNotifier<AsyncValue<List<StockMovement>>> {
+  final Ref ref;
+
+  StockMovementsNotifier(this.ref) : super(const AsyncValue.data([]));
+
+  Future<void> loadMovements(String merchantId) async {
+    state = const AsyncValue.loading();
+    try {
+      final supabase = ref.read(supabaseClientProvider);
+      final response = await supabase
+          .from('stock_movements')
+          .select('*, products(name)')
+          .eq('merchant_id', merchantId)
+          .order('created_at', ascending: false)
+          .limit(50);
+
+      final movements = (response as List)
+          .map((json) => StockMovement.fromJson(json))
+          .toList();
+
+      state = AsyncValue.data(movements);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
+    }
+  }
+
+  Future<void> addMovement({
+    required String merchantId,
+    required String productId,
+    required String movementType,
+    required int quantity,
+    required int previousStock,
+    required int newStock,
+    String? referenceType,
+    String? referenceId,
+    String? note,
+  }) async {
+    try {
+      final supabase = ref.read(supabaseClientProvider);
+      await supabase.from('stock_movements').insert({
+        'merchant_id': merchantId,
+        'product_id': productId,
+        'movement_type': movementType,
+        'quantity': quantity,
+        'previous_stock': previousStock,
+        'new_stock': newStock,
+        'reference_type': referenceType,
+        'reference_id': referenceId,
+        'note': note,
+      });
+      // Reload
+      await loadMovements(merchantId);
+    } catch (e) {
+      if (kDebugMode) print('Stock movement error: $e');
     }
   }
 }

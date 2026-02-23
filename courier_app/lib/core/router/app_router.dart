@@ -18,6 +18,10 @@ import '../../screens/profile/about_screen.dart';
 import '../../screens/auth/pending_screen.dart';
 import '../../widgets/floating_ai_assistant.dart';
 
+class _RouterRefreshNotifier extends ChangeNotifier {
+  void notify() => notifyListeners();
+}
+
 class AppRoutes {
   static const String login = '/login';
   static const String register = '/register';
@@ -30,30 +34,43 @@ class AppRoutes {
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authProvider);
+  // refreshListenable: auth değişince GoRouter yeniden oluşturulmadan
+  // sadece redirect logic'i tekrar çalışır (LoginScreen state korunur)
+  final refreshNotifier = _RouterRefreshNotifier();
+  ref.listen(authProvider, (_, __) {
+    refreshNotifier.notify();
+  });
 
   return GoRouter(
     initialLocation: AppRoutes.login,
     debugLogDiagnostics: true,
+    refreshListenable: refreshNotifier,
     redirect: (context, state) {
+      final authState = ref.read(authProvider);
       final isAuth = authState.status == AuthStatus.authenticated;
       final isPending = authState.status == AuthStatus.pendingApproval;
+      final needsReg = authState.status == AuthStatus.needsRegistration;
       final isLoggingIn = state.matchedLocation == AppRoutes.login;
       final isRegistering = state.matchedLocation == AppRoutes.register;
       final isPendingPage = state.matchedLocation == AppRoutes.pending;
 
-      // Onay bekliyor
+      // Kayıt gerekli → kayıt sayfasına yönlendir
+      if (needsReg && !isRegistering) {
+        return AppRoutes.register;
+      }
+
+      // Onay bekliyor → pending sayfasına yönlendir
       if (isPending && !isPendingPage) {
         return AppRoutes.pending;
       }
 
-      // Giriş yapmamış ve login/register sayfasında değil
-      if (!isAuth && !isPending && !isLoggingIn && !isRegistering) {
+      // Giriş yapmamış → login'e yönlendir
+      if (!isAuth && !isPending && !needsReg && !isLoggingIn && !isRegistering) {
         return AppRoutes.login;
       }
 
-      // Giriş yapmış ve login/register sayfasında
-      if (isAuth && (isLoggingIn || isRegistering)) {
+      // Giriş yapmış ve auth sayfasında → ana sayfaya yönlendir
+      if (isAuth && (isLoggingIn || isRegistering || isPendingPage)) {
         return AppRoutes.home;
       }
 

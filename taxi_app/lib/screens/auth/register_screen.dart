@@ -1,8 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/theme/app_theme.dart';
+
+String _normalizePhone(String phone) {
+  String cleaned = phone.replaceAll(RegExp(r'[\s\-\(\)]'), '');
+  if (cleaned.startsWith('+90')) return cleaned;
+  if (cleaned.startsWith('90') && cleaned.length == 12) return '+$cleaned';
+  if (cleaned.startsWith('0')) return '+90${cleaned.substring(1)}';
+  if (cleaned.length == 10 && cleaned.startsWith('5')) return '+90$cleaned';
+  if (cleaned.startsWith('+')) return cleaned;
+  return '+90$cleaned';
+}
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -29,10 +40,26 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _vehiclePlateController = TextEditingController();
   final _vehicleColorController = TextEditingController();
   final _vehicleYearController = TextEditingController();
-  String _selectedVehicleType = 'standard';
+  Set<String> _selectedVehicleTypes = {'standard'};
 
   bool _obscurePassword = true;
   bool _isLoading = false;
+  bool _isOtpRegistration = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // OTP ile giriş yapılmışsa (needsRegistration durumu)
+    final authState = ref.read(authProvider);
+    if (authState.status == AuthStatus.needsRegistration) {
+      _isOtpRegistration = true;
+      // Telefon numarasını otomatik doldur (normalize et)
+      final phone = Supabase.instance.client.auth.currentUser?.phone ?? '';
+      if (phone.isNotEmpty) {
+        _phoneController.text = _normalizePhone(phone);
+      }
+    }
+  }
 
   final Map<String, Map<String, String>> _vehicleTypes = {
     'standard': {
@@ -70,12 +97,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   void _nextPage() {
     if (_currentPage == 0) {
-      // Validate first page
-      if (_fullNameController.text.isEmpty ||
-          _emailController.text.isEmpty ||
+      // OTP modunda e-posta ve şifre gerekmez
+      final requiredEmpty = _fullNameController.text.isEmpty ||
           _phoneController.text.isEmpty ||
-          _passwordController.text.isEmpty ||
-          _tcNoController.text.isEmpty) {
+          _tcNoController.text.isEmpty;
+      final directFieldsEmpty = !_isOtpRegistration &&
+          (_emailController.text.isEmpty || _passwordController.text.isEmpty);
+
+      if (requiredEmpty || directFieldsEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Lütfen tüm alanları doldurun'),
@@ -105,32 +134,46 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     setState(() => _isLoading = true);
 
     final year = int.tryParse(_vehicleYearController.text) ?? DateTime.now().year;
+    bool success;
 
-    final success = await ref.read(authProvider.notifier).signUp(
-          email: _emailController.text.trim(),
-          password: _passwordController.text,
-          fullName: _fullNameController.text.trim(),
-          phone: _phoneController.text.trim(),
-          tcNo: _tcNoController.text.trim(),
-          vehicleBrand: _vehicleBrandController.text.trim(),
-          vehicleModel: _vehicleModelController.text.trim(),
-          vehiclePlate: _vehiclePlateController.text.trim().toUpperCase(),
-          vehicleColor: _vehicleColorController.text.trim(),
-          vehicleYear: year,
-          vehicleType: _selectedVehicleType,
-        );
+    if (_isOtpRegistration) {
+      // OTP modu: sadece profil oluştur (e-posta/şifre yok)
+      success = await ref.read(authProvider.notifier).completeRegistration(
+            fullName: _fullNameController.text.trim(),
+            phone: _normalizePhone(_phoneController.text.trim()),
+            tcNo: _tcNoController.text.trim(),
+            vehicleBrand: _vehicleBrandController.text.trim(),
+            vehicleModel: _vehicleModelController.text.trim(),
+            vehiclePlate: _vehiclePlateController.text.trim().toUpperCase(),
+            vehicleColor: _vehicleColorController.text.trim(),
+            vehicleYear: year,
+            vehicleTypes: _selectedVehicleTypes.toList(),
+          );
+    } else {
+      // Direkt kayıt modu: e-posta + şifre ile kayıt
+      success = await ref.read(authProvider.notifier).signUp(
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+            fullName: _fullNameController.text.trim(),
+            phone: _normalizePhone(_phoneController.text.trim()),
+            tcNo: _tcNoController.text.trim(),
+            vehicleBrand: _vehicleBrandController.text.trim(),
+            vehicleModel: _vehicleModelController.text.trim(),
+            vehiclePlate: _vehiclePlateController.text.trim().toUpperCase(),
+            vehicleColor: _vehicleColorController.text.trim(),
+            vehicleYear: year,
+            vehicleTypes: _selectedVehicleTypes.toList(),
+          );
+    }
 
     setState(() => _isLoading = false);
 
     if (success && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Kayıt başarılı! E-posta adresinize gelen doğrulama linkine tıklayın.'),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 5),
-        ),
-      );
-      context.go('/login');
+      if (_isOtpRegistration) {
+        // OTP modu: router otomatik pending'e yönlendirir
+      } else {
+        _showPendingApprovalDialog();
+      }
     } else if (!success && mounted) {
       final error = ref.read(authProvider).errorMessage;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -142,17 +185,58 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     }
   }
 
+  void _showPendingApprovalDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        icon: Container(
+          width: 64,
+          height: 64,
+          decoration: BoxDecoration(
+            color: Colors.orange.withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.hourglass_top_rounded, color: Colors.orange, size: 32),
+        ),
+        title: const Text('Başvurunuz Alındı'),
+        content: const Text(
+          'Kaydınız başarıyla oluşturuldu.\n\n'
+          'Hesabınız admin tarafından incelendikten sonra onaylanacaktır. '
+          'Onay durumu e-posta ile bildirilecektir.',
+          textAlign: TextAlign.center,
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                context.go('/login');
+              },
+              child: const Text('Tamam'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Sürücü Kaydı'),
+        title: Text(_isOtpRegistration ? 'Bilgilerinizi Tamamlayın' : 'Sürücü Kaydı'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
             if (_currentPage > 0) {
               _previousPage();
+            } else if (_isOtpRegistration) {
+              // OTP modunda çıkış yap ve login'e dön
+              ref.read(authProvider.notifier).signOut();
             } else {
               context.pop();
             }
@@ -267,28 +351,34 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           ),
           const SizedBox(height: 16),
 
-          TextFormField(
-            controller: _emailController,
-            keyboardType: TextInputType.emailAddress,
-            decoration: const InputDecoration(
-              labelText: 'E-posta',
-              prefixIcon: Icon(Icons.email_outlined),
+          if (!_isOtpRegistration) ...[
+            TextFormField(
+              controller: _emailController,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(
+                labelText: 'E-posta',
+                prefixIcon: Icon(Icons.email_outlined),
+              ),
+              validator: (value) {
+                if (value?.isEmpty ?? true) return 'E-posta gerekli';
+                if (!value!.contains('@')) return 'Geçerli e-posta girin';
+                return null;
+              },
             ),
-            validator: (value) {
-              if (value?.isEmpty ?? true) return 'E-posta gerekli';
-              if (!value!.contains('@')) return 'Geçerli e-posta girin';
-              return null;
-            },
-          ),
-          const SizedBox(height: 16),
+            const SizedBox(height: 16),
+          ],
 
           TextFormField(
             controller: _phoneController,
             keyboardType: TextInputType.phone,
-            decoration: const InputDecoration(
+            enabled: !_isOtpRegistration,
+            decoration: InputDecoration(
               labelText: 'Telefon',
-              prefixIcon: Icon(Icons.phone_outlined),
-              hintText: '5XX XXX XX XX',
+              prefixIcon: const Icon(Icons.phone_outlined),
+              hintText: _isOtpRegistration ? null : '5XX XXX XX XX',
+              suffixIcon: _isOtpRegistration
+                  ? const Icon(Icons.verified, color: Colors.green, size: 20)
+                  : null,
             ),
             validator: (value) => value?.isEmpty ?? true ? 'Telefon gerekli' : null,
           ),
@@ -308,24 +398,28 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           ),
           const SizedBox(height: 16),
 
-          TextFormField(
-            controller: _passwordController,
-            obscureText: _obscurePassword,
-            decoration: InputDecoration(
-              labelText: 'Şifre',
-              prefixIcon: const Icon(Icons.lock_outlined),
-              suffixIcon: IconButton(
-                icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
-                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+          if (!_isOtpRegistration) ...[
+            TextFormField(
+              controller: _passwordController,
+              obscureText: _obscurePassword,
+              decoration: InputDecoration(
+                labelText: 'Şifre',
+                prefixIcon: const Icon(Icons.lock_outlined),
+                suffixIcon: IconButton(
+                  icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
+                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                ),
               ),
+              validator: (value) {
+                if (value?.isEmpty ?? true) return 'Şifre gerekli';
+                if (value!.length < 6) return 'En az 6 karakter';
+                return null;
+              },
             ),
-            validator: (value) {
-              if (value?.isEmpty ?? true) return 'Şifre gerekli';
-              if (value!.length < 6) return 'En az 6 karakter';
-              return null;
-            },
-          ),
-          const SizedBox(height: 32),
+            const SizedBox(height: 32),
+          ] else ...[
+            const SizedBox(height: 16),
+          ],
 
           SizedBox(
             height: 56,
@@ -358,7 +452,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
           // Vehicle Type Selection
           Text(
-            'Araç Kategorisi',
+            'Araç Kategorileri (birden fazla seçebilirsiniz)',
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w600,
             ),
@@ -505,9 +599,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   Widget _buildVehicleTypeOption(String value, String label, String description, String icon) {
-    final isSelected = _selectedVehicleType == value;
+    final isSelected = _selectedVehicleTypes.contains(value);
     return GestureDetector(
-      onTap: () => setState(() => _selectedVehicleType = value),
+      onTap: () => setState(() {
+        if (isSelected && _selectedVehicleTypes.length > 1) {
+          _selectedVehicleTypes.remove(value);
+        } else {
+          _selectedVehicleTypes.add(value);
+        }
+      }),
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(12),

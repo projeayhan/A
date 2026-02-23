@@ -25,18 +25,15 @@ class SupabaseService {
     required String password,
     Map<String, dynamic>? data,
   }) async {
-    final response = await client.auth.signUp(
+    return await client.auth.signUp(
       email: email,
       password: password,
       data: data,
     );
+  }
 
-    // GoTrue auto-confirms on signup, so resend confirmation email
-    if (response.user != null && response.session != null) {
-      await client.auth.resend(type: OtpType.signup, email: email);
-    }
-
-    return response;
+  static Future<void> resendConfirmation(String email) async {
+    await client.auth.resend(type: OtpType.signup, email: email);
   }
 
   static Future<void> signOut() async {
@@ -45,5 +42,38 @@ class SupabaseService {
 
   static Future<void> resetPassword(String email) async {
     await client.auth.resetPasswordForEmail(email);
+  }
+
+  // Phone OTP - Twilio Verify üzerinden SMS gönder
+  static Future<void> sendPhoneOtp({required String phone}) async {
+    final response = await client.functions.invoke(
+      'phone-verify',
+      body: {'action': 'send', 'phone': phone},
+    );
+    final data = response.data as Map<String, dynamic>?;
+    if (data == null || data['success'] != true) {
+      throw Exception(data?['error'] ?? 'SMS gönderilemedi');
+    }
+  }
+
+  // Phone OTP - Kodu doğrula ve oturum aç
+  static Future<Map<String, dynamic>> verifyPhoneOtp({
+    required String phone,
+    required String code,
+  }) async {
+    final response = await client.functions.invoke(
+      'phone-verify',
+      body: {'action': 'verify', 'phone': phone, 'code': code},
+    );
+    final data = response.data as Map<String, dynamic>?;
+    if (data == null || data['success'] != true) {
+      throw Exception(data?['error'] ?? 'Doğrulama başarısız');
+    }
+    final refreshToken = data['refresh_token'] as String;
+    await client.auth.setSession(refreshToken);
+    return {
+      'is_new_user': data['is_new_user'] ?? false,
+      'user_id': data['user']?['id'],
+    };
   }
 }

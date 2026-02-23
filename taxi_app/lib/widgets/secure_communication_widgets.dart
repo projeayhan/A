@@ -362,16 +362,20 @@ class _RideChatSheetState extends State<RideChatSheet> {
   }
 
   void _subscribeToMessages() {
-    _messageChannel = CommunicationService.subscribeToMessages(widget.rideId, (message) {
-      if (mounted) {
-        // Duplikasyon kontrolü - aynı ID varsa ekleme
-        final exists = _messages.any((m) => m.id == message.id);
-        if (!exists) {
-          setState(() => _messages.add(message));
-          _scrollToBottom();
+    try {
+      _messageChannel = CommunicationService.subscribeToMessages(widget.rideId, (message) {
+        if (mounted) {
+          // Duplikasyon kontrolü - aynı ID varsa ekleme
+          final exists = _messages.any((m) => m.id == message.id);
+          if (!exists) {
+            setState(() => _messages.add(message));
+            _scrollToBottom();
+          }
         }
-      }
-    });
+      });
+    } catch (e) {
+      debugPrint('subscribeToMessages error: $e');
+    }
   }
 
   void _scrollToBottom() {
@@ -398,13 +402,38 @@ class _RideChatSheetState extends State<RideChatSheet> {
       content: text,
     );
 
-    // Realtime mesajı getirecek, sadece hata durumunda yeniden yükle
-    if (messageId == null && mounted) {
-      await _loadMessages();
-    }
-
     if (mounted) {
-      setState(() => _isSending = false);
+      if (messageId != null) {
+        // Mesajı hemen göster (realtime'a güvenme)
+        final optimisticMessage = RideMessage(
+          id: messageId,
+          rideId: widget.rideId,
+          senderType: 'driver',
+          senderId: '',
+          messageType: 'text',
+          content: text,
+          isRead: false,
+          createdAt: DateTime.now(),
+        );
+        final exists = _messages.any((m) => m.id == messageId);
+        if (!exists) {
+          setState(() => _messages.add(optimisticMessage));
+          _scrollToBottom();
+        }
+      } else {
+        // Hata durumunda yeniden yükle ve kullanıcıyı bilgilendir
+        await _loadMessages();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Mesaj gönderilemedi, tekrar deneyin'),
+              backgroundColor: AppColors.error,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+      if (mounted) setState(() => _isSending = false);
     }
   }
 
@@ -704,12 +733,16 @@ class EmergencyButton extends StatefulWidget {
   final String? rideId;
   final double? latitude;
   final double? longitude;
+  final String? userName;
+  final String? customerName;
 
   const EmergencyButton({
     super.key,
     this.rideId,
     this.latitude,
     this.longitude,
+    this.userName,
+    this.customerName,
   });
 
   @override
@@ -745,7 +778,7 @@ class _EmergencyButtonState extends State<EmergencyButton> {
   Future<void> _triggerEmergency() async {
     HapticFeedback.heavyImpact();
 
-    final confirmed = await showDialog<String>(
+    final alertType = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -790,35 +823,172 @@ class _EmergencyButtonState extends State<EmergencyButton> {
       ),
     );
 
-    if (confirmed != null && mounted) {
-      final alertId = await CommunicationService.createEmergencyAlert(
-        rideId: widget.rideId,
-        alertType: confirmed,
-        latitude: widget.latitude ?? 0,
-        longitude: widget.longitude ?? 0,
-      );
+    if (alertType != null && mounted) {
+      // 1. Acil durum kişilerini al
+      final contacts = await CommunicationService.getEmergencyContacts();
+      if (contacts.isEmpty) {
+        if (!mounted) return;
+        final goToSettings = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: Color(0xFFEF4444)),
+                SizedBox(width: 8),
+                Text('Acil Durum Kişisi Yok'),
+              ],
+            ),
+            content: const Text(
+              'SOS mesajı göndermek için önce acil durum kişisi eklemelisiniz.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('İptal'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                style: FilledButton.styleFrom(
+                  backgroundColor: const Color(0xFFEF4444),
+                ),
+                child: const Text('Kişi Ekle'),
+              ),
+            ],
+          ),
+        );
+        if (goToSettings == true && mounted) {
+          Navigator.of(context).pushNamed('/emergency-contacts');
+        }
+        // Kişi yoksa bile 155'i ara
+        await _call155();
+        setState(() {
+          _isPressed = false;
+          _progress = 0;
+        });
+        return;
+      }
 
-      if (alertId != null && mounted) {
+      // 2. Canlı takip linki oluştur
+      ShareLinkInfo? link;
+      if (widget.rideId != null) {
+        link = await CommunicationService.createShareLink(rideId: widget.rideId!);
+      }
+
+      // 3. DB'ye acil durum kaydı yaz
+      if (widget.latitude != null && widget.longitude != null) {
+        await CommunicationService.createEmergencyAlert(
+          rideId: widget.rideId,
+          alertType: alertType,
+          latitude: widget.latitude!,
+          longitude: widget.longitude!,
+        );
+      }
+
+      // 4. Acil durum türü etiketleri
+      final typeLabels = {
+        'sos': '\u{1F198} SOS - TEHLİKE',
+        'accident': '\u{26A0}\u{FE0F} KAZA',
+        'medical': '\u{1F6D1} SAĞLIK SORUNU',
+      };
+
+      // 5. Mesaj oluştur
+      final trackingUrl = link?.shareUrl ?? '';
+      final buffer = StringBuffer();
+      buffer.writeln('${typeLabels[alertType] ?? '\u{1F198} ACİL DURUM'}${widget.userName != null ? ' - ${widget.userName}' : ''}');
+      buffer.writeln();
+      buffer.writeln('Sürüşüm sırasında acil durum bildirdim.');
+      if (trackingUrl.isNotEmpty) {
+        buffer.writeln();
+        buffer.writeln('\u{1F4CD} Canlı konum takibi: $trackingUrl');
+      }
+      if (widget.customerName != null) {
+        buffer.writeln();
+        buffer.writeln('\u{1F464} Yolcu: ${widget.customerName}');
+      }
+      if (widget.latitude != null && widget.longitude != null) {
+        buffer.writeln();
+        buffer.writeln('\u{1F4CD} Konum: https://maps.google.com/?q=${widget.latitude},${widget.longitude}');
+      }
+      buffer.writeln();
+      buffer.writeln('Bu mesaj otomatik olarak gönderilmiştir.');
+
+      final message = buffer.toString();
+      final encodedMessage = Uri.encodeComponent(message);
+
+      // 6. Her kişi için WhatsApp aç
+      int sentCount = 0;
+      for (final contact in contacts) {
+        final normalizedPhone = _normalizePhone(contact.phone);
+        final waUri = Uri.parse('https://wa.me/$normalizedPhone?text=$encodedMessage');
+
+        try {
+          final launched = await launchUrl(waUri, mode: LaunchMode.externalApplication);
+          if (launched) {
+            sentCount++;
+            if (contacts.length > 1) {
+              await Future.delayed(const Duration(milliseconds: 500));
+            }
+          } else {
+            final smsUri = Uri.parse('sms:${contact.phone}?body=$encodedMessage');
+            await launchUrl(smsUri);
+            sentCount++;
+          }
+        } catch (e) {
+          debugPrint('SOS send error for ${contact.name}: $e');
+        }
+      }
+
+      // 7. Sonuç bildirimi
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
               children: [
-                Icon(Icons.check_circle, color: Colors.white),
+                const Icon(Icons.check_circle, color: Colors.white),
                 const SizedBox(width: 8),
-                Text('Acil durum bildirimi gönderildi'),
+                Text(
+                  sentCount > 0
+                      ? '$sentCount kişiye SOS mesajı gönderildi'
+                      : 'Mesaj gönderilemedi',
+                ),
               ],
             ),
-            backgroundColor: AppColors.error,
+            backgroundColor:
+                sentCount > 0 ? const Color(0xFF10B981) : const Color(0xFFEF4444),
             behavior: SnackBarBehavior.floating,
           ),
         );
       }
+
+      // 8. Otomatik olarak 155'i ara
+      await _call155();
     }
 
     setState(() {
       _isPressed = false;
       _progress = 0;
     });
+  }
+
+  /// 155 (Polis) otomatik arama
+  Future<void> _call155() async {
+    try {
+      final uri = Uri.parse('tel:155');
+      await launchUrl(uri);
+    } catch (e) {
+      debugPrint('155 arama hatası: $e');
+    }
+  }
+
+  /// Telefon numarasını WhatsApp formatına çevir (90XXXXXXXXXX)
+  static String _normalizePhone(String phone) {
+    String digits = phone.replaceAll(RegExp(r'[^\d]'), '');
+    if (digits.startsWith('0')) {
+      digits = '90${digits.substring(1)}';
+    } else if (!digits.startsWith('90')) {
+      digits = '90$digits';
+    }
+    return digits;
   }
 
   @override

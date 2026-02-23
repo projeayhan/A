@@ -429,7 +429,7 @@ class CarSalesAdminService {
       );
     } catch (e) {
       debugPrint('CarSalesAdminService.getStats error: $e');
-      return CarSalesStats.empty();
+      throw Exception('İstatistikler yüklenemedi: $e');
     }
   }
 
@@ -453,7 +453,7 @@ class CarSalesAdminService {
       return (response as List).map((e) => CarListing.fromJson(e)).toList();
     } catch (e) {
       debugPrint('CarSalesAdminService.getListings error: $e');
-      return [];
+      throw Exception('İlanlar yüklenemedi: $e');
     }
   }
 
@@ -497,7 +497,7 @@ class CarSalesAdminService {
       return (response as List).map((e) => CarBrand.fromJson(e)).toList();
     } catch (e) {
       debugPrint('CarSalesAdminService.getBrands error: $e');
-      return [];
+      throw Exception('Markalar yüklenemedi: $e');
     }
   }
 
@@ -525,7 +525,7 @@ class CarSalesAdminService {
       return (response as List).map((e) => CarFeature.fromJson(e)).toList();
     } catch (e) {
       debugPrint('CarSalesAdminService.getFeatures error: $e');
-      return [];
+      throw Exception('Özellikler yüklenemedi: $e');
     }
   }
 
@@ -555,7 +555,7 @@ class CarSalesAdminService {
       return (response as List).map((e) => CarDealer.fromJson(e)).toList();
     } catch (e) {
       debugPrint('CarSalesAdminService.getDealers error: $e');
-      return [];
+      throw Exception('Satıcılar yüklenemedi: $e');
     }
   }
 
@@ -593,7 +593,7 @@ class CarSalesAdminService {
       return (response as List).map((e) => CarDealerApplication.fromJson(e)).toList();
     } catch (e) {
       debugPrint('CarSalesAdminService.getApplications error: $e');
-      return [];
+      throw Exception('Başvurular yüklenemedi: $e');
     }
   }
 
@@ -604,6 +604,25 @@ class CarSalesAdminService {
         .select()
         .eq('id', applicationId)
         .single();
+
+    // Daha önce onaylanmış mı kontrol et
+    final existingDealer = await _client
+        .from('car_dealers')
+        .select('id')
+        .eq('user_id', application['user_id'])
+        .maybeSingle();
+
+    if (existingDealer != null) {
+      // Zaten kayıtlı, sadece başvuruyu güncelle
+      await _client
+          .from('car_dealer_applications')
+          .update({
+            'status': 'approved',
+            'reviewed_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', applicationId);
+      return;
+    }
 
     // Satıcı oluştur
     await _client.from('car_dealers').insert({
@@ -651,7 +670,7 @@ class CarSalesAdminService {
       return (response as List).map((e) => PromotionPrice.fromJson(e)).toList();
     } catch (e) {
       debugPrint('CarSalesAdminService.getPromotionPrices error: $e');
-      return [];
+      throw Exception('Fiyatlandırma yüklenemedi: $e');
     }
   }
 
@@ -679,7 +698,7 @@ class CarSalesAdminService {
       return (response as List).map((e) => CarBodyType.fromJson(e)).toList();
     } catch (e) {
       debugPrint('CarSalesAdminService.getBodyTypes error: $e');
-      return [];
+      throw Exception('Gövde tipleri yüklenemedi: $e');
     }
   }
 
@@ -707,7 +726,7 @@ class CarSalesAdminService {
       return (response as List).map((e) => CarFuelType.fromJson(e)).toList();
     } catch (e) {
       debugPrint('CarSalesAdminService.getFuelTypes error: $e');
-      return [];
+      throw Exception('Yakıt tipleri yüklenemedi: $e');
     }
   }
 
@@ -735,7 +754,7 @@ class CarSalesAdminService {
       return (response as List).map((e) => CarTransmission.fromJson(e)).toList();
     } catch (e) {
       debugPrint('CarSalesAdminService.getTransmissions error: $e');
-      return [];
+      throw Exception('Vites tipleri yüklenemedi: $e');
     }
   }
 

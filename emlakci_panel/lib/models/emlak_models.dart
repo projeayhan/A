@@ -43,6 +43,9 @@ class PropertyTypeModel {
       case 'land':
       case 'arsa':
         return Icons.landscape;
+      case 'field':
+      case 'tarla':
+        return Icons.grass;
       case 'office':
       case 'ofis':
         return Icons.work_outline;
@@ -145,6 +148,7 @@ enum PropertyType {
   villa('Villa', Icons.villa),
   residence('Rezidans', Icons.business),
   land('Arsa', Icons.landscape),
+  field('Tarla', Icons.grass),
   office('Ofis', Icons.work_outline),
   shop('Dükkan', Icons.storefront),
   building('Bina', Icons.domain),
@@ -298,6 +302,12 @@ class Property {
   final int? floor;
   final int? totalFloors;
   final int? buildingAge;
+  final int? netSquareMeters;
+  final String? heatingType;
+  final String? facingDirection;
+  final String? interiorStatus;
+  final String? deedType;
+  final String? viewType;
   final bool hasParking;
   final bool hasBalcony;
   final bool hasFurniture;
@@ -306,6 +316,25 @@ class Property {
   final bool hasSecurity;
   final bool hasElevator;
   final bool isSmartHome;
+  final bool hasGarden;
+  final bool hasTerrace;
+  final bool hasStorage;
+  final bool hasFireplace;
+  final bool hasAirConditioning;
+  final bool hasGenerator;
+  final bool hasSatellite;
+  final bool hasInternet;
+  final bool hasNaturalGas;
+  final bool hasSteelDoor;
+  final bool hasVideoIntercom;
+  final bool hasAlarm;
+  final bool hasParentBathroom;
+  final bool hasBuiltinKitchen;
+  final bool hasJacuzzi;
+  final bool hasSauna;
+  final bool hasBarbeque;
+  final bool hasDoorman;
+  final bool isInComplex;
   final List<String> amenities;
   final DateTime createdAt;
   final DateTime? updatedAt;
@@ -333,6 +362,12 @@ class Property {
     this.floor,
     this.totalFloors,
     this.buildingAge,
+    this.netSquareMeters,
+    this.heatingType,
+    this.facingDirection,
+    this.interiorStatus,
+    this.deedType,
+    this.viewType,
     this.hasParking = false,
     this.hasBalcony = false,
     this.hasFurniture = false,
@@ -341,6 +376,25 @@ class Property {
     this.hasSecurity = false,
     this.hasElevator = false,
     this.isSmartHome = false,
+    this.hasGarden = false,
+    this.hasTerrace = false,
+    this.hasStorage = false,
+    this.hasFireplace = false,
+    this.hasAirConditioning = false,
+    this.hasGenerator = false,
+    this.hasSatellite = false,
+    this.hasInternet = false,
+    this.hasNaturalGas = false,
+    this.hasSteelDoor = false,
+    this.hasVideoIntercom = false,
+    this.hasAlarm = false,
+    this.hasParentBathroom = false,
+    this.hasBuiltinKitchen = false,
+    this.hasJacuzzi = false,
+    this.hasSauna = false,
+    this.hasBarbeque = false,
+    this.hasDoorman = false,
+    this.isInComplex = false,
     this.amenities = const [],
     required this.createdAt,
     this.updatedAt,
@@ -389,6 +443,12 @@ class Property {
       floor: json['floor'] as int?,
       totalFloors: json['total_floors'] as int?,
       buildingAge: json['building_age'] as int?,
+      netSquareMeters: json['net_square_meters'] as int?,
+      heatingType: json['heating_type'] as String?,
+      facingDirection: json['facing_direction'] as String?,
+      interiorStatus: json['interior_status'] as String?,
+      deedType: json['deed_type'] as String?,
+      viewType: json['view_type'] as String?,
       hasParking: json['has_parking'] as bool? ?? false,
       hasBalcony: json['has_balcony'] as bool? ?? false,
       hasFurniture: json['has_furniture'] as bool? ?? false,
@@ -397,6 +457,25 @@ class Property {
       hasSecurity: json['has_security'] as bool? ?? false,
       hasElevator: json['has_elevator'] as bool? ?? false,
       isSmartHome: json['is_smart_home'] as bool? ?? false,
+      hasGarden: json['has_garden'] as bool? ?? false,
+      hasTerrace: json['has_terrace'] as bool? ?? false,
+      hasStorage: json['has_storage'] as bool? ?? false,
+      hasFireplace: json['has_fireplace'] as bool? ?? false,
+      hasAirConditioning: json['has_air_conditioning'] as bool? ?? false,
+      hasGenerator: json['has_generator'] as bool? ?? false,
+      hasSatellite: json['has_satellite'] as bool? ?? false,
+      hasInternet: json['has_internet'] as bool? ?? false,
+      hasNaturalGas: json['has_natural_gas'] as bool? ?? false,
+      hasSteelDoor: json['has_steel_door'] as bool? ?? false,
+      hasVideoIntercom: json['has_video_intercom'] as bool? ?? false,
+      hasAlarm: json['has_alarm'] as bool? ?? false,
+      hasParentBathroom: json['has_parent_bathroom'] as bool? ?? false,
+      hasBuiltinKitchen: json['has_builtin_kitchen'] as bool? ?? false,
+      hasJacuzzi: json['has_jacuzzi'] as bool? ?? false,
+      hasSauna: json['has_sauna'] as bool? ?? false,
+      hasBarbeque: json['has_barbeque'] as bool? ?? false,
+      hasDoorman: json['has_doorman'] as bool? ?? false,
+      isInComplex: json['is_in_complex'] as bool? ?? false,
       amenities: (json['amenities'] as List<dynamic>?)?.cast<String>() ?? [],
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: json['updated_at'] != null
@@ -431,6 +510,12 @@ class Property {
       'floor': floor,
       'total_floors': totalFloors,
       'building_age': buildingAge,
+      'net_square_meters': netSquareMeters,
+      'heating_type': heatingType,
+      'facing_direction': facingDirection,
+      'interior_status': interiorStatus,
+      'deed_type': deedType,
+      'view_type': viewType,
       'has_parking': hasParking,
       'has_balcony': hasBalcony,
       'has_furniture': hasFurniture,
@@ -439,6 +524,25 @@ class Property {
       'has_security': hasSecurity,
       'has_elevator': hasElevator,
       'is_smart_home': isSmartHome,
+      'has_garden': hasGarden,
+      'has_terrace': hasTerrace,
+      'has_storage': hasStorage,
+      'has_fireplace': hasFireplace,
+      'has_air_conditioning': hasAirConditioning,
+      'has_generator': hasGenerator,
+      'has_satellite': hasSatellite,
+      'has_internet': hasInternet,
+      'has_natural_gas': hasNaturalGas,
+      'has_steel_door': hasSteelDoor,
+      'has_video_intercom': hasVideoIntercom,
+      'has_alarm': hasAlarm,
+      'has_parent_bathroom': hasParentBathroom,
+      'has_builtin_kitchen': hasBuiltinKitchen,
+      'has_jacuzzi': hasJacuzzi,
+      'has_sauna': hasSauna,
+      'has_barbeque': hasBarbeque,
+      'has_doorman': hasDoorman,
+      'is_in_complex': isInComplex,
       'amenities': amenities,
       'images': images,
       'is_featured': isFeatured,
@@ -466,6 +570,12 @@ class Property {
     int? floor,
     int? totalFloors,
     int? buildingAge,
+    int? netSquareMeters,
+    String? heatingType,
+    String? facingDirection,
+    String? interiorStatus,
+    String? deedType,
+    String? viewType,
     bool? hasParking,
     bool? hasBalcony,
     bool? hasFurniture,
@@ -474,6 +584,25 @@ class Property {
     bool? hasSecurity,
     bool? hasElevator,
     bool? isSmartHome,
+    bool? hasGarden,
+    bool? hasTerrace,
+    bool? hasStorage,
+    bool? hasFireplace,
+    bool? hasAirConditioning,
+    bool? hasGenerator,
+    bool? hasSatellite,
+    bool? hasInternet,
+    bool? hasNaturalGas,
+    bool? hasSteelDoor,
+    bool? hasVideoIntercom,
+    bool? hasAlarm,
+    bool? hasParentBathroom,
+    bool? hasBuiltinKitchen,
+    bool? hasJacuzzi,
+    bool? hasSauna,
+    bool? hasBarbeque,
+    bool? hasDoorman,
+    bool? isInComplex,
     List<String>? amenities,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -501,6 +630,12 @@ class Property {
       floor: floor ?? this.floor,
       totalFloors: totalFloors ?? this.totalFloors,
       buildingAge: buildingAge ?? this.buildingAge,
+      netSquareMeters: netSquareMeters ?? this.netSquareMeters,
+      heatingType: heatingType ?? this.heatingType,
+      facingDirection: facingDirection ?? this.facingDirection,
+      interiorStatus: interiorStatus ?? this.interiorStatus,
+      deedType: deedType ?? this.deedType,
+      viewType: viewType ?? this.viewType,
       hasParking: hasParking ?? this.hasParking,
       hasBalcony: hasBalcony ?? this.hasBalcony,
       hasFurniture: hasFurniture ?? this.hasFurniture,
@@ -509,6 +644,25 @@ class Property {
       hasSecurity: hasSecurity ?? this.hasSecurity,
       hasElevator: hasElevator ?? this.hasElevator,
       isSmartHome: isSmartHome ?? this.isSmartHome,
+      hasGarden: hasGarden ?? this.hasGarden,
+      hasTerrace: hasTerrace ?? this.hasTerrace,
+      hasStorage: hasStorage ?? this.hasStorage,
+      hasFireplace: hasFireplace ?? this.hasFireplace,
+      hasAirConditioning: hasAirConditioning ?? this.hasAirConditioning,
+      hasGenerator: hasGenerator ?? this.hasGenerator,
+      hasSatellite: hasSatellite ?? this.hasSatellite,
+      hasInternet: hasInternet ?? this.hasInternet,
+      hasNaturalGas: hasNaturalGas ?? this.hasNaturalGas,
+      hasSteelDoor: hasSteelDoor ?? this.hasSteelDoor,
+      hasVideoIntercom: hasVideoIntercom ?? this.hasVideoIntercom,
+      hasAlarm: hasAlarm ?? this.hasAlarm,
+      hasParentBathroom: hasParentBathroom ?? this.hasParentBathroom,
+      hasBuiltinKitchen: hasBuiltinKitchen ?? this.hasBuiltinKitchen,
+      hasJacuzzi: hasJacuzzi ?? this.hasJacuzzi,
+      hasSauna: hasSauna ?? this.hasSauna,
+      hasBarbeque: hasBarbeque ?? this.hasBarbeque,
+      hasDoorman: hasDoorman ?? this.hasDoorman,
+      isInComplex: isInComplex ?? this.isInComplex,
       amenities: amenities ?? this.amenities,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

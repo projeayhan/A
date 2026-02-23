@@ -38,6 +38,7 @@ class TaxiService {
     required double dropoffLng,
     required String dropoffAddress,
     required String vehicleTypeId,
+    required String vehicleTypeName,
     required double estimatedFare,
     required double distanceKm,
     required int durationMinutes,
@@ -73,6 +74,7 @@ class TaxiService {
       'customer_name': customerName ?? userName,
       'customer_phone': customerPhone ?? userPhone,
       'status': 'pending',
+      'vehicle_type': vehicleTypeName,
     };
 
     final response = await _client
@@ -103,6 +105,7 @@ class TaxiService {
             vehicle_color,
             vehicle_plate,
             vehicle_year,
+            vehicle_types,
             profile_photo_url
           )
         ''')
@@ -134,6 +137,7 @@ class TaxiService {
             vehicle_color,
             vehicle_plate,
             vehicle_year,
+            vehicle_types,
             profile_photo_url
           )
         ''')
@@ -256,7 +260,7 @@ class TaxiService {
     final latDelta = radiusKm / 111.0; // 1 derece ~ 111 km
     final lngDelta = radiusKm / (111.0 * cosDegrees(latitude));
 
-    final response = await _client
+    var query = _client
         .from('taxi_drivers')
         .select()
         .eq('is_online', true)
@@ -264,8 +268,14 @@ class TaxiService {
         .gte('current_latitude', latitude - latDelta)
         .lte('current_latitude', latitude + latDelta)
         .gte('current_longitude', longitude - lngDelta)
-        .lte('current_longitude', longitude + lngDelta)
-        .limit(20);
+        .lte('current_longitude', longitude + lngDelta);
+
+    // Araç kategorisine göre filtrele (vehicle_types array kolonu)
+    if (vehicleTypeId != null && vehicleTypeId.isNotEmpty) {
+      query = query.contains('vehicle_types', [vehicleTypeId]);
+    }
+
+    final response = await query.limit(20);
 
     return List<Map<String, dynamic>>.from(response);
   }
@@ -536,6 +546,7 @@ class TaxiService {
     required String destinationAddress,
     String? destinationName,
     required String vehicleTypeId,
+    String vehicleTypeName = 'standard',
     required String paymentType,
     String? promotionId,
     double? estimatedDistanceKm,
@@ -550,6 +561,7 @@ class TaxiService {
       dropoffLng: destinationLongitude,
       dropoffAddress: destinationAddress,
       vehicleTypeId: vehicleTypeId,
+      vehicleTypeName: vehicleTypeName,
       estimatedFare:
           estimatedDistanceKm != null && estimatedDurationMinutes != null
           ? calculateFareSimple(
@@ -786,16 +798,17 @@ class TaxiService {
         .eq('id', driverId);
   }
 
-  /// Bekleyen sürüş taleplerini getir (sürücü için)
+  /// Bekleyen sürüş taleplerini getir (sürücü için, kategori eşleştirmeli)
   static Future<List<Map<String, dynamic>>> getPendingRideRequests({
     required double latitude,
     required double longitude,
     double radiusKm = 10,
+    List<String>? driverVehicleTypes,
   }) async {
     final latDelta = radiusKm / 111.0;
     final lngDelta = radiusKm / (111.0 * cosDegrees(latitude));
 
-    final response = await _client
+    var query = _client
         .from('taxi_rides')
         .select('''
           *,
@@ -811,7 +824,14 @@ class TaxiService {
         .gte('pickup_lat', latitude - latDelta)
         .lte('pickup_lat', latitude + latDelta)
         .gte('pickup_lng', longitude - lngDelta)
-        .lte('pickup_lng', longitude + lngDelta)
+        .lte('pickup_lng', longitude + lngDelta);
+
+    // Sürücünün araç kategorilerine göre filtrele
+    if (driverVehicleTypes != null && driverVehicleTypes.isNotEmpty) {
+      query = query.inFilter('vehicle_type', driverVehicleTypes);
+    }
+
+    final response = await query
         .order('created_at', ascending: true)
         .limit(10);
 
@@ -860,6 +880,7 @@ class TaxiService {
             vehicle_color,
             vehicle_plate,
             vehicle_year,
+            vehicle_types,
             profile_photo_url
           )
         ''')

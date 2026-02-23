@@ -6,7 +6,7 @@ import '../services/taxi_service.dart';
 import '../services/security_service.dart';
 
 // Auth durumu
-enum AuthStatus { initial, loading, authenticated, unauthenticated, pendingApproval, error }
+enum AuthStatus { initial, loading, authenticated, unauthenticated, pendingApproval, needsRegistration, error }
 
 class AuthState {
   final AuthStatus status;
@@ -58,6 +58,8 @@ class AuthNotifier extends Notifier<AuthState> {
 
     // Auth değişikliklerini dinle
     SupabaseService.authStateChanges.listen((authState) async {
+      // Explicit auth işlemi sırasında (loading) listener'ın müdahale etmesini engelle
+      if (state.status == AuthStatus.loading) return;
       if (authState.session != null) {
         await _loadDriverProfile(authState.session!.user);
       } else {
@@ -87,8 +89,9 @@ class AuthNotifier extends Notifier<AuthState> {
     final profile = await TaxiService.getDriverProfile();
 
     if (profile == null) {
+      // Oturum açık ama sürücü profili yok → kayıt gerekli
       state = AuthState(
-        status: AuthStatus.unauthenticated,
+        status: AuthStatus.needsRegistration,
         user: user,
       );
     } else if (profile['status'] == 'pending') {
@@ -158,7 +161,9 @@ class AuthNotifier extends Notifier<AuthState> {
 
         await SecurityService.clearLoginBlocks(email);
         await _loadDriverProfile(response.user!);
-        return state.status == AuthStatus.authenticated || state.status == AuthStatus.pendingApproval;
+        return state.status == AuthStatus.authenticated
+            || state.status == AuthStatus.pendingApproval
+            || state.status == AuthStatus.needsRegistration;
       }
 
       await SecurityService.trackFailedLogin(identifier: email, errorMessage: 'Giriş başarısız');
@@ -184,6 +189,89 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
+  // Phone OTP - SMS gönder
+  Future<bool> sendOtp({required String phone}) async {
+    state = state.copyWith(status: AuthStatus.loading);
+    try {
+      await SupabaseService.sendPhoneOtp(phone: phone);
+      state = const AuthState(status: AuthStatus.unauthenticated);
+      return true;
+    } catch (e) {
+      state = AuthState(
+        status: AuthStatus.error,
+        errorMessage: e.toString().replaceAll('Exception: ', ''),
+      );
+      return false;
+    }
+  }
+
+  // Phone OTP - Doğrula ve oturum aç
+  Future<Map<String, dynamic>> verifyOtp({required String phone, required String code}) async {
+    state = state.copyWith(status: AuthStatus.loading);
+    try {
+      final result = await SupabaseService.verifyPhoneOtp(phone: phone, code: code);
+      final user = SupabaseService.currentUser;
+      if (user != null) {
+        // OTP akışında rol kontrolü yapma - kullanıcı şoför olarak kayıt olmak istiyor olabilir.
+        // _loadDriverProfile zaten doğru yönlendirmeyi yapar:
+        // profil yoksa → needsRegistration, pending → pendingApproval, approved → authenticated
+        await _loadDriverProfile(user);
+      }
+      return {
+        'success': true,
+        'is_new_user': result['is_new_user'] ?? false,
+      };
+    } catch (e) {
+      state = AuthState(
+        status: AuthStatus.error,
+        errorMessage: e.toString().replaceAll('Exception: ', ''),
+      );
+      return {'success': false};
+    }
+  }
+
+  // OTP kayıt sonrası profil oluştur
+  Future<bool> completeRegistration({
+    required String fullName,
+    required String phone,
+    required String tcNo,
+    required String vehicleBrand,
+    required String vehicleModel,
+    required String vehiclePlate,
+    required String vehicleColor,
+    required int vehicleYear,
+    required List<String> vehicleTypes,
+  }) async {
+    state = state.copyWith(status: AuthStatus.loading);
+    try {
+      final profile = await TaxiService.createDriverProfile(
+        fullName: fullName,
+        phone: phone,
+        tcNo: tcNo,
+        vehicleBrand: vehicleBrand,
+        vehicleModel: vehicleModel,
+        vehiclePlate: vehiclePlate,
+        vehicleColor: vehicleColor,
+        vehicleYear: vehicleYear,
+        vehicleTypes: vehicleTypes,
+        email: SupabaseService.currentUser?.email,
+      );
+      if (profile != null) {
+        state = AuthState(
+          status: AuthStatus.pendingApproval,
+          user: SupabaseService.currentUser,
+          driverProfile: profile,
+        );
+        return true;
+      }
+      state = state.copyWith(status: AuthStatus.error, errorMessage: 'Profil oluşturulamadı');
+      return false;
+    } catch (e) {
+      state = state.copyWith(status: AuthStatus.error, errorMessage: 'Bir hata oluştu: $e');
+      return false;
+    }
+  }
+
   // Kayıt ol
   Future<bool> signUp({
     required String email,
@@ -196,7 +284,7 @@ class AuthNotifier extends Notifier<AuthState> {
     required String vehiclePlate,
     required String vehicleColor,
     required int vehicleYear,
-    required String vehicleType,
+    required List<String> vehicleTypes,
   }) async {
     state = state.copyWith(status: AuthStatus.loading);
 
@@ -218,7 +306,7 @@ class AuthNotifier extends Notifier<AuthState> {
             'vehicle_plate': vehiclePlate,
             'vehicle_color': vehicleColor,
             'vehicle_year': vehicleYear.toString(),
-            'vehicle_type': vehicleType,
+            'vehicle_types': vehicleTypes.join(','),
           },
         );
         user = response.user;
@@ -231,11 +319,15 @@ class AuthNotifier extends Notifier<AuthState> {
               password: password,
             );
             user = signInResponse.user;
+            final existingUser = user!;
+
+            // Telefonu auth.users'a yaz (OTP login için)
+            try { await SupabaseService.client.rpc('set_user_phone', params: {'p_user_id': existingUser.id, 'p_phone': phone}); } catch (_) {}
 
             // Zaten sürücü profili var mı kontrol et
             final existingProfile = await TaxiService.getDriverProfile();
             if (existingProfile != null) {
-              await _loadDriverProfile(user!);
+              await _loadDriverProfile(existingUser);
               return true;
             }
           } on AuthException {
@@ -251,9 +343,11 @@ class AuthNotifier extends Notifier<AuthState> {
       }
 
       if (user != null) {
-        // Sign out and require email verification
+        // Auto-confirm email (no email verification for taxi drivers)
+        try { await SupabaseService.client.rpc('auto_confirm_email', params: {'p_user_id': user.id}); } catch (_) {}
+        // Telefonu auth.users'a yaz (OTP login için)
+        try { await SupabaseService.client.rpc('set_user_phone', params: {'p_user_id': user.id, 'p_phone': phone}); } catch (_) {}
         try { await SupabaseService.signOut(); } catch (_) {}
-        try { await SupabaseService.resendConfirmation(email); } catch (_) {}
         state = const AuthState(status: AuthStatus.unauthenticated);
         return true;
       }

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -659,6 +660,8 @@ final emlakRecentActivityProvider = FutureProvider<List<EmlakRecentActivity>>((r
         .map((json) => EmlakRecentActivity.fromJson(json))
         .toList();
   } catch (e) {
+    // RPC may not exist yet, graceful fallback
+    debugPrint('emlakRecentActivityProvider error: $e');
     return [];
   }
 });

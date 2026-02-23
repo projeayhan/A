@@ -171,6 +171,7 @@ class Merchant {
   final double minOrderAmount;
   final double deliveryFee;
   final String deliveryTime;
+  final List<String> storeCategoryIds;
   final List<String> categoryTags;
   final DateTime createdAt;
 
@@ -197,6 +198,7 @@ class Merchant {
     this.minOrderAmount = 0,
     this.deliveryFee = 0,
     this.deliveryTime = '30-45 dk',
+    this.storeCategoryIds = const [],
     this.categoryTags = const [],
     required this.createdAt,
   });
@@ -229,6 +231,7 @@ class Merchant {
       minOrderAmount: double.tryParse(json['min_order_amount']?.toString() ?? '0') ?? 0,
       deliveryFee: double.tryParse(json['delivery_fee']?.toString() ?? '0') ?? 0,
       deliveryTime: json['delivery_time'] ?? '30-45 dk',
+      storeCategoryIds: (json['store_category_ids'] as List<dynamic>?)?.cast<String>() ?? [],
       categoryTags: (json['category_tags'] as List<dynamic>?)?.cast<String>() ?? [],
       createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : DateTime.now(),
     );
@@ -394,13 +397,13 @@ class Order {
 
   factory Order.fromJson(Map<String, dynamic> json) {
     return Order(
-      id: json['id'],
+      id: json['id'] ?? '',
       orderNumber: json['order_number'] ?? '',
-      customerId: json['user_id'] ?? json['customer_id'],
-      customerName: json['users']?['full_name'] ?? json['customer_name'] ?? 'Musteri',
+      customerId: json['user_id'] ?? json['customer_id'] ?? '',
+      customerName: json['users']?['full_name'] ?? json['customer_name'] ?? 'Müşteri',
       customerPhone: json['users']?['phone'] ?? json['customer_phone'],
       customerAvatar: json['users']?['avatar_url'],
-      merchantId: json['merchant_id'] ?? json['restaurant_id'] ?? json['store_id'],
+      merchantId: json['merchant_id'] ?? json['restaurant_id'] ?? json['store_id'] ?? '',
       courierId: json['courier_id'],
       courierName: json['courier']?['full_name'],
       deliveryStatus: json['delivery_status'],

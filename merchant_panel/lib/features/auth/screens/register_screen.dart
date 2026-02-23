@@ -64,17 +64,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       if (authResponse.user != null) {
         // Auto-confirm email (no email verification for merchants)
         try { await supabase.rpc('auto_confirm_email', params: {'p_user_id': authResponse.user!.id}); } catch (_) {}
+        // Telefonu auth.users'a yaz (OTP login için)
+        try { await supabase.rpc('set_user_phone', params: {'p_user_id': authResponse.user!.id, 'p_phone': _phoneController.text.trim()}); } catch (_) {}
         try { await supabase.auth.signOut(); } catch (_) {}
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Kayit basarili! Admin onayindan sonra giris yapabilirsiniz.'),
-              backgroundColor: AppColors.success,
-              duration: Duration(seconds: 5),
-            ),
-          );
-          context.go('/auth/login');
+          _showPendingApprovalDialog();
         }
       }
     } on AuthException catch (e) {
@@ -96,6 +91,44 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         });
       }
     }
+  }
+
+  void _showPendingApprovalDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        icon: Container(
+          width: 64,
+          height: 64,
+          decoration: BoxDecoration(
+            color: Colors.orange.withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.hourglass_top_rounded, color: Colors.orange, size: 32),
+        ),
+        title: const Text('Başvurunuz Alındı'),
+        content: const Text(
+          'Kaydınız başarıyla oluşturuldu.\n\n'
+          'Hesabınız admin tarafından incelendikten sonra onaylanacaktır. '
+          'Onay durumu e-posta ile bildirilecektir.',
+          textAlign: TextAlign.center,
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                context.go('/auth/login');
+              },
+              child: const Text('Tamam'),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   String _getAuthErrorMessage(String message) {

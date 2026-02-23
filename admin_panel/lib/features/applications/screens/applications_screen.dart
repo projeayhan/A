@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/services/notification_service.dart';
 import '../../../core/theme/app_theme.dart';
@@ -41,16 +42,11 @@ final merchantApplicationsPageProvider = FutureProvider.family<List<Map<String, 
     try {
       final response = await supabase
           .from('merchants')
-          .select('*')
+          .select('*, merchant_documents(*)')
           .order('created_at', ascending: false)
           .range(from, to);
 
       final result = List<Map<String, dynamic>>.from(response);
-      // Debug: Kaç merchant geldi?
-      print('Merchants fetched: ${result.length}');
-      for (var m in result) {
-        print('  - ${m['business_name']} (is_approved: ${m['is_approved']})');
-      }
       return result;
     } catch (e) {
       rethrow;
@@ -196,53 +192,18 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
     'taxi': [
       {
         'type': 'id_card',
-        'name': 'Kimlik Fotokopisi',
-        'description': 'TC Kimlik karti on ve arka yuzu',
+        'name': 'Kimlik',
+        'description': 'Kimlik karti on ve arka yuzu',
       },
       {
         'type': 'license',
-        'name': 'Surucu Belgesi (B Sinifi)',
-        'description': 'Gecerli B sinifi ehliyet',
-      },
-      {
-        'type': 'src',
-        'name': 'SRC Belgesi',
-        'description': 'Ticari taksi icin SRC belgesi',
-      },
-      {
-        'type': 'psychotechnical',
-        'name': 'Psikoteknik Belgesi',
-        'description': 'Gecerli psikoteknik raporu',
-      },
-      {
-        'type': 'criminal_record',
-        'name': 'Sabika Kaydi',
-        'description': 'Son 6 aylik sabika kaydi',
-      },
-      {
-        'type': 'health_report',
-        'name': 'Saglik Raporu',
-        'description': 'Suruculuge engel hastalik olmadigi raporu',
+        'name': 'Surucu Belgesi (Ehliyet)',
+        'description': 'Gecerli surucu belgesi',
       },
       {
         'type': 'registration',
         'name': 'Arac Ruhsati',
         'description': 'Arac tescil belgesi',
-      },
-      {
-        'type': 'insurance',
-        'name': 'Trafik Sigortasi',
-        'description': 'Gecerli zorunlu trafik sigortasi',
-      },
-      {
-        'type': 'taxi_license',
-        'name': 'Taksi Plakasi/Ruhsati',
-        'description': 'Ticari taksi plaka belgesi',
-      },
-      {
-        'type': 'vehicle_inspection',
-        'name': 'Muayene Belgesi',
-        'description': 'Gecerli arac muayene belgesi',
       },
     ],
     'courier': [
@@ -284,34 +245,14 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
         'description': 'Guncel vergi levhasi',
       },
       {
-        'type': 'trade_registry',
-        'name': 'Ticaret Sicil Gazetesi',
-        'description': 'Sirket kurulusu icin',
-      },
-      {
-        'type': 'signature_circular',
-        'name': 'Imza Sirkuleri',
-        'description': 'Yetkili imza ornegi',
-      },
-      {
         'type': 'business_license',
-        'name': 'Isyeri Acma Ruhsati',
+        'name': 'Isyeri Ruhsati',
         'description': 'Belediyeden alinan ruhsat',
-      },
-      {
-        'type': 'health_certificate',
-        'name': 'Hijyen Belgesi',
-        'description': 'Gida isletmeleri icin',
       },
       {
         'type': 'id_card',
         'name': 'Yetkili Kimlik',
         'description': 'Isletme yetkilisinin kimligi',
-      },
-      {
-        'type': 'bank_account',
-        'name': 'Banka Hesap Bilgisi',
-        'description': 'IBAN ve hesap bilgileri',
       },
     ],
   };
@@ -320,30 +261,6 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 6, vsync: this);
-    _tabController.addListener(() {
-      if (!_tabController.indexIsChanging) {
-        switch (_tabController.index) {
-          case 0:
-            ref.invalidate(partnerApplicationsProvider);
-            break;
-          case 1:
-            ref.invalidate(couriersApplicationsProvider);
-            break;
-          case 2:
-            ref.invalidate(merchantApplicationsProvider);
-            break;
-          case 3:
-            ref.invalidate(realtorApplicationsProvider);
-            break;
-          case 4:
-            ref.invalidate(carDealerApplicationsProvider);
-            break;
-          case 5:
-            ref.invalidate(rentalCompanyApplicationsProvider);
-            break;
-        }
-      }
-    });
   }
 
   @override
@@ -980,6 +897,9 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
 
       ref.invalidate(couriersApplicationsProvider);
 
+      // SMS bildirim gonder
+      _sendCourierNotification(courier['id'], 'approved');
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -1052,6 +972,9 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
 
       ref.invalidate(couriersApplicationsProvider);
 
+      // SMS bildirim gonder
+      _sendCourierNotification(courier['id'], 'rejected');
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -1066,6 +989,19 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
           SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
         );
       }
+    }
+  }
+
+  // Kuryeye SMS bildirim gonder (fire-and-forget)
+  Future<void> _sendCourierNotification(String courierId, String action) async {
+    try {
+      final supabase = ref.read(supabaseProvider);
+      await supabase.functions.invoke('notify-courier', body: {
+        'courier_id': courierId,
+        'action': action,
+      });
+    } catch (e) {
+      debugPrint('SMS bildirim gonderilemedi: $e');
     }
   }
 
@@ -1730,7 +1666,7 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
     }
 
     final requiredDocs = requiredDocuments[type] ?? [];
-    final uploadedDocTypes = docs.map((d) => d['document_type']).toSet();
+    final uploadedDocTypes = docs.map((d) => d['type']).toSet();
     final verifiedDocs = docs
         .where((d) => d['status'] == 'verified' || d['status'] == 'approved')
         .length;
@@ -2152,7 +2088,7 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
           Icon(icon, size: 14, color: color),
           const SizedBox(width: 4),
           Text(
-            _getDocumentTypeName(doc['document_type']),
+            _getDocumentTypeName(doc['type']),
             style: TextStyle(fontSize: 11, color: color),
           ),
         ],
@@ -2547,7 +2483,7 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
           // Required Documents List
           ...requiredDocs.map((reqDoc) {
             final uploadedDoc = docs.firstWhere(
-              (d) => d['document_type'] == reqDoc['type'],
+              (d) => d['type'] == reqDoc['type'],
               orElse: () => null,
             );
 
@@ -2632,20 +2568,11 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
                   style: TextStyle(color: AppColors.textMuted, fontSize: 11),
                 ),
                 if (uploadedDoc != null &&
-                    uploadedDoc['document_number'] != null)
+                    uploadedDoc['rejection_reason'] != null &&
+                    status == 'rejected')
                   Text(
-                    'Belge No: ${uploadedDoc['document_number']}',
-                    style: const TextStyle(fontSize: 11),
-                  ),
-                if (uploadedDoc != null && uploadedDoc['expires_at'] != null)
-                  Text(
-                    'Gecerlilik: ${_formatDate(uploadedDoc['expires_at'])}',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: _isExpired(uploadedDoc['expires_at'])
-                          ? AppColors.error
-                          : AppColors.textMuted,
-                    ),
+                    'Red Nedeni: ${uploadedDoc['rejection_reason']}',
+                    style: TextStyle(fontSize: 11, color: AppColors.error),
                   ),
               ],
             ),
@@ -2667,7 +2594,7 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
           ),
           if (isUploaded) ...[
             const SizedBox(width: 8),
-            if (uploadedDoc?['document_url'] != null)
+            if (uploadedDoc?['url'] != null)
               IconButton(
                 icon: const Icon(Icons.visibility, size: 18),
                 onPressed: () => _viewDocument(uploadedDoc!),
@@ -2736,12 +2663,20 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
   }
 
   void _viewDocument(Map<String, dynamic> doc) {
-    final url = doc['document_url'];
+    final url = doc['url'];
     if (url == null) return;
+
+    final isPdf = url.toString().toLowerCase().contains('.pdf');
+
+    // PDF dosyalarını doğrudan yeni sekmede aç
+    if (isPdf) {
+      launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      return;
+    }
 
     showDialog(
       context: context,
-      builder: (context) => Dialog(
+      builder: (dialogContext) => Dialog(
         child: Container(
           width: 800,
           height: 600,
@@ -2752,12 +2687,24 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    _getDocumentTypeName(doc['document_type']),
+                    _getDocumentTypeName(doc['type']),
                     style: Theme.of(context).textTheme.titleLarge,
                   ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close),
+                  Row(
+                    children: [
+                      IconButton(
+                        onPressed: () => launchUrl(
+                          Uri.parse(url),
+                          mode: LaunchMode.externalApplication,
+                        ),
+                        icon: const Icon(Icons.open_in_new),
+                        tooltip: 'Yeni sekmede ac',
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(dialogContext),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -2766,23 +2713,25 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
                 child: Image.network(
                   url,
                   fit: BoxFit.contain,
+                  loadingBuilder: (context, child, progress) {
+                    if (progress == null) return child;
+                    return const Center(child: CircularProgressIndicator());
+                  },
                   errorBuilder: (context, error, stack) => Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(
-                          Icons.error,
-                          size: 64,
-                          color: AppColors.error,
-                        ),
+                        const Icon(Icons.description, size: 64, color: AppColors.textMuted),
                         const SizedBox(height: 16),
-                        const Text('Belge yuklenemedi'),
+                        const Text('Onizleme kullanilamiyor'),
                         const SizedBox(height: 8),
-                        TextButton(
-                          onPressed: () {
-                            // Open in new tab
-                          },
-                          child: const Text('Yeni sekmede ac'),
+                        ElevatedButton.icon(
+                          onPressed: () => launchUrl(
+                            Uri.parse(url),
+                            mode: LaunchMode.externalApplication,
+                          ),
+                          icon: const Icon(Icons.open_in_new),
+                          label: const Text('Yeni sekmede ac'),
                         ),
                       ],
                     ),
@@ -2810,7 +2759,7 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '${_getDocumentTypeName(doc['document_type'])} belgesi reddedilecek.',
+                '${_getDocumentTypeName(doc['type'])} belgesi reddedilecek.',
               ),
               const SizedBox(height: 16),
               TextField(
@@ -3134,8 +3083,8 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
     await supabase
         .from(table)
         .update({
-          'status': 'approved', // Use 'approved' for all
-          'verified_at': DateTime.now().toIso8601String(),
+          'status': 'approved',
+          'updated_at': DateTime.now().toIso8601String(),
         })
         .eq('id', doc['id']);
 
@@ -3205,16 +3154,6 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
       return '${date.day}/${date.month}/${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
     } catch (e) {
       return dateStr;
-    }
-  }
-
-  bool _isExpired(String? dateStr) {
-    if (dateStr == null) return false;
-    try {
-      final date = DateTime.parse(dateStr);
-      return date.isBefore(DateTime.now());
-    } catch (e) {
-      return false;
     }
   }
 
@@ -3325,6 +3264,8 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
     switch (type) {
       case 'motorcycle':
         return 'Motosiklet';
+      case 'moto_taxi':
+        return 'Moto Taksi';
       case 'car':
         return 'Otomobil';
       case 'bicycle':

@@ -557,7 +557,7 @@ class DashboardScreen extends ConsumerWidget {
           crossAxisCount: 5,
           mainAxisSpacing: 16,
           crossAxisSpacing: 16,
-          childAspectRatio: 1.6,
+          childAspectRatio: 3.0,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           children: [
@@ -605,7 +605,7 @@ class DashboardScreen extends ConsumerWidget {
           crossAxisCount: 5,
           mainAxisSpacing: 16,
           crossAxisSpacing: 16,
-          childAspectRatio: 1.6,
+          childAspectRatio: 3.0,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           children: [
@@ -654,7 +654,7 @@ class DashboardScreen extends ConsumerWidget {
           crossAxisCount: 5,
           mainAxisSpacing: 16,
           crossAxisSpacing: 16,
-          childAspectRatio: 1.6,
+          childAspectRatio: 3.0,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           children: [
@@ -703,7 +703,7 @@ class DashboardScreen extends ConsumerWidget {
           crossAxisCount: 5,
           mainAxisSpacing: 16,
           crossAxisSpacing: 16,
-          childAspectRatio: 1.6,
+          childAspectRatio: 3.0,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           children: [
@@ -752,7 +752,7 @@ class DashboardScreen extends ConsumerWidget {
           crossAxisCount: 5,
           mainAxisSpacing: 16,
           crossAxisSpacing: 16,
-          childAspectRatio: 1.6,
+          childAspectRatio: 3.0,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           children: [
@@ -802,7 +802,7 @@ class DashboardScreen extends ConsumerWidget {
           crossAxisCount: 5,
           mainAxisSpacing: 16,
           crossAxisSpacing: 16,
-          childAspectRatio: 1.6,
+          childAspectRatio: 3.0,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           children: [
@@ -853,7 +853,7 @@ class DashboardScreen extends ConsumerWidget {
           crossAxisCount: 5,
           mainAxisSpacing: 16,
           crossAxisSpacing: 16,
-          childAspectRatio: 1.6,
+          childAspectRatio: 3.0,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           children: [
@@ -904,7 +904,7 @@ class DashboardScreen extends ConsumerWidget {
           crossAxisCount: 5,
           mainAxisSpacing: 16,
           crossAxisSpacing: 16,
-          childAspectRatio: 1.6,
+          childAspectRatio: 3.0,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           children: [
@@ -1029,7 +1029,7 @@ class DashboardScreen extends ConsumerWidget {
             crossAxisCount: 5,
             mainAxisSpacing: 16,
             crossAxisSpacing: 16,
-            childAspectRatio: 1.6,
+            childAspectRatio: 3.0,
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             children: List.generate(5, (_) => const StatCardLoading()),

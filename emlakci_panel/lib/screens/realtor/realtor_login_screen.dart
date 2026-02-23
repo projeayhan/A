@@ -1,4 +1,3 @@
-import 'dart:math' show sin, pi;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -32,8 +31,6 @@ class _RealtorLoginScreenState extends ConsumerState<RealtorLoginScreen>
   late Animation<double> _fadeIn;
   late Animation<Offset> _slideUp;
   late AnimationController _glowController;
-  late AnimationController _shimmerController;
-
   static const _accent = Color(0xFF0EA5E9);
   static const _accentSecondary = Color(0xFF14B8A6);
 
@@ -60,11 +57,6 @@ class _RealtorLoginScreenState extends ConsumerState<RealtorLoginScreen>
       vsync: this,
       duration: const Duration(seconds: 3),
     )..repeat(reverse: true);
-
-    _shimmerController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 3000),
-    )..repeat();
 
     Future.delayed(const Duration(milliseconds: 200), () {
       if (mounted) _entranceController.forward();
@@ -636,6 +628,71 @@ class _RealtorLoginScreenState extends ConsumerState<RealtorLoginScreen>
     );
   }
 
+  void _showPendingApprovalDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF111827),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.hourglass_top_rounded, color: Colors.orange, size: 36),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Başvurunuz Alındı',
+              style: TextStyle(
+                color: Color(0xFFF9FAFB),
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Kaydınız başarıyla oluşturuldu.\n\n'
+              'Hesabınız admin tarafından incelendikten sonra onaylanacaktır. '
+              'Onay durumu e-posta ile bildirilecektir.',
+              style: TextStyle(color: Color(0xFF9CA3AF)),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                setState(() {
+                  _showRegister = false;
+                  _emailController.clear();
+                  _passwordController.clear();
+                  _confirmPasswordController.clear();
+                });
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _accent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text('Tamam'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -663,14 +720,9 @@ class _RealtorLoginScreenState extends ConsumerState<RealtorLoginScreen>
         if (application != null) {
           if (application['status'] == 'pending' ||
               application['status'] == 'under_review') {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: const Text(
-                    'Başvurunuz henüz onaylanmadı. Lütfen bekleyin.'),
-                backgroundColor: EmlakColors.accent,
-              ),
-            );
-            context.push('/application');
+            await Supabase.instance.client.auth.signOut();
+            if (!mounted) return;
+            _showPendingApprovalDialog();
           } else if (application['status'] == 'rejected') {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -827,30 +879,14 @@ class _RealtorLoginScreenState extends ConsumerState<RealtorLoginScreen>
 
       HapticFeedback.mediumImpact();
 
-      // Sign out auto-confirmed session and send verification email
-      if (response.session != null) {
-        await Supabase.instance.client.auth.signOut();
-      }
-      await Supabase.instance.client.auth.resend(
-        type: OtpType.signup,
-        email: _emailController.text.trim(),
-      );
-
-      if (!mounted) return;
+      // Kayıt başarılı - başvuru formuna yönlendir
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content:
-              Text('Kayıt başarılı! E-posta doğrulama linkine tıklayın.'),
-          backgroundColor: Color(0xFF22C55E),
-          duration: Duration(seconds: 5),
+        SnackBar(
+          content: const Text('Kayıt başarılı! Lütfen başvuru formunu doldurun.'),
+          backgroundColor: EmlakColors.accent,
         ),
       );
-      setState(() {
-        _showRegister = false;
-        _emailController.clear();
-        _passwordController.clear();
-        _confirmPasswordController.clear();
-      });
+      context.push('/application');
       return;
     } on AuthException catch (e) {
       if (!mounted) return;

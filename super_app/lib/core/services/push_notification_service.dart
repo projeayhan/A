@@ -258,6 +258,8 @@ class PushNotificationService {
       case 'job_application':
       case 'job_application_status':
         return const Color(0xFF8B5CF6);
+      case 'store_message':
+        return const Color(0xFF7C3AED);
       case 'car_message':
       case 'car_favorite':
         return const Color(0xFF06B6D4);

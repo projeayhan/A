@@ -20,7 +20,7 @@ class _VehicleInfoScreenState extends ConsumerState<VehicleInfoScreen> {
   final _colorController = TextEditingController();
   final _plateController = TextEditingController();
 
-  String _selectedType = 'standard';
+  Set<String> _selectedTypes = {'standard'};
   bool _isEditing = false;
   bool _isSaving = false;
 
@@ -58,7 +58,9 @@ class _VehicleInfoScreenState extends ConsumerState<VehicleInfoScreen> {
     _yearController.text = (profile['vehicle_year'] ?? '').toString();
     _colorController.text = profile['vehicle_color'] ?? '';
     _plateController.text = profile['vehicle_plate'] ?? '';
-    _selectedType = profile['vehicle_type'] ?? 'standard';
+    _selectedTypes = profile['vehicle_types'] != null
+        ? Set<String>.from(profile['vehicle_types'])
+        : {'standard'};
   }
 
   Future<void> _save() async {
@@ -72,7 +74,7 @@ class _VehicleInfoScreenState extends ConsumerState<VehicleInfoScreen> {
       'vehicle_year': int.tryParse(_yearController.text.trim()) ?? 2020,
       'vehicle_color': _colorController.text.trim(),
       'vehicle_plate': _plateController.text.trim().toUpperCase(),
-      'vehicle_type': _selectedType,
+      'vehicle_types': _selectedTypes.toList(),
     });
 
     setState(() {
@@ -184,7 +186,7 @@ class _VehicleInfoScreenState extends ConsumerState<VehicleInfoScreen> {
 
             // Vehicle type selector
             Text(
-              'Arac Kategorisi',
+              'Arac Kategorileri',
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 12),
@@ -307,12 +309,18 @@ class _VehicleInfoScreenState extends ConsumerState<VehicleInfoScreen> {
   }
 
   Widget _buildVehicleTypeOption(String key, String label, String description, String icon) {
-    final isSelected = _selectedType == key;
+    final isSelected = _selectedTypes.contains(key);
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: InkWell(
         onTap: _isEditing
-            ? () => setState(() => _selectedType = key)
+            ? () => setState(() {
+                if (isSelected && _selectedTypes.length > 1) {
+                  _selectedTypes.remove(key);
+                } else {
+                  _selectedTypes.add(key);
+                }
+              })
             : null,
         borderRadius: BorderRadius.circular(12),
         child: Container(

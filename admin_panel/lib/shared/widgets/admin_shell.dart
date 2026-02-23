@@ -1,11 +1,16 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/services/admin_auth_service.dart';
 import '../../core/services/admin_log_service.dart';
 import '../../core/services/notification_service.dart';
+import '../../core/services/permission_config.dart';
+import '../../core/providers/theme_provider.dart';
 import '../../core/router/app_router.dart';
+import 'breadcrumbs.dart';
 import 'floating_ai_assistant.dart';
 
 class AdminShell extends ConsumerStatefulWidget {
@@ -30,63 +35,133 @@ class _AdminShellState extends ConsumerState<AdminShell> {
     'emlak': false,
     'carSales': false,
     'jobs': false,
+    'support': false,
     'system': false,
   };
+
+  // Session idle timeout
+  Timer? _idleTimer;
+  static const _idleTimeout = Duration(minutes: 30);
+
+  // Search focus
+  final _searchFocusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _resetIdleTimer();
+  }
+
+  void _resetIdleTimer() {
+    _idleTimer?.cancel();
+    _idleTimer = Timer(_idleTimeout, _handleIdleTimeout);
+  }
+
+  Future<void> _handleIdleTimeout() async {
+    try {
+      final logService = ref.read(adminLogServiceProvider);
+      await logService.logLogout();
+    } catch (_) {}
+    try {
+      final authService = ref.read(adminAuthServiceProvider);
+      await authService.signOut();
+      ref.read(currentAdminProvider.notifier).clear();
+    } catch (_) {}
+    if (mounted) {
+      context.go(AppRoutes.login);
+    }
+  }
+
+  @override
+  void dispose() {
+    _idleTimer?.cancel();
+    _searchFocusNode.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final adminAsync = ref.watch(currentAdminProvider);
     final currentRoute = GoRouterState.of(context).matchedLocation;
-    // Bildirim servisini başlat ve bekleyen başvuru sayısını al
     final pendingCounts = ref.watch(notificationServiceProvider);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
-    return Scaffold(
-      body: Stack(
-        children: [
-          // Ana içerik
-          Row(
-            children: [
-              // Sidebar
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: _isCollapsed ? 80 : 280,
-                child: _buildSidebar(currentRoute, adminAsync, pendingCounts),
-              ),
-
-              // Main Content
-              Expanded(
-                child: Column(
+    return CallbackShortcuts(
+      bindings: {
+        const SingleActivator(LogicalKeyboardKey.keyD, control: true): () => context.go(AppRoutes.dashboard),
+        const SingleActivator(LogicalKeyboardKey.keyU, control: true): () => context.go(AppRoutes.users),
+        const SingleActivator(LogicalKeyboardKey.keyO, control: true): () => context.go(AppRoutes.orders),
+        const SingleActivator(LogicalKeyboardKey.keyK, control: true): () => _searchFocusNode.requestFocus(),
+        const SingleActivator(LogicalKeyboardKey.escape): () {
+          if (_searchFocusNode.hasFocus) {
+            _searchFocusNode.unfocus();
+          } else {
+            setState(() => _isCollapsed = !_isCollapsed);
+          }
+        },
+      },
+      child: Focus(
+        autofocus: true,
+        child: Listener(
+          onPointerDown: (_) => _resetIdleTimer(),
+          onPointerMove: (_) => _resetIdleTimer(),
+          child: Scaffold(
+            body: Stack(
+              children: [
+                Row(
                   children: [
-                    // Top Bar
-                    _buildTopBar(adminAsync),
-
-                    // Content
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: _isCollapsed ? 80 : 280,
+                      child: _buildSidebar(currentRoute, adminAsync, pendingCounts, isDark),
+                    ),
                     Expanded(
-                      child: Container(
-                        color: AppColors.background,
-                        child: widget.child,
+                      child: Column(
+                        children: [
+                          _buildTopBar(adminAsync, isDark),
+                          const AdminBreadcrumbs(),
+                          Expanded(
+                            child: Container(
+                              color: theme.scaffoldBackgroundColor,
+                              child: widget.child,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
-              ),
-            ],
+                const FloatingAIAssistant(),
+              ],
+            ),
           ),
-
-          // Floating AI Assistant
-          const FloatingAIAssistant(),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildSidebar(String currentRoute, AsyncValue<AdminUser?> adminAsync, PendingApplicationCounts pendingCounts) {
+  // RBAC: check if admin has access to a sidebar group
+  bool _hasGroupAccess(AdminUser? admin, String groupKey) {
+    if (admin == null) return false;
+    if (admin.isSuperAdmin) return true;
+    final module = PermissionConfig.groupPermissions[groupKey];
+    if (module == null) return true;
+    return admin.hasPermission(module, 'read');
+  }
+
+  Widget _buildSidebar(String currentRoute, AsyncValue<AdminUser?> adminAsync, PendingApplicationCounts pendingCounts, bool isDark) {
+    final admin = adminAsync.valueOrNull;
+    final sidebarBg = isDark ? AppColors.surface : const Color(0xFFFFFFFF);
+    final borderColor = isDark ? AppColors.surfaceLight : const Color(0xFFE2E8F0);
+    final textPrimary = isDark ? AppColors.textPrimary : const Color(0xFF0F172A);
+    final textMuted = isDark ? AppColors.textMuted : const Color(0xFF94A3B8);
+    final textSecondary = isDark ? AppColors.textSecondary : const Color(0xFF475569);
+
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(
-          right: BorderSide(color: AppColors.surfaceLight, width: 1),
-        ),
+      decoration: BoxDecoration(
+        color: sidebarBg,
+        border: Border(right: BorderSide(color: borderColor, width: 1)),
       ),
       child: Column(
         children: [
@@ -103,34 +178,17 @@ class _AdminShellState extends ConsumerState<AdminShell> {
                     gradient: AppColors.primaryGradient,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(
-                    Icons.dashboard_rounded,
-                    color: Colors.white,
-                    size: 24,
-                  ),
+                  child: const Icon(Icons.dashboard_rounded, color: Colors.white, size: 24),
                 ),
                 if (!_isCollapsed) ...[
                   const SizedBox(width: 12),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'SuperCyp',
-                          style: TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          'Admin Panel',
-                          style: TextStyle(
-                            color: AppColors.textMuted,
-                            fontSize: 12,
-                          ),
-                        ),
+                        Text('SuperCyp', style: TextStyle(color: textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+                        Text('Admin Panel', style: TextStyle(color: textMuted, fontSize: 12)),
                       ],
                     ),
                   ),
@@ -139,7 +197,7 @@ class _AdminShellState extends ConsumerState<AdminShell> {
             ),
           ),
 
-          const Divider(color: AppColors.surfaceLight, height: 1),
+          Divider(color: borderColor, height: 1),
 
           // Navigation Items
           Expanded(
@@ -152,149 +210,187 @@ class _AdminShellState extends ConsumerState<AdminShell> {
                   label: 'Dashboard',
                   route: AppRoutes.dashboard,
                   currentRoute: currentRoute,
+                  isDark: isDark,
                 ),
 
                 const SizedBox(height: 8),
 
                 // KULLANICILAR & İŞLETMELER
-                _buildNavGroup(
-                  groupKey: 'users',
-                  icon: Icons.people_rounded,
-                  label: 'Kullanıcılar',
-                  currentRoute: currentRoute,
-                  badgeCount: pendingCounts.total,
-                  children: [
-                    _NavChild(Icons.people_outline, 'Kullanıcılar', AppRoutes.users),
-                    _NavChild(Icons.store_outlined, 'İşletmeler', AppRoutes.merchants),
-                    _NavChild(Icons.delivery_dining_outlined, 'Partnerler', AppRoutes.partners),
-                    _NavChild(Icons.assignment_outlined, 'Başvurular', AppRoutes.applications, badgeCount: pendingCounts.total),
-                  ],
-                ),
+                if (_hasGroupAccess(admin, 'users'))
+                  _buildNavGroup(
+                    groupKey: 'users',
+                    icon: Icons.people_rounded,
+                    label: 'Kullanıcılar',
+                    currentRoute: currentRoute,
+                    badgeCount: pendingCounts.total,
+                    isDark: isDark,
+                    children: [
+                      _NavChild(Icons.people_outline, 'Kullanıcılar', AppRoutes.users),
+                      _NavChild(Icons.store_outlined, 'İşletmeler', AppRoutes.merchants),
+                      _NavChild(Icons.delivery_dining_outlined, 'Partnerler', AppRoutes.partners),
+                      _NavChild(Icons.assignment_outlined, 'Başvurular', AppRoutes.applications, badgeCount: pendingCounts.total),
+                    ],
+                  ),
 
                 // SİPARİŞLER & OPERASYON
-                _buildNavGroup(
-                  groupKey: 'operations',
-                  icon: Icons.receipt_long_rounded,
-                  label: 'Operasyon',
-                  currentRoute: currentRoute,
-                  children: [
-                    _NavChild(Icons.receipt_long_outlined, 'Siparişler', AppRoutes.orders),
-                    _NavChild(Icons.notifications_outlined, 'Bildirimler', AppRoutes.notifications),
-                    _NavChild(Icons.gavel_outlined, 'Yaptırımlar', AppRoutes.sanctions),
-                  ],
-                ),
+                if (_hasGroupAccess(admin, 'operations'))
+                  _buildNavGroup(
+                    groupKey: 'operations',
+                    icon: Icons.receipt_long_rounded,
+                    label: 'Operasyon',
+                    currentRoute: currentRoute,
+                    isDark: isDark,
+                    children: [
+                      _NavChild(Icons.receipt_long_outlined, 'Siparişler', AppRoutes.orders),
+                      _NavChild(Icons.notifications_outlined, 'Bildirimler', AppRoutes.notifications),
+                      _NavChild(Icons.gavel_outlined, 'Yaptırımlar', AppRoutes.sanctions),
+                    ],
+                  ),
 
                 // FİNANS
-                _buildNavGroup(
-                  groupKey: 'finance',
-                  icon: Icons.account_balance_wallet_rounded,
-                  label: 'Finans',
-                  currentRoute: currentRoute,
-                  children: [
-                    _NavChild(Icons.account_balance_wallet_outlined, 'Genel Bakış', AppRoutes.finance),
-                    _NavChild(Icons.payments_outlined, 'Kazançlar', AppRoutes.earnings),
-                    _NavChild(Icons.receipt_outlined, 'Faturalar', AppRoutes.invoices),
-                    _NavChild(Icons.attach_money_rounded, 'Fiyatlandırma', AppRoutes.pricing),
-                    _NavChild(Icons.trending_up_outlined, 'Surge Pricing', AppRoutes.surge),
-                  ],
-                ),
+                if (_hasGroupAccess(admin, 'finance'))
+                  _buildNavGroup(
+                    groupKey: 'finance',
+                    icon: Icons.account_balance_wallet_rounded,
+                    label: 'Finans',
+                    currentRoute: currentRoute,
+                    isDark: isDark,
+                    children: [
+                      _NavChild(Icons.account_balance_wallet_outlined, 'Genel Bakış', AppRoutes.finance),
+                      _NavChild(Icons.payments_outlined, 'Kazançlar', AppRoutes.earnings),
+                      _NavChild(Icons.receipt_outlined, 'Faturalar', AppRoutes.invoices),
+                      _NavChild(Icons.attach_money_rounded, 'Fiyatlandırma', AppRoutes.pricing),
+                      _NavChild(Icons.trending_up_outlined, 'Surge Pricing', AppRoutes.surge),
+                    ],
+                  ),
 
                 // YEMEK & MARKET
-                _buildNavGroup(
-                  groupKey: 'food',
-                  icon: Icons.restaurant_rounded,
-                  label: 'Yemek',
-                  currentRoute: currentRoute,
-                  children: [
-                    _NavChild(Icons.category_outlined, 'Restoran Kategorileri', AppRoutes.restaurantCategories),
-                  ],
-                ),
+                if (_hasGroupAccess(admin, 'food'))
+                  _buildNavGroup(
+                    groupKey: 'food',
+                    icon: Icons.restaurant_rounded,
+                    label: 'Yemek & Magazalar',
+                    currentRoute: currentRoute,
+                    isDark: isDark,
+                    children: [
+                      _NavChild(Icons.category_outlined, 'Restoran Kategorileri', AppRoutes.restaurantCategories),
+                      _NavChild(Icons.storefront_outlined, 'Magaza Kategorileri', AppRoutes.storeCategories),
+                    ],
+                  ),
 
                 // ARAÇ KİRALAMA
-                _buildNavGroup(
-                  groupKey: 'rental',
-                  icon: Icons.car_rental_rounded,
-                  label: 'Araç Kiralama',
-                  currentRoute: currentRoute,
-                  children: [
-                    _NavChild(Icons.dashboard_outlined, 'Panel', AppRoutes.rentalDashboard),
-                    _NavChild(Icons.directions_car_outlined, 'Araçlar', AppRoutes.rentalVehicles),
-                    _NavChild(Icons.event_note_outlined, 'Rezervasyonlar', AppRoutes.rentalBookings),
-                    _NavChild(Icons.location_on_outlined, 'Lokasyonlar', AppRoutes.rentalLocations),
-                  ],
-                ),
+                if (_hasGroupAccess(admin, 'rental'))
+                  _buildNavGroup(
+                    groupKey: 'rental',
+                    icon: Icons.car_rental_rounded,
+                    label: 'Araç Kiralama',
+                    currentRoute: currentRoute,
+                    isDark: isDark,
+                    children: [
+                      _NavChild(Icons.dashboard_outlined, 'Panel', AppRoutes.rentalDashboard),
+                      _NavChild(Icons.directions_car_outlined, 'Araçlar', AppRoutes.rentalVehicles),
+                      _NavChild(Icons.event_note_outlined, 'Rezervasyonlar', AppRoutes.rentalBookings),
+                      _NavChild(Icons.location_on_outlined, 'Lokasyonlar', AppRoutes.rentalLocations),
+                    ],
+                  ),
 
                 // EMLAK
-                _buildNavGroup(
-                  groupKey: 'emlak',
-                  icon: Icons.home_work_rounded,
-                  label: 'Emlak',
-                  currentRoute: currentRoute,
-                  children: [
-                    _NavChild(Icons.dashboard_outlined, 'Panel', AppRoutes.emlakDashboard),
-                    _NavChild(Icons.real_estate_agent_outlined, 'İlanlar', AppRoutes.emlakListings),
-                    _NavChild(Icons.location_city_outlined, 'Şehirler', AppRoutes.emlakCities),
-                    _NavChild(Icons.map_outlined, 'İlçeler', AppRoutes.emlakDistricts),
-                    _NavChild(Icons.category_outlined, 'Emlak Türleri', AppRoutes.emlakPropertyTypes),
-                    _NavChild(Icons.featured_play_list_outlined, 'Özellikler', AppRoutes.emlakAmenities),
-                    _NavChild(Icons.price_change_outlined, 'Fiyatlandırma', AppRoutes.emlakPricing),
-                    _NavChild(Icons.tune_outlined, 'Ayarlar', AppRoutes.emlakSettings),
-                    _NavChild(Icons.assignment_ind_outlined, 'Emlakçı Başvuruları', AppRoutes.emlakRealtorApplications),
-                  ],
-                ),
+                if (_hasGroupAccess(admin, 'emlak'))
+                  _buildNavGroup(
+                    groupKey: 'emlak',
+                    icon: Icons.home_work_rounded,
+                    label: 'Emlak',
+                    currentRoute: currentRoute,
+                    isDark: isDark,
+                    children: [
+                      _NavChild(Icons.dashboard_outlined, 'Panel', AppRoutes.emlakDashboard),
+                      _NavChild(Icons.real_estate_agent_outlined, 'İlanlar', AppRoutes.emlakListings),
+                      _NavChild(Icons.location_city_outlined, 'Şehirler', AppRoutes.emlakCities),
+                      _NavChild(Icons.map_outlined, 'İlçeler', AppRoutes.emlakDistricts),
+                      _NavChild(Icons.category_outlined, 'Emlak Türleri', AppRoutes.emlakPropertyTypes),
+                      _NavChild(Icons.featured_play_list_outlined, 'Özellikler', AppRoutes.emlakAmenities),
+                      _NavChild(Icons.price_change_outlined, 'Fiyatlandırma', AppRoutes.emlakPricing),
+                      _NavChild(Icons.tune_outlined, 'Ayarlar', AppRoutes.emlakSettings),
+                      _NavChild(Icons.assignment_ind_outlined, 'Emlakçı Başvuruları', AppRoutes.emlakRealtorApplications),
+                    ],
+                  ),
 
                 // ARAÇ SATIŞ
-                _buildNavGroup(
-                  groupKey: 'carSales',
-                  icon: Icons.directions_car_filled_rounded,
-                  label: 'Araç Satış',
-                  currentRoute: currentRoute,
-                  badgeCount: pendingCounts.pendingCarListings,
-                  children: [
-                    _NavChild(Icons.dashboard_outlined, 'Panel', AppRoutes.carSalesDashboard),
-                    _NavChild(Icons.list_alt_outlined, 'İlanlar', AppRoutes.carSalesListings, badgeCount: pendingCounts.pendingCarListings),
-                    _NavChild(Icons.branding_watermark_outlined, 'Markalar', AppRoutes.carSalesBrands),
-                    _NavChild(Icons.featured_play_list_outlined, 'Özellikler', AppRoutes.carSalesFeatures),
-                    _NavChild(Icons.price_change_outlined, 'Fiyatlandırma', AppRoutes.carSalesPricing),
-                    _NavChild(Icons.directions_car_outlined, 'Gövde Tipleri', AppRoutes.carSalesBodyTypes),
-                    _NavChild(Icons.local_gas_station_outlined, 'Yakıt Tipleri', AppRoutes.carSalesFuelTypes),
-                    _NavChild(Icons.settings_outlined, 'Vites Tipleri', AppRoutes.carSalesTransmissions),
-                  ],
-                ),
+                if (_hasGroupAccess(admin, 'carSales'))
+                  _buildNavGroup(
+                    groupKey: 'carSales',
+                    icon: Icons.directions_car_filled_rounded,
+                    label: 'Araç Satış',
+                    currentRoute: currentRoute,
+                    badgeCount: pendingCounts.pendingCarListings,
+                    isDark: isDark,
+                    children: [
+                      _NavChild(Icons.dashboard_outlined, 'Panel', AppRoutes.carSalesDashboard),
+                      _NavChild(Icons.list_alt_outlined, 'İlanlar', AppRoutes.carSalesListings, badgeCount: pendingCounts.pendingCarListings),
+                      _NavChild(Icons.branding_watermark_outlined, 'Markalar', AppRoutes.carSalesBrands),
+                      _NavChild(Icons.featured_play_list_outlined, 'Özellikler', AppRoutes.carSalesFeatures),
+                      _NavChild(Icons.price_change_outlined, 'Fiyatlandırma', AppRoutes.carSalesPricing),
+                      _NavChild(Icons.directions_car_outlined, 'Gövde Tipleri', AppRoutes.carSalesBodyTypes),
+                      _NavChild(Icons.local_gas_station_outlined, 'Yakıt Tipleri', AppRoutes.carSalesFuelTypes),
+                      _NavChild(Icons.settings_outlined, 'Vites Tipleri', AppRoutes.carSalesTransmissions),
+                    ],
+                  ),
 
                 // İŞ İLANLARI
-                _buildNavGroup(
-                  groupKey: 'jobs',
-                  icon: Icons.work_rounded,
-                  label: 'İş İlanları',
-                  currentRoute: currentRoute,
-                  children: [
-                    _NavChild(Icons.dashboard_outlined, 'Panel', AppRoutes.jobListingsDashboard),
-                    _NavChild(Icons.list_alt_outlined, 'İlanlar', AppRoutes.jobListingsList),
-                    _NavChild(Icons.business_outlined, 'Şirketler', AppRoutes.jobCompanies),
-                    _NavChild(Icons.category_outlined, 'Kategoriler', AppRoutes.jobCategories),
-                    _NavChild(Icons.psychology_outlined, 'Yetenekler', AppRoutes.jobSkills),
-                    _NavChild(Icons.card_giftcard_outlined, 'Yan Haklar', AppRoutes.jobBenefits),
-                    _NavChild(Icons.monetization_on_outlined, 'Fiyatlandırma', AppRoutes.jobPricing),
-                    _NavChild(Icons.tune_outlined, 'Ayarlar', AppRoutes.jobSettings),
-                  ],
-                ),
+                if (_hasGroupAccess(admin, 'jobs'))
+                  _buildNavGroup(
+                    groupKey: 'jobs',
+                    icon: Icons.work_rounded,
+                    label: 'İş İlanları',
+                    currentRoute: currentRoute,
+                    isDark: isDark,
+                    children: [
+                      _NavChild(Icons.dashboard_outlined, 'Panel', AppRoutes.jobListingsDashboard),
+                      _NavChild(Icons.list_alt_outlined, 'İlanlar', AppRoutes.jobListingsList),
+                      _NavChild(Icons.business_outlined, 'Şirketler', AppRoutes.jobCompanies),
+                      _NavChild(Icons.category_outlined, 'Kategoriler', AppRoutes.jobCategories),
+                      _NavChild(Icons.psychology_outlined, 'Yetenekler', AppRoutes.jobSkills),
+                      _NavChild(Icons.card_giftcard_outlined, 'Yan Haklar', AppRoutes.jobBenefits),
+                      _NavChild(Icons.monetization_on_outlined, 'Fiyatlandırma', AppRoutes.jobPricing),
+                      _NavChild(Icons.tune_outlined, 'Ayarlar', AppRoutes.jobSettings),
+                    ],
+                  ),
+
+                // DESTEK YÖNETİMİ
+                if (_hasGroupAccess(admin, 'support'))
+                  _buildNavGroup(
+                    groupKey: 'support',
+                    icon: Icons.headset_mic_rounded,
+                    label: 'Destek Yönetimi',
+                    currentRoute: currentRoute,
+                    isDark: isDark,
+                    children: [
+                      _NavChild(Icons.dashboard_outlined, 'Dashboard', AppRoutes.supportDashboard),
+                      _NavChild(Icons.assignment_outlined, 'Ticket İnceleme', AppRoutes.ticketReview),
+                      _NavChild(Icons.bar_chart_outlined, 'Temsilci Performans', AppRoutes.agentPerformance),
+                      _NavChild(Icons.analytics_outlined, 'Raporlar', AppRoutes.supportReports),
+                      _NavChild(Icons.support_agent_outlined, 'AI Destek', AppRoutes.aiSupport),
+                      _NavChild(Icons.people_outline, 'Destek Agentları', AppRoutes.supportAgents),
+                    ],
+                  ),
 
                 // SİSTEM
-                _buildNavGroup(
-                  groupKey: 'system',
-                  icon: Icons.settings_rounded,
-                  label: 'Sistem',
-                  currentRoute: currentRoute,
-                  children: [
-                    _NavChild(Icons.settings_outlined, 'Genel Ayarlar', AppRoutes.settings),
-                    _NavChild(Icons.image_outlined, 'Bannerlar', AppRoutes.banners),
-                    _NavChild(Icons.security_outlined, 'Güvenlik', AppRoutes.security),
-                    _NavChild(Icons.history_outlined, 'Log Kayıtları', AppRoutes.logs),
-                    _NavChild(Icons.monitor_heart_outlined, 'Sistem Sağlığı', AppRoutes.systemHealth),
-                    _NavChild(Icons.support_agent_outlined, 'AI Destek', AppRoutes.aiSupport),
-                  ],
-                ),
+                if (_hasGroupAccess(admin, 'system'))
+                  _buildNavGroup(
+                    groupKey: 'system',
+                    icon: Icons.settings_rounded,
+                    label: 'Sistem',
+                    currentRoute: currentRoute,
+                    isDark: isDark,
+                    children: [
+                      _NavChild(Icons.settings_outlined, 'Genel Ayarlar', AppRoutes.settings),
+                      _NavChild(Icons.two_wheeler_outlined, 'Kurye Araç Tipleri', AppRoutes.courierVehicleTypes),
+                      _NavChild(Icons.image_outlined, 'Bannerlar', AppRoutes.banners),
+                      _NavChild(Icons.security_outlined, 'Güvenlik', AppRoutes.security),
+                      _NavChild(Icons.history_outlined, 'Log Kayıtları', AppRoutes.logs),
+                      _NavChild(Icons.monitor_heart_outlined, 'Sistem Sağlığı', AppRoutes.systemHealth),
+                    ],
+                  ),
               ],
             ),
           ),
@@ -306,13 +402,11 @@ class _AdminShellState extends ConsumerState<AdminShell> {
               onPressed: () => setState(() => _isCollapsed = !_isCollapsed),
               icon: Icon(
                 _isCollapsed ? Icons.chevron_right : Icons.chevron_left,
-                color: AppColors.textSecondary,
+                color: isDark ? AppColors.textSecondary : const Color(0xFF475569),
               ),
               style: IconButton.styleFrom(
-                backgroundColor: AppColors.surfaceLight.withValues(alpha: 0.5),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+                backgroundColor: (isDark ? AppColors.surfaceLight : const Color(0xFFE2E8F0)).withValues(alpha: 0.5),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
             ),
           ),
@@ -326,7 +420,6 @@ class _AdminShellState extends ConsumerState<AdminShell> {
   void _initAudioOnFirstClick() {
     if (!_audioInitialized) {
       _audioInitialized = true;
-      // Sessizce AudioContext'i başlat
       try {
         ref.read(notificationServiceProvider.notifier).playNotificationSound();
       } catch (e) {
@@ -340,9 +433,11 @@ class _AdminShellState extends ConsumerState<AdminShell> {
     required String label,
     required String route,
     required String currentRoute,
+    required bool isDark,
     int badgeCount = 0,
   }) {
     final isSelected = currentRoute == route;
+    final textSecondary = isDark ? AppColors.textSecondary : const Color(0xFF475569);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
@@ -356,53 +451,28 @@ class _AdminShellState extends ConsumerState<AdminShell> {
           borderRadius: BorderRadius.circular(12),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            padding: EdgeInsets.symmetric(
-              horizontal: _isCollapsed ? 12 : 16,
-              vertical: 12,
-            ),
+            padding: EdgeInsets.symmetric(horizontal: _isCollapsed ? 12 : 16, vertical: 12),
             decoration: BoxDecoration(
-              color: isSelected
-                  ? AppColors.primary.withValues(alpha: 0.15)
-                  : Colors.transparent,
+              color: isSelected ? AppColors.primary.withValues(alpha: 0.15) : Colors.transparent,
               borderRadius: BorderRadius.circular(12),
-              border: isSelected
-                  ? Border.all(color: AppColors.primary.withValues(alpha: 0.3))
-                  : null,
+              border: isSelected ? Border.all(color: AppColors.primary.withValues(alpha: 0.3)) : null,
             ),
             child: Row(
               children: [
-                // Icon with badge
                 Stack(
                   clipBehavior: Clip.none,
                   children: [
-                    Icon(
-                      icon,
-                      color: isSelected
-                          ? AppColors.primary
-                          : AppColors.textSecondary,
-                      size: 22,
-                    ),
+                    Icon(icon, color: isSelected ? AppColors.primary : textSecondary, size: 22),
                     if (badgeCount > 0)
                       Positioned(
-                        right: -8,
-                        top: -8,
+                        right: -8, top: -8,
                         child: Container(
                           padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: AppColors.error,
-                            shape: BoxShape.circle,
-                          ),
-                          constraints: const BoxConstraints(
-                            minWidth: 18,
-                            minHeight: 18,
-                          ),
+                          decoration: const BoxDecoration(color: AppColors.error, shape: BoxShape.circle),
+                          constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
                           child: Text(
                             badgeCount > 99 ? '99+' : badgeCount.toString(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                             textAlign: TextAlign.center,
                           ),
                         ),
@@ -415,31 +485,19 @@ class _AdminShellState extends ConsumerState<AdminShell> {
                     child: Text(
                       label,
                       style: TextStyle(
-                        color: isSelected
-                            ? AppColors.primary
-                            : AppColors.textSecondary,
-                        fontWeight: isSelected
-                            ? FontWeight.w600
-                            : FontWeight.normal,
+                        color: isSelected ? AppColors.primary : textSecondary,
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                         fontSize: 14,
                       ),
                     ),
                   ),
-                  // Badge on the right side when not collapsed
                   if (badgeCount > 0)
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppColors.error,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
+                      decoration: BoxDecoration(color: AppColors.error, borderRadius: BorderRadius.circular(10)),
                       child: Text(
                         badgeCount > 99 ? '99+' : badgeCount.toString(),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
                       ),
                     ),
                 ],
@@ -451,15 +509,20 @@ class _AdminShellState extends ConsumerState<AdminShell> {
     );
   }
 
-  Widget _buildTopBar(AsyncValue<AdminUser?> adminAsync) {
+  Widget _buildTopBar(AsyncValue<AdminUser?> adminAsync, bool isDark) {
+    final topBarBg = isDark ? AppColors.surface : const Color(0xFFFFFFFF);
+    final borderColor = isDark ? AppColors.surfaceLight : const Color(0xFFE2E8F0);
+    final searchBg = isDark ? AppColors.background : const Color(0xFFF1F5F9);
+    final textMuted = isDark ? AppColors.textMuted : const Color(0xFF94A3B8);
+    final textSecondary = isDark ? AppColors.textSecondary : const Color(0xFF475569);
+    final textPrimary = isDark ? AppColors.textPrimary : const Color(0xFF0F172A);
+
     return Container(
       height: 72,
       padding: const EdgeInsets.symmetric(horizontal: 24),
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(
-          bottom: BorderSide(color: AppColors.surfaceLight, width: 1),
-        ),
+      decoration: BoxDecoration(
+        color: topBarBg,
+        border: Border(bottom: BorderSide(color: borderColor, width: 1)),
       ),
       child: Row(
         children: [
@@ -468,22 +531,14 @@ class _AdminShellState extends ConsumerState<AdminShell> {
             child: Container(
               constraints: const BoxConstraints(maxWidth: 400),
               child: TextField(
+                focusNode: _searchFocusNode,
                 decoration: InputDecoration(
-                  hintText: 'Ara...',
-                  prefixIcon: const Icon(
-                    Icons.search,
-                    color: AppColors.textMuted,
-                  ),
+                  hintText: 'Ara... (Ctrl+K)',
+                  prefixIcon: Icon(Icons.search, color: textMuted),
                   filled: true,
-                  fillColor: AppColors.background,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
+                  fillColor: searchBg,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 ),
               ),
             ),
@@ -491,7 +546,23 @@ class _AdminShellState extends ConsumerState<AdminShell> {
 
           const SizedBox(width: 24),
 
-          // Notifications - tıklandığında ses testi yapar
+          // Theme toggle
+          IconButton(
+            onPressed: () => ref.read(themeModeProvider.notifier).toggle(),
+            icon: Icon(
+              isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+              color: textSecondary,
+            ),
+            tooltip: isDark ? 'Açık Tema' : 'Koyu Tema',
+            style: IconButton.styleFrom(
+              backgroundColor: searchBg,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+
+          const SizedBox(width: 12),
+
+          // Notifications
           IconButton(
             onPressed: () {
               final notificationService = ref.read(notificationServiceProvider.notifier);
@@ -506,16 +577,11 @@ class _AdminShellState extends ConsumerState<AdminShell> {
             },
             icon: Badge(
               smallSize: 8,
-              child: const Icon(
-                Icons.notifications_outlined,
-                color: AppColors.textSecondary,
-              ),
+              child: Icon(Icons.notifications_outlined, color: textSecondary),
             ),
             style: IconButton.styleFrom(
-              backgroundColor: AppColors.background,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+              backgroundColor: searchBg,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
             tooltip: 'Bildirim sesini test et',
           ),
@@ -526,16 +592,11 @@ class _AdminShellState extends ConsumerState<AdminShell> {
           adminAsync.when(
             data: (admin) => PopupMenuButton<String>(
               offset: const Offset(0, 50),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: AppColors.background,
+                  color: searchBg,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
@@ -545,10 +606,7 @@ class _AdminShellState extends ConsumerState<AdminShell> {
                       backgroundColor: AppColors.primary,
                       child: Text(
                         admin?.fullName.substring(0, 1).toUpperCase() ?? 'A',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -556,80 +614,42 @@ class _AdminShellState extends ConsumerState<AdminShell> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          admin?.fullName ?? 'Admin',
-                          style: const TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                        Text(
-                          admin?.roleDisplayName ?? 'Yönetici',
-                          style: const TextStyle(
-                            color: AppColors.textMuted,
-                            fontSize: 11,
-                          ),
-                        ),
+                        Text(admin?.fullName ?? 'Admin', style: TextStyle(color: textPrimary, fontSize: 13, fontWeight: FontWeight.w500)),
+                        Text(admin?.roleDisplayName ?? 'Yönetici', style: TextStyle(color: textMuted, fontSize: 11)),
                       ],
                     ),
                     const SizedBox(width: 8),
-                    const Icon(
-                      Icons.keyboard_arrow_down,
-                      color: AppColors.textMuted,
-                      size: 20,
-                    ),
+                    Icon(Icons.keyboard_arrow_down, color: textMuted, size: 20),
                   ],
                 ),
               ),
               itemBuilder: (context) => [
                 const PopupMenuItem(
                   value: 'profile',
-                  child: Row(
-                    children: [
-                      Icon(Icons.person_outline, size: 20),
-                      SizedBox(width: 12),
-                      Text('Profil'),
-                    ],
-                  ),
+                  child: Row(children: [Icon(Icons.person_outline, size: 20), SizedBox(width: 12), Text('Profil')]),
                 ),
                 const PopupMenuItem(
                   value: 'settings',
-                  child: Row(
-                    children: [
-                      Icon(Icons.settings_outlined, size: 20),
-                      SizedBox(width: 12),
-                      Text('Ayarlar'),
-                    ],
-                  ),
+                  child: Row(children: [Icon(Icons.settings_outlined, size: 20), SizedBox(width: 12), Text('Ayarlar')]),
                 ),
                 const PopupMenuDivider(),
                 const PopupMenuItem(
                   value: 'logout',
-                  child: Row(
-                    children: [
-                      Icon(Icons.logout, size: 20, color: AppColors.error),
-                      SizedBox(width: 12),
-                      Text(
-                        'Çıkış Yap',
-                        style: TextStyle(color: AppColors.error),
-                      ),
-                    ],
-                  ),
+                  child: Row(children: [
+                    Icon(Icons.logout, size: 20, color: AppColors.error),
+                    SizedBox(width: 12),
+                    Text('Çıkış Yap', style: TextStyle(color: AppColors.error)),
+                  ]),
                 ),
               ],
               onSelected: (value) async {
                 if (value == 'logout') {
-                  // Log logout before signing out
                   final logService = ref.read(adminLogServiceProvider);
                   await logService.logLogout();
-
                   final authService = ref.read(adminAuthServiceProvider);
                   await authService.signOut();
                   ref.read(currentAdminProvider.notifier).clear();
-                  if (mounted) {
-                    context.go(AppRoutes.login);
-                  }
+                  if (mounted) context.go(AppRoutes.login);
                 } else if (value == 'settings') {
                   context.go(AppRoutes.settings);
                 }
@@ -650,15 +670,18 @@ class _AdminShellState extends ConsumerState<AdminShell> {
     required String label,
     required String currentRoute,
     required List<_NavChild> children,
+    required bool isDark,
     int badgeCount = 0,
   }) {
     final isExpanded = _expandedGroups[groupKey] ?? false;
     final hasActiveChild = children.any((child) => currentRoute == child.route);
+    final textSecondary = isDark ? AppColors.textSecondary : const Color(0xFF475569);
+    final textMuted = isDark ? AppColors.textMuted : const Color(0xFF94A3B8);
 
     // Eğer aktif child varsa grubu otomatik aç
     if (hasActiveChild && !isExpanded) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        setState(() => _expandedGroups[groupKey] = true);
+        if (mounted) setState(() => _expandedGroups[groupKey] = true);
       });
     }
 
@@ -668,20 +691,13 @@ class _AdminShellState extends ConsumerState<AdminShell> {
         Material(
           color: Colors.transparent,
           child: InkWell(
-            onTap: () {
-              setState(() => _expandedGroups[groupKey] = !isExpanded);
-            },
+            onTap: () => setState(() => _expandedGroups[groupKey] = !isExpanded),
             borderRadius: BorderRadius.circular(12),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              padding: EdgeInsets.symmetric(
-                horizontal: _isCollapsed ? 12 : 16,
-                vertical: 12,
-              ),
+              padding: EdgeInsets.symmetric(horizontal: _isCollapsed ? 12 : 16, vertical: 12),
               decoration: BoxDecoration(
-                color: hasActiveChild
-                    ? AppColors.primary.withValues(alpha: 0.08)
-                    : Colors.transparent,
+                color: hasActiveChild ? AppColors.primary.withValues(alpha: 0.08) : Colors.transparent,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -689,34 +705,17 @@ class _AdminShellState extends ConsumerState<AdminShell> {
                   Stack(
                     clipBehavior: Clip.none,
                     children: [
-                      Icon(
-                        icon,
-                        color: hasActiveChild
-                            ? AppColors.primary
-                            : AppColors.textSecondary,
-                        size: 22,
-                      ),
+                      Icon(icon, color: hasActiveChild ? AppColors.primary : textSecondary, size: 22),
                       if (badgeCount > 0 && _isCollapsed)
                         Positioned(
-                          right: -8,
-                          top: -8,
+                          right: -8, top: -8,
                           child: Container(
                             padding: const EdgeInsets.all(4),
-                            decoration: const BoxDecoration(
-                              color: AppColors.error,
-                              shape: BoxShape.circle,
-                            ),
-                            constraints: const BoxConstraints(
-                              minWidth: 16,
-                              minHeight: 16,
-                            ),
+                            decoration: const BoxDecoration(color: AppColors.error, shape: BoxShape.circle),
+                            constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
                             child: Text(
                               badgeCount > 99 ? '99+' : badgeCount.toString(),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 9,
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
                               textAlign: TextAlign.center,
                             ),
                           ),
@@ -729,34 +728,20 @@ class _AdminShellState extends ConsumerState<AdminShell> {
                       child: Text(
                         label,
                         style: TextStyle(
-                          color: hasActiveChild
-                              ? AppColors.primary
-                              : AppColors.textSecondary,
-                          fontWeight: hasActiveChild
-                              ? FontWeight.w600
-                              : FontWeight.w500,
+                          color: hasActiveChild ? AppColors.primary : textSecondary,
+                          fontWeight: hasActiveChild ? FontWeight.w600 : FontWeight.w500,
                           fontSize: 14,
                         ),
                       ),
                     ),
                     if (badgeCount > 0)
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         margin: const EdgeInsets.only(right: 8),
-                        decoration: BoxDecoration(
-                          color: AppColors.error,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                        decoration: BoxDecoration(color: AppColors.error, borderRadius: BorderRadius.circular(10)),
                         child: Text(
                           badgeCount > 99 ? '99+' : badgeCount.toString(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
                         ),
                       ),
                     AnimatedRotation(
@@ -764,9 +749,7 @@ class _AdminShellState extends ConsumerState<AdminShell> {
                       duration: const Duration(milliseconds: 200),
                       child: Icon(
                         Icons.keyboard_arrow_down,
-                        color: hasActiveChild
-                            ? AppColors.primary
-                            : AppColors.textMuted,
+                        color: hasActiveChild ? AppColors.primary : textMuted,
                         size: 20,
                       ),
                     ),
@@ -792,64 +775,33 @@ class _AdminShellState extends ConsumerState<AdminShell> {
                       onTap: () => context.go(child.route),
                       borderRadius: BorderRadius.circular(10),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         decoration: BoxDecoration(
-                          color: isSelected
-                              ? AppColors.primary.withValues(alpha: 0.15)
-                              : Colors.transparent,
+                          color: isSelected ? AppColors.primary.withValues(alpha: 0.15) : Colors.transparent,
                           borderRadius: BorderRadius.circular(10),
-                          border: isSelected
-                              ? Border.all(
-                                  color: AppColors.primary.withValues(alpha: 0.3),
-                                )
-                              : null,
+                          border: isSelected ? Border.all(color: AppColors.primary.withValues(alpha: 0.3)) : null,
                         ),
                         child: Row(
                           children: [
-                            Icon(
-                              child.icon,
-                              color: isSelected
-                                  ? AppColors.primary
-                                  : AppColors.textMuted,
-                              size: 18,
-                            ),
+                            Icon(child.icon, color: isSelected ? AppColors.primary : textMuted, size: 18),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Text(
                                 child.label,
                                 style: TextStyle(
-                                  color: isSelected
-                                      ? AppColors.primary
-                                      : AppColors.textSecondary,
-                                  fontWeight: isSelected
-                                      ? FontWeight.w600
-                                      : FontWeight.normal,
+                                  color: isSelected ? AppColors.primary : textSecondary,
+                                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                                   fontSize: 13,
                                 ),
                               ),
                             ),
                             if (child.badgeCount > 0)
                               Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.error,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(color: AppColors.error, borderRadius: BorderRadius.circular(8)),
                                 child: Text(
-                                  child.badgeCount > 99
-                                      ? '99+'
-                                      : child.badgeCount.toString(),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                                  child.badgeCount > 99 ? '99+' : child.badgeCount.toString(),
+                                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                                 ),
                               ),
                           ],

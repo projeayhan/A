@@ -902,6 +902,38 @@ const CUSTOMER_TOOLS = [
         }
       }
     }
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "compare_market_prices",
+      description: "Market/mağaza fiyat karşılaştırması yap. Kullanıcı birden fazla ürün söyleyip en ucuz marketi bulmak istediğinde bu aracı kullan. 'En ucuz neresi', 'fiyat karşılaştır', 'hangi market daha ucuz', 'alışveriş listesi' gibi ifadelerde kullan. Ürün isimlerini KISA ve YALIN tut.",
+      parameters: {
+        type: "object",
+        properties: {
+          products: {
+            type: "array",
+            items: { type: "string" },
+            description: "Karşılaştırılacak ürün isimleri listesi. Kısa ve yalın: ['süt', 'ekmek', 'peynir']"
+          }
+        },
+        required: ["products"]
+      }
+    }
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "connect_live_support",
+      description: "Kullanıcıyı canlı destek temsilcisine bağla. ÖNEMLİ: Bu aracı hemen çağırma! Önce kullanıcının sorununu öğren, en az 1 soru sor. Konuyu anladıktan sonra çağır. Tetiklenme: canlı destek, gerçek kişi, müşteri hizmetleri, temsilci, insan ile görüşmek, yardım hattı, şikayet, destek talebi.",
+      parameters: {
+        type: "object",
+        properties: {
+          reason: { type: "string", description: "Kullanıcının canlı destek isteme sebebinin DETAYLI özeti. Sohbette öğrenilen tüm bilgileri yaz: sorun ne, hangi hizmetle ilgili, ne denendi." }
+        },
+        required: ["reason"]
+      }
+    }
   }
 ];
 
@@ -911,6 +943,8 @@ interface ToolExecContext {
   supabase: ReturnType<typeof createClient>;
   userId: string;
   addressData: { latitude: number; longitude: number } | null;
+  appSource: string;
+  sessionId: string;
 }
 
 interface SearchResultProduct {
@@ -1438,6 +1472,168 @@ async function executeToolCall(
       return `${result.total} ürün bulundu:\n${lines.join('\n')}`;
     }
 
+    case 'compare_market_prices': {
+      const products = (args.products as string[]) || [];
+      if (products.length === 0) return 'Karşılaştırılacak ürün belirtilmedi.';
+      if (products.length > 10) return 'En fazla 10 ürün karşılaştırılabilir. Lütfen listeyi kısaltın.';
+
+      const { data: cmpData, error: cmpError } = await supabase.rpc('ai_compare_market_prices', {
+        p_product_names: products
+      });
+
+      if (cmpError) return 'Fiyat karşılaştırması yapılamadı: ' + cmpError.message;
+
+      const cmpResult = cmpData as {
+        success: boolean;
+        requested_products: string[];
+        total_products_requested: number;
+        store_count: number;
+        stores: Array<{
+          merchant_id: string; business_name: string; merchant_type: string;
+          is_open: boolean; rating: number; delivery_fee: number; delivery_time: string;
+          min_order_amount: number; discount_badge: string | null;
+          matched_count: number; total_requested: number; has_all_products: boolean;
+          total_price: number; total_with_delivery: number;
+          matched_products: Array<{ search_term: string; product_id: string; product_name: string; price: number; original_price: number | null; image_url: string; brand: string; stock: number }>;
+          missing_products: string[];
+        }>;
+      };
+
+      if (!cmpResult.stores || cmpResult.stores.length === 0) {
+        return `Aranan ürünler (${products.join(', ')}) hiçbir markette bulunamadı.`;
+      }
+
+      // Collect visual cards
+      if (searchResultsCollector) {
+        for (const store of cmpResult.stores.slice(0, 5)) {
+          for (const product of store.matched_products) {
+            searchResultsCollector.push({
+              id: product.product_id,
+              name: product.product_name,
+              price: product.price,
+              original_price: product.original_price,
+              image_url: product.image_url || '',
+              merchant_id: store.merchant_id,
+              merchant_name: store.business_name,
+              merchant_type: store.merchant_type === 'market' ? 'market' : 'store',
+              brand: product.brand,
+            });
+          }
+        }
+      }
+
+      // Push comparison action for Flutter UI
+      if (actions) {
+        actions.push({
+          type: 'price_comparison',
+          payload: {
+            requested_products: cmpResult.requested_products,
+            stores: cmpResult.stores.slice(0, 5).map(store => ({
+              merchant_id: store.merchant_id,
+              business_name: store.business_name,
+              merchant_type: store.merchant_type,
+              is_open: store.is_open,
+              rating: store.rating,
+              delivery_fee: store.delivery_fee,
+              delivery_time: store.delivery_time,
+              has_all_products: store.has_all_products,
+              matched_count: store.matched_count,
+              total_requested: store.total_requested,
+              total_price: store.total_price,
+              total_with_delivery: store.total_with_delivery,
+              discount_badge: store.discount_badge,
+              matched_products: store.matched_products,
+              missing_products: store.missing_products,
+            })),
+          }
+        });
+      }
+
+      // Format text summary for AI
+      let summary = `FİYAT KARŞILAŞTIRMASI: ${products.join(', ')}\n`;
+      summary += `${cmpResult.store_count} market/mağazada arandı.\n\n`;
+
+      for (const store of cmpResult.stores.slice(0, 5)) {
+        const statusIcon = store.is_open ? 'AÇIK' : 'KAPALI';
+        const allFlag = store.has_all_products ? 'Tüm ürünler var' : `${store.matched_count}/${store.total_requested} ürün`;
+        summary += `${store.business_name} (${statusIcon}) | ${allFlag}\n`;
+        for (const p of store.matched_products) {
+          summary += `  - ${p.product_name}: ${p.price} TL [ID:${p.product_id}]\n`;
+        }
+        if (store.missing_products.length > 0) {
+          summary += `  Eksik: ${store.missing_products.join(', ')}\n`;
+        }
+        summary += `  Toplam: ${store.total_price} TL`;
+        if (store.delivery_fee > 0) summary += ` + ${store.delivery_fee} TL teslimat = ${store.total_with_delivery} TL`;
+        summary += `\n  [MID:${store.merchant_id}] [${store.merchant_type}]\n\n`;
+      }
+
+      summary += `Karşılaştırma sonuçları kullanıcıya GÖRSEL olarak gösterildi. Kısa özet yaz ve en ucuz marketi öner. Kullanıcı onaylarsa seçilen marketin TÜM ürünlerini sepete ekle (her biri için ayrı add_to_cart çağır).`;
+
+      return summary;
+    }
+
+    case 'connect_live_support': {
+      const reason = (args.reason as string) || 'Canlı destek talebi';
+      const { supabase: sb, userId: uid, appSource: src, sessionId: sid } = ctx;
+
+      // Get ONLY recent conversation (last 3 minutes) for context - ignore old sessions
+      let conversationContext = reason;
+      try {
+        const threeMinAgo = new Date(Date.now() - 3 * 60 * 1000).toISOString();
+        const { data: recentMsgs } = await sb
+          .from('support_chat_messages')
+          .select('role, content')
+          .eq('session_id', sid)
+          .gte('created_at', threeMinAgo)
+          .order('created_at', { ascending: false })
+          .limit(5);
+        if (recentMsgs && recentMsgs.length > 0) {
+          conversationContext = recentMsgs
+            .reverse()
+            .filter((m: { content?: string }) => !m.content?.startsWith('[') && !m.content?.includes('Destek talebi #'))
+            .map((m: { role: string; content?: string }) => `${m.role === 'user' ? 'Müşteri' : 'AI'}: ${(m.content || '').substring(0, 200)}`)
+            .join('\n');
+          if (!conversationContext.trim()) conversationContext = reason;
+        }
+      } catch (_) { /* ignore */ }
+
+      const serviceTypeMap: Record<string, string> = {
+        'super_app': 'general', 'customer_app': 'general',
+        'merchant_panel': 'food', 'rent_a_car_panel': 'rental',
+        'courier_app': 'food', 'emlakci_panel': 'emlak',
+        'arac_satis_panel': 'car_sales',
+      };
+
+      const { data: ticketResult, error: ticketError } = await sb.rpc('create_live_support_ticket', {
+        p_user_id: uid,
+        p_app_source: src,
+        p_subject: `Canlı Destek: ${reason.substring(0, 100)}`,
+        p_description: conversationContext,
+        p_service_type: serviceTypeMap[src] || 'general',
+        p_metadata: { ai_session_id: sid },
+      });
+
+      if (ticketError || !ticketResult?.success) {
+        return 'Canlı destek bağlantısı kurulamadı. Lütfen tekrar deneyin.';
+      }
+
+      if (actions) {
+        actions.push({
+          type: 'connect_live_support',
+          payload: {
+            ticket_id: ticketResult.ticket_id,
+            ticket_number: ticketResult.ticket_number,
+            is_existing: ticketResult.is_existing || false,
+          }
+        });
+      }
+
+      return ticketResult.is_existing
+        ? `Mevcut destek talebiniz (#${ticketResult.ticket_number}) bulundu. Temsilciye bağlanıyorsunuz...`
+        : `Destek talebi #${ticketResult.ticket_number} oluşturuldu. Bir temsilci en kısa sürede size dönecek.`;
+    }
+
     default:
       return 'Bilinmeyen araç.';
   }
@@ -1553,9 +1749,10 @@ Deno.serve(async (req: Request) => {
     // History comes descending (newest first), reverse to ascending order
     const rawHistory = ((qr.history?.data || []) as Array<{ role: string; content: string }>).reverse();
     // Separate internal context from conversation messages
+    // Truncate history after last live support ticket creation to start fresh
     let lastSearchContext = '';
     let lastCartContext = '';
-    const conversationHistory: Array<{ role: string; content: string }> = [];
+    const allConversation: Array<{ role: string; content: string }> = [];
     for (const msg of rawHistory) {
       if (msg.role !== 'user' && msg.role !== 'assistant') continue;
       if (msg.content?.startsWith('[ARAMA_SONUÇLARI]') || msg.content?.startsWith('[ARAMA_SONUCLARI]')) {
@@ -1566,8 +1763,20 @@ Deno.serve(async (req: Request) => {
         lastCartContext = msg.content;
         continue;
       }
-      conversationHistory.push(msg);
+      allConversation.push(msg);
     }
+    // Find last "ticket created" message and only keep messages after it
+    let lastTicketIdx = -1;
+    for (let i = allConversation.length - 1; i >= 0; i--) {
+      const c = allConversation[i].content || '';
+      if (c.includes('Destek talebi #') || c.includes('Mevcut destek talebiniz')) {
+        lastTicketIdx = i;
+        break;
+      }
+    }
+    const conversationHistory = lastTicketIdx >= 0
+      ? allConversation.slice(lastTicketIdx + 1)
+      : allConversation;
     const addressData = (qr.userAddress?.data || null) as { latitude: number; longitude: number } | null;
     const userPrefs = qr.userPrefs?.data as Record<string, unknown> | null;
 
@@ -1611,7 +1820,9 @@ Deno.serve(async (req: Request) => {
 23. 🚕 TAKSİ DURUM: "Taksim nerede", "sürücü nerede", "yolculuğum" sorularında get_taxi_ride_status kullan.
 24. 🚕 TAKSİ İPTAL: İptal isteğinde cancel_taxi_ride(confirmed=false) ile kontrol, kullanıcı onaylarsa confirmed=true ile iptal et. (Sipariş iptali ile aynı 2 adımlı pattern)
 25. 🚕 TAKSİ GEÇMİŞ: "Önceki yolculuklarım", "taksi geçmişim" sorularında get_taxi_ride_history kullan.
-26. 🛍️ MAĞAZA ÜRÜN ARAMA: Kullanıcı alışveriş yapmak, ürün aramak veya fiyat sorgulamak istediğinde search_store_products aracını kullan. Kategoriler: Elektronik, Giyim, Kozmetik, Ev & Yaşam, Spor & Outdoor, Telefon & Aksesuar, Ayakkabı & Çanta, vb. "Ucuz" derse max_price ile düşük sınır koy. Sonuçlar kullanıcıya GÖRSEL KART olarak otomatik gösterilecek. Sen sadece kısa giriş yaz, ürünleri tek tek listeleme.`;
+26. 🛍️ MAĞAZA ÜRÜN ARAMA: Kullanıcı alışveriş yapmak, ürün aramak veya fiyat sorgulamak istediğinde search_store_products aracını kullan. Kategoriler: Elektronik, Giyim, Kozmetik, Ev & Yaşam, Spor & Outdoor, Telefon & Aksesuar, Ayakkabı & Çanta, vb. "Ucuz" derse max_price ile düşük sınır koy. Sonuçlar kullanıcıya GÖRSEL KART olarak otomatik gösterilecek. Sen sadece kısa giriş yaz, ürünleri tek tek listeleme.
+28. 🛒 FİYAT KARŞILAŞTIRMASI: Kullanıcı birden fazla ürün söyleyip "en ucuz market", "karşılaştır", "nerede ucuz", "alışveriş listesi", "hangi market", "toplam fiyat" gibi ifadeler kullandığında compare_market_prices aracını çağır. Ürün isimlerini kısa ve yalın diziye dönüştür (ör: "süt ekmek yumurta peynir al" → ["süt","ekmek","yumurta","peynir"]). Sonuçları kısa özetle: en ucuz marketi belirt, toplam fiyatı söyle. Kullanıcı onaylarsa ("tamam oradan al", "ekle hepsini", "o marketten istiyorum") seçilen marketin TÜM ürünleri için ayrı ayrı add_to_cart çağır. ⚠️ Kullanıcı onay vermeden HİÇBİR ürünü sepete ekleme.
+27. 🛑 CANLI DESTEK KURALI: Kullanıcı canlı destek/temsilci istediğinde connect_live_support aracını HEMEN ÇAĞIRMA! Önce: a) Sorunun ne olduğunu sor b) Hangi hizmetle ilgili olduğunu anla c) Kısaca yardımcı olmayı dene d) Çözemiyorsan veya kullanıcı ısrar ediyorsa ANCAK O ZAMAN connect_live_support çağır, reason parametresine tüm öğrendiğin bilgileri detaylı yaz.`;
 
     // User preferences & allergies
     if (userPrefs) {
@@ -1707,7 +1918,7 @@ Deno.serve(async (req: Request) => {
     let finalMessages = messages;
 
     if (useTools) {
-      const toolCtx: ToolExecContext = { supabase, userId: user.id, addressData };
+      const toolCtx: ToolExecContext = { supabase, userId: user.id, addressData, appSource: app_source, sessionId: currentSessionId || '' };
       searchResultProducts = [];
       rentalResultProducts = [];
       const allToolContextParts: string[] = [];
@@ -1891,6 +2102,63 @@ Deno.serve(async (req: Request) => {
       detectNavigationAction(message, screen_context, qr.merchantProducts?.data, actions);
     }
 
+    // ===== LIVE SUPPORT KEYWORD DETECTION (non-tool-calling apps) =====
+    if (!useTools) {
+      const liveKw = ['canlı destek', 'canli destek', 'gerçek kişi', 'gercek kisi', 'temsilci', 'müşteri hizmetleri', 'musteri hizmetleri', 'insan ile', 'yardım hattı', 'şikayet'];
+      const lowerMsg = message.toLowerCase();
+      if (liveKw.some(kw => lowerMsg.includes(kw))) {
+        const serviceTypeMap: Record<string, string> = {
+          'merchant_panel': 'food', 'rent_a_car_panel': 'rental',
+          'courier_app': 'food', 'emlakci_panel': 'emlak',
+          'arac_satis_panel': 'car_sales', 'admin_panel': 'general',
+        };
+        const { data: ticketResult } = await supabase.rpc('create_live_support_ticket', {
+          p_user_id: user.id,
+          p_app_source: app_source,
+          p_subject: `Canlı Destek: ${message.substring(0, 100)}`,
+          p_description: message,
+          p_service_type: serviceTypeMap[app_source] || 'general',
+          p_metadata: { ai_session_id: currentSessionId },
+        });
+        if (ticketResult?.success) {
+          actions.push({
+            type: 'connect_live_support',
+            payload: {
+              ticket_id: ticketResult.ticket_id,
+              ticket_number: ticketResult.ticket_number,
+              is_existing: ticketResult.is_existing || false,
+            }
+          });
+          // Return early with live support response
+          const liveMsg = ticketResult.is_existing
+            ? `Mevcut destek talebiniz (#${ticketResult.ticket_number}) bulundu. Temsilciye bağlanıyorsunuz...`
+            : `Destek talebi #${ticketResult.ticket_number} oluşturuldu. Bir temsilci en kısa sürede size dönecek.`;
+
+          await supabase.from('support_chat_messages').insert({
+            session_id: currentSessionId, role: 'assistant', content: liveMsg
+          });
+
+          if (stream && !generate_audio) {
+            const enc = new TextEncoder();
+            const liveStream = new ReadableStream({
+              start(ctrl) {
+                ctrl.enqueue(enc.encode(`event: session\ndata: ${JSON.stringify({ session_id: currentSessionId })}\n\n`));
+                ctrl.enqueue(enc.encode(`event: chunk\ndata: ${JSON.stringify({ text: liveMsg })}\n\n`));
+                ctrl.enqueue(enc.encode(`event: actions\ndata: ${JSON.stringify({ actions })}\n\n`));
+                ctrl.enqueue(enc.encode(`event: done\ndata: ${JSON.stringify({ message: liveMsg, tokens_used: 0 })}\n\n`));
+                ctrl.close();
+              }
+            });
+            return new Response(liveStream, { headers: { ...corsHeaders, 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' } });
+          }
+          return new Response(JSON.stringify({
+            success: true, session_id: currentSessionId, message: liveMsg,
+            actions, tokens_used: 0,
+          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
+        }
+      }
+    }
+
     // ===== FINAL OPENAI CALL (streaming or non-streaming) =====
     if (stream && !generate_audio) {
       // STREAMING
@@ -1906,6 +2174,12 @@ Deno.serve(async (req: Request) => {
             }
             if (rentalResultProducts && rentalResultProducts.length > 0) {
               controller.enqueue(encoder.encode(`event: rental_results\ndata: ${JSON.stringify({ cars: rentalResultProducts })}\n\n`));
+            }
+
+            // Emit price comparison data
+            const priceCompAction = actions.find(a => a.type === 'price_comparison');
+            if (priceCompAction) {
+              controller.enqueue(encoder.encode(`event: price_comparison\ndata: ${JSON.stringify(priceCompAction.payload)}\n\n`));
             }
 
             const streamResponse = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -2032,11 +2306,13 @@ Deno.serve(async (req: Request) => {
       supabase.from('support_chat_sessions').update({ updated_at: new Date().toISOString() }).eq('id', currentSessionId),
     ]);
 
+    const nsPriceComp = actions.find(a => a.type === 'price_comparison');
     return new Response(JSON.stringify({
       success: true, session_id: currentSessionId, message: aiMessage, tokens_used: tokensUsed,
       ...(actions.length > 0 && { actions }),
       ...(searchResultProducts.length > 0 && { search_results: searchResultProducts }),
       ...(rentalResultProducts.length > 0 && { rental_results: rentalResultProducts }),
+      ...(nsPriceComp && { price_comparison: nsPriceComp.payload }),
       ...(audioBase64 && { audio: audioBase64, audio_format: 'mp3' }),
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 });
 

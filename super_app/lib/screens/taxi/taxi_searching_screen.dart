@@ -184,6 +184,7 @@ class _TaxiSearchingScreenState extends ConsumerState<TaxiSearchingScreen>
         dropoffLng: widget.dropoff.longitude,
         dropoffAddress: widget.dropoff.address,
         vehicleTypeId: widget.vehicleType.id,
+        vehicleTypeName: widget.vehicleType.name,
         estimatedFare: widget.fare,
         distanceKm: widget.distanceKm,
         durationMinutes: widget.durationMinutes,

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supabase_service.dart';
@@ -148,8 +149,13 @@ class CommunicationService {
             value: rideId,
           ),
           callback: (payload) {
-            final message = RideMessage.fromJson(payload.newRecord);
-            onNewMessage(message);
+            try {
+              if (payload.newRecord.isEmpty) return;
+              final message = RideMessage.fromJson(payload.newRecord);
+              onNewMessage(message);
+            } catch (e) {
+              debugPrint('Realtime message parse error: $e');
+            }
           },
         )
         .subscribe();
@@ -440,6 +446,12 @@ class CommunicationService {
 
   // ==================== SOS ====================
 
+  static const String _supabaseUrl = 'https://mzgtvdgwxrlhgjboolys.supabase.co';
+
+  /// Aktif SOS token (GPS streaming için)
+  static String? _activeSosToken;
+  static Timer? _sosLocationTimer;
+
   /// Telefon numarasını WhatsApp formatına çevir (90XXXXXXXXXX)
   static String _normalizePhone(String phone) {
     String digits = phone.replaceAll(RegExp(r'[^\d]'), '');
@@ -449,6 +461,95 @@ class CommunicationService {
       digits = '90$digits';
     }
     return digits;
+  }
+
+  /// SOS canlı konum takibi oluştur ve token döndür
+  static Future<String?> _createSosTracking({
+    required double latitude,
+    required double longitude,
+    String? userName,
+    String? rideId,
+    String? driverName,
+    String? vehicleInfo,
+    String? vehiclePlate,
+  }) async {
+    try {
+      final userId = SupabaseService.currentUser?.id;
+      if (userId == null) return null;
+
+      final token = DateTime.now().millisecondsSinceEpoch.toRadixString(36) +
+          userId.substring(0, 8);
+
+      await _client.from('sos_live_locations').insert({
+        'user_id': userId,
+        'share_token': token,
+        'latitude': latitude,
+        'longitude': longitude,
+        'user_name': userName,
+        'alert_type': 'sos',
+        'ride_id': rideId,
+        'driver_name': driverName,
+        'vehicle_info': vehicleInfo,
+        'vehicle_plate': vehiclePlate,
+      });
+
+      return token;
+    } catch (e) {
+      debugPrint('_createSosTracking error: $e');
+      return null;
+    }
+  }
+
+  /// SOS konumunu güncelle
+  static Future<void> _updateSosLocation(double lat, double lng, {double? accuracy, double? speed, double? heading}) async {
+    if (_activeSosToken == null) return;
+    try {
+      await _client.rpc('update_sos_location', params: {
+        'p_share_token': _activeSosToken,
+        'p_latitude': lat,
+        'p_longitude': lng,
+        'p_accuracy': accuracy,
+        'p_speed': speed,
+        'p_heading': heading,
+      });
+    } catch (e) {
+      debugPrint('_updateSosLocation error: $e');
+    }
+  }
+
+  /// GPS streaming başlat (her 10 saniyede konum gönder)
+  static void _startSosLocationStreaming() {
+    _sosLocationTimer?.cancel();
+    _sosLocationTimer = Timer.periodic(const Duration(seconds: 10), (_) async {
+      try {
+        final position = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+        );
+        await _updateSosLocation(
+          position.latitude,
+          position.longitude,
+          accuracy: position.accuracy,
+          speed: position.speed,
+          heading: position.heading,
+        );
+      } catch (e) {
+        debugPrint('SOS location stream error: $e');
+      }
+    });
+  }
+
+  /// SOS takibini durdur
+  static Future<void> stopSosTracking() async {
+    _sosLocationTimer?.cancel();
+    _sosLocationTimer = null;
+    if (_activeSosToken != null) {
+      try {
+        await _client.rpc('deactivate_sos', params: {'p_share_token': _activeSosToken});
+      } catch (e) {
+        debugPrint('stopSosTracking error: $e');
+      }
+      _activeSosToken = null;
+    }
   }
 
   /// Acil durum kişilerine WhatsApp ile SOS mesajı gönder
@@ -513,7 +614,7 @@ class CommunicationService {
           ],
         ),
         content: Text(
-          '${contacts.length} acil durum kişisine WhatsApp üzerinden konum ve bilgileriniz gönderilecek.\n\nDevam etmek istiyor musunuz?',
+          '${contacts.length} acil durum kişisine WhatsApp üzerinden canlı konumunuz ve bilgileriniz gönderilecek.\n\nDevam etmek istiyor musunuz?',
         ),
         actions: [
           TextButton(
@@ -533,8 +634,24 @@ class CommunicationService {
 
     if (confirmed != true) return;
 
-    // 3. Canlı takip linki oluştur
-    final link = await createShareLink(rideId: rideId);
+    // 3. SOS canlı takip kaydı oluştur
+    String trackingUrl = '';
+    if (latitude != null && longitude != null) {
+      final sosToken = await _createSosTracking(
+        latitude: latitude,
+        longitude: longitude,
+        userName: userName,
+        rideId: rideId,
+        driverName: driverName,
+        vehicleInfo: vehicleInfo,
+        vehiclePlate: vehiclePlate,
+      );
+      if (sosToken != null) {
+        _activeSosToken = sosToken;
+        trackingUrl = '$_supabaseUrl/functions/v1/track-sos?token=$sosToken';
+        _startSosLocationStreaming();
+      }
+    }
 
     // 4. DB'ye acil durum kaydı yaz
     if (latitude != null && longitude != null) {
@@ -547,14 +664,14 @@ class CommunicationService {
     }
 
     // 5. Mesaj oluştur
-    final trackingUrl = link?.shareUrl ?? '';
     final buffer = StringBuffer();
     buffer.writeln('\u{1F198} ACİL DURUM${userName != null ? ' - $userName' : ''}');
     buffer.writeln();
     buffer.writeln('Sürüşüm sırasında acil durum bildirdim.');
     if (trackingUrl.isNotEmpty) {
       buffer.writeln();
-      buffer.writeln('\u{1F4CD} Canlı konum takibi: $trackingUrl');
+      buffer.writeln('\u{1F4CD} Canlı konum takibi:');
+      buffer.writeln(trackingUrl);
     }
     if (driverName != null) {
       buffer.writeln();
@@ -562,6 +679,10 @@ class CommunicationService {
       if (vehicleInfo != null || vehiclePlate != null) {
         buffer.writeln('\u{1F698} Araç: ${vehicleInfo ?? ''} ${vehiclePlate != null ? '- $vehiclePlate' : ''}'.trim());
       }
+    }
+    if (latitude != null && longitude != null) {
+      buffer.writeln();
+      buffer.writeln('\u{1F4CD} Son konum: https://maps.google.com/?q=$latitude,$longitude');
     }
     buffer.writeln();
     buffer.writeln('Bu mesaj otomatik olarak gönderilmiştir.');
@@ -605,6 +726,14 @@ class CommunicationService {
               sentCount > 0 ? const Color(0xFF10B981) : const Color(0xFFEF4444),
         ),
       );
+    }
+
+    // 8. Otomatik olarak 155'i ara
+    try {
+      final uri = Uri.parse('tel:155');
+      await launchUrl(uri);
+    } catch (e) {
+      debugPrint('155 arama hatası: $e');
     }
   }
 }

@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image/image.dart' as img;
@@ -37,16 +38,20 @@ class RestaurantCategory {
 class StoreCategory {
   final String id;
   final String name;
+  final String? iconName;
+  final String? color;
   final String? imageUrl;
-  final String? icon;
+  final int storeCount;
   final int sortOrder;
   final bool isActive;
 
   StoreCategory({
     required this.id,
     required this.name,
+    this.iconName,
+    this.color,
     this.imageUrl,
-    this.icon,
+    this.storeCount = 0,
     this.sortOrder = 0,
     this.isActive = true,
   });
@@ -55,8 +60,10 @@ class StoreCategory {
     return StoreCategory(
       id: json['id'] as String,
       name: json['name'] as String,
+      iconName: json['icon_name'] as String?,
+      color: json['color'] as String?,
       imageUrl: json['image_url'] as String?,
-      icon: json['icon'] as String?,
+      storeCount: json['store_count'] as int? ?? 0,
       sortOrder: json['sort_order'] as int? ?? 0,
       isActive: json['is_active'] as bool? ?? true,
     );
@@ -143,6 +150,28 @@ class FoodAdminService {
     return Uint8List.fromList(img.encodeJpg(resized, quality: 85));
   }
 
+  // Store Category Image Upload (square crop + resize for icon)
+  Future<String> uploadStoreCategoryImage(Uint8List imageBytes, String fileName) async {
+    final resizedBytes = await compute(_resizeSquareImage, imageBytes);
+
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final safeName = fileName
+        .replaceAll(RegExp(r'[^\w\.]'), '_')
+        .replaceAll(RegExp(r'_+'), '_');
+    final uniqueFileName = 'store_categories/${timestamp}_$safeName.jpg';
+
+    await _client.storage.from('images').uploadBinary(
+      uniqueFileName,
+      resizedBytes,
+      fileOptions: const FileOptions(
+        contentType: 'image/jpeg',
+        upsert: true,
+      ),
+    );
+
+    return _client.storage.from('images').getPublicUrl(uniqueFileName);
+  }
+
   // Store Categories
   Future<List<StoreCategory>> getStoreCategories() async {
     final response = await _client
@@ -163,6 +192,28 @@ class FoodAdminService {
   Future<void> deleteStoreCategory(String id) async {
     await _client.from('store_categories').delete().eq('id', id);
   }
+
+  Future<void> reorderStoreCategories(List<String> orderedIds) async {
+    for (int i = 0; i < orderedIds.length; i++) {
+      await _client
+          .from('store_categories')
+          .update({'sort_order': i + 1})
+          .eq('id', orderedIds[i]);
+    }
+  }
+}
+
+// Top-level function for compute isolate (square crop + resize to 200x200 JPEG)
+Uint8List _resizeSquareImage(Uint8List imageBytes) {
+  final image = img.decodeImage(imageBytes);
+  if (image == null) return imageBytes;
+
+  final minDim = image.width < image.height ? image.width : image.height;
+  final x = (image.width - minDim) ~/ 2;
+  final y = (image.height - minDim) ~/ 2;
+  final cropped = img.copyCrop(image, x: x, y: y, width: minDim, height: minDim);
+  final resized = img.copyResize(cropped, width: 200, height: 200);
+  return Uint8List.fromList(img.encodeJpg(resized, quality: 90));
 }
 
 // Providers

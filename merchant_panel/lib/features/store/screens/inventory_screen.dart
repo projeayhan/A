@@ -490,54 +490,64 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   );
 
   Widget _buildMovementsView() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Son Stok Hareketleri',
-              style: Theme.of(context).textTheme.titleLarge,
+    final movements = ref.watch(stockMovementsProvider);
+
+    return movements.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, _) => Center(child: Text('Hata: $error')),
+      data: (movementList) {
+        if (movementList.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.swap_vert, size: 80, color: AppColors.textMuted),
+                const SizedBox(height: 24),
+                Text(
+                  'Henuz stok hareketi bulunmuyor',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Stok guncellemeleri yaptiginizda hareketler burada gorunecek',
+                  style: TextStyle(color: AppColors.textMuted),
+                ),
+              ],
             ),
-            const SizedBox(height: 24),
-            _MovementItem(
-              type: 'in',
-              product: 'iPhone 15 Pro',
-              quantity: 50,
-              date: DateTime.now().subtract(const Duration(hours: 2)),
-              note: 'Tedarikci siparisi',
+          );
+        }
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.border),
             ),
-            _MovementItem(
-              type: 'out',
-              product: 'Samsung Galaxy S24',
-              quantity: 5,
-              date: DateTime.now().subtract(const Duration(hours: 5)),
-              note: 'Siparis #12458',
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Son Stok Hareketleri',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+                const SizedBox(height: 24),
+                ...movementList.map((m) => _MovementItem(
+                  type: m.movementType,
+                  product: m.productName ?? 'Bilinmeyen Urun',
+                  quantity: m.quantity,
+                  date: m.createdAt,
+                  note: m.note ?? m.referenceType ?? '',
+                )),
+              ],
             ),
-            _MovementItem(
-              type: 'adjustment',
-              product: 'AirPods Pro',
-              quantity: -2,
-              date: DateTime.now().subtract(const Duration(days: 1)),
-              note: 'Sayim farki',
-            ),
-            _MovementItem(
-              type: 'in',
-              product: 'MacBook Air M3',
-              quantity: 20,
-              date: DateTime.now().subtract(const Duration(days: 2)),
-              note: 'Tedarikci siparisi',
-            ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -971,84 +981,188 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     );
   }
 
-  void _downloadReport(BuildContext context) {
+  Future<void> _downloadReport(BuildContext context) async {
     final products = ref.read(storeProductsProvider).valueOrNull ?? [];
     if (products.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Rapor olusturmak icin urun bulunamadi'), backgroundColor: Colors.orange),
+        const SnackBar(content: Text('Rapor oluşturmak için ürün bulunamadı'), backgroundColor: Colors.orange),
       );
       return;
     }
 
+    // Load Turkish-compatible font
+    final fontRegular = await PdfGoogleFonts.notoSansRegular();
+    final fontBold = await PdfGoogleFonts.notoSansBold();
+
     final merchant = ref.read(currentMerchantProvider).valueOrNull;
-    final businessName = merchant?.businessName ?? 'Magaza';
+    final businessName = merchant?.businessName ?? 'Mağaza';
     final now = DateTime.now();
     final dateStr = DateFormat('dd.MM.yyyy HH:mm').format(now);
+    final reportNo = 'STK-${DateFormat('yyyyMMdd-HHmm').format(now)}';
 
     final totalProducts = products.length;
+    final totalStock = products.fold(0, (sum, p) => sum + p.stock);
     final totalStockValue = products.fold(0.0, (sum, p) => sum + (p.price * p.stock));
     final lowStockCount = products.where((p) => p.isLowStock).length;
     final outOfStockCount = products.where((p) => p.isOutOfStock).length;
     final normalCount = totalProducts - lowStockCount - outOfStockCount;
+    final currencyFormat = NumberFormat('#,##0.00', 'tr_TR');
 
-    final pdf = pw.Document();
+    final baseStyle = pw.TextStyle(font: fontRegular, fontSize: 9);
+    final smallStyle = pw.TextStyle(font: fontRegular, fontSize: 8, color: PdfColors.grey700);
+    final headerTextStyle = pw.TextStyle(font: fontBold, fontSize: 8, color: PdfColors.white);
+
+    final pdf = pw.Document(
+      title: 'Stok Yönetimi Raporu - $businessName',
+      author: businessName,
+      creator: 'SuperCYP',
+    );
 
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(32),
+        margin: const pw.EdgeInsets.all(40),
         header: (context) => pw.Column(
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
+            // Company header
+            pw.Row(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Expanded(
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(businessName, style: pw.TextStyle(font: fontBold, fontSize: 22, color: PdfColors.blueGrey800)),
+                      pw.SizedBox(height: 4),
+                      pw.Text('Stok Yönetimi Raporu', style: pw.TextStyle(font: fontRegular, fontSize: 13, color: PdfColors.blueGrey600)),
+                    ],
+                  ),
+                ),
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.end,
+                  children: [
+                    pw.Text('Rapor No: $reportNo', style: smallStyle),
+                    pw.SizedBox(height: 2),
+                    pw.Text('Tarih: $dateStr', style: smallStyle),
+                    pw.SizedBox(height: 2),
+                    pw.Text('Sayfa ${context.pageNumber} / ${context.pagesCount}', style: smallStyle),
+                  ],
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 8),
+            pw.Container(height: 2, color: PdfColors.blueGrey800),
+            pw.SizedBox(height: 16),
+          ],
+        ),
+        footer: (context) => pw.Column(
+          children: [
+            pw.Divider(color: PdfColors.grey300),
+            pw.SizedBox(height: 4),
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
-                pw.Text(businessName, style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
-                pw.Text(dateStr, style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600)),
+                pw.Text('Bu rapor $businessName tarafından otomatik oluşturulmuştur.', style: pw.TextStyle(font: fontRegular, fontSize: 7, color: PdfColors.grey500)),
+                pw.Text('SuperCYP © ${now.year}', style: pw.TextStyle(font: fontRegular, fontSize: 7, color: PdfColors.grey500)),
               ],
             ),
-            pw.SizedBox(height: 4),
-            pw.Text('Stok Yonetimi Raporu', style: const pw.TextStyle(fontSize: 14, color: PdfColors.grey700)),
-            pw.Divider(),
-            pw.SizedBox(height: 8),
           ],
         ),
         build: (context) => [
-          // Summary stats
+          // Summary cards row
           pw.Row(
-            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
-              _pdfStatBox('Toplam Urun', '$totalProducts'),
-              _pdfStatBox('Stok Degeri', '${NumberFormat.compact().format(totalStockValue)} TL'),
-              _pdfStatBox('Normal', '$normalCount', PdfColors.green),
-              _pdfStatBox('Dusuk Stok', '$lowStockCount', PdfColors.orange),
-              _pdfStatBox('Tukenmis', '$outOfStockCount', PdfColors.red),
+              _pdfStatBox('Toplam Ürün', '$totalProducts', PdfColors.blueGrey800, fontRegular, fontBold),
+              pw.SizedBox(width: 8),
+              _pdfStatBox('Toplam Stok', '$totalStock adet', PdfColors.blue800, fontRegular, fontBold),
+              pw.SizedBox(width: 8),
+              _pdfStatBox('Stok Değeri', '${currencyFormat.format(totalStockValue)} ₺', PdfColors.green800, fontRegular, fontBold),
             ],
           ),
-          pw.SizedBox(height: 20),
+          pw.SizedBox(height: 8),
+          pw.Row(
+            children: [
+              _pdfStatBox('Normal', '$normalCount', PdfColors.green800, fontRegular, fontBold),
+              pw.SizedBox(width: 8),
+              _pdfStatBox('Düşük Stok', '$lowStockCount', PdfColors.orange, fontRegular, fontBold),
+              pw.SizedBox(width: 8),
+              _pdfStatBox('Tükenmiş', '$outOfStockCount', PdfColors.red, fontRegular, fontBold),
+            ],
+          ),
+          pw.SizedBox(height: 24),
+
+          // Section title
+          pw.Text('Ürün Stok Detayları', style: pw.TextStyle(font: fontBold, fontSize: 12, color: PdfColors.blueGrey800)),
+          pw.SizedBox(height: 8),
 
           // Products table
           pw.TableHelper.fromTextArray(
-            headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
-            cellStyle: const pw.TextStyle(fontSize: 8),
-            headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
+            border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
+            headerStyle: headerTextStyle,
+            cellStyle: baseStyle,
+            headerDecoration: const pw.BoxDecoration(color: PdfColors.blueGrey800),
+            headerAlignments: {
+              0: pw.Alignment.centerLeft,
+              1: pw.Alignment.centerLeft,
+              2: pw.Alignment.center,
+              3: pw.Alignment.centerRight,
+              4: pw.Alignment.centerRight,
+              5: pw.Alignment.centerRight,
+              6: pw.Alignment.center,
+            },
             cellAlignments: {
               0: pw.Alignment.centerLeft,
-              1: pw.Alignment.center,
-              2: pw.Alignment.centerRight,
+              1: pw.Alignment.centerLeft,
+              2: pw.Alignment.center,
               3: pw.Alignment.centerRight,
-              4: pw.Alignment.center,
-              5: pw.Alignment.center,
+              4: pw.Alignment.centerRight,
+              5: pw.Alignment.centerRight,
+              6: pw.Alignment.center,
             },
-            headers: ['Urun Adi', 'SKU', 'Fiyat (TL)', 'Stok', 'Min.', 'Durum'],
-            data: products.map((p) => [
-              p.name,
-              p.sku ?? '-',
-              p.price.toStringAsFixed(2),
-              '${p.stock}',
-              '${p.lowStockThreshold}',
-              p.isOutOfStock ? 'Tukendi' : p.isLowStock ? 'Dusuk' : 'Normal',
-            ]).toList(),
+            cellDecoration: (index, data, rowNum) {
+              if (rowNum % 2 == 0) {
+                return const pw.BoxDecoration(color: PdfColors.grey50);
+              }
+              return const pw.BoxDecoration();
+            },
+            headerPadding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+            cellPadding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+            headers: ['Ürün Adı', 'SKU / Barkod', 'Kategori', 'Fiyat (₺)', 'Stok', 'Değer (₺)', 'Durum'],
+            data: products.map((p) {
+              final categories = ref.read(productCategoriesProvider).valueOrNull ?? [];
+              final catName = categories.where((c) => c.id == p.categoryId).firstOrNull?.name ?? '-';
+              final stockValue = p.price * p.stock;
+              return [
+                p.name,
+                p.sku ?? p.barcode ?? '-',
+                catName,
+                currencyFormat.format(p.price),
+                '${p.stock}',
+                currencyFormat.format(stockValue),
+                p.isOutOfStock ? 'Tükenmiş' : p.isLowStock ? 'Düşük' : 'Normal',
+              ];
+            }).toList(),
+          ),
+          pw.SizedBox(height: 16),
+
+          // Total row
+          pw.Container(
+            padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: pw.BoxDecoration(
+              color: PdfColors.blueGrey50,
+              border: pw.Border.all(color: PdfColors.blueGrey200),
+              borderRadius: pw.BorderRadius.circular(4),
+            ),
+            child: pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text('Genel Toplam', style: pw.TextStyle(font: fontBold, fontSize: 10)),
+                pw.Text(
+                  '$totalProducts ürün  |  $totalStock adet  |  ${currencyFormat.format(totalStockValue)} ₺',
+                  style: pw.TextStyle(font: fontBold, fontSize: 10, color: PdfColors.blueGrey800),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -1060,19 +1174,23 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
     );
   }
 
-  pw.Widget _pdfStatBox(String label, String value, [PdfColor color = PdfColors.blueGrey800]) {
-    return pw.Container(
-      padding: const pw.EdgeInsets.all(8),
-      decoration: pw.BoxDecoration(
-        border: pw.Border.all(color: PdfColors.grey300),
-        borderRadius: pw.BorderRadius.circular(6),
-      ),
-      child: pw.Column(
-        children: [
-          pw.Text(value, style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: color)),
-          pw.SizedBox(height: 2),
-          pw.Text(label, style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey600)),
-        ],
+  pw.Widget _pdfStatBox(String label, String value, PdfColor color, pw.Font fontRegular, pw.Font fontBold) {
+    return pw.Expanded(
+      child: pw.Container(
+        padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: pw.BoxDecoration(
+          color: PdfColors.white,
+          border: pw.Border.all(color: PdfColors.grey300),
+          borderRadius: pw.BorderRadius.circular(4),
+        ),
+        child: pw.Column(
+          crossAxisAlignment: pw.CrossAxisAlignment.start,
+          children: [
+            pw.Text(label, style: pw.TextStyle(font: fontRegular, fontSize: 7, color: PdfColors.grey600)),
+            pw.SizedBox(height: 3),
+            pw.Text(value, style: pw.TextStyle(font: fontBold, fontSize: 12, color: color)),
+          ],
+        ),
       ),
     );
   }

@@ -301,6 +301,7 @@ class Driver {
   final int totalRatings;
   final int totalRides;
   final double totalEarnings;
+  final List<String> vehicleTypes;
   final double? currentLatitude;
   final double? currentLongitude;
   final DateTime? lastOnlineAt;
@@ -318,6 +319,7 @@ class Driver {
     this.vehiclePlate,
     this.vehicleColor,
     this.vehicleYear,
+    this.vehicleTypes = const ['standard'],
     required this.status,
     required this.isOnline,
     required this.isVerified,
@@ -344,6 +346,9 @@ class Driver {
       vehiclePlate: json['vehicle_plate'] as String?,
       vehicleColor: json['vehicle_color'] as String?,
       vehicleYear: json['vehicle_year'] as int?,
+      vehicleTypes: json['vehicle_types'] != null
+          ? List<String>.from(json['vehicle_types'])
+          : const ['standard'],
       status: json['status'] as String? ?? 'pending',
       isOnline: json['is_online'] as bool? ?? false,
       isVerified: json['is_verified'] as bool? ?? false,

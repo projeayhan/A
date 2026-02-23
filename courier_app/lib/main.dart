@@ -8,6 +8,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'core/services/push_notification_service.dart';
+import 'core/services/notification_sound_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,7 +16,7 @@ void main() async {
   // Load environment variables
   await dotenv.load(fileName: '.env');
 
-  // Initialize Firebase (only on mobile - web requires separate config)
+  // Initialize Firebase (only on mobile)
   if (!kIsWeb) {
     await Firebase.initializeApp();
   }
@@ -28,6 +29,9 @@ void main() async {
 
   // Initialize Turkish locale for date formatting
   await initializeDateFormatting('tr', null);
+
+  // Initialize notification sound service
+  await notificationSoundService.initialize();
 
   // Initialize push notifications (only on mobile)
   if (!kIsWeb) {

@@ -28,25 +28,21 @@ class DealerService {
     String? address,
     List<Map<String, dynamic>>? documents,
   }) async {
-    if (_userId == null) {
-      throw Exception('Kullanıcı oturumu bulunamadı');
-    }
-
-    // Mevcut başvuru var mı kontrol et
+    // Mevcut başvuru var mı kontrol et (telefon ile)
     final existing = await _client
         .from('car_dealer_applications')
         .select('id, status')
-        .eq('user_id', _userId!)
+        .eq('phone', phone)
         .order('created_at', ascending: false)
         .limit(1)
         .maybeSingle();
 
     if (existing != null && existing['status'] == 'pending') {
-      throw Exception('Zaten bekleyen bir başvurunuz var');
+      throw Exception('Bu telefon numarasıyla zaten bekleyen bir başvurunuz var');
     }
 
     final response = await _client.from('car_dealer_applications').insert({
-      'user_id': _userId,
+      if (_userId != null) 'user_id': _userId,
       'dealer_type': dealerType.name,
       'owner_name': ownerName,
       'business_name': businessName,

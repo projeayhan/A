@@ -15,6 +15,27 @@ import '../../core/utils/app_dialogs.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+// Store category model for dropdown
+class _StoreCategory {
+  final String id;
+  final String name;
+  final String? iconName;
+  _StoreCategory({required this.id, required this.name, this.iconName});
+}
+
+final _storeCategoriesProvider = FutureProvider<List<_StoreCategory>>((ref) async {
+  final response = await Supabase.instance.client
+      .from('store_categories')
+      .select('id, name, icon_name')
+      .eq('is_active', true)
+      .order('sort_order');
+  return (response as List).map((e) => _StoreCategory(
+    id: e['id'] as String,
+    name: e['name'] as String,
+    iconName: e['icon_name'] as String?,
+  )).toList();
+});
+
 // Merchant settings model
 class MerchantSettings {
   final String id;
@@ -113,6 +134,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   String? _logoUrl;
   String? _coverUrl;
+  List<String> _storeCategoryIds = [];
   bool _isLoading = false;
   bool _dataLoaded = false;
 
@@ -176,13 +198,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _longitudeController.text = merchant.longitude?.toString() ?? '';
       _logoUrl = merchant.logoUrl;
       _coverUrl = merchant.coverUrl;
+      _storeCategoryIds = List<String>.from(merchant.storeCategoryIds);
       _dataLoaded = true;
     });
   }
 
   Future<void> _loadSettings() async {
     final merchant = ref.read(currentMerchantProvider).valueOrNull;
-    if (merchant == null) return;
+    if (merchant == null) {
+      if (mounted) setState(() => _settingsLoading = false);
+      return;
+    }
 
     try {
       final supabase = ref.read(supabaseProvider);
@@ -554,9 +580,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           .eq('merchant_id', merchant.id);
 
       // Update delivery_time on merchants table so customers see the correct time
+      final isStoreType = merchant.type == MerchantType.store;
+      final unit = isStoreType ? 'gün' : 'dk';
       await supabase
           .from('merchants')
-          .update({'delivery_time': '$minPrep-$maxPrep dk'})
+          .update({'delivery_time': '$minPrep-$maxPrep $unit'})
           .eq('id', merchant.id);
 
       setState(() => _isLoading = false);
@@ -1049,6 +1077,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               decoration: const InputDecoration(labelText: 'Isletme Adi'),
             ),
             const SizedBox(height: 16),
+            // Store category dropdown (only for store type)
+            if (ref.watch(currentMerchantProvider).valueOrNull?.type == MerchantType.store)
+              _buildStoreCategoryDropdown(),
             TextFormField(
               controller: _descriptionController,
               maxLines: 3,
@@ -1088,13 +1119,80 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
+  Widget _buildStoreCategoryDropdown() {
+    final categoriesAsync = ref.watch(_storeCategoriesProvider);
+    return categoriesAsync.when(
+      data: (categories) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Magaza Kategorileri', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
+            const SizedBox(height: 4),
+            const Text('Magazanizin bulundugu kategorileri secin (birden fazla secilebilir)', style: TextStyle(fontSize: 12, color: Colors.grey)),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: categories.map((c) {
+                final isSelected = _storeCategoryIds.contains(c.id);
+                return FilterChip(
+                  label: Text(c.name),
+                  selected: isSelected,
+                  onSelected: (selected) => _toggleStoreCategory(c.id, selected),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 16),
+          ],
+        );
+      },
+      loading: () => const Padding(
+        padding: EdgeInsets.only(bottom: 16),
+        child: LinearProgressIndicator(),
+      ),
+      error: (_, __) => const SizedBox.shrink(),
+    );
+  }
+
+  Future<void> _toggleStoreCategory(String categoryId, bool selected) async {
+    final merchant = ref.read(currentMerchantProvider).valueOrNull;
+    if (merchant == null) return;
+
+    final newIds = List<String>.from(_storeCategoryIds);
+    if (selected) {
+      newIds.add(categoryId);
+    } else {
+      newIds.remove(categoryId);
+    }
+
+    try {
+      await Supabase.instance.client
+          .from('merchants')
+          .update({'store_category_ids': newIds})
+          .eq('id', merchant.id);
+      setState(() => _storeCategoryIds = newIds);
+      ref.invalidate(currentMerchantProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Kategoriler guncellendi'), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Hata: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   Widget _buildDeliverySettings() {
     final merchant = ref.watch(currentMerchantProvider).valueOrNull;
     final merchantType = merchant?.type ?? MerchantType.restaurant;
     final isStore = merchantType == MerchantType.store;
     final isRestaurant = merchantType == MerchantType.restaurant;
     final isMarket = merchantType == MerchantType.market;
-    final hasLocalDelivery = isRestaurant || isMarket; // Restoran ve market yerel teslimat
+    final hasLocalDelivery = isRestaurant || isMarket || isStore; // Tüm tipler yerel teslimat
 
     final businessTypeLabel = isRestaurant ? 'restoran' : (isMarket ? 'market' : 'magaza');
     final businessTypeLabelCapital = isRestaurant ? 'Restoran' : (isMarket ? 'Market' : 'Magaza');
@@ -1103,54 +1201,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          isStore ? 'Kargo Ayarlari' : 'Teslimat Ayarlari',
+          'Teslimat Ayarlari',
           style: Theme.of(
             context,
           ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
         Text(
-          isStore
-              ? 'Kargo ve gonderim ayarlarini yapilandirin'
-              : 'Teslimat bolgeleri ve ucretleri yapilandirin',
+          'Teslimat bolgeleri ve ucretleri yapilandirin',
           style: TextStyle(color: AppColors.textSecondary),
         ),
         const SizedBox(height: 32),
-
-        // Mağazalar için kargo bilgi kutusu
-        if (isStore) ...[
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.info.withAlpha(20),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.info.withAlpha(50)),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.local_shipping, color: AppColors.info, size: 28),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Kargo ile Gonderim',
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Magazaniz tum KKTC\'ye kargo ile hizmet vermektedir. Teslimat bolgesi kisitlamasi yoktur.',
-                        style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-        ],
 
         if (_settingsLoading)
           const Center(child: CircularProgressIndicator())
@@ -1245,49 +1306,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             const SizedBox(height: 24),
 
             _SettingsCard(
-              title: 'Teslimat Ucreti',
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _minOrderController,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Minimum Siparis Tutari',
-                          suffixText: 'TL',
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _deliveryFeeController,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Teslimat Ucreti',
-                          suffixText: 'TL',
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _freeDeliveryController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Ucretsiz Teslimat Limiti',
-                    suffixText: 'TL',
-                    helperText: 'Bu tutarin uzerindeki siparislerde teslimat ucretsiz',
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            _SettingsCard(
-              title: 'Hazirlama Suresi',
+              title: isStore ? 'Teslimat Suresi' : 'Hazirlama Suresi',
               children: [
                 Row(
                   children: [
@@ -1295,9 +1314,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       child: TextFormField(
                         controller: _minPrepTimeController,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Minimum Sure',
-                          suffixText: 'dk',
+                        decoration: InputDecoration(
+                          labelText: isStore ? 'Minimum' : 'Minimum Sure',
+                          suffixText: isStore ? 'gün' : 'dk',
                         ),
                       ),
                     ),
@@ -1306,9 +1325,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       child: TextFormField(
                         controller: _maxPrepTimeController,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Maksimum Sure',
-                          suffixText: 'dk',
+                        decoration: InputDecoration(
+                          labelText: isStore ? 'Maksimum' : 'Maksimum Sure',
+                          suffixText: isStore ? 'gün' : 'dk',
                         ),
                       ),
                     ),
@@ -1341,147 +1360,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             const DeliveryZonesMap(),
           ],
 
-          // Mağazalar için kargo ayarları
-          if (isStore) ...[
-            _SettingsCard(
-              title: 'Kargo Secenekleri',
-              children: [
-                _SettingsSwitch(
-                  title: 'Kargo ile Gonderim',
-                  subtitle: 'Siparisleri kargo ile gonderin',
-                  value: _settings?.deliveryEnabled ?? true,
-                  onChanged: (value) => _updateDeliveryOption('delivery_enabled', value),
-                ),
-                const Divider(height: 32),
-                _SettingsSwitch(
-                  title: 'Magazadan Teslim',
-                  subtitle: 'Musteri magazadan alabilsin',
-                  value: _settings?.pickupEnabled ?? true,
-                  onChanged: (value) => _updateDeliveryOption('pickup_enabled', value),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            _SettingsCard(
-              title: 'Kargo Ucreti',
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _minOrderController,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Minimum Siparis Tutari',
-                          suffixText: 'TL',
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _deliveryFeeController,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Kargo Ucreti',
-                          suffixText: 'TL',
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: _freeDeliveryController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Ucretsiz Kargo Limiti',
-                    suffixText: 'TL',
-                    helperText: 'Bu tutarin uzerindeki siparislerde kargo ucretsiz',
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            _SettingsCard(
-              title: 'Hazirlama Suresi',
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _minPrepTimeController,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Minimum Hazirlama',
-                          suffixText: 'gun',
-                          helperText: 'Kargoya verilme suresi',
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _maxPrepTimeController,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'Maksimum Hazirlama',
-                          suffixText: 'gun',
-                          helperText: 'Kargoya verilme suresi',
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            // Kargo Şirketleri
-            _SettingsCard(
-              title: 'Kargo Firmalari',
-              children: [
-                Text(
-                  'Magazaniz asagidaki kargo firmalari ile calismaktadir:',
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 13),
-                ),
-                const SizedBox(height: 16),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: [
-                    _CargoCompanyChip(name: 'Yurtici Kargo', isActive: true),
-                    _CargoCompanyChip(name: 'Aras Kargo', isActive: true),
-                    _CargoCompanyChip(name: 'MNG Kargo', isActive: false),
-                    _CargoCompanyChip(name: 'PTT Kargo', isActive: false),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Kargo firmasi eklemek icin destek ile iletisime gecin.',
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 12),
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            Align(
-              alignment: Alignment.centerRight,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _saveDeliverySettings,
-                child:
-                    _isLoading
-                        ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                        : const Text('Degisiklikleri Kaydet'),
-              ),
-            ),
-          ],
         ],
       ],
     );
@@ -1930,10 +1808,9 @@ class _VerificationSettings extends ConsumerStatefulWidget {
 
 class _VerificationSettingsState extends ConsumerState<_VerificationSettings> {
   final _documents = [
-    {'type': 'tax_plate', 'label': 'Vergi Levhasi (Zorunlu)'},
-    {'type': 'id_card', 'label': 'Kimlik Fotokopisi (Zorunlu)'},
-    {'type': 'activity_cert', 'label': 'Faaliyet Belgesi (Opsiyonel)'},
-    {'type': 'signature_circular', 'label': 'Imza Sirkusu (Opsiyonel)'},
+    {'type': 'tax_certificate', 'label': 'Vergi Levhasi (Zorunlu)'},
+    {'type': 'business_license', 'label': 'Isyeri Ruhsati (Zorunlu)'},
+    {'type': 'id_card', 'label': 'Yetkili Kimlik (Zorunlu)'},
   ];
 
   Map<String, dynamic> _uploadedDocs = {};
@@ -2231,49 +2108,4 @@ class _SettingsSwitch extends StatelessWidget {
   }
 }
 
-class _CargoCompanyChip extends StatelessWidget {
-  final String name;
-  final bool isActive;
-
-  const _CargoCompanyChip({
-    required this.name,
-    required this.isActive,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: isActive
-            ? AppColors.success.withAlpha(30)
-            : AppColors.surfaceLight,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isActive
-              ? AppColors.success
-              : AppColors.border,
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            isActive ? Icons.check_circle : Icons.circle_outlined,
-            size: 18,
-            color: isActive ? AppColors.success : AppColors.textMuted,
-          ),
-          const SizedBox(width: 8),
-          Text(
-            name,
-            style: TextStyle(
-              color: isActive ? AppColors.success : AppColors.textSecondary,
-              fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 

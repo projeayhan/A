@@ -252,7 +252,7 @@ class PropertyService {
 
     final data = property.toJson();
     data['user_id'] = _userId;
-    data['status'] = 'pending'; // Yeni ilanlar onay bekler
+    data['status'] = 'active'; // Emlakçılar direkt yayınlayabilir
 
     final response = await _client
         .from('properties')

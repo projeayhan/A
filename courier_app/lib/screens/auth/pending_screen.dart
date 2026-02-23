@@ -47,7 +47,7 @@ class PendingScreen extends ConsumerWidget {
 
               // Açıklama
               Text(
-                'Başvurunuz inceleniyor. Onaylandığında e-posta ile bilgilendirileceksiniz.',
+                'Başvurunuz inceleniyor. Onaylandığında bilgilendirileceksiniz.',
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                       color: AppColors.textSecondary,
                     ),

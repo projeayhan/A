@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../services/admin_auth_service.dart';
+import '../services/permission_config.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/forgot_password_screen.dart';
 import '../../features/dashboard/screens/dashboard_screen.dart';
@@ -54,6 +56,13 @@ import '../../features/job_listings/screens/job_companies_screen.dart';
 import '../../features/job_listings/screens/job_pricing_screen.dart';
 import '../../features/job_listings/screens/job_settings_screen.dart';
 import '../../features/food/screens/restaurant_categories_screen.dart';
+import '../../features/store/screens/store_categories_screen.dart';
+import '../../features/courier/screens/courier_vehicle_types_screen.dart';
+import '../../features/support_agents/screens/support_agents_screen.dart';
+import '../../features/support_monitoring/screens/support_dashboard_screen.dart';
+import '../../features/support_monitoring/screens/ticket_review_screen.dart';
+import '../../features/support_monitoring/screens/agent_performance_screen.dart';
+import '../../features/support_monitoring/screens/support_reports_screen.dart';
 import '../../shared/widgets/admin_shell.dart';
 
 class AppRoutes {
@@ -101,6 +110,10 @@ class AppRoutes {
   static const String carSalesBodyTypes = '/car-sales/body-types';
   static const String carSalesFuelTypes = '/car-sales/fuel-types';
   static const String carSalesTransmissions = '/car-sales/transmissions';
+  // Kurye
+  static const String courierVehicleTypes = '/courier/vehicle-types';
+  // Magazalar
+  static const String storeCategories = '/store/categories';
   // Yemek
   static const String restaurantCategories = '/food/categories';
   // İş İlanları
@@ -112,6 +125,12 @@ class AppRoutes {
   static const String jobCompanies = '/job-listings/companies';
   static const String jobPricing = '/job-listings/pricing';
   static const String jobSettings = '/job-listings/settings';
+  // Destek
+  static const String supportAgents = '/support-agents';
+  static const String supportDashboard = '/support-dashboard';
+  static const String ticketReview = '/ticket-review';
+  static const String agentPerformance = '/agent-performance';
+  static const String supportReports = '/support-reports';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -123,13 +142,26 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final isLoggedIn = Supabase.instance.client.auth.currentSession != null;
       final isLoginRoute = state.matchedLocation == AppRoutes.login;
+      final isForgotPasswordRoute = state.matchedLocation == AppRoutes.forgotPassword;
 
-      if (!isLoggedIn && !isLoginRoute) {
+      if (!isLoggedIn && !isLoginRoute && !isForgotPasswordRoute) {
         return AppRoutes.login;
       }
 
       if (isLoggedIn && isLoginRoute) {
         return AppRoutes.dashboard;
+      }
+
+      // RBAC: check permissions for authenticated routes
+      if (isLoggedIn && !isLoginRoute && !isForgotPasswordRoute) {
+        final adminAsync = ref.read(currentAdminProvider);
+        final admin = adminAsync.valueOrNull;
+        if (admin != null) {
+          final permission = PermissionConfig.routePermissions[state.matchedLocation];
+          if (permission != null && !admin.hasPermission(permission.$1, permission.$2)) {
+            return AppRoutes.dashboard;
+          }
+        }
       }
 
       return null;
@@ -390,6 +422,20 @@ final routerProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: CarSalesTransmissionsScreen()),
           ),
+          // Courier Routes
+          GoRoute(
+            path: AppRoutes.courierVehicleTypes,
+            name: 'courier-vehicle-types',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: CourierVehicleTypesScreen()),
+          ),
+          // Store Routes
+          GoRoute(
+            path: AppRoutes.storeCategories,
+            name: 'store-categories',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: StoreCategoriesScreen()),
+          ),
           // Food Routes
           GoRoute(
             path: AppRoutes.restaurantCategories,
@@ -445,6 +491,38 @@ final routerProvider = Provider<GoRouter>((ref) {
             name: 'job-settings',
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: JobSettingsScreen()),
+          ),
+          // Support Agents
+          GoRoute(
+            path: AppRoutes.supportAgents,
+            name: 'support-agents',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: SupportAgentsScreen()),
+          ),
+          // Support Monitoring
+          GoRoute(
+            path: AppRoutes.supportDashboard,
+            name: 'support-dashboard',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: SupportDashboardScreen()),
+          ),
+          GoRoute(
+            path: AppRoutes.ticketReview,
+            name: 'ticket-review',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: TicketReviewScreen()),
+          ),
+          GoRoute(
+            path: AppRoutes.agentPerformance,
+            name: 'agent-performance',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: AgentPerformanceScreen()),
+          ),
+          GoRoute(
+            path: AppRoutes.supportReports,
+            name: 'support-reports',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: SupportReportsScreen()),
           ),
         ],
       ),

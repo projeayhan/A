@@ -9,6 +9,7 @@ import '../../core/providers/emlak_provider.dart';
 import '../../core/providers/chat_provider.dart';
 import '../../core/providers/banner_provider.dart';
 import '../../widgets/common/generic_banner_carousel.dart';
+import 'property_filter_screen.dart';
 
 class EmlakHomeScreen extends ConsumerStatefulWidget {
   const EmlakHomeScreen({super.key});
@@ -35,7 +36,6 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen>
   RangeValues _priceRange = const RangeValues(0, 10000000);
   RangeValues _areaRange = const RangeValues(0, 500);
   int? _minRooms;
-  bool _showFilters = false;
 
   // Search
   final TextEditingController _searchController = TextEditingController();
@@ -144,7 +144,6 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen>
         city: _selectedCity.isEmpty ? null : _selectedCity,
         district: _selectedDistricts.length == 1 ? _selectedDistricts.first : null,
         listingType: _selectedListingType,
-        minRooms: _minRooms,
       ),
     );
   }
@@ -238,6 +237,56 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen>
     return count;
   }
 
+  Future<void> _openFilterScreen() async {
+    // Mevcut filtre durumunu PropertyFilter'a dönüştür
+    final currentFilter = PropertyFilter(
+      selectedPropertyTypes: _selectedPropertyTypeName != null
+          ? {_selectedPropertyTypeName!}
+          : null,
+      listingType: _selectedListingType,
+      minPrice: _priceRange.start > 0 ? _priceRange.start : null,
+      maxPrice: _priceRange.end < 10000000 ? _priceRange.end : null,
+      minSquareMeters: _areaRange.start > 0 ? _areaRange.start.toInt() : null,
+      maxSquareMeters: _areaRange.end < 500 ? _areaRange.end.toInt() : null,
+      city: _selectedCity.isEmpty ? null : _selectedCity,
+      district: _selectedDistricts.length == 1 ? _selectedDistricts.first : null,
+    );
+
+    final result = await Navigator.push<PropertyFilter>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PropertyFilterScreen(initialFilter: currentFilter),
+      ),
+    );
+
+    if (result != null && mounted) {
+      setState(() {
+        _selectedListingType = result.listingType;
+        _selectedPropertyTypeName = result.selectedPropertyTypes?.isNotEmpty == true
+            ? result.selectedPropertyTypes!.first
+            : null;
+        _selectedCity = result.city ?? '';
+        _selectedDistricts.clear();
+        if (result.district != null) _selectedDistricts.add(result.district!);
+        _minRooms = null; // roomTypes artık multi-select
+        _priceRange = RangeValues(
+          result.minPrice ?? 0,
+          result.maxPrice ?? 10000000,
+        );
+        _areaRange = RangeValues(
+          result.minSquareMeters?.toDouble() ?? 0,
+          result.maxSquareMeters?.toDouble() ?? 500,
+        );
+        _searchController.text = result.keyword ?? '';
+        _searchQuery = result.keyword?.toLowerCase() ?? '';
+      });
+      // Şehir değişmişse ilçeleri yeniden yükle
+      _loadDistricts();
+      // Tüm filtreyi provider'a gönder (DB seviyesinde uygula)
+      ref.read(propertyListProvider.notifier).setFilter(result);
+    }
+  }
+
   void _clearAllFilters() {
     setState(() {
       _selectedListingType = null;
@@ -319,11 +368,7 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen>
               // Quick Filter Chips (Always Visible)
               SliverToBoxAdapter(child: _buildQuickFilters(context, isDark)),
 
-              // Advanced Filters Panel (Expandable)
-              if (_showFilters)
-                SliverToBoxAdapter(
-                  child: _buildAdvancedFilters(context, isDark),
-                ),
+              // Advanced Filters → Tam ekran filtre sayfasına taşındı
 
               // Quick Actions (İlan Ver, İlanlarım, Favoriler)
               SliverToBoxAdapter(child: _buildQuickActions(context, isDark)),
@@ -773,19 +818,18 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen>
             ),
           ),
           const SizedBox(width: 10),
-          // Filter Toggle Button
+          // Filter Button → Tam ekran filtre sayfasını aç
           GestureDetector(
-            onTap: () => setState(() => _showFilters = !_showFilters),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
+            onTap: () => _openFilterScreen(),
+            child: Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: _showFilters
+                color: activeFilterCount > 0
                     ? EmlakColors.primary
                     : EmlakColors.surface(isDark),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: _showFilters
+                  color: activeFilterCount > 0
                       ? EmlakColors.primary
                       : EmlakColors.border(isDark),
                 ),
@@ -794,10 +838,12 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen>
                 children: [
                   Icon(
                     Icons.tune_rounded,
-                    color: _showFilters ? Colors.white : EmlakColors.primary,
+                    color: activeFilterCount > 0
+                        ? Colors.white
+                        : EmlakColors.primary,
                     size: 22,
                   ),
-                  if (activeFilterCount > 0 && !_showFilters)
+                  if (activeFilterCount > 0)
                     Positioned(
                       top: -2,
                       right: -2,
@@ -808,7 +854,9 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen>
                           color: EmlakColors.accent,
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: EmlakColors.surface(isDark),
+                            color: activeFilterCount > 0
+                                ? EmlakColors.primary
+                                : EmlakColors.surface(isDark),
                             width: 2,
                           ),
                         ),

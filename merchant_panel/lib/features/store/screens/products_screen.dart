@@ -1,7 +1,9 @@
-import 'dart:typed_data';
+import 'package:excel/excel.dart' as exc;
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:printing/printing.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
@@ -151,6 +153,14 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                     ),
                   ),
                   const SizedBox(width: 16),
+
+                  // Auto Image Button
+                  OutlinedButton.icon(
+                    onPressed: () => _showAutoImageDialog(context),
+                    icon: const Icon(Icons.image_search, size: 20),
+                    label: const Text('Resimleri Bul'),
+                  ),
+                  const SizedBox(width: 12),
 
                   // Import Button
                   OutlinedButton.icon(
@@ -383,7 +393,7 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     showDialog(
       context: context,
       builder:
-          (context) => AlertDialog(
+          (dialogContext) => AlertDialog(
             backgroundColor: AppColors.surface,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
@@ -394,15 +404,33 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => Navigator.pop(dialogContext),
                 child: const Text('Iptal'),
               ),
               ElevatedButton(
-                onPressed: () {
-                  ref
-                      .read(storeProductsProvider.notifier)
-                      .deleteProduct(product.id);
-                  Navigator.pop(context);
+                onPressed: () async {
+                  final scaffoldMessenger = ScaffoldMessenger.of(context);
+                  final navigator = Navigator.of(dialogContext);
+                  try {
+                    await ref
+                        .read(storeProductsProvider.notifier)
+                        .deleteProduct(product.id);
+                    navigator.pop();
+                    scaffoldMessenger.showSnackBar(
+                      const SnackBar(
+                        content: Text('Urun silindi'),
+                        backgroundColor: AppColors.success,
+                      ),
+                    );
+                  } catch (e) {
+                    navigator.pop();
+                    scaffoldMessenger.showSnackBar(
+                      SnackBar(
+                        content: Text('Urun silinemedi: $e'),
+                        backgroundColor: AppColors.error,
+                      ),
+                    );
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.error,
@@ -414,20 +442,36 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     );
   }
 
+  void _showAutoImageDialog(BuildContext context) {
+    final products = ref.read(storeProductsProvider).valueOrNull ?? [];
+    final noImage = products.where((p) => p.imageUrl == null || p.imageUrl!.isEmpty).toList();
+
+    if (noImage.isEmpty) {
+      AppDialogs.showSuccess(context, 'Tum urunlerin resmi mevcut!');
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => _AutoImageDialog(
+        totalProducts: noImage.length,
+        onStart: () async {
+          return await ref.read(storeProductsProvider.notifier).autoFetchProductImages(
+            onProgress: null,
+          );
+        },
+      ),
+    );
+  }
+
   void _showImportDialog(BuildContext context) {
     showDialog(
       context: context,
+      barrierDismissible: false,
       builder: (context) => _ImportDialog(
-        onImport: (products) {
-          for (final product in products) {
-            ref.read(storeProductsProvider.notifier).addProduct(product);
-          }
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${products.length} urun basariyla yuklendi'),
-              backgroundColor: AppColors.success,
-            ),
-          );
+        onImport: (products) async {
+          return await ref.read(storeProductsProvider.notifier).bulkAddProducts(products);
         },
       ),
     );
@@ -683,6 +727,9 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
   bool _isUploadingImage = false;
   bool _useUrlInput = true;
 
+  // Variants
+  List<ProductVariant> _variants = [];
+
   @override
   void initState() {
     super.initState();
@@ -715,6 +762,7 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
     _selectedUnitType = widget.product?.unitType ?? UnitType.adet;
     _isFeatured = widget.product?.isFeatured ?? false;
     _useUrlInput = widget.product?.imageUrl != null || _selectedImageBytes == null;
+    _variants = List<ProductVariant>.from(widget.product?.variants ?? []);
   }
 
   @override
@@ -934,6 +982,10 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
                   subtitle: const Text('Bu urun ana sayfada gosterilsin'),
                   contentPadding: EdgeInsets.zero,
                 ),
+                const SizedBox(height: 16),
+
+                // Variants Section
+                _buildVariantsSection(),
                 const SizedBox(height: 24),
 
                 // Actions
@@ -1209,6 +1261,288 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
     }
   }
 
+  // ========== VARIANTS SECTION ==========
+  Widget _buildVariantsSection() {
+    // Grup isimleri
+    final groupNames = _variants.map((v) => v.name).toSet().toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.tune, size: 20, color: AppColors.textSecondary),
+            const SizedBox(width: 8),
+            Text(
+              'Urun Secenekleri',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: AppColors.textPrimary,
+                fontSize: 14,
+              ),
+            ),
+            const Spacer(),
+            TextButton.icon(
+              onPressed: _showAddVariantGroupDialog,
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Grup Ekle'),
+              style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+          ],
+        ),
+        if (groupNames.isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 4, bottom: 4),
+            child: Text(
+              'Renk, beden gibi secenekler ekleyebilirsiniz',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+            ),
+          ),
+        for (final groupName in groupNames) ...[
+          const SizedBox(height: 8),
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: AppColors.border),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              children: [
+                // Grup basligi
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withAlpha(15),
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(11),
+                      topRight: Radius.circular(11),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        groupName,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const Spacer(),
+                      IconButton(
+                        onPressed: () => _showAddVariantValueDialog(groupName),
+                        icon: Icon(Icons.add_circle_outline, size: 20, color: AppColors.primary),
+                        tooltip: 'Secenek Ekle',
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                      ),
+                      IconButton(
+                        onPressed: () {
+                          setState(() {
+                            _variants.removeWhere((v) => v.name == groupName);
+                          });
+                        },
+                        icon: Icon(Icons.delete_outline, size: 20, color: AppColors.error),
+                        tooltip: 'Grubu Sil',
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                      ),
+                    ],
+                  ),
+                ),
+                // Secenekler
+                ...() {
+                  final groupVariants = _variants.where((v) => v.name == groupName).toList();
+                  return groupVariants.asMap().entries.map((entry) {
+                    final idx = entry.key;
+                    final v = entry.value;
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        border: idx < groupVariants.length - 1
+                            ? Border(bottom: BorderSide(color: AppColors.border.withAlpha(80)))
+                            : null,
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: Text(v.value, style: TextStyle(color: AppColors.textPrimary, fontSize: 13)),
+                          ),
+                          if (v.priceModifier != null && v.priceModifier != 0)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: Text(
+                                '${v.priceModifier! > 0 ? '+' : ''}${v.priceModifier!.toStringAsFixed(0)} TL',
+                                style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w500),
+                              ),
+                            ),
+                          if (v.stock != null)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: Text(
+                                'Stok: ${v.stock}',
+                                style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+                              ),
+                            ),
+                          IconButton(
+                            onPressed: () {
+                              setState(() {
+                                _variants.remove(v);
+                              });
+                            },
+                            icon: Icon(Icons.close, size: 16, color: AppColors.textMuted),
+                            visualDensity: VisualDensity.compact,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList();
+                }(),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  void _showAddVariantGroupDialog() {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Secenek Grubu Ekle'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: controller,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Grup Adi',
+                hintText: 'Ornek: Renk, Beden, Boyut...',
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final suggestion in ['Renk', 'Beden', 'Boyut', 'Malzeme', 'Model'])
+                  ActionChip(
+                    label: Text(suggestion, style: const TextStyle(fontSize: 12)),
+                    onPressed: () => controller.text = suggestion,
+                    visualDensity: VisualDensity.compact,
+                    backgroundColor: AppColors.background,
+                    side: BorderSide(color: AppColors.border),
+                  ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Iptal')),
+          ElevatedButton(
+            onPressed: () {
+              if (controller.text.trim().isNotEmpty) {
+                Navigator.pop(ctx);
+                _showAddVariantValueDialog(controller.text.trim());
+              }
+            },
+            child: const Text('Ekle'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAddVariantValueDialog(String groupName) {
+    final valueController = TextEditingController();
+    final priceController = TextEditingController();
+    final stockController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('$groupName - Secenek Ekle'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: valueController,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: 'Deger',
+                hintText: groupName.toLowerCase().contains('renk')
+                    ? 'Ornek: Kirmizi, Mavi...'
+                    : groupName.toLowerCase().contains('beden')
+                        ? 'Ornek: S, M, L, XL...'
+                        : 'Deger girin',
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: priceController,
+                    decoration: const InputDecoration(
+                      labelText: 'Fiyat Farki',
+                      hintText: '0',
+                      suffixText: 'TL',
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: TextField(
+                    controller: stockController,
+                    decoration: const InputDecoration(
+                      labelText: 'Stok',
+                      hintText: 'Opsiyonel',
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Iptal')),
+          ElevatedButton(
+            onPressed: () {
+              if (valueController.text.trim().isNotEmpty) {
+                setState(() {
+                  _variants.add(ProductVariant(
+                    name: groupName,
+                    value: valueController.text.trim(),
+                    priceModifier: double.tryParse(priceController.text),
+                    stock: int.tryParse(stockController.text),
+                  ));
+                });
+                Navigator.pop(ctx);
+                // Hemen bir daha eklemek isteyebilir
+                _showAddVariantValueDialog(groupName);
+              }
+            },
+            child: const Text('Ekle'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -1253,6 +1587,7 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
       brand: _brandController.text.isEmpty ? null : _brandController.text,
       isAvailable: widget.product?.isAvailable ?? true,
       isFeatured: _isFeatured,
+      variants: _variants.isNotEmpty ? _variants : null,
       createdAt: widget.product?.createdAt ?? DateTime.now(),
     );
 
@@ -1261,98 +1596,467 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
   }
 }
 
-class _ImportDialog extends StatefulWidget {
-  final Function(List<StoreProduct>) onImport;
+class _ImportDialog extends ConsumerStatefulWidget {
+  final Future<int> Function(List<StoreProduct>) onImport;
 
   const _ImportDialog({required this.onImport});
 
   @override
-  State<_ImportDialog> createState() => _ImportDialogState();
+  ConsumerState<_ImportDialog> createState() => _ImportDialogState();
 }
 
-class _ImportDialogState extends State<_ImportDialog> {
-  final _csvController = TextEditingController();
+class _ImportDialogState extends ConsumerState<_ImportDialog> {
+  List<ProductCategory> get _categories => ref.watch(productCategoriesProvider).valueOrNull ?? [];
+  String get _merchantId => ref.watch(currentMerchantProvider).valueOrNull?.id ?? '';
+  int _step = 0; // 0: sablon indir, 1: excel yukle, 2: onizleme, 3: sonuc
   List<StoreProduct> _parsedProducts = [];
+  Map<String, List<StoreProduct>> _groupedProducts = {};
   String? _errorMessage;
-  bool _isParsing = false;
+  String? _fileName;
+  bool _isLoading = false;
+  bool _isUploading = false;
+  int _uploadedCount = 0;
+  // Otomatik resim
+  bool _isFetchingImages = false;
+  int _imagesFound = 0;
+  int _imagesTotal = 0;
+  bool _imagesDone = false;
 
-  @override
-  void dispose() {
-    _csvController.dispose();
-    super.dispose();
+  // ========== SABLON INDIRME ==========
+  Future<void> _downloadTemplate() async {
+    setState(() => _isLoading = true);
+    try {
+      final excel = exc.Excel.createExcel();
+
+      final headerStyle = exc.CellStyle(
+        bold: true,
+        fontSize: 11,
+        backgroundColorHex: exc.ExcelColor.fromHexString('#4CAF50'),
+        fontColorHex: exc.ExcelColor.fromHexString('#FFFFFF'),
+        horizontalAlign: exc.HorizontalAlign.Center,
+      );
+
+      final exampleStyle = exc.CellStyle(
+        fontSize: 10,
+        fontColorHex: exc.ExcelColor.fromHexString('#999999'),
+        italic: true,
+      );
+
+      final categoryHintStyle = exc.CellStyle(
+        fontSize: 10,
+        fontColorHex: exc.ExcelColor.fromHexString('#666666'),
+        italic: true,
+      );
+
+      final headers = [
+        exc.TextCellValue('Urun Adi *'),
+        exc.TextCellValue('Fiyat *'),
+        exc.TextCellValue('Kategori'),
+        exc.TextCellValue('Aciklama'),
+        exc.TextCellValue('SKU'),
+        exc.TextCellValue('Barkod'),
+        exc.TextCellValue('Stok'),
+        exc.TextCellValue('Birim (adet/kg/gram/litre/ml)'),
+        exc.TextCellValue('Marka'),
+      ];
+
+      final categoryNames = _categories.map((c) => c.name).join(', ');
+
+      final exampleRow = [
+        exc.TextCellValue('Ornek Urun'),
+        exc.DoubleCellValue(29.90),
+        exc.TextCellValue(_categories.isNotEmpty ? _categories.first.name : 'Icecekler'),
+        exc.TextCellValue('Urun aciklamasi'),
+        exc.TextCellValue('SKU001'),
+        exc.TextCellValue('8691234567890'),
+        exc.IntCellValue(100),
+        exc.TextCellValue('adet'),
+        exc.TextCellValue('Marka Adi'),
+      ];
+
+      // Tek sayfa: Urunler
+      final sheet = excel['Urunler'];
+      sheet.setColumnWidth(0, 25); // Urun Adi
+      sheet.setColumnWidth(1, 12); // Fiyat
+      sheet.setColumnWidth(2, 20); // Kategori
+      sheet.setColumnWidth(3, 30); // Aciklama
+      sheet.setColumnWidth(4, 15); // SKU
+      sheet.setColumnWidth(5, 18); // Barkod
+      sheet.setColumnWidth(6, 10); // Stok
+      sheet.setColumnWidth(7, 28); // Birim
+      sheet.setColumnWidth(8, 15); // Marka
+
+      // Header satiri
+      sheet.appendRow(headers);
+      for (int col = 0; col < headers.length; col++) {
+        sheet.cell(exc.CellIndex.indexByColumnRow(columnIndex: col, rowIndex: 0)).cellStyle = headerStyle;
+      }
+
+      // Ornek satiri
+      sheet.appendRow(exampleRow);
+      for (int col = 0; col < exampleRow.length; col++) {
+        sheet.cell(exc.CellIndex.indexByColumnRow(columnIndex: col, rowIndex: 1)).cellStyle = exampleStyle;
+      }
+
+      // Kategori ipucu satiri (3. satir)
+      final hintRow = List<exc.CellValue>.generate(headers.length, (_) => exc.TextCellValue(''));
+      hintRow[2] = exc.TextCellValue('Kategoriler: $categoryNames');
+      sheet.appendRow(hintRow);
+      sheet.cell(exc.CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: 2)).cellStyle = categoryHintStyle;
+
+      // Varsayilan Sheet1 sil
+      excel.delete('Sheet1');
+
+      final bytes = excel.encode();
+      if (bytes == null) throw Exception('Excel olusturulamadi');
+
+      await Printing.sharePdf(
+        bytes: Uint8List.fromList(bytes),
+        filename: 'urun_sablonu.xlsx',
+      );
+
+      if (mounted) {
+        setState(() {
+          _step = 1;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Sablon olusturma hatasi: $e';
+          _isLoading = false;
+        });
+      }
+    }
   }
 
-  void _parseCSV() {
+  // ========== EXCEL PARSE ==========
+  Future<void> _pickAndParseExcel() async {
     setState(() {
-      _isParsing = true;
+      _isLoading = true;
       _errorMessage = null;
       _parsedProducts = [];
+      _groupedProducts = {};
     });
 
     try {
-      final lines = _csvController.text.trim().split('\n');
-      if (lines.isEmpty) {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['xlsx', 'xls', 'csv'],
+        withData: true,
+      );
+
+      if (result == null || result.files.isEmpty) {
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      final bytes = result.files.first.bytes;
+      if (bytes == null) {
         setState(() {
-          _errorMessage = 'CSV verisi bos';
-          _isParsing = false;
+          _errorMessage = 'Dosya okunamadi';
+          _isLoading = false;
         });
         return;
       }
 
-      // Skip header if present
-      final startIndex = lines[0].toLowerCase().contains('urun') ||
-                         lines[0].toLowerCase().contains('name') ? 1 : 0;
+      _fileName = result.files.first.name;
+      final isCsv = _fileName!.toLowerCase().endsWith('.csv');
 
-      final products = <StoreProduct>[];
-      for (var i = startIndex; i < lines.length; i++) {
-        final line = lines[i].trim();
-        if (line.isEmpty) continue;
+      // CSV veya Excel parse
+      List<List<String>> dataRows = [];
 
-        final parts = line.split(';').map((e) => e.trim()).toList();
-        if (parts.length < 2) {
+      if (isCsv) {
+        final csvStr = String.fromCharCodes(bytes);
+        final lines = csvStr.split('\n').where((l) => l.trim().isNotEmpty).toList();
+        for (final line in lines) {
+          dataRows.add(line.split(';').map((c) => c.trim()).toList());
+        }
+      } else {
+        exc.Excel excel;
+        try {
+          excel = exc.Excel.decodeBytes(bytes);
+        } catch (e) {
           setState(() {
-            _errorMessage = 'Satir ${i + 1}: En az 2 sutun gerekli (Urun Adi;Fiyat)';
-            _isParsing = false;
+            _errorMessage = 'Excel okunamadi: ${e.toString().length > 100 ? e.toString().substring(0, 100) : e}';
+            _isLoading = false;
           });
           return;
         }
 
-        final name = parts[0];
-        final price = double.tryParse(parts[1].replaceAll(',', '.'));
+        // Ilk veri sayfasini bul
+        for (final sheetName in excel.tables.keys) {
+          if (sheetName.trim().toLowerCase() == 'bilgi') continue;
+          final sheet = excel.tables[sheetName];
+          if (sheet == null || sheet.rows.length < 2) continue;
+          for (final row in sheet.rows) {
+            dataRows.add(row.map((c) => c?.value?.toString().trim() ?? '').toList());
+          }
+          break; // Sadece ilk veri sayfasi
+        }
+      }
 
-        if (name.isEmpty || price == null) {
-          setState(() {
-            _errorMessage = 'Satir ${i + 1}: Gecersiz veri formati (Urun Adi ve Fiyat zorunlu)';
-            _isParsing = false;
-          });
-          return;
+      // Kategori adi -> id eslestirmesi
+      final categoryMap = <String, String?>{};
+      for (final cat in _categories) {
+        categoryMap[cat.name.trim().toLowerCase()] = cat.id;
+      }
+
+      final allProducts = <StoreProduct>[];
+      final grouped = <String, List<StoreProduct>>{};
+      final uuid = const Uuid();
+      final newCategoryNames = <String>{};
+      int errorCount = 0;
+
+      if (dataRows.length < 2) {
+        setState(() {
+          _errorMessage = 'Dosyada yeterli veri bulunamadi';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // Kolon tespiti
+      int colName = 0, colPrice = -1, colCategory = -1, colDescription = -1;
+      int colSku = -1, colBarcode = -1, colStock = -1, colUnit = -1, colBrand = -1;
+      int dataStartRow = 1;
+
+      final headerRow = dataRows[0];
+
+      // 1) Bizim sablon mu? (Urun Adi + Fiyat header)
+      final h0 = headerRow.isNotEmpty ? headerRow[0].toLowerCase() : '';
+      final h1 = headerRow.length > 1 ? headerRow[1].toLowerCase() : '';
+      if (h0.contains('urun') && h1.contains('fiyat')) {
+        // Sablon formati: Urun Adi, Fiyat, Kategori, Aciklama, SKU, Barkod, Stok, Birim, Marka
+        colName = 0; colPrice = 1; colCategory = 2; colDescription = 3;
+        colSku = 4; colBarcode = 5; colStock = 6; colUnit = 7; colBrand = 8;
+        dataStartRow = 2; // baslik + ornek satiri atla
+      } else {
+        // 2) Akilli kolon tespiti
+        for (int c = 0; c < headerRow.length; c++) {
+          final h = headerRow[c].toLowerCase().replaceAll(RegExp('[^a-z0-9]'), '');
+          if (h.contains('urun') || h.contains('isim') || h == 'ad' || h == 'adi' || h.contains('name')) {
+            if (colName == 0 && c > 0) colName = c; // sadece ilk eslesen (varsayilan 0 degilse)
+          } else if (h.contains('fiyat') || h.contains('price') || h.contains('tutar')) {
+            colPrice = c;
+          } else if (h.contains('kategori') || h.contains('category') || h.contains('grup')) {
+            colCategory = c;
+          } else if (h.contains('aciklama') || h.contains('desc')) {
+            colDescription = c;
+          } else if (h == 'sku' || h.contains('urunkod')) {
+            colSku = c;
+          } else if (h.contains('barkod') || h.contains('barcode') || h.contains('ean')) {
+            colBarcode = c;
+          } else if (h.contains('stok') || h.contains('miktar') || h.contains('stock')) {
+            colStock = c;
+          } else if (h.contains('birim') || h.contains('unit')) {
+            colUnit = c;
+          } else if (h.contains('marka') || h.contains('brand')) {
+            colBrand = c;
+          }
+        }
+        // 2. satir ornek ise atla
+        if (dataRows.length > 1) {
+          final firstVal = dataRows[1].isNotEmpty ? dataRows[1][0].toLowerCase().trim() : '';
+          if (firstVal == 'ornek urun' || firstVal == 'ornek' || firstVal.isEmpty) {
+            dataStartRow = 2;
+          }
+        }
+      }
+
+
+      for (int i = dataStartRow; i < dataRows.length; i++) {
+        final row = dataRows[i];
+        if (row.isEmpty || row.every((c) => c.isEmpty)) continue;
+
+        String col(int idx) => (idx >= 0 && idx < row.length) ? row[idx].trim() : '';
+
+        final name = col(colName);
+        final priceStr = col(colPrice);
+        final price = priceStr.isNotEmpty ? (double.tryParse(priceStr.replaceAll(',', '.')) ?? 0.0) : 0.0;
+
+        // Ornek/ipucu satirini atla
+        if (name.toLowerCase() == 'ornek urun') continue;
+        if (name.isEmpty) continue;
+
+        final categoryStr = col(colCategory).isNotEmpty ? col(colCategory) : null;
+        final description = col(colDescription).isNotEmpty ? col(colDescription) : null;
+        final sku = col(colSku).isNotEmpty ? col(colSku) : null;
+        final barcode = col(colBarcode).isNotEmpty ? col(colBarcode) : null;
+        final stockStr = col(colStock);
+        final stock = int.tryParse(stockStr) ?? 0;
+        final unitStr = col(colUnit).isNotEmpty ? col(colUnit) : null;
+        final brand = col(colBrand).isNotEmpty ? col(colBrand) : null;
+
+        // Kategori eslestir
+        String? categoryId;
+        String categoryLabel = 'Kategorisiz';
+        if (categoryStr != null && categoryStr.isNotEmpty) {
+          final catKey = categoryStr.trim().toLowerCase();
+          if (categoryMap.containsKey(catKey)) {
+            categoryId = categoryMap[catKey];
+            categoryLabel = categoryStr.trim();
+          } else {
+            // Kategori yok - olusturulacaklar listesine ekle
+            newCategoryNames.add(categoryStr.trim());
+            categoryLabel = categoryStr.trim();
+          }
         }
 
-        // Format: Urun Adi;Fiyat;Kategori;Aciklama;SKU;Barkod;Birim;Resim URL
-        products.add(StoreProduct(
-          id: DateTime.now().millisecondsSinceEpoch.toString() + i.toString(),
-          storeId: '',
-          categoryId: parts.length > 2 && parts[2].isNotEmpty ? parts[2] : null,
+        final product = StoreProduct(
+          id: uuid.v4(),
+          storeId: _merchantId,
+          categoryId: categoryId,
           name: name,
-          description: parts.length > 3 && parts[3].isNotEmpty ? parts[3] : null,
+          description: (description != null && description.isNotEmpty) ? description : null,
           price: price,
-          stock: 0, // Stok sifir olarak baslar
-          sku: parts.length > 4 && parts[4].isNotEmpty ? parts[4] : null,
-          barcode: parts.length > 5 && parts[5].isNotEmpty ? parts[5] : null,
-          unitType: parts.length > 6 && parts[6].isNotEmpty ? UnitTypeExtension.fromString(parts[6]) : UnitType.adet,
-          imageUrl: parts.length > 7 && parts[7].isNotEmpty ? parts[7] : null,
+          stock: stock,
+          sku: (sku != null && sku.isNotEmpty) ? sku : null,
+          barcode: (barcode != null && barcode.isNotEmpty) ? barcode : null,
+          unitType: (unitStr != null && unitStr.isNotEmpty) ? UnitTypeExtension.fromString(unitStr) : UnitType.adet,
+          brand: (brand != null && brand.isNotEmpty) ? brand : null,
           createdAt: DateTime.now(),
-        ));
+        );
+
+        allProducts.add(product);
+        grouped.putIfAbsent(categoryLabel, () => []).add(product);
+      }
+
+      if (allProducts.isEmpty) {
+        setState(() {
+          _errorMessage = 'Dosyada gecerli urun bulunamadi${errorCount > 0 ? ' ($errorCount satir hatali)' : ''}';
+          _isLoading = false;
+        });
+        return;
+      }
+
+      // Excel'den gelen yeni kategorileri otomatik olustur
+      if (newCategoryNames.isNotEmpty) {
+        final catNotifier = ref.read(productCategoriesProvider.notifier);
+        final createdMap = <String, String>{}; // name.lower -> id
+        for (final catName in newCategoryNames) {
+          final created = await catNotifier.addCategory(catName, _merchantId);
+          if (created != null) {
+            createdMap[catName.toLowerCase()] = created.id;
+            categoryMap[catName.toLowerCase()] = created.id;
+          }
+        }
+        // Urunlere yeni kategori id'lerini ata
+        if (createdMap.isNotEmpty) {
+          for (int i = 0; i < allProducts.length; i++) {
+            if (allProducts[i].categoryId == null) {
+              // grouped'daki label'dan kategori bul
+              final label = grouped.keys.firstWhere(
+                (k) => grouped[k]!.any((p) => p.id == allProducts[i].id),
+                orElse: () => 'Kategorisiz',
+              );
+              final catId = createdMap[label.toLowerCase()];
+              if (catId != null) {
+                allProducts[i] = allProducts[i].copyWith(categoryId: catId);
+                // grouped guncelle (label zaten dogru)
+              }
+            }
+          }
+        }
+      }
+
+      // Hala kategorisiz urunler varsa AI ile kategorize et (batch: 50'ser)
+      final uncategorized = allProducts.where((p) => p.categoryId == null).toList();
+      if (uncategorized.isNotEmpty && _categories.isNotEmpty) {
+        try {
+          final supabase = Supabase.instance.client;
+          final categoryList = _categories.map((c) => {'id': c.id, 'name': c.name}).toList();
+          // Batch: max 50 urun per call
+          for (int b = 0; b < uncategorized.length; b += 50) {
+            final batch = uncategorized.skip(b).take(50).toList();
+            final productNames = batch.map((p) => {'id': p.id, 'name': p.name, 'brand': p.brand}).toList();
+            try {
+              final response = await supabase.functions.invoke(
+                'ai-categorize-products',
+                body: {'products': productNames, 'categories': categoryList},
+              );
+              if (response.status == 200 && response.data != null) {
+                final assignments = (response.data['assignments'] as Map?)?.cast<String, dynamic>() ?? {};
+                for (final entry in assignments.entries) {
+                  final productId = entry.key;
+                  final catId = entry.value as String;
+                  final idx = allProducts.indexWhere((p) => p.id == productId);
+                  if (idx != -1) {
+                    final oldLabel = grouped.keys.firstWhere(
+                      (k) => grouped[k]!.any((p) => p.id == productId),
+                      orElse: () => 'Kategorisiz',
+                    );
+                    grouped[oldLabel]?.removeWhere((p) => p.id == productId);
+                    if (grouped[oldLabel]?.isEmpty ?? false) grouped.remove(oldLabel);
+                    final catName = _categories.where((c) => c.id == catId).firstOrNull?.name ?? 'Kategorisiz';
+                    allProducts[idx] = allProducts[idx].copyWith(categoryId: catId);
+                    grouped.putIfAbsent(catName, () => []).add(allProducts[idx]);
+                  }
+                }
+              }
+            } catch (_) {} // Batch hata verirse sonrakine gec
+          }
+        } catch (e) {
+          if (kDebugMode) print('AI categorize error: $e');
+        }
       }
 
       setState(() {
-        _parsedProducts = products;
-        _isParsing = false;
+        _parsedProducts = allProducts;
+        _groupedProducts = grouped;
+        _errorMessage = errorCount > 0 ? '$errorCount satir hatali (atlandilar)' : null;
+        _step = 2;
+        _isLoading = false;
       });
     } catch (e) {
       setState(() {
-        _errorMessage = 'Ayristirma hatasi: $e';
-        _isParsing = false;
+        _errorMessage = 'Excel okuma hatasi: $e';
+        _isLoading = false;
+      });
+    }
+  }
+
+  // ========== TOPLU YUKLEME ==========
+  Future<void> _doImport() async {
+    setState(() => _isUploading = true);
+    final count = await widget.onImport(_parsedProducts);
+    if (mounted) {
+      setState(() {
+        _isUploading = false;
+        _uploadedCount = count;
+        _imagesTotal = _parsedProducts.where((p) => p.imageUrl == null || p.imageUrl!.isEmpty).length;
+        _step = 3;
+      });
+    }
+  }
+
+  // ========== OTOMATIK RESIM BULMA ==========
+  Future<void> _autoFetchImages() async {
+    setState(() {
+      _isFetchingImages = true;
+      _imagesFound = 0;
+      _imagesDone = false;
+    });
+
+    final productIds = _parsedProducts.map((p) => p.id).toList();
+    final found = await ref.read(storeProductsProvider.notifier).autoFetchProductImages(
+      productIds: productIds,
+      onProgress: (found, total) {
+        if (mounted) {
+          setState(() {
+            _imagesFound = found;
+            _imagesTotal = total;
+          });
+        }
+      },
+    );
+
+    if (mounted) {
+      setState(() {
+        _isFetchingImages = false;
+        _imagesFound = found;
+        _imagesDone = true;
       });
     }
   }
@@ -1363,160 +2067,57 @@ class _ImportDialogState extends State<_ImportDialog> {
       backgroundColor: AppColors.surface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Container(
-        width: 700,
+        width: 750,
+        constraints: const BoxConstraints(maxHeight: 650),
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Baslik
             Row(
               children: [
                 const Icon(Icons.upload_file, size: 28),
                 const SizedBox(width: 12),
-                Text(
-                  'Toplu Urun Yukleme',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
+                Text('Toplu Urun Yukleme', style: Theme.of(context).textTheme.titleLarge),
                 const Spacer(),
+                // Adim gostergesi
+                _buildStepIndicator(),
+                const SizedBox(width: 12),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
                   icon: const Icon(Icons.close),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
-            // Format Info
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withAlpha(20),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.primary.withAlpha(50)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.info_outline, size: 18, color: AppColors.primary),
-                      const SizedBox(width: 8),
-                      Text(
-                        'CSV Formati',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Her satir bir urun icin olmali. Sutunlar noktali virgul (;) ile ayrilmali.',
-                    style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                  ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.background,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      'Urun Adi;Fiyat;Kategori;Aciklama;SKU;Barkod;Birim;Resim URL\n'
-                      'Ornek Urun;99.90;Gida;Aciklama;SKU001;8691234567890;adet;https://example.com/image.jpg',
-                      style: TextStyle(
-                        fontFamily: 'monospace',
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Zorunlu alanlar: Urun Adi, Fiyat',
-                    style: TextStyle(color: AppColors.textMuted, fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // CSV Input
-            Text(
-              'CSV Verisi',
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _csvController,
-              maxLines: 8,
-              decoration: InputDecoration(
-                hintText: 'Urun verilerini buraya yapiştirin...',
-                filled: true,
-                fillColor: AppColors.background,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppColors.border),
-                ),
-              ),
-              style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
-            ),
-            const SizedBox(height: 12),
-
-            // Parse Button
-            Row(
-              children: [
-                OutlinedButton.icon(
-                  onPressed: _isParsing ? null : _parseCSV,
-                  icon: _isParsing
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.check_circle_outline, size: 18),
-                  label: const Text('Kontrol Et'),
-                ),
-                const SizedBox(width: 12),
-                if (_parsedProducts.isNotEmpty)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: AppColors.success.withAlpha(30),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      '${_parsedProducts.length} urun hazir',
-                      style: TextStyle(
-                        color: AppColors.success,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-
-            // Error Message
+            // Hata mesaji
             if (_errorMessage != null) ...[
-              const SizedBox(height: 12),
               Container(
+                width: double.infinity,
                 padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
-                  color: AppColors.error.withAlpha(30),
+                  color: (_step == 2 ? AppColors.warning : AppColors.error).withAlpha(25),
                   borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: (_step == 2 ? AppColors.warning : AppColors.error).withAlpha(60)),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.error_outline, color: AppColors.error, size: 18),
+                    Icon(
+                      _step == 2 ? Icons.warning_amber : Icons.error_outline,
+                      color: _step == 2 ? AppColors.warning : AppColors.error,
+                      size: 18,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         _errorMessage!,
-                        style: TextStyle(color: AppColors.error, fontSize: 13),
+                        style: TextStyle(
+                          color: _step == 2 ? AppColors.warning : AppColors.error,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
                   ],
@@ -1524,90 +2125,716 @@ class _ImportDialogState extends State<_ImportDialog> {
               ),
             ],
 
-            // Preview
-            if (_parsedProducts.isNotEmpty) ...[
-              const SizedBox(height: 16),
+            // Adim icerigi
+            Flexible(child: _buildStepContent()),
+
+            const SizedBox(height: 20),
+
+            // Alt butonlar
+            _buildActions(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStepIndicator() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (int i = 0; i < 4; i++) ...[
+          if (i > 0) Container(width: 20, height: 2, color: i <= _step ? AppColors.primary : AppColors.border),
+          Container(
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: i <= _step ? AppColors.primary : AppColors.background,
+              border: Border.all(color: i <= _step ? AppColors.primary : AppColors.border),
+            ),
+            child: Center(
+              child: i < _step
+                  ? const Icon(Icons.check, size: 14, color: Colors.white)
+                  : Text(
+                      '${i + 1}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: i <= _step ? Colors.white : AppColors.textMuted,
+                      ),
+                    ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildStepContent() {
+    switch (_step) {
+      case 0:
+        return _buildStep0Template();
+      case 1:
+        return _buildStep1Upload();
+      case 2:
+        return _buildStep2Preview();
+      case 3:
+        return _buildStep3Result();
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  // ========== ADIM 0: SABLON INDIR ==========
+  Widget _buildStep0Template() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withAlpha(15),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.primary.withAlpha(40)),
+          ),
+          child: Column(
+            children: [
+              Icon(Icons.description_outlined, size: 48, color: AppColors.primary),
+              const SizedBox(height: 12),
               Text(
-                'Onizleme',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textPrimary,
-                ),
+                'Excel Sablonunu Indirin',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
               ),
               const SizedBox(height: 8),
-              Container(
-                height: 150,
+              Text(
+                'Sablonda mevcut kategorileriniz icin ayri sayfalar bulunur.\n'
+                'Her sayfaya ilgili kategorinin urunlerini yazin.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.5),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: _isLoading ? null : _downloadTemplate,
+                icon: _isLoading
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.download, size: 20),
+                label: Text(_isLoading ? 'Hazirlaniyor...' : 'Sablon Indir (.xlsx)'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        // Kategori listesi
+        Text('Mevcut Kategoriler:', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary, fontSize: 13)),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 6,
+          children: [
+            for (final cat in _categories)
+              Chip(
+                label: Text(cat.name, style: const TextStyle(fontSize: 12)),
+                backgroundColor: AppColors.primary.withAlpha(20),
+                side: BorderSide(color: AppColors.primary.withAlpha(40)),
+                visualDensity: VisualDensity.compact,
+              ),
+            Chip(
+              label: const Text('Kategorisiz', style: TextStyle(fontSize: 12)),
+              backgroundColor: AppColors.background,
+              side: BorderSide(color: AppColors.border),
+              visualDensity: VisualDensity.compact,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // ========== ADIM 1: EXCEL YUKLE ==========
+  Widget _buildStep1Upload() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          onTap: _isLoading ? null : _pickAndParseExcel,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 48),
+            decoration: BoxDecoration(
+              color: AppColors.background,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: AppColors.primary.withAlpha(80),
+                width: 2,
+                strokeAlign: BorderSide.strokeAlignCenter,
+              ),
+            ),
+            child: Column(
+              children: [
+                if (_isLoading)
+                  const CircularProgressIndicator()
+                else ...[
+                  Icon(Icons.cloud_upload_outlined, size: 56, color: AppColors.primary.withAlpha(180)),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Excel Dosyasi Sec',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Doldurdugunuz .xlsx dosyasini secin',
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        if (_fileName != null) ...[
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Icon(Icons.insert_drive_file, size: 18, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Text(_fileName!, style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+            ],
+          ),
+        ],
+        const SizedBox(height: 20),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.background,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.lightbulb_outline, size: 18, color: AppColors.warning),
+                  const SizedBox(width: 8),
+                  Text('Ipuclari', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary, fontSize: 13)),
+                ],
+              ),
+              const SizedBox(height: 8),
+              _tipRow('Zorunlu alan: Urun Adi (Fiyat yoksa 0 olarak eklenir)'),
+              _tipRow('Ilk iki satir (baslik + ornek) otomatik atlanir'),
+              _tipRow('Kategori bos birakilirsa AI otomatik kategorize eder'),
+              _tipRow('Excel veya CSV dosyasi yukleyebilirsiniz'),
+              _tipRow('Birim secenekleri: adet, kg, gram, litre, ml'),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _tipRow(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('  •  ', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+          Expanded(child: Text(text, style: TextStyle(color: AppColors.textSecondary, fontSize: 12))),
+        ],
+      ),
+    );
+  }
+
+  // ========== ADIM 2: ONIZLEME ==========
+  Widget _buildStep2Preview() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Ozet
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.success.withAlpha(25),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                '${_parsedProducts.length} urun hazir',
+                style: TextStyle(color: AppColors.success, fontWeight: FontWeight.w600, fontSize: 13),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '${_groupedProducts.length} kategori',
+              style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+            ),
+            if (_fileName != null) ...[
+              const Spacer(),
+              Icon(Icons.insert_drive_file, size: 16, color: AppColors.textMuted),
+              const SizedBox(width: 4),
+              Text(_fileName!, style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+            ],
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        // Kategorilere gore gruplu liste
+        Expanded(
+          child: ListView.builder(
+            itemCount: _groupedProducts.keys.length,
+            itemBuilder: (context, catIndex) {
+              final categoryName = _groupedProducts.keys.elementAt(catIndex);
+              final products = _groupedProducts[categoryName]!;
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(
                   border: Border.all(color: AppColors.border),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: ListView.builder(
-                  itemCount: _parsedProducts.length,
-                  itemBuilder: (context, index) {
-                    final product = _parsedProducts[index];
-                    return ListTile(
-                      dense: true,
-                      leading: product.imageUrl != null
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(4),
-                              child: Image.network(
-                                product.imageUrl!,
-                                width: 40,
-                                height: 40,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stack) => Container(
-                                  width: 40,
-                                  height: 40,
-                                  color: AppColors.background,
-                                  child: const Icon(Icons.broken_image, size: 20),
-                                ),
-                              ),
-                            )
-                          : Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: AppColors.background,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: const Icon(Icons.image, size: 20, color: AppColors.textMuted),
-                            ),
-                      title: Text(product.name),
-                      subtitle: Text(
-                        '${product.price.toStringAsFixed(2)} TL${product.categoryId != null ? ' | ${product.categoryId}' : ''}',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Kategori basligi
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withAlpha(15),
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(11),
+                          topRight: Radius.circular(11),
+                        ),
                       ),
-                      trailing: product.sku != null
-                        ? Text(product.sku!, style: TextStyle(color: AppColors.textMuted))
-                        : null,
-                    );
-                  },
+                      child: Row(
+                        children: [
+                          Icon(Icons.folder_outlined, size: 18, color: AppColors.primary),
+                          const SizedBox(width: 8),
+                          Text(
+                            categoryName,
+                            style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary, fontSize: 13),
+                          ),
+                          const Spacer(),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withAlpha(25),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              '${products.length} urun',
+                              style: TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Urun satirlari
+                    for (int i = 0; i < products.length; i++)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          border: i < products.length - 1 ? Border(bottom: BorderSide(color: AppColors.border.withAlpha(80))) : null,
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: Text(
+                                products[i].name,
+                                style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Expanded(
+                              flex: 1,
+                              child: Text(
+                                '${products[i].price.toStringAsFixed(2)} TL',
+                                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                                textAlign: TextAlign.right,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            SizedBox(
+                              width: 60,
+                              child: Text(
+                                'Stok: ${products[i].stock}',
+                                style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+                                textAlign: TextAlign.right,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ========== ADIM 3: SONUC & OTOMATIK RESIM ==========
+  Widget _buildStep3Result() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Basari mesaji
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: AppColors.success.withAlpha(15),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.success.withAlpha(40)),
+          ),
+          child: Column(
+            children: [
+              Icon(Icons.check_circle, size: 48, color: AppColors.success),
+              const SizedBox(height: 12),
+              Text(
+                '$_uploadedCount urun basariyla yuklendi!',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        // Otomatik resim bulma
+        if (!_imagesDone && !_isFetchingImages) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withAlpha(10),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.primary.withAlpha(30)),
+            ),
+            child: Column(
+              children: [
+                Icon(Icons.image_search, size: 40, color: AppColors.primary),
+                const SizedBox(height: 12),
+                Text(
+                  'Urun Resimlerini Otomatik Bul',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Urun adi ve barkoduna gore Open Food Facts veritabanindan\notomatik resim aranir. $_imagesTotal resimsiz urun var.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12, height: 1.4),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton.icon(
+                  onPressed: _imagesTotal > 0 ? _autoFetchImages : null,
+                  icon: const Icon(Icons.auto_awesome, size: 18),
+                  label: const Text('Resimleri Otomatik Bul'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+
+        // Resim arama devam ediyor
+        if (_isFetchingImages) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withAlpha(10),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.primary.withAlpha(30)),
+            ),
+            child: Column(
+              children: [
+                const SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: CircularProgressIndicator(strokeWidth: 3),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Resimler araniyor...',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  '$_imagesFound / $_imagesTotal urun icin resim bulundu',
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                ),
+                const SizedBox(height: 12),
+                if (_imagesTotal > 0)
+                  LinearProgressIndicator(
+                    value: _imagesFound / _imagesTotal,
+                    backgroundColor: AppColors.border,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+              ],
+            ),
+          ),
+        ],
+
+        // Resim arama tamamlandi
+        if (_imagesDone) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: (_imagesFound > 0 ? AppColors.success : AppColors.warning).withAlpha(10),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: (_imagesFound > 0 ? AppColors.success : AppColors.warning).withAlpha(30)),
+            ),
+            child: Column(
+              children: [
+                Icon(
+                  _imagesFound > 0 ? Icons.image : Icons.image_not_supported_outlined,
+                  size: 40,
+                  color: _imagesFound > 0 ? AppColors.success : AppColors.warning,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  _imagesFound > 0
+                      ? '$_imagesFound / $_imagesTotal urun icin resim bulundu!'
+                      : 'Maalesef resim bulunamadi',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                ),
+                if (_imagesFound < _imagesTotal && _imagesFound > 0) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Bulunamayan resimler icin urun duzenleme ekranindan manuel ekleyebilirsiniz.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildActions() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        // Sol: Geri
+        if (_step > 0 && _step < 3)
+          TextButton.icon(
+            onPressed: () => setState(() {
+              _step = _step - 1;
+              if (_step < 2) {
+                _parsedProducts = [];
+                _groupedProducts = {};
+              }
+            }),
+            icon: const Icon(Icons.arrow_back, size: 18),
+            label: const Text('Geri'),
+          )
+        else
+          const SizedBox.shrink(),
+
+        // Sag: Iptal / Devam / Yukle / Kapat
+        Row(
+          children: [
+            if (_step < 3)
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Iptal'),
+              ),
+            const SizedBox(width: 12),
+            if (_step == 0)
+              OutlinedButton.icon(
+                onPressed: () => setState(() => _step = 1),
+                icon: const Icon(Icons.arrow_forward, size: 18),
+                label: const Text('Zaten Sablonum Var'),
+              ),
+            if (_step == 1)
+              ElevatedButton.icon(
+                onPressed: _isLoading ? null : _pickAndParseExcel,
+                icon: const Icon(Icons.upload_file, size: 18),
+                label: const Text('Excel Sec'),
+              ),
+            if (_step == 2)
+              ElevatedButton.icon(
+                onPressed: _isUploading ? null : _doImport,
+                icon: _isUploading
+                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.check, size: 18),
+                label: Text(_isUploading ? 'Yukleniyor...' : '${_parsedProducts.length} Urun Yukle'),
+              ),
+            if (_step == 3 && !_isFetchingImages)
+              ElevatedButton.icon(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.done_all, size: 18),
+                label: const Text('Tamamla'),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Otomatik resim bulma dialog'u
+class _AutoImageDialog extends StatefulWidget {
+  final int totalProducts;
+  final Future<int> Function() onStart;
+
+  const _AutoImageDialog({
+    required this.totalProducts,
+    required this.onStart,
+  });
+
+  @override
+  State<_AutoImageDialog> createState() => _AutoImageDialogState();
+}
+
+class _AutoImageDialogState extends State<_AutoImageDialog> {
+  bool _isSearching = false;
+  bool _isDone = false;
+  int _found = 0;
+
+  Future<void> _startSearch() async {
+    setState(() => _isSearching = true);
+    final found = await widget.onStart();
+    if (mounted) {
+      setState(() {
+        _found = found;
+        _isSearching = false;
+        _isDone = true;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: AppColors.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        width: 420,
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header
+            Row(
+              children: [
+                const Icon(Icons.image_search, color: AppColors.primary, size: 24),
+                const SizedBox(width: 12),
+                const Text(
+                  'Otomatik Resim Bul',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.close, size: 20),
+                  onPressed: _isSearching ? null : () => Navigator.pop(context),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            if (!_isDone && !_isSearching) ...[
+              // Info
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withAlpha(20),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    Icon(Icons.info_outline, color: AppColors.primary, size: 32),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${widget.totalProducts} urun resimsiz',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Barkod ve isim ile otomatik resim aranacak.\nPaylasilan havuz ve Open Food Facts kullanilir.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _startSearch,
+                  icon: const Icon(Icons.search),
+                  label: const Text('Aramaya Basla'),
                 ),
               ),
             ],
 
-            const SizedBox(height: 24),
+            if (_isSearching) ...[
+              const SizedBox(height: 20),
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              const Text(
+                'Resimler araniyor...',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Bu islem biraz zaman alabilir',
+                style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+              ),
+              const SizedBox(height: 20),
+            ],
 
-            // Actions
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(
+            if (_isDone) ...[
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: _found > 0 ? AppColors.success.withAlpha(20) : AppColors.warning.withAlpha(20),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    Icon(
+                      _found > 0 ? Icons.check_circle : Icons.image_not_supported,
+                      color: _found > 0 ? AppColors.success : AppColors.warning,
+                      size: 40,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _found > 0
+                          ? '$_found / ${widget.totalProducts} urun icin resim bulundu!'
+                          : 'Maalesef resim bulunamadi',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: _found > 0 ? AppColors.success : AppColors.warning,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Iptal'),
+                  icon: const Icon(Icons.check),
+                  label: const Text('Tamam'),
                 ),
-                const SizedBox(width: 12),
-                ElevatedButton.icon(
-                  onPressed: _parsedProducts.isEmpty
-                      ? null
-                      : () {
-                          widget.onImport(_parsedProducts);
-                          Navigator.pop(context);
-                        },
-                  icon: const Icon(Icons.upload, size: 18),
-                  label: Text('${_parsedProducts.length} Urun Yukle'),
-                ),
-              ],
-            ),
+              ),
+            ],
           ],
         ),
       ),

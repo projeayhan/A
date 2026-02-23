@@ -4,6 +4,9 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
+import 'dart:typed_data';
+import '../../../core/services/invoice_service.dart';
+import '../../invoices/screens/web_download_helper.dart' if (dart.library.io) '../../invoices/screens/io_download_helper.dart';
 
 // Finance stats provider - gerçek veriler
 final financeStatsProvider = FutureProvider.family<FinanceStats, int>((ref, days) async {
@@ -212,7 +215,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                     _buildDateRangeButton(),
                     const SizedBox(width: 12),
                     ElevatedButton.icon(
-                      onPressed: () {},
+                      onPressed: _downloadFinanceReport,
                       icon: const Icon(Icons.download, size: 18),
                       label: const Text('Rapor İndir'),
                     ),
@@ -522,8 +525,10 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
       );
     }
 
-    final maxRevenue = stats.monthlyRevenue.map((e) => e.revenue).reduce((a, b) => a > b ? a : b);
-    final chartMax = (maxRevenue * 1.2).ceilToDouble();
+    final maxRevenue = stats.monthlyRevenue.isNotEmpty
+        ? stats.monthlyRevenue.map((e) => e.revenue).reduce((a, b) => a > b ? a : b)
+        : 0.0;
+    final chartMax = maxRevenue > 0 ? (maxRevenue * 1.2).ceilToDouble() : 1000.0;
 
     return SizedBox(
       height: 300,
@@ -856,5 +861,32 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _downloadFinanceReport() async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Rapor hazırlanıyor...'), backgroundColor: AppColors.info),
+      );
+
+      final supabase = ref.read(supabaseProvider);
+      final transactions = await supabase.rpc('get_recent_transactions', params: {'p_limit': 1000});
+      final data = transactions != null
+          ? (transactions as List).map((e) => e as Map<String, dynamic>).toList()
+          : <Map<String, dynamic>>[];
+
+      final bytes = await InvoiceService.exportFinanceToExcel(data);
+      downloadFile(Uint8List.fromList(bytes), 'finans_rapor_${DateTime.now().millisecondsSinceEpoch}.xlsx');
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Rapor başarıyla indirildi'), backgroundColor: AppColors.success),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Rapor hatası: $e'), backgroundColor: AppColors.error),
+      );
+    }
   }
 }

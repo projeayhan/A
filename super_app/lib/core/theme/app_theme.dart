@@ -44,7 +44,6 @@ class AppTheme {
       onPrimary: Colors.white,
       onSurface: AppColors.textPrimaryLight,
     ),
-    fontFamily: 'Inter',
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: AppColors.surfaceLight,
@@ -128,7 +127,6 @@ class AppTheme {
       onPrimary: Colors.white,
       onSurface: AppColors.textPrimaryDark,
     ),
-    fontFamily: 'Inter',
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: AppColors.surfaceDark,

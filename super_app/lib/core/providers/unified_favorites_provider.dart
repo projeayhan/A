@@ -237,18 +237,90 @@ class EmlakFavoriteNotifier extends StateNotifier<EmlakFavoriteState> {
   }
 
   Future<void> _loadFavorites() async {
-    // Property favorites use local state only (no DB table)
+    final user = SupabaseService.currentUser;
+    if (user == null) return;
+
+    try {
+      // DB'den favori property ID'lerini al
+      final response = await SupabaseService.client
+          .from('property_favorites')
+          .select('property_id')
+          .eq('user_id', user.id);
+
+      final favoriteIds = (response as List)
+          .map((r) => r['property_id'] as String)
+          .toList();
+
+      if (favoriteIds.isEmpty) return;
+
+      // Property detaylarını al
+      final propertiesResponse = await SupabaseService.client
+          .from('properties')
+          .select('id, title, images, city, district, price, listing_type, property_type, rooms, square_meters')
+          .inFilter('id', favoriteIds);
+
+      final List<FavoriteProperty> favorites = [];
+      for (final p in (propertiesResponse as List)) {
+        final images = (p['images'] as List<dynamic>?) ?? [];
+        favorites.add(FavoriteProperty(
+          id: p['id'] as String,
+          title: p['title'] as String? ?? '',
+          imageUrl: images.isNotEmpty ? images.first.toString() : '',
+          location: '${p['city'] ?? ''}, ${p['district'] ?? ''}',
+          price: (p['price'] as num?)?.toDouble() ?? 0,
+          type: p['listing_type'] as String? ?? '',
+          propertyType: p['property_type'] as String? ?? '',
+          rooms: (p['rooms'] as num?)?.toInt() ?? 0,
+          area: (p['square_meters'] as num?)?.toInt() ?? 0,
+          addedAt: DateTime.now(),
+        ));
+      }
+
+      state = state.copyWith(properties: favorites);
+    } catch (e) {
+      debugPrint('Emlak favorileri yuklenemedi: $e');
+    }
   }
 
   Future<void> addProperty(FavoriteProperty property) async {
     if (state.isFavorite(property.id)) return;
+
+    // Optimistic update
     state = state.copyWith(properties: [...state.properties, property]);
+
+    // DB'ye kaydet
+    final user = SupabaseService.currentUser;
+    if (user != null) {
+      try {
+        await SupabaseService.client.from('property_favorites').upsert({
+          'property_id': property.id,
+          'user_id': user.id,
+        });
+      } catch (e) {
+        debugPrint('Favori eklenemedi: $e');
+      }
+    }
   }
 
   Future<void> removeProperty(String id) async {
+    // Optimistic update
     state = state.copyWith(
       properties: state.properties.where((p) => p.id != id).toList(),
     );
+
+    // DB'den sil
+    final user = SupabaseService.currentUser;
+    if (user != null) {
+      try {
+        await SupabaseService.client
+            .from('property_favorites')
+            .delete()
+            .eq('property_id', id)
+            .eq('user_id', user.id);
+      } catch (e) {
+        debugPrint('Favori kaldirilamadi: $e');
+      }
+    }
   }
 
   void toggleProperty(FavoriteProperty property) {

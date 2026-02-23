@@ -20,7 +20,7 @@ final paymentsProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async 
 
   var query = supabase
       .from('payments')
-      .select('*, rides(*), users(*)');
+      .select('*, taxi_rides(*), users(*)');
 
   if (dateRange != null) {
     query = query
@@ -38,7 +38,7 @@ final foodOrdersForInvoiceProvider = FutureProvider<List<Map<String, dynamic>>>(
   final dateRange = ref.watch(dateRangeProvider);
 
   var query = supabase
-      .from('food_orders')
+      .from('orders')
       .select('*, users(*), merchants(*)');
 
   if (dateRange != null) {

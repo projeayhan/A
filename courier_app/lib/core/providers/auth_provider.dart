@@ -4,9 +4,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/supabase_service.dart';
 import '../services/courier_service.dart';
 import '../services/security_service.dart';
+import '../services/push_notification_service.dart';
 
 // Auth durumu
-enum AuthStatus { initial, loading, authenticated, unauthenticated, pendingApproval, error }
+enum AuthStatus { initial, loading, authenticated, unauthenticated, pendingApproval, needsRegistration, error }
 
 class AuthState {
   final AuthStatus status;
@@ -58,6 +59,8 @@ class AuthNotifier extends Notifier<AuthState> {
 
     // Auth değişikliklerini dinle
     SupabaseService.authStateChanges.listen((authState) async {
+      // Explicit auth işlemi sırasında (loading) listener'ın müdahale etmesini engelle
+      if (state.status == AuthStatus.loading) return;
       if (authState.session != null) {
         await _loadCourierProfile(authState.session!.user);
       } else {
@@ -87,9 +90,9 @@ class AuthNotifier extends Notifier<AuthState> {
     final profile = await CourierService.getCourierProfile();
 
     if (profile == null) {
-      // Kurye profili yok - kayıt olması gerekiyor
+      // Oturum açık ama kurye profili yok → kayıt gerekli
       state = AuthState(
-        status: AuthStatus.unauthenticated,
+        status: AuthStatus.needsRegistration,
         user: user,
       );
     } else if (profile['status'] == 'pending') {
@@ -99,6 +102,8 @@ class AuthNotifier extends Notifier<AuthState> {
         user: user,
         courierProfile: profile,
       );
+      // FCM token kaydet (push bildirim için)
+      pushNotificationService.saveTokenIfNeeded();
     } else if (profile['status'] == 'approved') {
       // Onaylı kurye
       state = AuthState(
@@ -106,6 +111,8 @@ class AuthNotifier extends Notifier<AuthState> {
         user: user,
         courierProfile: profile,
       );
+      // FCM token kaydet
+      pushNotificationService.saveTokenIfNeeded();
     } else {
       // Reddedilmiş veya askıya alınmış
       state = AuthState(
@@ -162,7 +169,9 @@ class AuthNotifier extends Notifier<AuthState> {
 
         await SecurityService.clearLoginBlocks(email);
         await _loadCourierProfile(response.user!);
-        return state.status == AuthStatus.authenticated || state.status == AuthStatus.pendingApproval;
+        return state.status == AuthStatus.authenticated
+            || state.status == AuthStatus.pendingApproval
+            || state.status == AuthStatus.needsRegistration;
       }
 
       await SecurityService.trackFailedLogin(identifier: email, errorMessage: 'Giriş başarısız');
@@ -188,8 +197,34 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
-  // Kayıt ol
-  Future<bool> signUp({
+  // Phone OTP - SMS gönder (kayıt sırasında telefon doğrulama için)
+  Future<bool> sendOtp({required String phone}) async {
+    try {
+      await SupabaseService.sendPhoneOtp(phone: phone);
+      return true;
+    } catch (e) {
+      state = state.copyWith(
+        errorMessage: e.toString().replaceAll('Exception: ', ''),
+      );
+      return false;
+    }
+  }
+
+  // Phone OTP - Sadece doğrula (session açmaz, kullanıcı oluşturmaz)
+  Future<bool> verifyPhoneOnly({required String phone, required String code}) async {
+    try {
+      await SupabaseService.verifyPhoneOnly(phone: phone, code: code);
+      return true;
+    } catch (e) {
+      state = state.copyWith(
+        errorMessage: e.toString().replaceAll('Exception: ', ''),
+      );
+      return false;
+    }
+  }
+
+  // E-posta ile kayıt ol: hesap oluştur + giriş yap + kurye profili oluştur
+  Future<bool> registerWithEmail({
     required String email,
     required String password,
     required String fullName,
@@ -207,7 +242,7 @@ class AuthNotifier extends Notifier<AuthState> {
     try {
       User? user;
 
-      // Kayıt - trigger kurye profilini otomatik oluşturur
+      // 1. E-posta + şifre ile hesap oluştur
       try {
         final response = await SupabaseService.signUp(
           email: email,
@@ -216,13 +251,6 @@ class AuthNotifier extends Notifier<AuthState> {
             'full_name': fullName,
             'phone': phone,
             'is_courier': 'true',
-            'tc_no': tcNo,
-            'vehicle_type': vehicleType,
-            'vehicle_plate': vehiclePlate,
-            if (bankName != null) 'bank_name': bankName,
-            if (bankIban != null) 'bank_iban': bankIban,
-            'work_mode': workMode,
-            if (merchantId != null) 'merchant_id': merchantId,
           },
         );
         user = response.user;
@@ -242,6 +270,7 @@ class AuthNotifier extends Notifier<AuthState> {
               await _loadCourierProfile(user!);
               return true;
             }
+            // Profil yok, devam et oluşturacağız
           } on AuthException {
             state = state.copyWith(
               status: AuthStatus.error,
@@ -254,17 +283,43 @@ class AuthNotifier extends Notifier<AuthState> {
         }
       }
 
-      if (user != null) {
-        // Sign out and require email verification
+      if (user == null) {
+        state = state.copyWith(status: AuthStatus.error, errorMessage: 'Kayıt başarısız');
+        return false;
+      }
+
+      // 2. E-postayı onayla & telefonu kaydet
+      try { await SupabaseService.client.rpc('auto_confirm_email', params: {'p_user_id': user.id}); } catch (_) {}
+      try { await SupabaseService.client.rpc('set_user_phone', params: {'p_user_id': user.id, 'p_phone': phone}); } catch (_) {}
+
+      // 3. Henüz giriş yapmamışsak (yeni kayıt), giriş yap
+      if (SupabaseService.currentUser == null) {
         try { await SupabaseService.signOut(); } catch (_) {}
-        state = const AuthState(status: AuthStatus.unauthenticated);
+        await SupabaseService.signIn(email: email, password: password);
+      }
+
+      // 4. Kurye profilini oluştur
+      final success = await CourierService.createCourierProfile(
+        fullName: fullName,
+        phone: phone,
+        tcNo: tcNo,
+        vehicleType: vehicleType,
+        vehiclePlate: vehiclePlate,
+        bankName: bankName,
+        bankIban: bankIban,
+        workMode: workMode,
+        merchantId: merchantId,
+      );
+
+      if (success) {
+        final currentUser = SupabaseService.currentUser;
+        if (currentUser != null) {
+          await _loadCourierProfile(currentUser);
+        }
         return true;
       }
 
-      state = state.copyWith(
-        status: AuthStatus.error,
-        errorMessage: 'Kayıt başarısız',
-      );
+      state = state.copyWith(status: AuthStatus.error, errorMessage: 'Profil oluşturulamadı');
       return false;
     } on AuthException catch (e) {
       state = state.copyWith(
@@ -277,6 +332,52 @@ class AuthNotifier extends Notifier<AuthState> {
         status: AuthStatus.error,
         errorMessage: 'Bir hata oluştu: $e',
       );
+      return false;
+    }
+  }
+
+  // Mevcut kullanıcıya kurye profili oluştur (needsRegistration durumu için)
+  Future<bool> completeRegistration({
+    required String fullName,
+    required String phone,
+    required String tcNo,
+    required String vehicleType,
+    required String vehiclePlate,
+    String? bankName,
+    String? bankIban,
+    String workMode = 'platform',
+    String? merchantId,
+  }) async {
+    state = state.copyWith(status: AuthStatus.loading);
+    try {
+      // Telefonu kaydet
+      final userId = SupabaseService.currentUser?.id;
+      if (userId != null) {
+        try { await SupabaseService.client.rpc('set_user_phone', params: {'p_user_id': userId, 'p_phone': phone}); } catch (_) {}
+      }
+
+      final success = await CourierService.createCourierProfile(
+        fullName: fullName,
+        phone: phone,
+        tcNo: tcNo,
+        vehicleType: vehicleType,
+        vehiclePlate: vehiclePlate,
+        bankName: bankName,
+        bankIban: bankIban,
+        workMode: workMode,
+        merchantId: merchantId,
+      );
+      if (success) {
+        final user = SupabaseService.currentUser;
+        if (user != null) {
+          await _loadCourierProfile(user);
+        }
+        return true;
+      }
+      state = state.copyWith(status: AuthStatus.error, errorMessage: 'Profil oluşturulamadı');
+      return false;
+    } catch (e) {
+      state = state.copyWith(status: AuthStatus.error, errorMessage: 'Bir hata oluştu: $e');
       return false;
     }
   }

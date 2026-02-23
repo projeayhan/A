@@ -1,9 +1,13 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:data_table_2/data_table_2.dart';
 import 'package:intl/intl.dart';
+import '../../../core/services/invoice_service.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/pagination_controls.dart';
+import '../../invoices/screens/web_download_helper.dart' if (dart.library.io) '../../invoices/screens/io_download_helper.dart';
 
 // Logs Provider with filters
 final logsFilterProvider = StateProvider<LogsFilter>((ref) => LogsFilter());
@@ -786,10 +790,31 @@ class _LogsScreenState extends ConsumerState<LogsScreen> {
     }
   }
 
-  void _exportLogs() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Log kayitlari disa aktariliyor...')),
-    );
-    // TODO: Implement export functionality
+  Future<void> _exportLogs() async {
+    try {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Log kayıtları dışa aktarılıyor...'), backgroundColor: AppColors.info),
+      );
+
+      final supabase = ref.read(supabaseProvider);
+      final allLogs = await supabase
+          .from('admin_logs')
+          .select()
+          .order('created_at', ascending: false)
+          .limit(5000);
+      final logs = List<Map<String, dynamic>>.from(allLogs);
+      final bytes = await InvoiceService.exportLogsToExcel(logs);
+      downloadFile(Uint8List.fromList(bytes), 'log_kayitlari_${DateTime.now().millisecondsSinceEpoch}.xlsx');
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Log kayıtları başarıyla indirildi'), backgroundColor: AppColors.success),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Dışa aktarma hatası: $e'), backgroundColor: AppColors.error),
+      );
+    }
   }
 }

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
 import 'package:url_launcher/url_launcher.dart';
@@ -13,6 +14,7 @@ import '../../core/services/communication_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/ride_models.dart';
 import '../../widgets/secure_communication_widgets.dart';
+import '../home/home_screen.dart' show driverProfileProvider;
 
 class RideDetailScreen extends ConsumerStatefulWidget {
   final String rideId;
@@ -33,6 +35,7 @@ class _RideDetailScreenState extends ConsumerState<RideDetailScreen>
   gmaps.GoogleMapController? _mapController;
   RealtimeChannel? _rideChannel;
   Timer? _pollingTimer;
+  Timer? _locationTimer;
   bool _isDisposed = false;
 
   late AnimationController _slideController;
@@ -79,6 +82,10 @@ class _RideDetailScreenState extends ConsumerState<RideDetailScreen>
         _slideController.forward();
         if (!_isDisposed) _updateMapView();
         if (!_isDisposed) _loadRoute();
+        // Aktif yolculukta konum yayinini baslat
+        if (!_isDisposed && _ride!.isActive && _locationTimer == null) {
+          _startLocationBroadcast();
+        }
       } else {
         if (mounted) {
           setState(() => _isLoading = false);
@@ -125,9 +132,66 @@ class _RideDetailScreenState extends ConsumerState<RideDetailScreen>
         final newRide = Ride.fromJson(rideData);
         if (_ride?.status != newRide.status) {
           setState(() => _ride = newRide);
+          // Yolculuk tamamlandi veya iptal edildiyse konum yayinini durdur
+          if (!newRide.isActive) {
+            _stopLocationBroadcast();
+            // Ana sayfadaki istatistikleri guncelle
+            ref.invalidate(driverProfileProvider);
+          }
         }
       }
     });
+  }
+
+  Future<void> _startLocationBroadcast() async {
+    // Konum izni kontrol et
+    LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      debugPrint('Location permission denied');
+      return;
+    }
+
+    _locationTimer?.cancel();
+    // Her 4 saniyede bir konum gonder
+    _locationTimer = Timer.periodic(const Duration(seconds: 4), (_) async {
+      if (_isDisposed || !mounted) return;
+      try {
+        final position = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 3),
+          ),
+        );
+        await TaxiService.updateLocation(position.latitude, position.longitude);
+      } catch (e) {
+        debugPrint('Location broadcast error: $e');
+      }
+    });
+    // Ilk konumu hemen gonder
+    _broadcastCurrentLocation();
+  }
+
+  Future<void> _broadcastCurrentLocation() async {
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 5),
+        ),
+      );
+      await TaxiService.updateLocation(position.latitude, position.longitude);
+    } catch (e) {
+      debugPrint('Initial location broadcast error: $e');
+    }
+  }
+
+  void _stopLocationBroadcast() {
+    _locationTimer?.cancel();
+    _locationTimer = null;
   }
 
   Future<void> _loadRoute() async {
@@ -345,6 +409,8 @@ class _RideDetailScreenState extends ConsumerState<RideDetailScreen>
     _isDisposed = true;
     _pollingTimer?.cancel();
     _pollingTimer = null;
+    _locationTimer?.cancel();
+    _locationTimer = null;
     _rideChannel?.unsubscribe();
     _rideChannel = null;
     _slideController.dispose();
@@ -436,6 +502,7 @@ class _RideDetailScreenState extends ConsumerState<RideDetailScreen>
                 rideId: widget.rideId,
                 latitude: _ride!.pickup.latitude,
                 longitude: _ride!.pickup.longitude,
+                customerName: _ride!.customerName,
               ),
             ),
 

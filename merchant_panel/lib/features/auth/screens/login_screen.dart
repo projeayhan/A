@@ -26,8 +26,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   late Animation<double> _fadeIn;
   late Animation<Offset> _slideUp;
 
-  late AnimationController _shimmerController;
-
   static const _accent = Color(0xFF6366F1);
   static const _accentLight = Color(0xFF818CF8);
 
@@ -50,11 +48,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       curve: Curves.easeOutCubic,
     ));
 
-    _shimmerController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 3000),
-    )..repeat();
-
     Future.delayed(const Duration(milliseconds: 200), () {
       if (mounted) _entranceController.forward();
     });
@@ -63,7 +56,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   @override
   void dispose() {
     _entranceController.dispose();
-    _shimmerController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -133,11 +125,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               .maybeSingle();
           if (merchant != null && merchant['is_approved'] != true) {
             await supabase.auth.signOut();
-            setState(() {
-              _errorMessage =
-                  'Hesabınız henüz admin tarafından onaylanmadı. Lütfen onay için bekleyin.';
-              _isLoading = false;
-            });
+            if (mounted) _showPendingApprovalDialog();
             return;
           }
         }
@@ -170,6 +158,48 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     } catch (e) {
       return {'role': 'none', 'message': 'Rol kontrolü başarısız'};
     }
+  }
+
+  void _showPendingApprovalDialog() {
+    setState(() => _isLoading = false);
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF111827),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        icon: Container(
+          width: 64,
+          height: 64,
+          decoration: BoxDecoration(
+            color: Colors.orange.withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.hourglass_top_rounded, color: Colors.orange, size: 32),
+        ),
+        title: const Text('Hesabınız İnceleniyor', style: TextStyle(color: Color(0xFFF9FAFB))),
+        content: const Text(
+          'Hesabınız henüz admin tarafından onaylanmadı.\n\n'
+          'Onay işlemi tamamlandığında e-posta ile bilgilendirileceksiniz.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Color(0xFF9CA3AF)),
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => Navigator.pop(ctx),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _accent,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Tamam'),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   String _getAuthErrorMessage(String message) {
@@ -281,33 +311,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // Logo with effects
+                        // Logo with elastic entrance
                         AnimatedBuilder(
-                          animation: Listenable.merge([_entranceController, _shimmerController]),
+                          animation: _entranceController,
                           builder: (context, child) {
                             final scale = Curves.elasticOut.transform(_entranceController.value.clamp(0.0, 1.0));
-                            final sv = _shimmerController.value;
-                            final showShimmer = sv <= 0.3;
-                            final sp = showShimmer ? sv / 0.3 : 0.0;
-                            Widget logo = child!;
-                            if (showShimmer) {
-                              logo = ShaderMask(
-                                shaderCallback: (bounds) => LinearGradient(
-                                  begin: Alignment(sp * 4 - 2, -0.3),
-                                  end: Alignment(sp * 4 - 1, 0.3),
-                                  colors: const [
-                                    Color(0x00FFFFFF),
-                                    Color(0x40FFFFFF),
-                                    Color(0x00FFFFFF),
-                                  ],
-                                ).createShader(bounds),
-                                blendMode: BlendMode.srcATop,
-                                child: logo,
-                              );
-                            }
                             return Transform.scale(
                               scale: scale,
-                              child: logo,
+                              child: child,
                             );
                           },
                           child: Image.asset(

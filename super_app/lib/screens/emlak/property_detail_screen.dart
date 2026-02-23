@@ -354,17 +354,6 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen>
               ],
             ),
           ),
-
-          // 360° View Button (if applicable)
-          Positioned(
-            bottom: 70,
-            right: 20,
-            child: _buildCircleButton(
-              icon: Icons.view_in_ar_rounded,
-              onTap: () {},
-              size: 48,
-            ),
-          ),
         ],
       ),
     );

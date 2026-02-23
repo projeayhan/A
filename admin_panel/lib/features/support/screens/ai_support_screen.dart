@@ -135,15 +135,15 @@ class _AiSupportScreenState extends ConsumerState<AiSupportScreen>
       // Get average rating
       final ratingsResponse = await _supabase
           .from('support_chat_sessions')
-          .select('user_rating')
-          .not('user_rating', 'is', null);
+          .select('satisfaction_rating')
+          .not('satisfaction_rating', 'is', null);
 
       final ratings = List<Map<String, dynamic>>.from(ratingsResponse);
       double avgRating = 0;
       if (ratings.isNotEmpty) {
         avgRating =
             ratings
-                .map((r) => (r['user_rating'] as num).toDouble())
+                .map((r) => (r['satisfaction_rating'] as num).toDouble())
                 .reduce((a, b) => a + b) /
             ratings.length;
       }

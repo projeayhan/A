@@ -115,6 +115,7 @@ class RealtorAppointmentsState {
 class RealtorAppointmentsNotifier extends StateNotifier<RealtorAppointmentsState> {
   final RealtorService _service;
   RealtimeChannel? _appointmentsChannel;
+  RealtimeChannel? _realtorAppointmentsChannel;
 
   RealtorAppointmentsNotifier(this._service) : super(const RealtorAppointmentsState()) {
     loadAppointments();
@@ -126,15 +127,27 @@ class RealtorAppointmentsNotifier extends StateNotifier<RealtorAppointmentsState
     final userId = client.auth.currentUser?.id;
     if (userId == null) return;
 
-    // Randevular tablosundaki değişiklikleri dinle
+    // Müşteri randevuları tablosunu dinle
     _appointmentsChannel = client
-        .channel('realtor_appointments_$userId')
+        .channel('customer_appointments_$userId')
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: 'appointments',
           callback: (payload) {
-            // Randevu eklendiğinde/güncellendiğinde listeyi yenile
+            loadAppointments();
+          },
+        )
+        .subscribe();
+
+    // Emlakçının kendi oluşturduğu randevuları dinle
+    _realtorAppointmentsChannel = client
+        .channel('realtor_own_appointments_$userId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'realtor_appointments',
+          callback: (payload) {
             loadAppointments();
           },
         )
@@ -144,6 +157,7 @@ class RealtorAppointmentsNotifier extends StateNotifier<RealtorAppointmentsState
   @override
   void dispose() {
     _appointmentsChannel?.unsubscribe();
+    _realtorAppointmentsChannel?.unsubscribe();
     super.dispose();
   }
 
@@ -151,7 +165,7 @@ class RealtorAppointmentsNotifier extends StateNotifier<RealtorAppointmentsState
     state = state.copyWith(isLoading: true, error: null);
 
     try {
-      final appointments = await _service.getAppointments();
+      final appointments = await _service.getAppointments(activeOnly: false, limit: 200);
       final todayAppointments = await _service.getTodayAppointments();
 
       state = state.copyWith(
@@ -191,18 +205,18 @@ class RealtorAppointmentsNotifier extends StateNotifier<RealtorAppointmentsState
     }
   }
 
-  Future<void> cancelAppointment(String appointmentId, String? reason) async {
+  Future<void> cancelAppointment(String appointmentId, String? reason, {String source = 'customer'}) async {
     try {
-      await _service.cancelAppointment(appointmentId, reason);
+      await _service.cancelAppointment(appointmentId, reason, source: source);
       await loadAppointments();
     } catch (e) {
       state = state.copyWith(error: e.toString());
     }
   }
 
-  Future<void> completeAppointment(String appointmentId, String? outcome) async {
+  Future<void> completeAppointment(String appointmentId, String? outcome, {String source = 'customer'}) async {
     try {
-      await _service.completeAppointment(appointmentId, outcome);
+      await _service.completeAppointment(appointmentId, outcome, source: source);
       await loadAppointments();
     } catch (e) {
       state = state.copyWith(error: e.toString());

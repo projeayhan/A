@@ -808,6 +808,7 @@ class _AIChatDialogState extends State<_AIChatDialog> {
   bool _isLoading = false;
   bool _isInitializing = true;
   bool _ttsEnabled = false;
+  StreamSubscription<AiStreamEvent>? _streamSubscription;
 
   @override
   void initState() {
@@ -818,6 +819,7 @@ class _AIChatDialogState extends State<_AIChatDialog> {
 
   @override
   void dispose() {
+    _streamSubscription?.cancel();
     _messageController.dispose();
     _scrollController.dispose();
     voiceOutputService.stop();
@@ -885,11 +887,12 @@ class _AIChatDialogState extends State<_AIChatDialog> {
     setState(() => _messages.add(assistantMessage));
     _scrollToBottom();
 
-    try {
-      final stream = AiChatService.sendMessageStream(message: message, sessionId: _sessionId);
+    _streamSubscription?.cancel();
+    final stream = AiChatService.sendMessageStream(message: message, sessionId: _sessionId);
 
-      await for (final event in stream) {
-        if (!mounted) return;
+    _streamSubscription = stream.listen(
+      (event) {
+        if (!mounted) { _streamSubscription?.cancel(); return; }
         switch (event.type) {
           case AiStreamEventType.session:
             _sessionId = event.sessionId;
@@ -911,6 +914,7 @@ class _AIChatDialogState extends State<_AIChatDialog> {
             if (_ttsEnabled && assistantMessage.content.isNotEmpty) {
               voiceOutputService.speak(assistantMessage.content);
             }
+            _scrollToBottom();
             break;
           case AiStreamEventType.error:
             setState(() {
@@ -918,26 +922,30 @@ class _AIChatDialogState extends State<_AIChatDialog> {
               _isLoading = false;
               if (assistantMessage.content.isEmpty) assistantMessage.content = 'Uzgunum, ${event.error}';
             });
+            _scrollToBottom();
             break;
         }
-      }
-
-      if (mounted && assistantMessage.isStreaming) {
+      },
+      onDone: () {
+        if (mounted && assistantMessage.isStreaming) {
+          setState(() {
+            assistantMessage.isStreaming = false;
+            _isLoading = false;
+            if (assistantMessage.content.isEmpty) assistantMessage.content = 'Baglanti kesildi.';
+          });
+          _scrollToBottom();
+        }
+      },
+      onError: (e) {
+        if (!mounted) return;
         setState(() {
           assistantMessage.isStreaming = false;
           _isLoading = false;
-          if (assistantMessage.content.isEmpty) assistantMessage.content = 'Baglanti kesildi.';
+          if (assistantMessage.content.isEmpty) assistantMessage.content = 'Hata: $e';
         });
-      }
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        assistantMessage.isStreaming = false;
-        _isLoading = false;
-        if (assistantMessage.content.isEmpty) assistantMessage.content = 'Hata: $e';
-      });
-    }
-    _scrollToBottom();
+        _scrollToBottom();
+      },
+    );
   }
 
   Future<void> _startNewChat() async {

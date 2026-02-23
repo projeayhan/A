@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -175,7 +176,10 @@ class AiChatService {
     http.Client? client;
     try {
       client = http.Client();
-      final response = await client.send(request);
+      final response = await client.send(request).timeout(
+        const Duration(seconds: 90),
+        onTimeout: () => throw TimeoutException('AI yanit suresi doldu', const Duration(seconds: 90)),
+      );
 
       if (response.statusCode != 200) {
         final responseBody = await response.stream.bytesToString();
@@ -185,7 +189,6 @@ class AiChatService {
         } catch (_) {
           yield AiStreamEvent.error('HTTP ${response.statusCode}');
         }
-        client.close();
         return;
       }
 
@@ -205,11 +208,10 @@ class AiChatService {
         final event = _parseSseChunk(buffer.trim());
         if (event != null) yield event;
       }
-
-      client.close();
     } catch (e) {
-      client?.close();
       yield AiStreamEvent.error('Baglanti hatasi: $e');
+    } finally {
+      client?.close();
     }
   }
 
@@ -264,7 +266,8 @@ class AiChatService {
 
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
-      return [];
+      debugPrint('getChatHistory error: $e');
+      rethrow;
     }
   }
 
@@ -298,7 +301,8 @@ class AiChatService {
           .eq('id', sessionId);
       return true;
     } catch (e) {
-      return false;
+      debugPrint('closeSession error: $e');
+      rethrow;
     }
   }
 
@@ -313,7 +317,8 @@ class AiChatService {
 
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
-      return [];
+      debugPrint('getSessionActions error: $e');
+      rethrow;
     }
   }
 }

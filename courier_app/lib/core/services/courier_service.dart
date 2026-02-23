@@ -37,8 +37,8 @@ class CourierService {
     if (userId == null) return false;
 
     try {
-      // Kurye profilini oluştur (merchant_id olmadan)
-      final response = await SupabaseService.client.from('couriers').insert({
+      // Kurye profilini oluştur veya güncelle (tekrar kayıt durumunda)
+      final response = await SupabaseService.client.from('couriers').upsert({
         'user_id': userId,
         'full_name': fullName,
         'phone': phone,
@@ -48,13 +48,30 @@ class CourierService {
         'bank_name': bankName,
         'bank_iban': bankIban,
         'work_mode': workMode,
-        'merchant_id': null, // Restoran onaylayana kadar null
-        'status': 'pending', // Admin onayı bekliyor
+        'merchant_id': null,
+        'status': 'pending',
         'is_online': false,
         'rating': 5.0,
         'total_deliveries': 0,
         'total_earnings': 0,
-      }).select('id').single();
+      }, onConflict: 'user_id').select('id').single();
+
+      // users tablosunda ad soyad güncelle (super_app girişinde yönlendirme kontrolü için)
+      try {
+        final parcalar = fullName.split(' ');
+        final ad = parcalar.first;
+        final soyad = parcalar.length > 1 ? parcalar.sublist(1).join(' ') : '';
+        await SupabaseService.client
+            .from('users')
+            .update({
+              'first_name': ad,
+              'last_name': soyad,
+              'phone': phone,
+            })
+            .eq('id', userId);
+      } catch (_) {
+        // users kaydı yoksa veya hata olursa devam et
+      }
 
       // Eğer restoran seçildiyse bağlantı isteği gönder
       if (merchantId != null && response['id'] != null) {
@@ -67,7 +84,7 @@ class CourierService {
       return true;
     } catch (e) {
       debugPrint('createCourierProfile error: $e');
-      return false;
+      rethrow;
     }
   }
 

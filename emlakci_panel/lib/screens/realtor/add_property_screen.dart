@@ -62,7 +62,17 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
   // Kuzey Kıbrıs merkez koordinatları (varsayılan)
   static const LatLng _defaultCenter = LatLng(35.1856, 33.3823);
 
-  // Feature Flags
+  // New detail controllers
+  final _netSquareMetersController = TextEditingController();
+
+  // Dropdown values
+  String? _heatingType;
+  String? _facingDirection;
+  String? _interiorStatus;
+  String? _deedType;
+  String? _viewType;
+
+  // Feature Flags - Dış Mekan & Bina
   bool _hasParking = false;
   bool _hasBalcony = false;
   bool _hasFurniture = false;
@@ -71,6 +81,25 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
   bool _hasSecurity = false;
   bool _hasElevator = false;
   bool _isSmartHome = false;
+  bool _hasGarden = false;
+  bool _hasTerrace = false;
+  bool _hasStorage = false;
+  bool _hasFireplace = false;
+  bool _hasAirConditioning = false;
+  bool _hasGenerator = false;
+  bool _hasSatellite = false;
+  bool _hasInternet = false;
+  bool _hasNaturalGas = false;
+  bool _hasSteelDoor = false;
+  bool _hasVideoIntercom = false;
+  bool _hasAlarm = false;
+  bool _hasParentBathroom = false;
+  bool _hasBuiltinKitchen = false;
+  bool _hasJacuzzi = false;
+  bool _hasSauna = false;
+  bool _hasBarbeque = false;
+  bool _hasDoorman = false;
+  bool _isInComplex = false;
 
   @override
   void dispose() {
@@ -83,6 +112,7 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
     _floorController.dispose();
     _totalFloorsController.dispose();
     _buildingAgeController.dispose();
+    _netSquareMetersController.dispose();
     _addressController.dispose();
     _latitudeController.dispose();
     _longitudeController.dispose();
@@ -781,6 +811,7 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // ── Temel Özellikler ──
         _buildSectionTitle('Temel Özellikler'),
         const SizedBox(height: 12),
         Row(
@@ -788,12 +819,10 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
             Expanded(
               child: TextFormField(
                 controller: _squareMetersController,
-                decoration: _inputDecoration('m² (Brüt)'),
+                decoration: _labeledInputDecoration('Brüt m²', Icons.square_foot),
                 keyboardType: TextInputType.number,
                 validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'm² zorunludur';
-                  }
+                  if (value == null || value.isEmpty) return 'm² zorunludur';
                   return null;
                 },
               ),
@@ -801,15 +830,9 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: TextFormField(
-                controller: _roomsController,
-                decoration: _inputDecoration('Oda Sayısı'),
+                controller: _netSquareMetersController,
+                decoration: _labeledInputDecoration('Net m²', Icons.crop_square),
                 keyboardType: TextInputType.number,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Oda sayısı zorunludur';
-                  }
-                  return null;
-                },
               ),
             ),
           ],
@@ -819,16 +842,20 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
           children: [
             Expanded(
               child: TextFormField(
-                controller: _bathroomsController,
-                decoration: _inputDecoration('Banyo Sayısı'),
+                controller: _roomsController,
+                decoration: _labeledInputDecoration('Oda Sayısı', Icons.bed),
                 keyboardType: TextInputType.number,
+                validator: (value) {
+                  if (value == null || value.isEmpty) return 'Oda sayısı zorunludur';
+                  return null;
+                },
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: TextFormField(
-                controller: _buildingAgeController,
-                decoration: _inputDecoration('Bina Yaşı'),
+                controller: _bathroomsController,
+                decoration: _labeledInputDecoration('Banyo', Icons.bathtub_outlined),
                 keyboardType: TextInputType.number,
               ),
             ),
@@ -840,7 +867,7 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
             Expanded(
               child: TextFormField(
                 controller: _floorController,
-                decoration: _inputDecoration('Bulunduğu Kat'),
+                decoration: _labeledInputDecoration('Bulunduğu Kat', Icons.stairs),
                 keyboardType: TextInputType.number,
               ),
             ),
@@ -848,29 +875,237 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
             Expanded(
               child: TextFormField(
                 controller: _totalFloorsController,
-                decoration: _inputDecoration('Toplam Kat'),
+                decoration: _labeledInputDecoration('Toplam Kat', Icons.apartment),
                 keyboardType: TextInputType.number,
               ),
             ),
           ],
         ),
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: _buildingAgeController,
+          decoration: _labeledInputDecoration('Bina Yaşı', Icons.calendar_today),
+          keyboardType: TextInputType.number,
+        ),
 
+        // ── Detay Bilgiler ──
         const SizedBox(height: 32),
-        _buildSectionTitle('Ek Özellikler'),
+        _buildSectionTitle('Detay Bilgiler'),
+        const SizedBox(height: 12),
+        // Isınma Tipi
+        DropdownButtonFormField<String>(
+          initialValue: _heatingType,
+          decoration: _labeledInputDecoration('Isınma Tipi', Icons.thermostat),
+          items: const [
+            DropdownMenuItem(value: 'kombi', child: Text('Kombi')),
+            DropdownMenuItem(value: 'merkezi', child: Text('Merkezi Isıtma')),
+            DropdownMenuItem(value: 'yerden', child: Text('Yerden Isıtma')),
+            DropdownMenuItem(value: 'dogalgaz', child: Text('Doğalgaz Sobası')),
+            DropdownMenuItem(value: 'klima', child: Text('Klima')),
+            DropdownMenuItem(value: 'soba', child: Text('Soba')),
+            DropdownMenuItem(value: 'gunes_enerjisi', child: Text('Güneş Enerjisi')),
+            DropdownMenuItem(value: 'yok', child: Text('Yok')),
+          ],
+          onChanged: (v) => setState(() => _heatingType = v),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            // Cephe
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                initialValue: _facingDirection,
+                decoration: _labeledInputDecoration('Cephe', Icons.explore),
+                isExpanded: true,
+                items: const [
+                  DropdownMenuItem(value: 'kuzey', child: Text('Kuzey')),
+                  DropdownMenuItem(value: 'guney', child: Text('Güney')),
+                  DropdownMenuItem(value: 'dogu', child: Text('Doğu')),
+                  DropdownMenuItem(value: 'bati', child: Text('Batı')),
+                  DropdownMenuItem(value: 'kuzey_dogu', child: Text('Kuzeydoğu')),
+                  DropdownMenuItem(value: 'kuzey_bati', child: Text('Kuzeybatı')),
+                  DropdownMenuItem(value: 'guney_dogu', child: Text('Güneydoğu')),
+                  DropdownMenuItem(value: 'guney_bati', child: Text('Güneybatı')),
+                ],
+                onChanged: (v) => setState(() => _facingDirection = v),
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Manzara
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                initialValue: _viewType,
+                decoration: _labeledInputDecoration('Manzara', Icons.landscape),
+                isExpanded: true,
+                items: const [
+                  DropdownMenuItem(value: 'deniz', child: Text('Deniz')),
+                  DropdownMenuItem(value: 'dag', child: Text('Dağ')),
+                  DropdownMenuItem(value: 'sehir', child: Text('Şehir')),
+                  DropdownMenuItem(value: 'gol', child: Text('Göl')),
+                  DropdownMenuItem(value: 'doga', child: Text('Doğa')),
+                  DropdownMenuItem(value: 'bogaz', child: Text('Boğaz')),
+                  DropdownMenuItem(value: 'yok', child: Text('Manzara Yok')),
+                ],
+                onChanged: (v) => setState(() => _viewType = v),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            // İç Durum
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                initialValue: _interiorStatus,
+                decoration: _labeledInputDecoration('İç Durum', Icons.home_repair_service),
+                isExpanded: true,
+                items: const [
+                  DropdownMenuItem(value: 'sifir', child: Text('Sıfır')),
+                  DropdownMenuItem(value: 'iyi', child: Text('İyi')),
+                  DropdownMenuItem(value: 'orta', child: Text('Orta')),
+                  DropdownMenuItem(value: 'tadilat_gerekli', child: Text('Tadilatlı')),
+                  DropdownMenuItem(value: 'ham', child: Text('Ham')),
+                ],
+                onChanged: (v) => setState(() => _interiorStatus = v),
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Tapu Durumu
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                initialValue: _deedType,
+                decoration: _labeledInputDecoration('Tapu Durumu', Icons.description),
+                isExpanded: true,
+                items: const [
+                  DropdownMenuItem(value: 'kat_mulkiyeti', child: Text('Kat Mülkiyeti')),
+                  DropdownMenuItem(value: 'kat_irtifaki', child: Text('Kat İrtifakı')),
+                  DropdownMenuItem(value: 'arsa_tapusu', child: Text('Arsa Tapusu')),
+                  DropdownMenuItem(value: 'hisseli', child: Text('Hisseli Tapu')),
+                  DropdownMenuItem(value: 'kocan', child: Text('Koçan')),
+                ],
+                onChanged: (v) => setState(() => _deedType = v),
+              ),
+            ),
+          ],
+        ),
+
+        // ── İç Mekan Özellikleri ──
+        const SizedBox(height: 32),
+        _buildFeatureCategoryTitle('İç Mekan', Icons.weekend),
         const SizedBox(height: 12),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
-            _buildFeatureChip('Otopark', _hasParking, Icons.local_parking, (v) => setState(() => _hasParking = v)),
-            _buildFeatureChip('Balkon', _hasBalcony, Icons.balcony, (v) => setState(() => _hasBalcony = v)),
             _buildFeatureChip('Eşyalı', _hasFurniture, Icons.chair, (v) => setState(() => _hasFurniture = v)),
-            _buildFeatureChip('Havuz', _hasPool, Icons.pool, (v) => setState(() => _hasPool = v)),
-            _buildFeatureChip('Spor Salonu', _hasGym, Icons.fitness_center, (v) => setState(() => _hasGym = v)),
-            _buildFeatureChip('Güvenlik', _hasSecurity, Icons.security, (v) => setState(() => _hasSecurity = v)),
-            _buildFeatureChip('Asansör', _hasElevator, Icons.elevator, (v) => setState(() => _hasElevator = v)),
-            _buildFeatureChip('Akıllı Ev', _isSmartHome, Icons.home_max, (v) => setState(() => _isSmartHome = v)),
+            _buildFeatureChip('Ankastre Mutfak', _hasBuiltinKitchen, Icons.countertops, (v) => setState(() => _hasBuiltinKitchen = v)),
+            _buildFeatureChip('Ebeveyn Banyosu', _hasParentBathroom, Icons.shower, (v) => setState(() => _hasParentBathroom = v)),
+            _buildFeatureChip('Jakuzi', _hasJacuzzi, Icons.hot_tub, (v) => setState(() => _hasJacuzzi = v)),
+            _buildFeatureChip('Şömine', _hasFireplace, Icons.fireplace, (v) => setState(() => _hasFireplace = v)),
+            _buildFeatureChip('Kiler/Depo', _hasStorage, Icons.inventory_2, (v) => setState(() => _hasStorage = v)),
+            _buildFeatureChip('Sauna', _hasSauna, Icons.spa, (v) => setState(() => _hasSauna = v)),
           ],
+        ),
+
+        // ── Dış Mekan Özellikleri ──
+        const SizedBox(height: 24),
+        _buildFeatureCategoryTitle('Dış Mekan', Icons.yard),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _buildFeatureChip('Balkon', _hasBalcony, Icons.balcony, (v) => setState(() => _hasBalcony = v)),
+            _buildFeatureChip('Bahçe', _hasGarden, Icons.grass, (v) => setState(() => _hasGarden = v)),
+            _buildFeatureChip('Teras', _hasTerrace, Icons.deck, (v) => setState(() => _hasTerrace = v)),
+            _buildFeatureChip('Havuz', _hasPool, Icons.pool, (v) => setState(() => _hasPool = v)),
+            _buildFeatureChip('Otopark', _hasParking, Icons.local_parking, (v) => setState(() => _hasParking = v)),
+            _buildFeatureChip('Barbekü Alanı', _hasBarbeque, Icons.outdoor_grill, (v) => setState(() => _hasBarbeque = v)),
+          ],
+        ),
+
+        // ── Bina & Site Özellikleri ──
+        const SizedBox(height: 24),
+        _buildFeatureCategoryTitle('Bina & Site', Icons.domain),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _buildFeatureChip('Asansör', _hasElevator, Icons.elevator, (v) => setState(() => _hasElevator = v)),
+            _buildFeatureChip('Site İçi', _isInComplex, Icons.holiday_village, (v) => setState(() => _isInComplex = v)),
+            _buildFeatureChip('Spor Salonu', _hasGym, Icons.fitness_center, (v) => setState(() => _hasGym = v)),
+            _buildFeatureChip('Kapıcı', _hasDoorman, Icons.person_pin, (v) => setState(() => _hasDoorman = v)),
+            _buildFeatureChip('Jeneratör', _hasGenerator, Icons.bolt, (v) => setState(() => _hasGenerator = v)),
+          ],
+        ),
+
+        // ── Isıtma & Enerji ──
+        const SizedBox(height: 24),
+        _buildFeatureCategoryTitle('Isıtma & Enerji', Icons.thermostat),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _buildFeatureChip('Klima', _hasAirConditioning, Icons.ac_unit, (v) => setState(() => _hasAirConditioning = v)),
+            _buildFeatureChip('Doğalgaz', _hasNaturalGas, Icons.local_fire_department, (v) => setState(() => _hasNaturalGas = v)),
+          ],
+        ),
+
+        // ── Güvenlik ──
+        const SizedBox(height: 24),
+        _buildFeatureCategoryTitle('Güvenlik', Icons.shield),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _buildFeatureChip('Güvenlik', _hasSecurity, Icons.security, (v) => setState(() => _hasSecurity = v)),
+            _buildFeatureChip('Alarm Sistemi', _hasAlarm, Icons.notifications_active, (v) => setState(() => _hasAlarm = v)),
+            _buildFeatureChip('Çelik Kapı', _hasSteelDoor, Icons.door_front_door, (v) => setState(() => _hasSteelDoor = v)),
+            _buildFeatureChip('Görüntülü Diafon', _hasVideoIntercom, Icons.videocam, (v) => setState(() => _hasVideoIntercom = v)),
+          ],
+        ),
+
+        // ── Teknoloji & Altyapı ──
+        const SizedBox(height: 24),
+        _buildFeatureCategoryTitle('Teknoloji & Altyapı', Icons.wifi),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _buildFeatureChip('Akıllı Ev', _isSmartHome, Icons.home_max, (v) => setState(() => _isSmartHome = v)),
+            _buildFeatureChip('Fiber İnternet', _hasInternet, Icons.router, (v) => setState(() => _hasInternet = v)),
+            _buildFeatureChip('Uydu/Kablolu TV', _hasSatellite, Icons.satellite_alt, (v) => setState(() => _hasSatellite = v)),
+          ],
+        ),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  Widget _buildFeatureCategoryTitle(String title, IconData icon) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(6),
+          decoration: BoxDecoration(
+            color: const Color(0xFF3B82F6).withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(icon, size: 18, color: const Color(0xFF3B82F6)),
+        ),
+        const SizedBox(width: 10),
+        Text(
+          title,
+          style: const TextStyle(
+            color: Color(0xFF334155),
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ],
     );
@@ -888,6 +1123,34 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
       labelStyle: TextStyle(
         color: isSelected ? const Color(0xFF3B82F6) : const Color(0xFF64748B),
       ),
+    );
+  }
+
+  InputDecoration _labeledInputDecoration(String label, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      prefixIcon: Icon(icon, size: 20, color: const Color(0xFF64748B)),
+      floatingLabelBehavior: FloatingLabelBehavior.auto,
+      filled: true,
+      fillColor: Colors.white,
+      labelStyle: const TextStyle(color: Color(0xFF64748B), fontSize: 14),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: Color(0xFF3B82F6)),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: Colors.red),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     );
   }
 
@@ -1230,9 +1493,15 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
         rooms: int.tryParse(_roomsController.text) ?? 0,
         bathrooms: int.tryParse(_bathroomsController.text) ?? 1,
         squareMeters: int.tryParse(_squareMetersController.text) ?? 0,
+        netSquareMeters: int.tryParse(_netSquareMetersController.text),
         floor: int.tryParse(_floorController.text),
         totalFloors: int.tryParse(_totalFloorsController.text),
         buildingAge: int.tryParse(_buildingAgeController.text),
+        heatingType: _heatingType,
+        facingDirection: _facingDirection,
+        interiorStatus: _interiorStatus,
+        deedType: _deedType,
+        viewType: _viewType,
         hasParking: _hasParking,
         hasBalcony: _hasBalcony,
         hasFurniture: _hasFurniture,
@@ -1241,6 +1510,25 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
         hasSecurity: _hasSecurity,
         hasElevator: _hasElevator,
         isSmartHome: _isSmartHome,
+        hasGarden: _hasGarden,
+        hasTerrace: _hasTerrace,
+        hasStorage: _hasStorage,
+        hasFireplace: _hasFireplace,
+        hasAirConditioning: _hasAirConditioning,
+        hasGenerator: _hasGenerator,
+        hasSatellite: _hasSatellite,
+        hasInternet: _hasInternet,
+        hasNaturalGas: _hasNaturalGas,
+        hasSteelDoor: _hasSteelDoor,
+        hasVideoIntercom: _hasVideoIntercom,
+        hasAlarm: _hasAlarm,
+        hasParentBathroom: _hasParentBathroom,
+        hasBuiltinKitchen: _hasBuiltinKitchen,
+        hasJacuzzi: _hasJacuzzi,
+        hasSauna: _hasSauna,
+        hasBarbeque: _hasBarbeque,
+        hasDoorman: _hasDoorman,
+        isInComplex: _isInComplex,
         amenities: _selectedAmenities,
         createdAt: DateTime.now(),
       );

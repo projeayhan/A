@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'supabase_service.dart';
+import 'notification_sound_service.dart';
 
 /// Background message handler - must be top-level function
 @pragma('vm:entry-point')
@@ -21,7 +22,8 @@ class PushNotificationService {
   factory PushNotificationService() => _instance;
   PushNotificationService._internal();
 
-  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+  FirebaseMessaging? _messagingInstance;
+  FirebaseMessaging get _messaging => _messagingInstance ??= FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
 
   StreamController<Map<String, dynamic>>? _notificationController;
@@ -38,6 +40,7 @@ class PushNotificationService {
 
   /// Initialize the push notification service
   Future<void> initialize() async {
+    if (kIsWeb) return; // Firebase Messaging web'de desteklenmiyor
     try {
       // Set up background message handler
       FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
@@ -208,6 +211,13 @@ class PushNotificationService {
 
     // Get notification type for channel selection
     final type = message.data['type'] as String? ?? 'general';
+
+    // Play custom sound for foreground messages
+    if (type == 'new_order' || type == 'order_assigned') {
+      NotificationSoundService.playOrderSound();
+    } else {
+      NotificationSoundService.playNotificationSound();
+    }
     final channelId = _getChannelId(type);
     final iconColor = _getNotificationColor(type);
     final priority = type == 'new_order' ? Priority.max : Priority.high;
@@ -298,6 +308,10 @@ class PushNotificationService {
     required String orderNumber,
     String? merchantName,
   }) async {
+    if (kIsWeb) return; // Firebase Messaging web'de desteklenmiyor
+    // Play order notification sound
+    NotificationSoundService.playOrderSound();
+
     final title = 'Yeni Sipariş Atandı! 🛵';
     final body = merchantName != null
         ? '$merchantName - Sipariş #$orderNumber size atandı.'
@@ -328,8 +342,19 @@ class PushNotificationService {
     );
   }
 
+  /// Re-save FCM token (call after login/auth state change)
+  Future<void> saveTokenIfNeeded() async {
+    if (kIsWeb) return; // Firebase Messaging web'de desteklenmiyor
+    if (_fcmToken != null) {
+      await _saveTokenToSupabase(_fcmToken!);
+    } else {
+      await _getAndSaveToken();
+    }
+  }
+
   /// Delete FCM token (on logout)
   Future<void> deleteToken() async {
+    if (kIsWeb) return; // Firebase Messaging web'de desteklenmiyor
     final userId = SupabaseService.currentUser?.id;
     if (userId == null) return;
 

@@ -3,15 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/app_responsive.dart';
 import '../../core/theme/store_colors.dart';
+import '../../core/utils/image_utils.dart';
 import '../../core/providers/store_cart_provider.dart';
 import '../../core/providers/store_follow_provider.dart';
 import '../../core/providers/store_favorite_provider.dart';
 import '../../core/services/supabase_service.dart';
 import '../../models/store/store_model.dart';
 import '../../models/store/store_product_model.dart';
-import '../../widgets/store/product_card.dart';
 import '../../core/providers/store_provider.dart';
 import '../../core/providers/ai_context_provider.dart';
 import '../../core/utils/name_masking.dart';
@@ -752,340 +753,15 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
   }
 
   void _showChatBottomSheet(bool isDark, Store store) {
-    final TextEditingController messageController = TextEditingController();
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: MediaQuery.of(context).size.height * 0.75,
-        decoration: BoxDecoration(
-          color: isDark ? Colors.grey[900] : Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          children: [
-            // Handle
-            Container(
-              margin: const EdgeInsets.only(top: 12),
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey[400],
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            // Header
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(
-                    color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
-                  ),
-                ),
-              ),
-              child: Row(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: CachedNetworkImage(
-                      imageUrl: store.logoUrl,
-                      width: 44,
-                      height: 44,
-                      fit: BoxFit.cover,
-                      placeholder: (_, __) => Container(
-                        width: 44,
-                        height: 44,
-                        color: Colors.grey[200],
-                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                      ),
-                      errorWidget: (_, __, ___) => Container(
-                        width: 44,
-                        height: 44,
-                        color: StoreColors.primary,
-                        child: const Icon(Icons.store, color: Colors.white),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          store.name,
-                          style: TextStyle(
-                            fontSize: context.heading2Size,
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? Colors.white : Colors.black87,
-                          ),
-                        ),
-                        Row(
-                          children: [
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: const BoxDecoration(
-                                color: Colors.green,
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Genellikle 1 saat içinde yanıt verir',
-                              style: TextStyle(
-                                fontSize: context.captionSize,
-                                color: Colors.grey[500],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: Icon(
-                      Icons.close,
-                      color: isDark ? Colors.white : Colors.black87,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // Messages Area
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  // Welcome message from store
-                  _buildMessageBubble(
-                    'Merhaba! ${store.name} mağazasına hoş geldiniz. Size nasıl yardımcı olabiliriz?',
-                    false,
-                    isDark,
-                    store.logoUrl,
-                  ),
-                  const SizedBox(height: 16),
-                  // Quick action buttons
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      _buildQuickActionChip(
-                        'Ürün bilgisi almak istiyorum',
-                        isDark,
-                        messageController,
-                      ),
-                      _buildQuickActionChip(
-                        'Kargo durumu',
-                        isDark,
-                        messageController,
-                      ),
-                      _buildQuickActionChip(
-                        'İade/Değişim',
-                        isDark,
-                        messageController,
-                      ),
-                      _buildQuickActionChip(
-                        'Fiyat bilgisi',
-                        isDark,
-                        messageController,
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            // Input Area
-            Container(
-              padding: EdgeInsets.only(
-                left: 16,
-                right: 16,
-                top: 12,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 12,
-              ),
-              decoration: BoxDecoration(
-                color: isDark ? Colors.grey[850] : Colors.grey[50],
-                border: Border(
-                  top: BorderSide(
-                    color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
-                  ),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: messageController,
-                      decoration: InputDecoration(
-                        hintText: 'Mesajınızı yazın...',
-                        hintStyle: TextStyle(color: Colors.grey[500]),
-                        filled: true,
-                        fillColor: isDark ? Colors.grey[800] : Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(24),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 12,
-                        ),
-                      ),
-                      style: TextStyle(
-                        color: isDark ? Colors.white : Colors.black87,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: StoreColors.primary,
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    child: IconButton(
-                      onPressed: () {
-                        if (messageController.text.trim().isNotEmpty) {
-                          // Mesaj gönderildi bildirimi
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.check_circle,
-                                    color: Colors.white,
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  const Expanded(
-                                    child: Text(
-                                      'Mesajınız gönderildi. En kısa sürede yanıt alacaksınız.',
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              backgroundColor: Colors.green,
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        }
-                      },
-                      icon: const Icon(Icons.send_rounded, color: Colors.white),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMessageBubble(
-    String message,
-    bool isMe,
-    bool isDark,
-    String? avatarUrl,
-  ) {
-    return Row(
-      mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        if (!isMe) ...[
-          ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: avatarUrl != null
-                ? CachedNetworkImage(
-                    imageUrl: avatarUrl,
-                    width: 32,
-                    height: 32,
-                    fit: BoxFit.cover,
-                    placeholder: (_, __) => Container(
-                      width: 32,
-                      height: 32,
-                      color: Colors.grey[200],
-                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                    ),
-                    errorWidget: (_, __, ___) => Container(
-                      width: 32,
-                      height: 32,
-                      color: StoreColors.primary,
-                      child: const Icon(
-                        Icons.store,
-                        color: Colors.white,
-                        size: 16,
-                      ),
-                    ),
-                  )
-                : Container(
-                    width: 32,
-                    height: 32,
-                    color: StoreColors.primary,
-                    child: const Icon(
-                      Icons.store,
-                      color: Colors.white,
-                      size: 16,
-                    ),
-                  ),
-          ),
-          const SizedBox(width: 8),
-        ],
-        Flexible(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: isMe
-                  ? StoreColors.primary
-                  : (isDark ? Colors.grey[800] : Colors.grey[100]),
-              borderRadius: BorderRadius.only(
-                topLeft: const Radius.circular(16),
-                topRight: const Radius.circular(16),
-                bottomLeft: Radius.circular(isMe ? 16 : 4),
-                bottomRight: Radius.circular(isMe ? 4 : 16),
-              ),
-            ),
-            child: Text(
-              message,
-              style: TextStyle(
-                color: isMe
-                    ? Colors.white
-                    : (isDark ? Colors.white : Colors.black87),
-                fontSize: context.bodySize,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildQuickActionChip(
-    String label,
-    bool isDark,
-    TextEditingController controller,
-  ) {
-    return GestureDetector(
-      onTap: () {
-        controller.text = label;
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: isDark ? Colors.grey[800] : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: StoreColors.primary.withValues(alpha: 0.3)),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: context.bodySmallSize,
-            color: StoreColors.primary,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
+      builder: (context) => _StoreChatSheet(
+        merchantId: store.id,
+        storeName: store.name,
+        logoUrl: store.logoUrl,
+        isDark: isDark,
       ),
     );
   }
@@ -1260,162 +936,167 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
       });
     }
 
-    return CustomScrollView(
-      slivers: [
-        // Sticky search + category chips
-        SliverPersistentHeader(
-          pinned: true,
-          delegate: _StoreFilterDelegate(
-            height: 120,
-            child: Container(
-              color: isDark ? Colors.grey[900] : Colors.white,
-              child: Column(
-                children: [
-                  // Product search bar
-                  CompositedTransformTarget(
-                    link: _searchLayerLink,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                      child: SizedBox(
-                        height: 40,
-                        child: TextField(
-                          controller: _productSearchController,
-                          focusNode: _productSearchFocusNode,
-                          style: TextStyle(
-                            fontSize: context.bodySize,
-                            color: isDark ? Colors.white : Colors.black87,
-                          ),
-                          decoration: InputDecoration(
-                            hintText: 'Ürün ara...',
-                            hintStyle: TextStyle(
-                              color: isDark ? Colors.white38 : Colors.grey[400],
-                              fontSize: context.bodySize,
-                            ),
-                            prefixIcon: Icon(
-                              Icons.search,
-                              size: 20,
-                              color: _productSearchFocusNode.hasFocus
-                                  ? StoreColors.primary
-                                  : (isDark ? Colors.white38 : Colors.grey[400]),
-                            ),
-                            suffixIcon: _productSearchQuery.isNotEmpty
-                                ? IconButton(
-                                    icon: Icon(Icons.close, size: 18, color: Colors.grey[400]),
-                                    onPressed: () {
-                                      _productSearchController.clear();
-                                      _productSearchFocusNode.unfocus();
-                                    },
-                                  )
-                                : null,
-                            filled: true,
-                            fillColor: isDark ? Colors.grey[800] : Colors.grey[100],
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: StoreColors.primary, width: 1.5),
-                            ),
-                          ),
+    return Column(
+      children: [
+        // FIXED: Search + category chips - always visible at top
+        Container(
+          color: isDark ? Colors.grey[900] : Colors.white,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Product search bar
+              CompositedTransformTarget(
+                link: _searchLayerLink,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                  child: SizedBox(
+                    height: 40,
+                    child: TextField(
+                      controller: _productSearchController,
+                      focusNode: _productSearchFocusNode,
+                      style: TextStyle(
+                        fontSize: context.bodySize,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: 'Ürün ara...',
+                        hintStyle: TextStyle(
+                          color: isDark ? Colors.white38 : Colors.grey[400],
+                          fontSize: context.bodySize,
+                        ),
+                        prefixIcon: Icon(
+                          Icons.search,
+                          size: 20,
+                          color: _productSearchFocusNode.hasFocus
+                              ? StoreColors.primary
+                              : (isDark ? Colors.white38 : Colors.grey[400]),
+                        ),
+                        suffixIcon: _productSearchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: Icon(Icons.close, size: 18, color: Colors.grey[400]),
+                                onPressed: () {
+                                  _productSearchController.clear();
+                                  _productSearchFocusNode.unfocus();
+                                },
+                              )
+                            : null,
+                        filled: true,
+                        fillColor: isDark ? Colors.grey[800] : Colors.grey[100],
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: StoreColors.primary, width: 1.5),
                         ),
                       ),
                     ),
                   ),
-                  // Horizontal scrollable category chips
-                  Expanded(
-                    child: SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: Row(
-                        children: categories.map((cat) {
-                          final catId = cat['id'] as String?;
-                          final isSelected = _selectedCategory == catId;
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 10),
-                            child: GestureDetector(
-                              onTap: () {
-                                setState(() {
-                                  _selectedCategory = cat['id'] as String?;
-                                });
-                              },
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? StoreColors.primary
-                                      : (isDark ? Colors.grey[800] : Colors.grey[100]),
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(
-                                    color: isSelected
-                                        ? StoreColors.primary
-                                        : (isDark ? Colors.grey[700]! : Colors.grey[300]!),
-                                    width: 1,
-                                  ),
-                                  boxShadow: isSelected
-                                      ? [BoxShadow(color: StoreColors.primary.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 2))]
-                                      : null,
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(cat['icon'] as IconData, size: 16, color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.grey[700])),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      cat['name'] as String,
-                                      style: TextStyle(
-                                        fontSize: context.bodySmallSize,
-                                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                                        color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.grey[700]),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
+              // Horizontal scrollable category chips
+              SizedBox(
+                height: 52,
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
+                    children: categories.map((cat) {
+                      final catId = cat['id'] as String?;
+                      final isSelected = _selectedCategory == catId;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 10),
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _selectedCategory = cat['id'] as String?;
+                            });
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? StoreColors.primary
+                                  : (isDark ? Colors.grey[800] : Colors.grey[100]),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: isSelected
+                                    ? StoreColors.primary
+                                    : (isDark ? Colors.grey[700]! : Colors.grey[300]!),
+                                width: 1,
+                              ),
+                              boxShadow: isSelected
+                                  ? [BoxShadow(color: StoreColors.primary.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 2))]
+                                  : null,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(cat['icon'] as IconData, size: 16, color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.grey[700])),
+                                const SizedBox(width: 6),
+                                Text(
+                                  cat['name'] as String,
+                                  style: TextStyle(
+                                    fontSize: context.bodySmallSize,
+                                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                    color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.grey[700]),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-        // Products
-        if (_selectedCategory == null)
-          SliverToBoxAdapter(child: _buildGroupedProductsView(allProducts, sortedCategories, isDark))
-        else
-          SliverPadding(
-            padding: const EdgeInsets.all(16),
-            sliver: SliverGrid(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 0.72,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-              ),
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  final filteredProducts = allProducts.where((p) => p.category == _selectedCategory).toList();
-                  return ProductCard(
-                    product: filteredProducts[index],
-                    showStoreName: false,
-                    onTap: () {
-                      context.push(
-                        '/store/product/${filteredProducts[index].id}',
-                        extra: {'product': filteredProducts[index]},
-                      );
-                    },
-                  );
-                },
-                childCount: allProducts.where((p) => p.category == _selectedCategory).length,
-              ),
-            ),
+        // Scrollable products below
+        Expanded(
+          child: SingleChildScrollView(
+            child: _selectedCategory == null
+                ? _buildGroupedProductsView(allProducts, sortedCategories, isDark)
+                : _buildFilteredCategoryView(allProducts, isDark),
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFilteredCategoryView(List<StoreProduct> allProducts, bool isDark) {
+    final filteredProducts = allProducts.where((p) => p.category == _selectedCategory).toList();
+
+    if (filteredProducts.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(32),
+        child: Center(
+          child: Text(
+            'Bu kategoride ürün bulunmuyor',
+            style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600]),
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Category Title Header
+        _buildSectionHeader(_selectedCategory!, filteredProducts.length, isDark, icon: Icons.category, color: StoreColors.primary),
+        // Product list
+        ...filteredProducts.map((product) => Column(
+          children: [
+            _buildProductListItem(product, isDark),
+            Divider(height: 0.5, indent: 16, endIndent: 16, color: isDark ? Colors.grey[800] : Colors.grey[100]),
+          ],
+        )),
+        const SizedBox(height: 16),
       ],
     );
   }
@@ -1430,101 +1111,466 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
       ..sort((a, b) => b.soldCount.compareTo(a.soldCount));
     final topPopular = popularProducts.take(6).toList();
 
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Popüler Section
-          if (topPopular.isNotEmpty) ...[
-            _buildCategoryHeader('Popüler', Icons.local_fire_department, Colors.orange, isDark),
-            const SizedBox(height: 12),
-            _buildProductsGrid(topPopular, isDark),
-            const SizedBox(height: 24),
-          ],
-          // Sorted Categories
-          ...sortedCategories.map((entry) {
-            final categoryName = entry.key;
-            final categoryProducts = allProducts
-                .where((p) => p.category == categoryName)
-                .toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Popüler Section - grid layout
+        if (topPopular.isNotEmpty) ...[
+          _buildSectionHeader('Popüler', topPopular.length, isDark, icon: Icons.local_fire_department, color: Colors.orange, isPopular: true),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                childAspectRatio: 0.78,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+              ),
+              itemCount: topPopular.length,
+              itemBuilder: (context, index) => _buildPopularGridCard(topPopular[index], isDark),
+            ),
+          ),
+          Container(height: 6, color: isDark ? Colors.black.withValues(alpha: 0.2) : const Color(0xFFF3F4F6)),
+        ],
 
-            if (categoryProducts.isEmpty) return const SizedBox.shrink();
+        // Reviews carousel
+        _buildInlineReviewsCarousel(isDark),
 
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        // Sorted Categories - horizontal card layout
+        ...sortedCategories.map((entry) {
+          final categoryName = entry.key;
+          final categoryProducts = allProducts.where((p) => p.category == categoryName).toList();
+          if (categoryProducts.isEmpty) return const SizedBox.shrink();
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionHeader(categoryName, categoryProducts.length, isDark, icon: Icons.category, color: StoreColors.primary),
+              ...categoryProducts.map((product) => Column(
+                children: [
+                  _buildProductListItem(product, isDark),
+                  Divider(height: 0.5, indent: 16, endIndent: 16, color: isDark ? Colors.grey[800] : Colors.grey[100]),
+                ],
+              )),
+              Container(height: 6, color: isDark ? Colors.black.withValues(alpha: 0.2) : const Color(0xFFF3F4F6)),
+            ],
+          );
+        }),
+
+        // Products without category
+        ...() {
+          final uncategorized = allProducts.where((p) => p.category.isEmpty || p.category == 'Diğer').toList();
+          if (uncategorized.isEmpty) return <Widget>[];
+          return [
+            _buildSectionHeader('Diğer', uncategorized.length, isDark, icon: Icons.more_horiz, color: Colors.grey),
+            ...uncategorized.map((product) => Column(
               children: [
-                _buildCategoryHeader(categoryName, Icons.category, StoreColors.primary, isDark),
-                const SizedBox(height: 12),
-                _buildProductsGrid(categoryProducts, isDark),
-                const SizedBox(height: 24),
+                _buildProductListItem(product, isDark),
+                Divider(height: 0.5, indent: 16, endIndent: 16, color: isDark ? Colors.grey[800] : Colors.grey[100]),
               ],
-            );
-          }),
-          // Products without category
-          ...() {
-            final uncategorizedProducts = allProducts
-                .where((p) => p.category.isEmpty || p.category == 'Diğer')
-                .toList();
-            if (uncategorizedProducts.isEmpty) return <Widget>[];
-            return [
-              _buildCategoryHeader('Diğer', Icons.more_horiz, Colors.grey, isDark),
-              const SizedBox(height: 12),
-              _buildProductsGrid(uncategorizedProducts, isDark),
-            ];
-          }(),
+            )),
+          ];
+        }(),
+        const SizedBox(height: 16),
+      ],
+    );
+  }
+
+  Widget _buildSectionHeader(String title, int count, bool isDark, {
+    IconData icon = Icons.category,
+    Color color = const Color(0xFF6366F1),
+    bool isPopular = false,
+  }) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: isDark
+            ? color.withValues(alpha: 0.08)
+            : color.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(10),
+        border: Border(
+          left: BorderSide(color: color, width: 3.5),
+        ),
+      ),
+      child: Row(
+        children: [
+          if (isPopular) ...[
+            Icon(Icons.local_fire_department, color: Colors.orange, size: 20),
+            const SizedBox(width: 6),
+          ],
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: context.heading2Size,
+                fontWeight: FontWeight.w800,
+                color: isDark ? Colors.white : const Color(0xFF111827),
+              ),
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.grey[800] : Colors.grey[200],
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              '$count ürün',
+              style: TextStyle(
+                fontSize: context.captionSize,
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.grey[400] : Colors.grey[600],
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildCategoryHeader(String title, IconData icon, Color color, bool isDark) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, color: color, size: 20),
+  Widget _buildPopularGridCard(StoreProduct product, bool isDark) {
+    return GestureDetector(
+      onTap: () {
+        context.push('/store/product/${product.id}', extra: {'product': product});
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: isDark ? Colors.grey[900] : Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.10),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-        const SizedBox(width: 12),
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: context.heading2Size,
-            fontWeight: FontWeight.bold,
-            color: isDark ? Colors.white : Colors.black87,
-          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+                      child: CachedNetworkImage(
+                        imageUrl: ImageUtils.getProductThumbnail(product.imageUrl),
+                        fit: BoxFit.cover,
+                        memCacheWidth: 400,
+                        memCacheHeight: 400,
+                        placeholder: (_, __) => Container(
+                          color: isDark ? Colors.grey[800] : Colors.grey[200],
+                          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                        ),
+                        errorWidget: (_, __, ___) => Container(
+                          color: isDark ? Colors.grey[800] : Colors.grey[100],
+                          child: Icon(Icons.shopping_bag_outlined, size: 32, color: Colors.grey[400]),
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (product.discountPercent != null)
+                    Positioned(
+                      top: 6,
+                      left: 6,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                        decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(4)),
+                        child: Text(
+                          '%${product.discountPercent}',
+                          style: TextStyle(color: Colors.white, fontSize: context.captionSmallSize, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    product.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white : const Color(0xFF1F2937),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    product.formattedPrice,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: StoreColors.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
-  Widget _buildProductsGrid(List<StoreProduct> products, bool isDark) {
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        childAspectRatio: 0.72,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
+  Widget _buildProductListItem(StoreProduct product, bool isDark) {
+    return InkWell(
+      onTap: () {
+        context.push('/store/product/${product.id}', extra: {'product': product});
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Content
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    product.name,
+                    style: TextStyle(
+                      fontSize: context.priceSize,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white : const Color(0xFF111827),
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (product.description.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      product.description,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: context.bodySmallSize,
+                        color: isDark ? Colors.grey[400] : Colors.grey[500],
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Text(
+                        product.formattedPrice,
+                        style: TextStyle(
+                          fontSize: context.bodySize,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : const Color(0xFF111827),
+                        ),
+                      ),
+                      if (product.originalPrice != null) ...[
+                        const SizedBox(width: 6),
+                        Text(
+                          product.formattedOriginalPrice,
+                          style: TextStyle(
+                            fontSize: context.captionSize,
+                            color: Colors.grey[500],
+                            decoration: TextDecoration.lineThrough,
+                          ),
+                        ),
+                      ],
+                      if (product.discountPercent != null) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            '%${product.discountPercent}',
+                            style: TextStyle(
+                              fontSize: context.captionSmallSize,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.red,
+                            ),
+                          ),
+                        ),
+                      ],
+                      if (product.freeShipping) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            'Ücretsiz Kargo',
+                            style: TextStyle(
+                              fontSize: context.captionSmallSize,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF10B981),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  if (product.rating > 0 || product.formattedSoldCount.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        if (product.rating > 0) ...[
+                          Icon(Icons.star_rounded, color: Colors.amber, size: context.captionSize),
+                          const SizedBox(width: 2),
+                          Text(
+                            '${product.rating.toStringAsFixed(1)} (${product.reviewCount})',
+                            style: TextStyle(fontSize: context.captionSize, color: Colors.grey[500]),
+                          ),
+                        ],
+                        if (product.formattedSoldCount.isNotEmpty) ...[
+                          if (product.rating > 0) ...[
+                            const SizedBox(width: 8),
+                            Text('·', style: TextStyle(color: Colors.grey[400])),
+                            const SizedBox(width: 8),
+                          ],
+                          Text(
+                            product.formattedSoldCount,
+                            style: TextStyle(fontSize: context.captionSize, color: Colors.grey[500]),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            // Image
+            SizedBox(
+              width: 100,
+              height: 100,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: CachedNetworkImage(
+                  imageUrl: ImageUtils.getProductThumbnail(product.imageUrl),
+                  width: 100,
+                  height: 100,
+                  fit: BoxFit.cover,
+                  memCacheWidth: 200,
+                  memCacheHeight: 200,
+                  placeholder: (_, __) => Container(
+                    color: isDark ? Colors.grey[800] : Colors.grey[200],
+                    child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                  ),
+                  errorWidget: (_, __, ___) => Container(
+                    color: isDark ? Colors.grey[800] : Colors.grey[100],
+                    child: Icon(Icons.shopping_bag_outlined, size: 28, color: Colors.grey[400]),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
-      itemCount: products.length,
-      itemBuilder: (context, index) {
-        return ProductCard(
-          product: products[index],
-          showStoreName: false,
-          onTap: () {
-            context.push(
-              '/store/product/${products[index].id}',
-              extra: {'product': products[index]},
-            );
-          },
+    );
+  }
+
+  Widget _buildInlineReviewsCarousel(bool isDark) {
+    final reviewsAsync = ref.watch(storeReviewsProvider(widget.store.id));
+
+    return reviewsAsync.when(
+      data: (reviews) {
+        if (reviews.isEmpty) return const SizedBox.shrink();
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Text(
+                'Kullanıcı Yorumları',
+                style: TextStyle(
+                  fontSize: context.heading2Size,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? Colors.white : const Color(0xFF111827),
+                ),
+              ),
+            ),
+            SizedBox(
+              height: 100,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: reviews.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 10),
+                itemBuilder: (context, index) {
+                  final review = reviews[index];
+                  final comment = review['comment'] as String? ?? '';
+                  final customerName = review['customer_name'] as String? ?? 'Anonim';
+                  final courierRating = review['courier_rating'] as int? ?? 0;
+                  final serviceRating = review['service_rating'] as int? ?? 0;
+                  final tasteRating = review['taste_rating'] as int? ?? 0;
+                  final avgRating = (courierRating + serviceRating + tasteRating) / 3;
+
+                  return Container(
+                    width: 220,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.grey[900] : Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: isDark ? Colors.grey[800]! : Colors.grey[200]!),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (comment.isNotEmpty)
+                          Expanded(
+                            child: Text(
+                              comment,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: context.bodySmallSize,
+                                color: isDark ? Colors.white70 : Colors.grey[700],
+                                height: 1.3,
+                              ),
+                            ),
+                          ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            ...List.generate(5, (i) => Icon(
+                              i < avgRating.round() ? Icons.star_rounded : Icons.star_border_rounded,
+                              size: 14,
+                              color: Colors.amber,
+                            )),
+                            const Spacer(),
+                            Text(
+                              maskUserName(customerName),
+                              style: TextStyle(
+                                fontSize: context.captionSmallSize,
+                                color: Colors.grey[500],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(height: 6, color: isDark ? Colors.black.withValues(alpha: 0.2) : const Color(0xFFF3F4F6)),
+          ],
         );
       },
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
     );
   }
 
@@ -1568,23 +1614,11 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
               ),
           ], isDark),
           const SizedBox(height: 16),
-          _buildInfoCard('Kargo & İade', [
+          _buildInfoCard('Teslimat', [
             _buildInfoRow(
               Icons.local_shipping_rounded,
-              'Kargo',
+              'Teslimat Süresi',
               '${widget.store.deliveryTime} içinde teslimat',
-              isDark,
-            ),
-            _buildInfoRow(
-              Icons.replay_rounded,
-              'İade',
-              '14 gün içinde ücretsiz iade',
-              isDark,
-            ),
-            _buildInfoRow(
-              Icons.verified_user_rounded,
-              'Garanti',
-              'Orijinal ürün garantisi',
               isDark,
             ),
           ], isDark),
@@ -2096,22 +2130,536 @@ class _SliverTabBarDelegate extends SliverPersistentHeaderDelegate {
   }
 }
 
-class _StoreFilterDelegate extends SliverPersistentHeaderDelegate {
-  final double height;
-  final Widget child;
-  const _StoreFilterDelegate({required this.height, required this.child});
+/// Mağaza ile gerçek mesajlaşma bottom sheet'i
+class _StoreChatSheet extends StatefulWidget {
+  final String merchantId;
+  final String storeName;
+  final String logoUrl;
+  final bool isDark;
+
+  const _StoreChatSheet({
+    required this.merchantId,
+    required this.storeName,
+    required this.logoUrl,
+    required this.isDark,
+  });
 
   @override
-  double get minExtent => height;
+  State<_StoreChatSheet> createState() => _StoreChatSheetState();
+}
+
+class _StoreChatSheetState extends State<_StoreChatSheet> {
+  final _messageController = TextEditingController();
+  final _scrollController = ScrollController();
+  List<Map<String, dynamic>> _messages = [];
+  bool _isLoading = true;
+  RealtimeChannel? _subscription;
 
   @override
-  double get maxExtent => height;
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    return child;
+  void initState() {
+    super.initState();
+    _loadMessages();
+    _setupRealtimeSubscription();
   }
 
   @override
-  bool shouldRebuild(covariant _StoreFilterDelegate oldDelegate) => true;
+  void dispose() {
+    _messageController.dispose();
+    _scrollController.dispose();
+    if (_subscription != null) {
+      SupabaseService.client.removeChannel(_subscription!);
+    }
+    super.dispose();
+  }
+
+  Future<void> _loadMessages() async {
+    try {
+      final userId = SupabaseService.currentUser?.id;
+      if (userId == null) return;
+
+      final messages = await SupabaseService.client
+          .from('store_messages')
+          .select('*')
+          .eq('merchant_id', widget.merchantId)
+          .eq('customer_id', userId)
+          .order('created_at', ascending: true);
+
+      if (mounted) {
+        setState(() {
+          _messages = List<Map<String, dynamic>>.from(messages);
+          _isLoading = false;
+        });
+        _scrollToBottom();
+        _markMessagesAsRead();
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+      debugPrint('Store chat load error: $e');
+    }
+  }
+
+  Future<void> _markMessagesAsRead() async {
+    try {
+      await SupabaseService.client
+          .from('store_messages')
+          .update({
+            'is_read': true,
+            'read_at': DateTime.now().toIso8601String(),
+          })
+          .eq('merchant_id', widget.merchantId)
+          .eq('customer_id', SupabaseService.currentUser!.id)
+          .eq('sender_type', 'merchant')
+          .eq('is_read', false);
+    } catch (e) {
+      debugPrint('Mark store messages read error: $e');
+    }
+  }
+
+  void _setupRealtimeSubscription() {
+    final userId = SupabaseService.currentUser?.id;
+    if (userId == null) return;
+
+    _subscription = SupabaseService.client
+        .channel('store_chat_${widget.merchantId}_$userId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'store_messages',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'merchant_id',
+            value: widget.merchantId,
+          ),
+          callback: (payload) {
+            if (!mounted) return;
+            final newMsg = Map<String, dynamic>.from(payload.newRecord);
+            // Bu conversation'a ait mi kontrol et
+            if (newMsg['customer_id'] != userId) return;
+            // Duplicate kontrolü
+            if (_messages.any((m) => m['id'] == newMsg['id'])) return;
+            // Temp mesajı gerçek mesajla değiştir
+            if (newMsg['sender_type'] == 'customer') {
+              final tempIdx = _messages.indexWhere((m) =>
+                m['id'].toString().startsWith('temp_') &&
+                m['message'] == newMsg['message']);
+              if (tempIdx != -1) {
+                setState(() => _messages[tempIdx] = newMsg);
+                return;
+              }
+            }
+            setState(() => _messages.add(newMsg));
+            _scrollToBottom();
+            if (newMsg['sender_type'] == 'merchant') {
+              _markMessagesAsRead();
+            }
+          },
+        )
+        .subscribe();
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  Future<void> _sendMessage([String? quickMessage]) async {
+    final text = (quickMessage ?? _messageController.text).trim();
+    if (text.isEmpty) return;
+
+    if (quickMessage == null) _messageController.clear();
+
+    final user = SupabaseService.currentUser;
+    if (user == null) return;
+    final userName = user.userMetadata?['full_name'] ?? 'Müşteri';
+
+    // Optimistic update
+    final tempMessage = {
+      'id': 'temp_${DateTime.now().millisecondsSinceEpoch}',
+      'merchant_id': widget.merchantId,
+      'customer_id': user.id,
+      'sender_type': 'customer',
+      'sender_id': user.id,
+      'sender_name': userName,
+      'message': text,
+      'created_at': DateTime.now().toIso8601String(),
+    };
+
+    setState(() => _messages.add(tempMessage));
+    _scrollToBottom();
+
+    try {
+      await SupabaseService.client.from('store_messages').insert({
+        'merchant_id': widget.merchantId,
+        'customer_id': user.id,
+        'sender_type': 'customer',
+        'sender_id': user.id,
+        'sender_name': userName,
+        'message': text,
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Mesaj gönderilemedi'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = widget.isDark;
+
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.75,
+      decoration: BoxDecoration(
+        color: isDark ? Colors.grey[900] : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        children: [
+          // Handle
+          Container(
+            margin: const EdgeInsets.only(top: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey[400],
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          // Header
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
+                ),
+              ),
+            ),
+            child: Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: CachedNetworkImage(
+                    imageUrl: widget.logoUrl,
+                    width: 44,
+                    height: 44,
+                    fit: BoxFit.cover,
+                    placeholder: (_, __) => Container(
+                      width: 44,
+                      height: 44,
+                      color: Colors.grey[200],
+                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    ),
+                    errorWidget: (_, __, ___) => Container(
+                      width: 44,
+                      height: 44,
+                      color: StoreColors.primary,
+                      child: const Icon(Icons.store, color: Colors.white),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.storeName,
+                        style: TextStyle(
+                          fontSize: context.heading2Size,
+                          fontWeight: FontWeight.bold,
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: Colors.green,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Genellikle 1 saat içinde yanıt verir',
+                            style: TextStyle(
+                              fontSize: context.captionSize,
+                              color: Colors.grey[500],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: Icon(
+                    Icons.close,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Messages Area
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _messages.isEmpty
+                    ? _buildEmptyChat(isDark)
+                    : ListView.builder(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _messages.length,
+                        itemBuilder: (context, index) {
+                          final msg = _messages[index];
+                          final isMe = msg['sender_type'] == 'customer';
+                          final time = DateTime.tryParse(msg['created_at'] ?? '');
+                          final timeStr = time != null
+                              ? '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}'
+                              : '';
+
+                          return Align(
+                            alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              constraints: BoxConstraints(
+                                maxWidth: MediaQuery.of(context).size.width * 0.7,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  if (!isMe) ...[
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(14),
+                                      child: CachedNetworkImage(
+                                        imageUrl: widget.logoUrl,
+                                        width: 28,
+                                        height: 28,
+                                        fit: BoxFit.cover,
+                                        errorWidget: (_, __, ___) => Container(
+                                          width: 28,
+                                          height: 28,
+                                          decoration: BoxDecoration(
+                                            color: StoreColors.primary,
+                                            borderRadius: BorderRadius.circular(14),
+                                          ),
+                                          child: const Icon(Icons.store, color: Colors.white, size: 14),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                  ],
+                                  Flexible(
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                      decoration: BoxDecoration(
+                                        color: isMe
+                                            ? StoreColors.primary
+                                            : (isDark ? Colors.grey[800] : Colors.grey[100]),
+                                        borderRadius: BorderRadius.only(
+                                          topLeft: const Radius.circular(16),
+                                          topRight: const Radius.circular(16),
+                                          bottomLeft: Radius.circular(isMe ? 16 : 4),
+                                          bottomRight: Radius.circular(isMe ? 4 : 16),
+                                        ),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            msg['message'] ?? '',
+                                            style: TextStyle(
+                                              color: isMe
+                                                  ? Colors.white
+                                                  : (isDark ? Colors.white : Colors.black87),
+                                              fontSize: context.bodySize,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            timeStr,
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              color: isMe
+                                                  ? Colors.white.withValues(alpha: 0.7)
+                                                  : Colors.grey[500],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+          ),
+          // Input Area
+          Container(
+            padding: EdgeInsets.only(
+              left: 16,
+              right: 16,
+              top: 12,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 12,
+            ),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1A1A1A) : Colors.grey[50],
+              border: Border(
+                top: BorderSide(
+                  color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
+                ),
+              ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _messageController,
+                    decoration: InputDecoration(
+                      hintText: 'Mesajınızı yazın...',
+                      hintStyle: TextStyle(color: Colors.grey[500]),
+                      filled: true,
+                      fillColor: isDark ? Colors.grey[800] : Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
+                    ),
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black87,
+                    ),
+                    onSubmitted: (_) => _sendMessage(),
+                    maxLines: null,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Container(
+                  decoration: BoxDecoration(
+                    color: StoreColors.primary,
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: IconButton(
+                    onPressed: () => _sendMessage(),
+                    icon: const Icon(Icons.send_rounded, color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyChat(bool isDark) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        // Mağaza hoş geldin mesajı
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: CachedNetworkImage(
+                imageUrl: widget.logoUrl,
+                width: 28,
+                height: 28,
+                fit: BoxFit.cover,
+                errorWidget: (_, __, ___) => Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: StoreColors.primary,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(Icons.store, color: Colors.white, size: 14),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.grey[800] : Colors.grey[100],
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                    bottomLeft: Radius.circular(4),
+                    bottomRight: Radius.circular(16),
+                  ),
+                ),
+                child: Text(
+                  'Merhaba! ${widget.storeName} mağazasına hoş geldiniz. Size nasıl yardımcı olabiliriz?',
+                  style: TextStyle(
+                    color: isDark ? Colors.white : Colors.black87,
+                    fontSize: context.bodySize,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        // Quick action chips
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            _buildQuickChip('Ürün bilgisi almak istiyorum', isDark),
+            _buildQuickChip('Kargo durumu', isDark),
+            _buildQuickChip('İade/Değişim', isDark),
+            _buildQuickChip('Fiyat bilgisi', isDark),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuickChip(String label, bool isDark) {
+    return GestureDetector(
+      onTap: () => _sendMessage(label),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.grey[800] : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: StoreColors.primary.withValues(alpha: 0.3)),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: context.bodySmallSize,
+            color: StoreColors.primary,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
 }

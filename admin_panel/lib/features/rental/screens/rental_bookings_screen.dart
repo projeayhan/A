@@ -690,21 +690,34 @@ class _RentalBookingsScreenState extends ConsumerState<RentalBookingsScreen> {
   void _confirmBooking(RentalBookingView booking) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Rezervasyonu Onayla'),
         content: Text('${booking.customerName} adına yapılan ${booking.carName} rezervasyonunu onaylamak istediğinize emin misiniz?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('İptal')),
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('İptal')),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Rezervasyon onaylandı'),
-                  backgroundColor: AppColors.success,
-                ),
-              );
-              ref.invalidate(recentBookingsProvider);
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              try {
+                final client = ref.read(supabaseClientProvider);
+                final success = await updateBookingStatus(client, booking.id, 'confirmed');
+                if (!mounted) return;
+                if (success) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Rezervasyon onaylandı'), backgroundColor: AppColors.success),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Onaylama başarısız oldu'), backgroundColor: AppColors.error),
+                  );
+                }
+                ref.invalidate(recentBookingsProvider);
+              } catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
+                );
+              }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
             child: const Text('Onayla'),
@@ -719,7 +732,7 @@ class _RentalBookingsScreenState extends ConsumerState<RentalBookingsScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Rezervasyonu İptal Et'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -739,17 +752,34 @@ class _RentalBookingsScreenState extends ConsumerState<RentalBookingsScreen> {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Vazgeç')),
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Vazgeç')),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Rezervasyon iptal edildi'),
-                  backgroundColor: AppColors.error,
-                ),
-              );
-              ref.invalidate(recentBookingsProvider);
+            onPressed: () async {
+              final reason = reasonController.text.trim();
+              Navigator.pop(dialogContext);
+              try {
+                final client = ref.read(supabaseClientProvider);
+                final success = await updateBookingStatus(
+                  client, booking.id, 'cancelled',
+                  cancellationReason: reason.isNotEmpty ? reason : null,
+                );
+                if (!mounted) return;
+                if (success) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Rezervasyon iptal edildi'), backgroundColor: AppColors.error),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('İptal işlemi başarısız oldu'), backgroundColor: AppColors.error),
+                  );
+                }
+                ref.invalidate(recentBookingsProvider);
+              } catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
+                );
+              }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             child: const Text('İptal Et'),

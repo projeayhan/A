@@ -37,6 +37,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     try {
       await Supabase.instance.client.auth.resetPasswordForEmail(
         _emailController.text.trim(),
+        redirectTo: 'https://admin.supercyp.com/login',
       );
       if (mounted) {
         setState(() => _emailSent = true);

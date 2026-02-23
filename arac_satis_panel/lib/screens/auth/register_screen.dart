@@ -86,32 +86,34 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: CarSalesColors.success.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(Icons.check_circle, color: CarSalesColors.success),
-            ),
-            const SizedBox(width: 12),
-            const Text('Kayıt Başarılı'),
-          ],
+        icon: Container(
+          width: 64,
+          height: 64,
+          decoration: BoxDecoration(
+            color: Colors.orange.withValues(alpha: 0.1),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.hourglass_top_rounded, color: Colors.orange, size: 32),
         ),
+        title: const Text('Başvurunuz Alındı'),
         content: const Text(
-          'Hesabınız oluşturuldu. Şimdi satıcı başvurunuzu tamamlayın.',
+          'Kaydınız başarıyla oluşturuldu.\n\n'
+          'Hesabınız admin tarafından incelendikten sonra onaylanacaktır. '
+          'Onay durumu e-posta ile bildirilecektir.',
+          textAlign: TextAlign.center,
         ),
         actions: [
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              context.go('/application');
-            },
-            child: const Text('Başvuruya Devam'),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                context.go('/login');
+              },
+              child: const Text('Tamam'),
+            ),
           ),
         ],
       ),

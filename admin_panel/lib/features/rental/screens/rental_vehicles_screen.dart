@@ -632,17 +632,34 @@ class _RentalVehiclesScreenState extends ConsumerState<RentalVehiclesScreen> {
   void _showMaintenanceDialog(RentalCarView car) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Bakıma Al'),
         content: Text('${car.fullName} aracını bakıma almak istediğinize emin misiniz?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('İptal')),
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('İptal')),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('${car.fullName} bakıma alındı')),
-              );
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              try {
+                final client = ref.read(supabaseClientProvider);
+                final success = await updateCarStatus(client, car.id, 'maintenance');
+                if (!mounted) return;
+                if (success) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('${car.fullName} bakıma alındı'), backgroundColor: AppColors.success),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('İşlem başarısız oldu'), backgroundColor: AppColors.error),
+                  );
+                }
+                ref.invalidate(allCarsProvider);
+              } catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
+                );
+              }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.warning),
             child: const Text('Bakıma Al'),
@@ -655,17 +672,28 @@ class _RentalVehiclesScreenState extends ConsumerState<RentalVehiclesScreen> {
   void _showDeleteConfirmDialog(RentalCarView car) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Aracı Sil'),
         content: Text('${car.fullName} aracını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('İptal')),
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('İptal')),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('${car.fullName} silindi')),
-              );
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              try {
+                final client = ref.read(supabaseClientProvider);
+                await client.from('rental_cars').delete().eq('id', car.id);
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('${car.fullName} silindi'), backgroundColor: AppColors.success),
+                );
+                ref.invalidate(allCarsProvider);
+              } catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Silme hatası: $e'), backgroundColor: AppColors.error),
+                );
+              }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             child: const Text('Sil'),

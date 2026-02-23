@@ -7,6 +7,8 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/services/ai_chat_service.dart';
+import '../core/services/live_support_service.dart';
+import '../core/services/notification_sound_service.dart';
 import '../core/services/taxi_service.dart';
 import '../core/services/voice_input_service.dart';
 import '../core/services/voice_output_service.dart';
@@ -22,7 +24,8 @@ class _PendingVoiceResults {
   final String aiMessage;
   final List<Map<String, dynamic>>? products;
   final List<Map<String, dynamic>>? rentalCars;
-  const _PendingVoiceResults({required this.userMessage, required this.aiMessage, this.products, this.rentalCars});
+  final Map<String, dynamic>? priceComparison;
+  const _PendingVoiceResults({required this.userMessage, required this.aiMessage, this.products, this.rentalCars, this.priceComparison});
 }
 
 class FloatingAIAssistant extends ConsumerStatefulWidget {
@@ -199,6 +202,25 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
     });
   }
 
+  /// Called when a live support agent sends a new message
+  void _onLiveAgentMessage() {
+    if (!mounted) return;
+    NotificationSoundService.playNotificationSound();
+    HapticFeedback.mediumImpact();
+    if (!_isChatOpen) {
+      _showNotificationAlert(1);
+      setState(() {
+        _proactiveMessage = 'Destek temsilcisi yanıt verdi!';
+        _proactiveEmoji = '💬';
+        _showProactiveMessage = true;
+      });
+      _proactiveTimer?.cancel();
+      _proactiveTimer = Timer(const Duration(seconds: 8), () {
+        if (mounted) setState(() => _showProactiveMessage = false);
+      });
+    }
+  }
+
   void _dismissNotificationBubble() {
     _notificationTimer?.cancel();
     setState(() => _showNotificationBubble = false);
@@ -368,16 +390,18 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
         final rentalResults = (response['rental_results'] as List<dynamic>?)
             ?.map((e) => Map<String, dynamic>.from(e as Map))
             .toList();
-        if (searchResults != null && searchResults.isNotEmpty || rentalResults != null && rentalResults.isNotEmpty) {
+        final priceComparison = response['price_comparison'] as Map<String, dynamic>?;
+        if (searchResults != null && searchResults.isNotEmpty || rentalResults != null && rentalResults.isNotEmpty || priceComparison != null) {
           _pendingVoiceResults = _PendingVoiceResults(
             userMessage: text,
             aiMessage: aiMsg,
             products: searchResults,
             rentalCars: rentalResults,
+            priceComparison: priceComparison,
           );
         }
 
-        // Ürün/araç sonucu varsa bottom sheet ile göster, sesi arkadan çal
+        // Ürün/araç/karşılaştırma sonucu varsa bottom sheet ile göster, sesi arkadan çal
         if (_pendingVoiceResults != null) {
           final voiceResults = _pendingVoiceResults!;
           _pendingVoiceResults = null;
@@ -386,7 +410,11 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
             _showVoiceResponse = false;
           });
           // Bottom sheet ile sonuçları göster
-          _showSearchResultsBottomSheet(voiceResults);
+          if (voiceResults.priceComparison != null) {
+            _showPriceComparisonBottomSheet(voiceResults.priceComparison!);
+          } else {
+            _showSearchResultsBottomSheet(voiceResults);
+          }
           // Sesi arkadan çalmaya devam et
           voiceOutputService.setEnabled(true);
           voiceOutputService.speak(aiMsg);
@@ -425,6 +453,8 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
               });
             } else if (type == 'add_to_cart' && payload != null) {
               _addToCart(payload);
+            } else if (type == 'price_comparison' && payload != null) {
+              _showPriceComparisonBottomSheet(payload);
             }
           }
         }
@@ -618,6 +648,294 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
     );
   }
 
+  void _showPriceComparisonBottomSheet(Map<String, dynamic> data) {
+    final navContext = rootNavigatorKey.currentContext;
+    if (navContext == null) return;
+
+    final stores = (data['stores'] as List<dynamic>?) ?? [];
+    if (stores.isEmpty) return;
+
+    showModalBottomSheet(
+      context: navContext,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.55,
+        maxChildSize: 0.9,
+        minChildSize: 0.3,
+        builder: (sheetContext, scrollController) => Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFF1a1a2e),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: ListView(
+            controller: scrollController,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            children: [
+              // Drag handle
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.only(top: 10, bottom: 8),
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(60),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              // Header
+              Row(
+                children: [
+                  const Icon(Icons.compare_arrows, color: Color(0xFF00D4FF), size: 20),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Fiyat Karsilastirmasi',
+                    style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF00D4FF).withAlpha(30),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text('${stores.length} market', style: const TextStyle(color: Color(0xFF00D4FF), fontSize: 12, fontWeight: FontWeight.bold)),
+                  ),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(sheetContext),
+                    child: const Icon(Icons.close, color: Colors.white54, size: 22),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // Store comparison cards
+              for (int i = 0; i < stores.length; i++)
+                _buildStoreComparisonCard(
+                  sheetContext,
+                  Map<String, dynamic>.from(stores[i] as Map),
+                  isCheapest: i == 0,
+                ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStoreComparisonCard(BuildContext sheetContext, Map<String, dynamic> store, {bool isCheapest = false}) {
+    final businessName = store['business_name'] as String? ?? '';
+    final isOpen = store['is_open'] as bool? ?? false;
+    final rating = (store['rating'] as num?)?.toDouble() ?? 0.0;
+    final hasAllProducts = store['has_all_products'] as bool? ?? false;
+    final matchedCount = (store['matched_count'] as num?)?.toInt() ?? 0;
+    final totalRequested = (store['total_requested'] as num?)?.toInt() ?? 0;
+    final totalPrice = (store['total_price'] as num?)?.toDouble() ?? 0.0;
+    final deliveryFee = (store['delivery_fee'] as num?)?.toDouble() ?? 0.0;
+    final totalWithDelivery = (store['total_with_delivery'] as num?)?.toDouble() ?? totalPrice + deliveryFee;
+    final matchedProducts = (store['matched_products'] as List<dynamic>?) ?? [];
+    final missingProducts = (store['missing_products'] as List<dynamic>?) ?? [];
+    final merchantId = store['merchant_id'] as String? ?? '';
+    final merchantType = store['merchant_type'] as String? ?? 'store';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF16213e),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isCheapest && hasAllProducts ? const Color(0xFFFFD700) : Colors.white.withAlpha(20),
+          width: isCheapest && hasAllProducts ? 1.5 : 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Store header
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isCheapest && hasAllProducts ? const Color(0xFFFFD700).withAlpha(15) : Colors.transparent,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(13)),
+            ),
+            child: Row(
+              children: [
+                if (isCheapest && hasAllProducts) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFD700),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text('EN UCUZ', style: TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.w800)),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                Expanded(
+                  child: Text(
+                    businessName,
+                    style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (rating > 0) ...[
+                  const Icon(Icons.star, color: Color(0xFFFFD700), size: 14),
+                  const SizedBox(width: 2),
+                  Text(rating.toStringAsFixed(1), style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                  const SizedBox(width: 8),
+                ],
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: isOpen ? Colors.green.withAlpha(40) : Colors.red.withAlpha(40),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    isOpen ? 'Acik' : 'Kapali',
+                    style: TextStyle(color: isOpen ? Colors.greenAccent : Colors.redAccent, fontSize: 10, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Product availability badge
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Text(
+              hasAllProducts ? '$matchedCount/$totalRequested urun bulundu' : '$matchedCount/$totalRequested urun bulundu',
+              style: TextStyle(color: hasAllProducts ? Colors.greenAccent : Colors.orangeAccent, fontSize: 11),
+            ),
+          ),
+          const SizedBox(height: 6),
+          // Matched products list
+          for (final product in matchedProducts)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.greenAccent, size: 14),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      (product as Map)['product_name'] as String? ?? '',
+                      style: const TextStyle(color: Colors.white70, fontSize: 13),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Text(
+                    '${(product['price'] as num?)?.toStringAsFixed(2) ?? '0'} TL',
+                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+          // Missing products
+          for (final missing in missingProducts)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+              child: Row(
+                children: [
+                  const Icon(Icons.cancel, color: Colors.redAccent, size: 14),
+                  const SizedBox(width: 6),
+                  Text(
+                    missing as String? ?? '',
+                    style: const TextStyle(color: Colors.redAccent, fontSize: 13, decoration: TextDecoration.lineThrough),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 8),
+          // Price summary
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 12),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withAlpha(8),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Ara Toplam', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                    Text('${totalPrice.toStringAsFixed(2)} TL', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                  ],
+                ),
+                if (deliveryFee > 0) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Teslimat', style: TextStyle(color: Colors.white54, fontSize: 12)),
+                      Text('${deliveryFee.toStringAsFixed(2)} TL', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 6),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('TOPLAM', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+                    Text('${totalWithDelivery.toStringAsFixed(2)} TL', style: const TextStyle(color: Color(0xFF00D4FF), fontSize: 16, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          // Add all to cart button
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: isOpen ? () {
+                  for (final product in matchedProducts) {
+                    final p = product as Map;
+                    _addToCart({
+                      'product_id': p['product_id'],
+                      'name': p['product_name'],
+                      'price': p['price'],
+                      'image_url': p['image_url'] ?? '',
+                      'merchant_id': merchantId,
+                      'merchant_name': businessName,
+                      'merchant_type': merchantType,
+                      'quantity': 1,
+                    });
+                  }
+                  Navigator.pop(sheetContext);
+                  final ctx = rootNavigatorKey.currentContext;
+                  if (ctx != null) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      SnackBar(
+                        content: Text('${matchedProducts.length} urun $businessName sepetine eklendi!'),
+                        backgroundColor: const Color(0xFF00D4FF),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  }
+                } : null,
+                icon: const Icon(Icons.shopping_cart, size: 18),
+                label: Text('Hepsini Sepete Ekle (${matchedProducts.length})'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isCheapest && hasAllProducts ? const Color(0xFFFFD700) : const Color(0xFF00D4FF),
+                  foregroundColor: isCheapest && hasAllProducts ? Colors.black : Colors.white,
+                  disabledBackgroundColor: Colors.grey.withAlpha(60),
+                  disabledForegroundColor: Colors.white38,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+      ),
+    );
+  }
+
   void _dismissVoiceResponse() {
     _voiceResponseDismissTimer?.cancel();
     voiceOutputService.stop();
@@ -733,6 +1051,7 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
             screenContext: screenContext,
             onAddToCart: _addToCart,
             pendingVoiceResults: _pendingVoiceResults,
+            onLiveAgentMessage: _onLiveAgentMessage,
           ),
         ),
       ),
@@ -775,138 +1094,148 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
         return Positioned(
           right: xPos,
           bottom: _position.dy,
-          child: GestureDetector(
-            onPanStart: _isVoiceMode || _isVoicePreparing ? null : (_) {
-              setState(() => _isManualPosition = true);
-              _walkController.stop();
-              _moveController.stop();
-            },
-            onPanUpdate: _isVoiceMode || _isVoicePreparing ? null : (details) {
-              setState(() {
-                _position = Offset(
-                  _position.dx - details.delta.dx,
-                  _position.dy - details.delta.dy,
-                );
-              });
-            },
-            onPanEnd: _isVoiceMode || _isVoicePreparing ? null : (_) {
-              if (!_isChatOpen) {
-                _walkController.repeat(reverse: true);
-              }
-            },
-            onTap: _onTap,
-            onLongPressStart: (_) => _onLongPressStart(),
-            onLongPressEnd: (_) => _onLongPressEnd(),
-            child: MouseRegion(
-              onEnter: (_) => _onHoverStart(),
-              onExit: (_) => _onHoverEnd(),
-              cursor: SystemMouseCursors.click,
-              child: RepaintBoundary(
-                child: Transform.scale(
-                scale: _hoverScaleAnimation.value,
-                child: Transform.rotate(
-                  angle: _showNotificationBubble ? _shakeAnimation.value : 0,
-                  child: SizedBox(
-                      width: 80,
-                      height: 175,
-                      child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Positioned(
-                          bottom: 0,
-                          left: 0,
-                          right: 0,
-                          child: Center(
-                            child: Container(
-                              width: 55,
-                              height: 13,
-                              decoration: BoxDecoration(
-                                gradient: RadialGradient(
-                                  colors: [
-                                    const Color(0xFF00D4FF).withAlpha((100 * _glowAnimation.value).toInt()),
-                                    Colors.transparent,
-                                  ],
+          child: SizedBox(
+            width: 80,
+            height: 175,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                // Robot with gesture handling
+                GestureDetector(
+                  onPanStart: _isVoiceMode || _isVoicePreparing ? null : (_) {
+                    setState(() => _isManualPosition = true);
+                    _walkController.stop();
+                    _moveController.stop();
+                  },
+                  onPanUpdate: _isVoiceMode || _isVoicePreparing ? null : (details) {
+                    setState(() {
+                      _position = Offset(
+                        _position.dx - details.delta.dx,
+                        _position.dy - details.delta.dy,
+                      );
+                    });
+                  },
+                  onPanEnd: _isVoiceMode || _isVoicePreparing ? null : (_) {
+                    if (!_isChatOpen) {
+                      _walkController.repeat(reverse: true);
+                    }
+                  },
+                  onTap: _onTap,
+                  onLongPressStart: (_) => _onLongPressStart(),
+                  onLongPressEnd: (_) => _onLongPressEnd(),
+                  child: MouseRegion(
+                    onEnter: (_) => _onHoverStart(),
+                    onExit: (_) => _onHoverEnd(),
+                    cursor: SystemMouseCursors.click,
+                    child: RepaintBoundary(
+                      child: Transform.scale(
+                        scale: _hoverScaleAnimation.value,
+                        child: Transform.rotate(
+                          angle: _showNotificationBubble ? _shakeAnimation.value : 0,
+                          child: SizedBox(
+                            width: 80,
+                            height: 175,
+                            child: Stack(
+                              children: [
+                                Positioned(
+                                  bottom: 0,
+                                  left: 0,
+                                  right: 0,
+                                  child: Center(
+                                    child: Container(
+                                      width: 55,
+                                      height: 13,
+                                      decoration: BoxDecoration(
+                                        gradient: RadialGradient(
+                                          colors: [
+                                            const Color(0xFF00D4FF).withAlpha((100 * _glowAnimation.value).toInt()),
+                                            Colors.transparent,
+                                          ],
+                                        ),
+                                        borderRadius: BorderRadius.circular(25),
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                                borderRadius: BorderRadius.circular(25),
-                              ),
+                                Positioned(
+                                  bottom: 8,
+                                  left: 0,
+                                  right: 0,
+                                  child: Center(
+                                    child: Transform.translate(
+                                      offset: Offset(0, _isChatOpen ? 0 : -_bodyBounceAnimation.value),
+                                      child: Transform.flip(
+                                        flipX: !_movingRight,
+                                        child: _buildFuturisticRobot(),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                        Positioned(
-                          bottom: 8,
-                          left: 0,
-                          right: 0,
-                          child: Center(
-                            child: Transform.translate(
-                              offset: Offset(0, _isChatOpen ? 0 : -_bodyBounceAnimation.value),
-                              child: Transform.flip(
-                                flipX: !_movingRight,
-                                child: _buildFuturisticRobot(),
-                              ),
-                            ),
-                          ),
-                        ),
-                        if (_isHovered && !_isChatOpen && !_showProactiveMessage && !_showNotificationBubble)
-                          Positioned(
-                            top: 0,
-                            left: -50,
-                            right: -50,
-                            child: Center(child: _buildSpeechBubble()),
-                          ),
-                        // Proactive message bubble
-                        if (_showProactiveMessage && !_isChatOpen && !_showNotificationBubble)
-                          Positioned(
-                            top: -10,
-                            left: -100,
-                            right: -100,
-                            child: Center(child: _buildProactiveMessageBubble()),
-                          ),
-                        // Notification alert bubble
-                        if (_showNotificationBubble && !_isChatOpen)
-                          Positioned(
-                            top: -15,
-                            left: -80,
-                            right: -80,
-                            child: Center(child: _buildNotificationBubble()),
-                          ),
-                        // Voice preparing bubble
-                        if (_isVoicePreparing && !_isVoiceMode)
-                          Positioned(
-                            top: -10,
-                            left: -80,
-                            right: -80,
-                            child: Center(child: _buildVoicePreparingBubble()),
-                          ),
-                        // Voice listening bubble
-                        if (_isVoiceMode)
-                          Positioned(
-                            top: -10,
-                            left: -100,
-                            right: -100,
-                            child: Center(child: _buildVoiceListeningBubble()),
-                          ),
-                        // Voice processing bubble
-                        if (_isVoiceProcessing && !_isVoiceMode)
-                          Positioned(
-                            top: -10,
-                            left: -100,
-                            right: -100,
-                            child: Center(child: _buildVoiceProcessingBubble()),
-                          ),
-                        // Voice response bubble
-                        if (_showVoiceResponse && !_isVoiceProcessing)
-                          Positioned(
-                            top: -15,
-                            left: -110,
-                            right: -110,
-                            child: Center(child: _buildVoiceResponseBubble()),
-                          ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-              ),
+                // Bubbles - outside GestureDetector for independent tap handling
+                if (_isHovered && !_isChatOpen && !_showProactiveMessage && !_showNotificationBubble)
+                  Positioned(
+                    top: 0,
+                    left: -50,
+                    right: -50,
+                    child: Center(child: _buildSpeechBubble()),
+                  ),
+                // Proactive message bubble
+                if (_showProactiveMessage && !_isChatOpen && !_showNotificationBubble)
+                  Positioned(
+                    top: -10,
+                    left: -100,
+                    right: -100,
+                    child: Center(child: _buildProactiveMessageBubble()),
+                  ),
+                // Notification alert bubble
+                if (_showNotificationBubble && !_isChatOpen)
+                  Positioned(
+                    top: -15,
+                    left: -80,
+                    right: -80,
+                    child: Center(child: _buildNotificationBubble()),
+                  ),
+                // Voice preparing bubble
+                if (_isVoicePreparing && !_isVoiceMode)
+                  Positioned(
+                    top: -10,
+                    left: -80,
+                    right: -80,
+                    child: Center(child: _buildVoicePreparingBubble()),
+                  ),
+                // Voice listening bubble
+                if (_isVoiceMode)
+                  Positioned(
+                    top: -10,
+                    left: -100,
+                    right: -100,
+                    child: Center(child: _buildVoiceListeningBubble()),
+                  ),
+                // Voice processing bubble
+                if (_isVoiceProcessing && !_isVoiceMode)
+                  Positioned(
+                    top: -10,
+                    left: -100,
+                    right: -100,
+                    child: Center(child: _buildVoiceProcessingBubble()),
+                  ),
+                // Voice response bubble
+                if (_showVoiceResponse && !_isVoiceProcessing)
+                  Positioned(
+                    top: -15,
+                    left: -110,
+                    right: -110,
+                    child: Center(child: _buildVoiceResponseBubble()),
+                  ),
+              ],
             ),
           ),
         );
@@ -1723,7 +2052,8 @@ class _AIChatDialog extends StatefulWidget {
   final AiScreenContext screenContext;
   final void Function(Map<String, dynamic> payload)? onAddToCart;
   final _PendingVoiceResults? pendingVoiceResults;
-  const _AIChatDialog({required this.onClose, required this.screenContext, this.onAddToCart, this.pendingVoiceResults});
+  final VoidCallback? onLiveAgentMessage;
+  const _AIChatDialog({required this.onClose, required this.screenContext, this.onAddToCart, this.pendingVoiceResults, this.onLiveAgentMessage});
 
   @override
   State<_AIChatDialog> createState() => _AIChatDialogState();
@@ -1739,6 +2069,13 @@ class _AIChatDialogState extends State<_AIChatDialog> {
 
   bool _ttsEnabled = false;
 
+  // Live support state
+  bool _isLiveMode = false;
+  String? _liveTicketId;
+  int? _liveTicketNumber;
+  StreamSubscription? _liveMsgSubscription;
+  RealtimeChannel? _liveStatusChannel;
+
   @override
   void initState() {
     super.initState();
@@ -1748,6 +2085,8 @@ class _AIChatDialogState extends State<_AIChatDialog> {
 
   @override
   void dispose() {
+    _liveMsgSubscription?.cancel();
+    _liveStatusChannel?.unsubscribe();
     _messageController.dispose();
     _scrollController.dispose();
     voiceOutputService.stop();
@@ -1837,8 +2176,129 @@ class _AIChatDialogState extends State<_AIChatDialog> {
       }
     }
 
+    // Check for existing live support session
+    try {
+      final existingTicket = await LiveSupportService.getExistingTicket();
+      if (existingTicket != null && mounted) {
+        _enterLiveMode({
+          'ticket_id': existingTicket['id'],
+          'ticket_number': existingTicket['ticket_number'],
+        });
+      }
+    } catch (_) {}
+
     setState(() => _isInitializing = false);
     _scrollToBottom();
+  }
+
+  // ===== LIVE SUPPORT METHODS =====
+
+  void _enterLiveMode(Map<String, dynamic> payload) {
+    final ticketId = payload['ticket_id'] as String?;
+    final ticketNumber = payload['ticket_number'];
+    if (ticketId == null) return;
+
+    // Cleanup previous subscriptions
+    _liveMsgSubscription?.cancel();
+    _liveStatusChannel?.unsubscribe();
+
+    setState(() {
+      _isLiveMode = true;
+      _liveTicketId = ticketId;
+      _liveTicketNumber = ticketNumber is int ? ticketNumber : int.tryParse('$ticketNumber');
+      _messages.add(_ChatMessage(
+        role: 'system',
+        content: 'Canli destek moduna gecildi. Bir temsilci en kisa surede baglanacak.',
+        timestamp: DateTime.now(),
+      ));
+    });
+    _scrollToBottom();
+
+    // Subscribe to messages
+    int lastMsgCount = 0;
+    final result = LiveSupportService.subscribeToMessages(
+      ticketId: ticketId,
+      onMessages: (messages) {
+        if (!mounted) return;
+
+        final hasNewAgentMsg = messages.length > lastMsgCount &&
+            messages.isNotEmpty &&
+            messages.last['sender_type'] == 'agent';
+
+        setState(() {
+          _messages.removeWhere((m) => m.isLiveMessage);
+          for (final msg in messages) {
+            final senderType = msg['sender_type'] as String? ?? '';
+            if (senderType == 'system') continue;
+            _messages.add(_ChatMessage(
+              role: senderType == 'customer' ? 'user' : 'live_agent',
+              content: msg['message'] as String? ?? '',
+              timestamp: DateTime.tryParse(msg['created_at'] ?? ''),
+              isLiveMessage: true,
+              senderName: msg['sender_name'] as String?,
+            ));
+          }
+          lastMsgCount = messages.length;
+        });
+
+        // Notify parent if agent sent a new message
+        if (hasNewAgentMsg) {
+          widget.onLiveAgentMessage?.call();
+        }
+
+        _scrollToBottom();
+      },
+    );
+    _liveMsgSubscription = result.subscription;
+
+    // Subscribe to ticket status
+    _liveStatusChannel = LiveSupportService.subscribeToTicketStatus(
+      ticketId: ticketId,
+      onStatusChange: (status) {
+        if (status == 'resolved' || status == 'closed') {
+          _exitLiveMode();
+        }
+      },
+    );
+  }
+
+  void _exitLiveMode() {
+    _liveMsgSubscription?.cancel();
+    _liveMsgSubscription = null;
+    _liveStatusChannel?.unsubscribe();
+    _liveStatusChannel = null;
+
+    if (!mounted) return;
+    setState(() {
+      _isLiveMode = false;
+      _liveTicketId = null;
+      _liveTicketNumber = null;
+      _messages.add(_ChatMessage(
+        role: 'system',
+        content: 'Canli destek sonlandi. AI asistana geri donuldu.',
+        timestamp: DateTime.now(),
+      ));
+    });
+    _scrollToBottom();
+  }
+
+  Future<void> _sendLiveMessage(String message) async {
+    if (_liveTicketId == null) return;
+    _messageController.clear();
+    setState(() => _isLoading = true);
+    try {
+      await LiveSupportService.sendMessage(
+        ticketId: _liveTicketId!,
+        message: message,
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _messages.add(_ChatMessage(role: 'system', content: 'Mesaj gonderilemedi: $e', timestamp: DateTime.now(), isError: true));
+        });
+      }
+    }
+    if (mounted) setState(() => _isLoading = false);
   }
 
   /// Check if a message is internal context (not meant for display)
@@ -1868,6 +2328,12 @@ class _AIChatDialogState extends State<_AIChatDialog> {
   Future<void> _sendMessage() async {
     final message = _messageController.text.trim();
     if (message.isEmpty || _isLoading) return;
+
+    // Live support mode: send to ticket_messages directly
+    if (_isLiveMode && _liveTicketId != null) {
+      await _sendLiveMessage(message);
+      return;
+    }
 
     _messageController.clear();
     setState(() {
@@ -1918,6 +2384,13 @@ class _AIChatDialogState extends State<_AIChatDialog> {
           case AiStreamEventType.rentalResults:
             setState(() {
               assistantMessage.rentalCars = event.rentalResults;
+            });
+            _scrollToBottom();
+            break;
+
+          case AiStreamEventType.priceComparison:
+            setState(() {
+              assistantMessage.priceComparison = event.priceComparison;
             });
             _scrollToBottom();
             break;
@@ -1993,6 +2466,12 @@ class _AIChatDialogState extends State<_AIChatDialog> {
         break;
       case 'taxi_ride_created':
         _handleTaxiRideCreated(payload);
+        break;
+      case 'connect_live_support':
+        _enterLiveMode(payload);
+        break;
+      case 'price_comparison':
+        // Handled via priceComparison field on the message
         break;
     }
   }
@@ -2163,12 +2642,12 @@ class _AIChatDialogState extends State<_AIChatDialog> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('SuperCyp AI', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
+                Text(_isLiveMode ? 'Canli Destek #${_liveTicketNumber ?? ''}' : 'SuperCyp AI', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
                 Row(
                   children: [
-                    Container(width: 6, height: 6, decoration: BoxDecoration(color: const Color(0xFF00FF88), shape: BoxShape.circle, boxShadow: [BoxShadow(color: const Color(0xFF00FF88), blurRadius: 4)])),
+                    Container(width: 6, height: 6, decoration: BoxDecoration(color: _isLiveMode ? const Color(0xFFFF8C00) : const Color(0xFF00FF88), shape: BoxShape.circle, boxShadow: [BoxShadow(color: _isLiveMode ? const Color(0xFFFF8C00) : const Color(0xFF00FF88), blurRadius: 4)])),
                     const SizedBox(width: 5),
-                    Text('Cevrimici', style: TextStyle(fontSize: 11, color: Colors.white.withAlpha(150))),
+                    Text(_isLiveMode ? 'Temsilci bekleniyor...' : 'Cevrimici', style: TextStyle(fontSize: 11, color: Colors.white.withAlpha(150))),
                   ],
                 ),
               ],
@@ -2184,7 +2663,10 @@ class _AIChatDialogState extends State<_AIChatDialog> {
             onPressed: _toggleTts,
             tooltip: _ttsEnabled ? 'Sesi kapat' : 'Sesi aç',
           ),
-          IconButton(icon: Icon(Icons.refresh, color: Colors.white.withAlpha(150), size: 20), onPressed: _startNewChat),
+          if (_isLiveMode)
+            IconButton(icon: Icon(Icons.call_end, color: Colors.red.withAlpha(200), size: 20), onPressed: _exitLiveMode, tooltip: 'Canli destegi sonlandir'),
+          if (!_isLiveMode)
+            IconButton(icon: Icon(Icons.refresh, color: Colors.white.withAlpha(150), size: 20), onPressed: _startNewChat),
           IconButton(icon: Icon(Icons.close, color: Colors.white.withAlpha(150), size: 20), onPressed: widget.onClose),
         ],
       ),
@@ -2192,9 +2674,23 @@ class _AIChatDialogState extends State<_AIChatDialog> {
   }
 
   Widget _buildMessageBubble(_ChatMessage message) {
+    // System messages: centered, muted
+    if (message.role == 'system') {
+      return Center(
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(color: const Color(0xFF252540).withAlpha(150), borderRadius: BorderRadius.circular(12)),
+          child: Text(message.content, style: TextStyle(color: Colors.white.withAlpha(150), fontSize: 11), textAlign: TextAlign.center),
+        ),
+      );
+    }
+
     final isUser = message.role == 'user';
+    final isLiveAgent = message.role == 'live_agent';
     final hasProducts = !isUser && message.products != null && message.products!.isNotEmpty;
     final hasRentalCars = !isUser && message.rentalCars != null && message.rentalCars!.isNotEmpty;
+    final hasPriceComparison = !isUser && message.priceComparison != null;
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -2205,7 +2701,16 @@ class _AIChatDialogState extends State<_AIChatDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (!isUser) ...[
-              Container(width: 26, height: 26, decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF00D4FF), Color(0xFF00FF88)]), borderRadius: BorderRadius.circular(7)), child: const Icon(Icons.smart_toy, color: Colors.white, size: 16)),
+              Container(
+                width: 26, height: 26,
+                decoration: BoxDecoration(
+                  gradient: isLiveAgent
+                      ? const LinearGradient(colors: [Color(0xFFFF8C00), Color(0xFFFF6600)])
+                      : const LinearGradient(colors: [Color(0xFF00D4FF), Color(0xFF00FF88)]),
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: Icon(isLiveAgent ? Icons.support_agent : Icons.smart_toy, color: Colors.white, size: 16),
+              ),
               const SizedBox(width: 8),
             ],
             Flexible(
@@ -2219,7 +2724,7 @@ class _AIChatDialogState extends State<_AIChatDialog> {
                       gradient: isUser ? const LinearGradient(colors: [Color(0xFF00D4FF), Color(0xFF0099CC)]) : null,
                       color: isUser ? null : const Color(0xFF252540),
                       borderRadius: BorderRadius.only(topLeft: const Radius.circular(16), topRight: const Radius.circular(16), bottomLeft: Radius.circular(isUser ? 16 : 4), bottomRight: Radius.circular(isUser ? 4 : 16)),
-                      border: isUser ? null : Border.all(color: const Color(0xFF00D4FF).withAlpha(30)),
+                      border: isUser ? null : Border.all(color: (isLiveAgent ? const Color(0xFFFF8C00) : const Color(0xFF00D4FF)).withAlpha(30)),
                     ),
                     child: message.isStreaming && message.content.isEmpty
                         ? Row(mainAxisSize: MainAxisSize.min, children: List.generate(3, (i) => _TypingDot(delay: i * 150)))
@@ -2257,6 +2762,37 @@ class _AIChatDialogState extends State<_AIChatDialog> {
                             }
                           });
                         }
+                      },
+                    ),
+                  if (hasPriceComparison)
+                    _InlinePriceComparison(
+                      data: message.priceComparison!,
+                      onAddAllToCart: (store) {
+                        final matchedProducts = (store['matched_products'] as List<dynamic>?) ?? [];
+                        final merchantId = store['merchant_id'] as String? ?? '';
+                        final businessName = store['business_name'] as String? ?? '';
+                        final merchantType = store['merchant_type'] as String? ?? 'store';
+                        for (final product in matchedProducts) {
+                          final p = product as Map;
+                          widget.onAddToCart?.call({
+                            'product_id': p['product_id'],
+                            'name': p['product_name'],
+                            'price': p['price'],
+                            'image_url': p['image_url'] ?? '',
+                            'merchant_id': merchantId,
+                            'merchant_name': businessName,
+                            'merchant_type': merchantType,
+                            'quantity': 1,
+                          });
+                        }
+                        setState(() {
+                          _messages.add(_ChatMessage(
+                            role: 'assistant',
+                            content: '${matchedProducts.length} urun $businessName sepetine eklendi!',
+                            timestamp: DateTime.now(),
+                          ));
+                        });
+                        _scrollToBottom();
                       },
                     ),
                 ],
@@ -2406,15 +2942,18 @@ class _StreamingCursorState extends State<_StreamingCursor> with SingleTickerPro
 }
 
 class _ChatMessage {
-  final String role;
+  final String role; // 'user', 'assistant', 'system', 'live_agent'
   String content;
   final DateTime? timestamp;
   final bool isError;
   bool isStreaming;
+  bool isLiveMessage;
+  String? senderName;
   List<Map<String, dynamic>>? products;
   List<Map<String, dynamic>>? rentalCars;
+  Map<String, dynamic>? priceComparison;
 
-  _ChatMessage({required this.role, required this.content, this.timestamp, this.isError = false, this.isStreaming = false, this.products, this.rentalCars});
+  _ChatMessage({required this.role, required this.content, this.timestamp, this.isError = false, this.isStreaming = false, this.isLiveMessage = false, this.senderName, this.products, this.rentalCars, this.priceComparison});
 }
 
 class _AiProductCardList extends StatelessWidget {
@@ -2648,6 +3187,148 @@ class _AiRentalCard extends StatelessWidget {
                 child: const Text('Kirala', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InlinePriceComparison extends StatelessWidget {
+  final Map<String, dynamic> data;
+  final void Function(Map<String, dynamic> store) onAddAllToCart;
+
+  const _InlinePriceComparison({required this.data, required this.onAddAllToCart});
+
+  @override
+  Widget build(BuildContext context) {
+    final stores = (data['stores'] as List<dynamic>?) ?? [];
+    if (stores.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.only(top: 6),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (int i = 0; i < stores.length && i < 5; i++)
+            _buildCompactStoreCard(Map<String, dynamic>.from(stores[i] as Map), isCheapest: i == 0),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactStoreCard(Map<String, dynamic> store, {bool isCheapest = false}) {
+    final businessName = store['business_name'] as String? ?? '';
+    final isOpen = store['is_open'] as bool? ?? false;
+    final hasAllProducts = store['has_all_products'] as bool? ?? false;
+    final matchedCount = (store['matched_count'] as num?)?.toInt() ?? 0;
+    final totalRequested = (store['total_requested'] as num?)?.toInt() ?? 0;
+    final totalPrice = (store['total_price'] as num?)?.toDouble() ?? 0.0;
+    final deliveryFee = (store['delivery_fee'] as num?)?.toDouble() ?? 0.0;
+    final totalWithDelivery = (store['total_with_delivery'] as num?)?.toDouble() ?? totalPrice + deliveryFee;
+    final matchedProducts = (store['matched_products'] as List<dynamic>?) ?? [];
+    final missingProducts = (store['missing_products'] as List<dynamic>?) ?? [];
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1a1a2e),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: isCheapest && hasAllProducts ? const Color(0xFFFFD700).withAlpha(150) : Colors.white.withAlpha(20),
+          width: isCheapest && hasAllProducts ? 1.5 : 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Store header
+          Row(
+            children: [
+              if (isCheapest && hasAllProducts) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  decoration: BoxDecoration(color: const Color(0xFFFFD700), borderRadius: BorderRadius.circular(4)),
+                  child: const Text('EN UCUZ', style: TextStyle(color: Colors.black, fontSize: 8, fontWeight: FontWeight.w800)),
+                ),
+                const SizedBox(width: 4),
+              ],
+              Expanded(
+                child: Text(businessName, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                decoration: BoxDecoration(
+                  color: isOpen ? Colors.green.withAlpha(40) : Colors.red.withAlpha(40),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(isOpen ? 'Acik' : 'Kapali', style: TextStyle(color: isOpen ? Colors.greenAccent : Colors.redAccent, fontSize: 8, fontWeight: FontWeight.w600)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text('$matchedCount/$totalRequested urun', style: TextStyle(color: hasAllProducts ? Colors.greenAccent : Colors.orangeAccent, fontSize: 10)),
+          const SizedBox(height: 4),
+          // Products
+          for (final product in matchedProducts)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 2),
+              child: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.greenAccent, size: 10),
+                  const SizedBox(width: 4),
+                  Expanded(child: Text((product as Map)['product_name'] as String? ?? '', style: const TextStyle(color: Colors.white60, fontSize: 10), overflow: TextOverflow.ellipsis)),
+                  Text('${(product['price'] as num?)?.toStringAsFixed(0) ?? '0'} TL', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ),
+          for (final missing in missingProducts)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 2),
+              child: Row(
+                children: [
+                  Icon(Icons.cancel, color: Colors.redAccent, size: 10),
+                  const SizedBox(width: 4),
+                  Text(missing as String? ?? '', style: const TextStyle(color: Colors.redAccent, fontSize: 10, decoration: TextDecoration.lineThrough)),
+                ],
+              ),
+            ),
+          const SizedBox(height: 6),
+          // Total + button
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('${totalPrice.toStringAsFixed(0)} TL${deliveryFee > 0 ? ' + ${deliveryFee.toStringAsFixed(0)} teslimat' : ''}',
+                        style: const TextStyle(color: Colors.white54, fontSize: 9)),
+                    Text('${totalWithDelivery.toStringAsFixed(0)} TL', style: const TextStyle(color: Color(0xFF00D4FF), fontSize: 13, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+              GestureDetector(
+                onTap: isOpen ? () => onAddAllToCart(store) : null,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: isOpen
+                        ? (isCheapest && hasAllProducts ? const Color(0xFFFFD700) : const Color(0xFF00D4FF))
+                        : Colors.grey.withAlpha(60),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Sepete Ekle',
+                    style: TextStyle(
+                      color: isOpen ? (isCheapest && hasAllProducts ? Colors.black : Colors.white) : Colors.white38,
+                      fontSize: 10, fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );

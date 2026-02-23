@@ -27,10 +27,25 @@ class _DealerApplicationScreenState extends ConsumerState<DealerApplicationScree
   bool _isLoading = false;
   String? _errorMessage;
 
-  final List<String> _cities = [
-    'İstanbul', 'Ankara', 'İzmir', 'Bursa', 'Antalya', 'Adana', 'Konya',
-    'Gaziantep', 'Mersin', 'Kayseri', 'Eskişehir', 'Diyarbakır', 'Samsun',
-    'Denizli', 'Şanlıurfa', 'Malatya', 'Trabzon', 'Erzurum', 'Van', 'Batman',
+  static const List<String> _cities = [
+    // 6 İlçe Merkezi
+    'Lefkoşa', 'Gazimağusa', 'Girne', 'Güzelyurt', 'İskele', 'Lefke',
+    // Lefkoşa İlçesi
+    'Akıncılar', 'Alayköy', 'Değirmenlik', 'Demirhan', 'Gönyeli',
+    'Hamitköy', 'Haspolat', 'Minareliköy', 'Yeniceköy', 'Yılmazköy',
+    // Gazimağusa İlçesi
+    'Akdoğan', 'Beyarmudu', 'Geçitkale', 'Mutluyaka', 'Pile',
+    'Serdarlı', 'Tatlısu', 'Yeniboğaziçi',
+    // Girne İlçesi
+    'Alsancak', 'Çatalköy', 'Esentepe', 'Karşıyaka', 'Lapta',
+    'Ozanköy', 'Çamlıbel', 'Karaman', 'Kayalar',
+    // Güzelyurt İlçesi
+    'Aydınköy', 'Kalkanlı', 'Serhatköy', 'Yayla', 'Zümrütköy',
+    // İskele İlçesi
+    'Bafra', 'Boğaziçi', 'Büyükkonuk', 'Dipkarpaz', 'Kaplıca',
+    'Mehmetçik', 'Yeni Erenköy', 'Ziyamet',
+    // Lefke İlçesi
+    'Gaziveren', 'Yeşilırmak', 'Yeşilyurt', 'Cengizköy',
   ];
 
   @override
@@ -304,6 +319,7 @@ class _DealerApplicationScreenState extends ConsumerState<DealerApplicationScree
                   // Şehir
                   DropdownButtonFormField<String>(
                     initialValue: _selectedCity,
+                    menuMaxHeight: 300,
                     decoration: const InputDecoration(
                       labelText: 'Şehir *',
                       prefixIcon: Icon(Icons.location_city_outlined),
@@ -319,6 +335,12 @@ class _DealerApplicationScreenState extends ConsumerState<DealerApplicationScree
                         _selectedCity = value;
                         _selectedDistrict = null;
                       });
+                    },
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Lütfen şehir seçin';
+                      }
+                      return null;
                     },
                   ),
                   const SizedBox(height: 16),

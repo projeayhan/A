@@ -22,7 +22,9 @@ class OnlineNotifier extends Notifier<bool> {
 final isOnlineProvider = NotifierProvider<OnlineNotifier, bool>(() => OnlineNotifier());
 
 final pendingRidesProvider = FutureProvider<List<Ride>>((ref) async {
-  final rides = await TaxiService.getPendingRides();
+  final driver = ref.watch(driverProfileProvider).asData?.value;
+  final vehicleTypes = driver?.vehicleTypes;
+  final rides = await TaxiService.getPendingRides(driverVehicleTypes: vehicleTypes);
   return rides.map((e) => Ride.fromJson(e)).toList();
 });
 
@@ -100,6 +102,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   void _setupRealtimeSubscription() {
     _ridesChannel = TaxiService.subscribeToNewRides((newRide) {
+      // Filter by driver's vehicle types
+      final driver = ref.read(driverProfileProvider).asData?.value;
+      final driverTypes = driver?.vehicleTypes;
+      if (driverTypes != null && driverTypes.isNotEmpty) {
+        final rideType = newRide['vehicle_type'] as String?;
+        if (rideType != null && !driverTypes.contains(rideType)) {
+          return; // Skip rides that don't match driver's categories
+        }
+      }
+
       _playNotificationSound();
       ref.invalidate(pendingRidesProvider);
 

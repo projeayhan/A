@@ -2,7 +2,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../../core/services/ai_chat_service.dart';
+import '../../core/services/live_support_service.dart';
 import '../../core/services/voice_input_service.dart';
 import '../../core/services/voice_output_service.dart';
 
@@ -1201,6 +1204,13 @@ class _AIChatDialogState extends State<_AIChatDialog> {
 
   bool _ttsEnabled = false;
 
+  // Live support state
+  bool _isLiveMode = false;
+  String? _liveTicketId;
+  int? _liveTicketNumber;
+  StreamSubscription? _liveMsgSubscription;
+  RealtimeChannel? _liveStatusChannel;
+
   @override
   void initState() {
     super.initState();
@@ -1210,6 +1220,8 @@ class _AIChatDialogState extends State<_AIChatDialog> {
 
   @override
   void dispose() {
+    _liveMsgSubscription?.cancel();
+    _liveStatusChannel?.unsubscribe();
     _messageController.dispose();
     _scrollController.dispose();
     voiceOutputService.stop();
@@ -1253,8 +1265,116 @@ class _AIChatDialogState extends State<_AIChatDialog> {
       ));
     }
 
+    // Check for existing live support session
+    try {
+      final existingTicket = await LiveSupportService.getExistingTicket();
+      if (existingTicket != null && mounted) {
+        _enterLiveMode({
+          'ticket_id': existingTicket['id'],
+          'ticket_number': existingTicket['ticket_number'],
+        });
+      }
+    } catch (_) {}
+
     setState(() => _isInitializing = false);
     _scrollToBottom();
+  }
+
+  // ===== LIVE SUPPORT METHODS =====
+
+  void _enterLiveMode(Map<String, dynamic> payload) {
+    final ticketId = payload['ticket_id'] as String?;
+    final ticketNumber = payload['ticket_number'];
+    if (ticketId == null) return;
+
+    // Cleanup previous subscriptions
+    _liveMsgSubscription?.cancel();
+    _liveStatusChannel?.unsubscribe();
+
+    setState(() {
+      _isLiveMode = true;
+      _liveTicketId = ticketId;
+      _liveTicketNumber = ticketNumber is int ? ticketNumber : int.tryParse('$ticketNumber');
+      _messages.add(_ChatMessage(
+        role: 'system',
+        content: 'Canli destek moduna gecildi. Bir temsilci en kisa surede baglanacak.',
+        timestamp: DateTime.now(),
+      ));
+    });
+    _scrollToBottom();
+
+    // Subscribe to messages
+    final result = LiveSupportService.subscribeToMessages(
+      ticketId: ticketId,
+      onMessages: (messages) {
+        if (!mounted) return;
+        setState(() {
+          _messages.removeWhere((m) => m.isLiveMessage);
+          for (final msg in messages) {
+            final senderType = msg['sender_type'] as String? ?? '';
+            if (senderType == 'system') continue;
+            _messages.add(_ChatMessage(
+              role: senderType == 'customer' ? 'user' : 'live_agent',
+              content: msg['message'] as String? ?? '',
+              timestamp: DateTime.tryParse(msg['created_at'] ?? ''),
+              isLiveMessage: true,
+              senderName: msg['sender_name'] as String?,
+            ));
+          }
+        });
+        _scrollToBottom();
+      },
+    );
+    _liveMsgSubscription = result.subscription;
+
+    // Subscribe to ticket status
+    _liveStatusChannel = LiveSupportService.subscribeToTicketStatus(
+      ticketId: ticketId,
+      onStatusChange: (status) {
+        if (status == 'resolved' || status == 'closed') {
+          _exitLiveMode();
+        }
+      },
+    );
+  }
+
+  void _exitLiveMode() {
+    _liveMsgSubscription?.cancel();
+    _liveMsgSubscription = null;
+    _liveStatusChannel?.unsubscribe();
+    _liveStatusChannel = null;
+
+    if (!mounted) return;
+    setState(() {
+      _isLiveMode = false;
+      _liveTicketId = null;
+      _liveTicketNumber = null;
+      _messages.add(_ChatMessage(
+        role: 'system',
+        content: 'Canli destek sonlandi. AI asistana geri donuldu.',
+        timestamp: DateTime.now(),
+      ));
+    });
+    _scrollToBottom();
+  }
+
+  Future<void> _sendLiveMessage(String message) async {
+    if (_liveTicketId == null) return;
+    _messageController.clear();
+    setState(() => _isLoading = true);
+    try {
+      await LiveSupportService.sendMessage(
+        ticketId: _liveTicketId!,
+        message: message,
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _messages.add(_ChatMessage(role: 'system', content: 'Mesaj gonderilemedi: $e', timestamp: DateTime.now(), isError: true));
+        });
+      }
+    }
+    if (mounted) setState(() => _isLoading = false);
   }
 
   void _scrollToBottom() {
@@ -1272,6 +1392,12 @@ class _AIChatDialogState extends State<_AIChatDialog> {
   Future<void> _sendMessage() async {
     final message = _messageController.text.trim();
     if (message.isEmpty || _isLoading) return;
+
+    // Live support mode: send to ticket_messages directly
+    if (_isLiveMode && _liveTicketId != null) {
+      await _sendLiveMessage(message);
+      return;
+    }
 
     _messageController.clear();
 
@@ -1313,6 +1439,15 @@ class _AIChatDialogState extends State<_AIChatDialog> {
             break;
 
           case AiStreamEventType.actions:
+            if (event.actions != null) {
+              for (final action in event.actions!) {
+                final type = action['type'] as String?;
+                final payload = action['payload'] as Map<String, dynamic>?;
+                if (type == 'connect_live_support' && payload != null) {
+                  _enterLiveMode(payload);
+                }
+              }
+            }
             break;
 
           case AiStreamEventType.done:
@@ -1448,19 +1583,19 @@ class _AIChatDialogState extends State<_AIChatDialog> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('SuperCyp AI', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Colors.white)),
+                Text(_isLiveMode ? 'Canli Destek #${_liveTicketNumber ?? ''}' : 'SuperCyp AI', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Colors.white)),
                 Row(
                   children: [
                     Container(
                       width: 8, height: 8,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF00FF88),
+                        color: _isLiveMode ? const Color(0xFFFF8C00) : const Color(0xFF00FF88),
                         shape: BoxShape.circle,
-                        boxShadow: [BoxShadow(color: const Color(0xFF00FF88), blurRadius: 6)],
+                        boxShadow: [BoxShadow(color: _isLiveMode ? const Color(0xFFFF8C00) : const Color(0xFF00FF88), blurRadius: 6)],
                       ),
                     ),
                     const SizedBox(width: 6),
-                    Text('Cevrimici', style: TextStyle(fontSize: 12, color: Colors.white.withAlpha(150))),
+                    Text(_isLiveMode ? 'Temsilci bekleniyor...' : 'Cevrimici', style: TextStyle(fontSize: 12, color: Colors.white.withAlpha(150))),
                   ],
                 ),
               ],
@@ -1475,7 +1610,10 @@ class _AIChatDialogState extends State<_AIChatDialog> {
             onPressed: _toggleTts,
             tooltip: _ttsEnabled ? 'Sesi kapat' : 'Sesi ac',
           ),
-          IconButton(icon: Icon(Icons.refresh, color: Colors.white.withAlpha(150)), onPressed: _startNewChat),
+          if (_isLiveMode)
+            IconButton(icon: Icon(Icons.call_end, color: Colors.red.withAlpha(200)), onPressed: _exitLiveMode, tooltip: 'Canli destegi sonlandir'),
+          if (!_isLiveMode)
+            IconButton(icon: Icon(Icons.refresh, color: Colors.white.withAlpha(150)), onPressed: _startNewChat),
           IconButton(icon: Icon(Icons.close, color: Colors.white.withAlpha(150)), onPressed: widget.onClose),
         ],
       ),
@@ -1483,7 +1621,20 @@ class _AIChatDialogState extends State<_AIChatDialog> {
   }
 
   Widget _buildMessageBubble(_ChatMessage message) {
+    // System messages: centered, muted
+    if (message.role == 'system') {
+      return Center(
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(color: const Color(0xFF252540).withAlpha(150), borderRadius: BorderRadius.circular(12)),
+          child: Text(message.content, style: TextStyle(color: Colors.white.withAlpha(150), fontSize: 11), textAlign: TextAlign.center),
+        ),
+      );
+    }
+
     final isUser = message.role == 'user';
+    final isLiveAgent = message.role == 'live_agent';
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -1497,10 +1648,12 @@ class _AIChatDialogState extends State<_AIChatDialog> {
               Container(
                 width: 30, height: 30,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [const Color(0xFF00D4FF), const Color(0xFF00FF88)]),
+                  gradient: isLiveAgent
+                      ? const LinearGradient(colors: [Color(0xFFFF8C00), Color(0xFFFF6600)])
+                      : LinearGradient(colors: [const Color(0xFF00D4FF), const Color(0xFF00FF88)]),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.smart_toy, color: Colors.white, size: 18),
+                child: Icon(isLiveAgent ? Icons.support_agent : Icons.smart_toy, color: Colors.white, size: 18),
               ),
               const SizedBox(width: 10),
             ],
@@ -1518,7 +1671,7 @@ class _AIChatDialogState extends State<_AIChatDialog> {
                     bottomLeft: Radius.circular(isUser ? 18 : 4),
                     bottomRight: Radius.circular(isUser ? 4 : 18),
                   ),
-                  border: isUser ? null : Border.all(color: const Color(0xFF00D4FF).withAlpha(30)),
+                  border: isUser ? null : Border.all(color: (isLiveAgent ? const Color(0xFFFF8C00) : const Color(0xFF00D4FF)).withAlpha(30)),
                 ),
                 child: message.isStreaming && message.content.isEmpty
                     ? Row(mainAxisSize: MainAxisSize.min, children: List.generate(3, (i) => _TypingDot(delay: i * 150)))
@@ -1695,11 +1848,13 @@ class _StreamingCursorState extends State<_StreamingCursor> with SingleTickerPro
 }
 
 class _ChatMessage {
-  final String role;
+  final String role; // 'user', 'assistant', 'system', 'live_agent'
   String content;
   final DateTime? timestamp;
   final bool isError;
   bool isStreaming;
+  bool isLiveMessage;
+  String? senderName;
 
-  _ChatMessage({required this.role, required this.content, this.timestamp, this.isError = false, this.isStreaming = false});
+  _ChatMessage({required this.role, required this.content, this.timestamp, this.isError = false, this.isStreaming = false, this.isLiveMessage = false, this.senderName});
 }

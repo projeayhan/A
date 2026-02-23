@@ -49,7 +49,7 @@ class ProductCard extends StatelessWidget {
                     top: Radius.circular(10),
                   ),
                   child: AspectRatio(
-                    aspectRatio: 1.15, // Wider for compact mobile look
+                    aspectRatio: 1.0, // Kare görsel - kompakt kart
                     child: CachedNetworkImage(
                       imageUrl: ImageUtils.getProductThumbnail(product.imageUrl),
                       fit: BoxFit.cover,

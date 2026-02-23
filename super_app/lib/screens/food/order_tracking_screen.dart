@@ -78,6 +78,13 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
   // Navigation guard - çift navigasyon engelle
   bool _isNavigating = false;
 
+  /// Merchant türüne göre "Restorana Yaz" / "Mağazaya Yaz" metni
+  String get _merchantLabel {
+    final type = _orderData?['merchants']?['type'] as String?;
+    if (type == 'market' || type == 'store') return 'Mağazaya Yaz';
+    return 'Restorana Yaz';
+  }
+
   /// Mesaj gönderilebilir mi? Sipariş iptal/teslim edildiyse 10dk sonra kapanır.
   bool get _canSendMessage {
     if (_currentStatus == 'cancelled') return false;
@@ -303,7 +310,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
     try {
       final response = await SupabaseService.client
           .from('orders')
-          .select('*, merchants(*)')
+          .select('*, merchants(*), couriers(rating, total_deliveries)')
           .eq('id', widget.orderId)
           .single();
 
@@ -1132,6 +1139,9 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
   Widget _buildCourierInfo(bool isDark) {
     final courierName = _orderData?['courier_name'] ?? 'Kurye';
     final courierPhone = _orderData?['courier_phone'];
+    final courierData = _orderData?['couriers'] as Map<String, dynamic>?;
+    final courierRating = (courierData?['rating'] as num?)?.toDouble() ?? 5.0;
+    final courierDeliveries = (courierData?['total_deliveries'] as num?)?.toInt() ?? 0;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1176,7 +1186,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
                     const Icon(Icons.star, size: 14, color: Color(0xFFFBBF24)),
                     const SizedBox(width: 4),
                     Text(
-                      '4.9',
+                      courierRating.toStringAsFixed(1),
                       style: TextStyle(
                         fontSize: context.captionSize,
                         fontWeight: FontWeight.w600,
@@ -1185,7 +1195,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      '• 1.250+ teslimat',
+                      '• $courierDeliveries teslimat',
                       style: TextStyle(
                         fontSize: context.captionSize,
                         color: isDark ? Colors.grey[500] : Colors.grey[500],
@@ -1455,7 +1465,7 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
                         Icon(Icons.store, color: _canSendMessage ? Colors.white : Colors.grey[500], size: 20),
                         const SizedBox(width: 8),
                         Text(
-                          _canSendMessage ? 'Restorana Yaz' : 'Mesaj süresi doldu',
+                          _canSendMessage ? _merchantLabel : 'Mesaj süresi doldu',
                           style: TextStyle(
                             fontSize: context.heading2Size,
                             fontWeight: FontWeight.bold,
@@ -1660,9 +1670,9 @@ class _OrderTrackingScreenState extends ConsumerState<OrderTrackingScreen>
                 _showSupportDialog(isDark);
               },
               style: ElevatedButton.styleFrom(backgroundColor: FoodColors.primary),
-              child: const Text(
-                'Restorana Yaz',
-                style: TextStyle(color: Colors.white),
+              child: Text(
+                _merchantLabel,
+                style: const TextStyle(color: Colors.white),
               ),
             ),
           ],

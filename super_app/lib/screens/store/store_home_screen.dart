@@ -118,6 +118,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
     final screenWidth = renderBox?.size.width ?? MediaQuery.of(context).size.width;
+    final query = _searchQuery;
 
     return OverlayEntry(
       builder: (context) => Positioned(
@@ -128,17 +129,18 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
           offset: Offset(0, context.isMobile ? 52 : 56),
           child: Material(
             color: Colors.transparent,
-            child: _buildSearchResults(isDark),
+            child: Consumer(
+              builder: (context, ref, _) => _buildSearchResults(ref, isDark, query),
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildSearchResults(bool isDark) {
-    // Use server-side search for better performance
-    final productResultsAsync = ref.watch(productSearchProvider(_searchQuery));
-    final storeResultsAsync = ref.watch(storeSearchProvider(_searchQuery));
+  Widget _buildSearchResults(WidgetRef ref, bool isDark, String query) {
+    final productResultsAsync = ref.watch(productSearchProvider(query));
+    final storeResultsAsync = ref.watch(storeSearchProvider(query));
 
     final productResults = (productResultsAsync.valueOrNull ?? []).take(4).toList();
     final storeResults = (storeResultsAsync.valueOrNull ?? []).take(3).toList();
@@ -168,7 +170,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
       );
     }
 
-    if (productResults.isEmpty && storeResults.isEmpty && _searchQuery.isNotEmpty) {
+    if (productResults.isEmpty && storeResults.isEmpty && query.isNotEmpty) {
       return Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
@@ -196,7 +198,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
             ),
             const SizedBox(height: 4),
             Text(
-              '"$_searchQuery" için sonuç yok',
+              '"$query" için sonuç yok',
               style: TextStyle(fontSize: context.bodySmallSize, color: Colors.grey[500]),
             ),
           ],
@@ -355,9 +357,9 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                           builder: (context, ref, _) {
                             final cats = ref.watch(storeCategoriesProvider).valueOrNull ?? [];
                             final categoryName = cats
-                                .where((c) => c.id == store.categoryId)
+                                .where((c) => store.categoryIds.contains(c.id))
                                 .map((c) => c.name)
-                                .firstOrNull ?? '';
+                                .join(', ');
                             return Text(
                               categoryName,
                               style: TextStyle(fontSize: context.captionSize, color: Colors.grey[500]),
@@ -896,21 +898,21 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
 
     final filteredStores = _selectedCategoryId == null
         ? allStores
-        : allStores.where((s) => s.categoryId == _selectedCategoryId).toList();
+        : allStores.where((s) => s.categoryIds.contains(_selectedCategoryId)).toList();
     final filteredFeaturedStores = _selectedCategoryId == null
         ? allStores.where((s) => s.isVerified).toList()
-        : allStores.where((s) => s.isVerified && s.categoryId == _selectedCategoryId).toList();
+        : allStores.where((s) => s.isVerified && s.categoryIds.contains(_selectedCategoryId)).toList();
     final filteredFlashDeals = _selectedCategoryId == null
         ? allFlashDeals
         : allFlashDeals.where((p) {
             final store = allStores.firstWhere((s) => s.id == p.storeId, orElse: () => allStores.first);
-            return store.categoryId == _selectedCategoryId;
+            return store.categoryIds.contains(_selectedCategoryId);
           }).toList();
     final filteredBestSellers = _selectedCategoryId == null
         ? allBestSellers
         : allBestSellers.where((p) {
             final store = allStores.firstWhere((s) => s.id == p.storeId, orElse: () => allStores.first);
-            return store.categoryId == _selectedCategoryId;
+            return store.categoryIds.contains(_selectedCategoryId);
           }).toList();
 
     return Scaffold(
@@ -1416,11 +1418,26 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                   width: isSelected ? 2.5 : 1.5,
                 ),
               ),
-              child: Icon(
-                category.icon,
-                color: isSelected ? Colors.white : category.color,
-                size: 28,
-              ),
+              child: category.imageUrl != null && category.imageUrl!.isNotEmpty
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: Image.network(
+                        category.imageUrl!,
+                        width: 60,
+                        height: 60,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => Icon(
+                          category.icon,
+                          color: isSelected ? Colors.white : category.color,
+                          size: 28,
+                        ),
+                      ),
+                    )
+                  : Icon(
+                      category.icon,
+                      color: isSelected ? Colors.white : category.color,
+                      size: 28,
+                    ),
             ),
             const SizedBox(height: 8),
             Text(

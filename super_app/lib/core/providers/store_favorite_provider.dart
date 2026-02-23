@@ -45,7 +45,7 @@ class FavoriteStore {
       name: store.name,
       logoUrl: store.logoUrl,
       coverUrl: store.coverUrl,
-      category: categoryNames[store.categoryId] ?? 'Diğer',
+      category: store.categoryIds.isNotEmpty ? (categoryNames[store.categoryIds.first] ?? 'Diğer') : 'Diğer',
       rating: store.rating,
       followerCount: store.followerCount,
       productCount: store.productCount,

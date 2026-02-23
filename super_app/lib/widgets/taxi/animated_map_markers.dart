@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:ui' as ui;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -36,16 +37,27 @@ class AnimatedMapMarkers {
     double size = 100,
   }) async {
     try {
-      // Önce custom marker'ı dene
-      final marker = await createCustomMarker(
+      if (kIsWeb) {
+        // Web: AssetMapBitmap works reliably (codec pipeline fails on web)
+        return AssetMapBitmap(
+          'assets/images/taxi_3d_icon.png',
+          width: size,
+          height: size,
+        );
+      }
+      // Native: codec-based approach for precise resizing
+      return await createCustomMarker(
         assetPath: 'assets/images/taxi_3d_icon.png',
         size: Size(size, size),
       );
-      return marker;
     } catch (e) {
       debugPrint('Error loading taxi marker: $e');
-      // Fallback: Programatik olarak taksi ikonu oluştur
-      return await _createProgrammaticTaxiMarker(color: color, size: size);
+      if (!kIsWeb) {
+        try {
+          return await _createProgrammaticTaxiMarker(color: color, size: size);
+        } catch (_) {}
+      }
+      return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange);
     }
   }
 
@@ -120,18 +132,29 @@ class AnimatedMapMarkers {
   // 3D Passenger/Pickup Marker
   static Future<BitmapDescriptor> createPickupMarker({double size = 90}) async {
     try {
+      if (kIsWeb) {
+        return AssetMapBitmap(
+          'assets/images/passenger_3d_icon.png',
+          width: size,
+          height: size,
+        );
+      }
       return await createCustomMarker(
         assetPath: 'assets/images/passenger_3d_icon.png',
         size: Size(size, size),
       );
     } catch (e) {
       debugPrint('Error loading pickup marker: $e');
-      // Fallback: Programatik yeşil pin
-      return await _createProgrammaticPinMarker(
-        color: Colors.green,
-        size: size,
-        icon: Icons.person_pin_circle,
-      );
+      if (!kIsWeb) {
+        try {
+          return await _createProgrammaticPinMarker(
+            color: Colors.green,
+            size: size,
+            icon: Icons.person_pin_circle,
+          );
+        } catch (_) {}
+      }
+      return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen);
     }
   }
 
@@ -139,11 +162,19 @@ class AnimatedMapMarkers {
   static Future<BitmapDescriptor> createDropoffMarker({
     double size = 90,
   }) async {
-    return await _createProgrammaticPinMarker(
-      color: Colors.red,
-      size: size,
-      icon: Icons.flag_rounded,
-    );
+    if (kIsWeb) {
+      return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed);
+    }
+    try {
+      return await _createProgrammaticPinMarker(
+        color: Colors.red,
+        size: size,
+        icon: Icons.flag_rounded,
+      );
+    } catch (e) {
+      debugPrint('Error creating dropoff marker: $e');
+      return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed);
+    }
   }
 
   // 3D Customer Marker (Pulse effect container)
@@ -152,17 +183,29 @@ class AnimatedMapMarkers {
     double size = 90,
   }) async {
     try {
+      if (kIsWeb) {
+        return AssetMapBitmap(
+          'assets/images/passenger_3d_icon.png',
+          width: size,
+          height: size,
+        );
+      }
       return await createCustomMarker(
         assetPath: 'assets/images/passenger_3d_icon.png',
         size: Size(size, size),
       );
     } catch (e) {
       debugPrint('Error loading customer marker: $e');
-      return await _createProgrammaticPinMarker(
-        color: color,
-        size: size,
-        icon: Icons.person,
-      );
+      if (!kIsWeb) {
+        try {
+          return await _createProgrammaticPinMarker(
+            color: color,
+            size: size,
+            icon: Icons.person,
+          );
+        } catch (_) {}
+      }
+      return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueAzure);
     }
   }
 

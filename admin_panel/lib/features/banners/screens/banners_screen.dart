@@ -31,7 +31,8 @@ class _BannersScreenState extends ConsumerState<BannersScreen> {
     {'value': 'home', 'label': 'Ana Sayfa', 'icon': 'home'},
     {'value': 'rental', 'label': 'Araç Kiralama', 'icon': 'car_rental'},
     {'value': 'food', 'label': 'Yemek', 'icon': 'restaurant'},
-    {'value': 'store', 'label': 'Market', 'icon': 'store'},
+    {'value': 'market', 'label': 'Market', 'icon': 'local_grocery_store'},
+    {'value': 'store', 'label': 'Mağaza', 'icon': 'store'},
     {'value': 'jobs', 'label': 'İş İlanları', 'icon': 'work'},
     {'value': 'emlak', 'label': 'Emlak', 'icon': 'home_work'},
     {'value': 'car_sales', 'label': 'Araç Satış', 'icon': 'directions_car'},
@@ -158,8 +159,10 @@ class _BannersScreenState extends ConsumerState<BannersScreen> {
         return 'Araç Kiralama';
       case 'food':
         return 'Yemek';
-      case 'store':
+      case 'market':
         return 'Market';
+      case 'store':
+        return 'Mağaza';
       case 'jobs':
         return 'İş İlanları';
       case 'emlak':
@@ -178,6 +181,8 @@ class _BannersScreenState extends ConsumerState<BannersScreen> {
         return Colors.purple;
       case 'food':
         return Colors.orange;
+      case 'market':
+        return Colors.green;
       case 'store':
         return Colors.teal;
       case 'jobs':
@@ -455,10 +460,20 @@ class _BannersScreenState extends ConsumerState<BannersScreen> {
         return 'Restoran Ara';
       case 'menu_item':
         return 'Yemek Ara';
+      case 'market':
+        return 'Market Ara';
       case 'store':
         return 'Mağaza Ara';
       case 'product':
         return 'Ürün Ara';
+      case 'rental_car':
+        return 'Kiralık Araç Ara';
+      case 'car_listing':
+        return 'Satılık Araç Ara';
+      case 'job_listing':
+        return 'İş İlanı Ara';
+      case 'promotion':
+        return 'Promosyon Ara';
       default:
         return 'Ara';
     }
@@ -470,10 +485,20 @@ class _BannersScreenState extends ConsumerState<BannersScreen> {
         return Icons.restaurant;
       case 'menu_item':
         return Icons.fastfood;
+      case 'market':
+        return Icons.local_grocery_store;
       case 'store':
         return Icons.store;
       case 'product':
         return Icons.shopping_bag;
+      case 'rental_car':
+        return Icons.car_rental;
+      case 'car_listing':
+        return Icons.directions_car;
+      case 'job_listing':
+        return Icons.work;
+      case 'promotion':
+        return Icons.local_offer;
       default:
         return Icons.link;
     }
@@ -514,6 +539,21 @@ class _BannersScreenState extends ConsumerState<BannersScreen> {
           }).toList();
           break;
 
+        case 'market':
+          final marketResponse = await supabase
+              .from('merchants')
+              .select('id, business_name, logo_url')
+              .eq('type', 'market')
+              .ilike('business_name', '%$query%')
+              .limit(10);
+          results = (marketResponse as List).map((item) => <String, dynamic>{
+            'id': item['id'],
+            'name': item['business_name'],
+            'image_url': item['logo_url'],
+            'subtitle': 'Market',
+          }).toList();
+          break;
+
         case 'store':
           final response = await supabase
               .from('merchants')
@@ -540,6 +580,66 @@ class _BannersScreenState extends ConsumerState<BannersScreen> {
             'name': item['name'],
             'image_url': item['image_url'],
             'subtitle': '${item['merchants']?['business_name'] ?? ''} - ${item['price']} TL',
+          }).toList();
+          break;
+
+        case 'rental_car':
+          final response = await supabase
+              .from('rental_cars')
+              .select('id, brand, model, year, image_url, daily_price, rental_companies(name)')
+              .or('brand.ilike.%$query%,model.ilike.%$query%')
+              .limit(10);
+          results = (response as List).map((item) => <String, dynamic>{
+            'id': item['id'],
+            'name': '${item['brand']} ${item['model']} (${item['year']})',
+            'image_url': item['image_url'],
+            'subtitle': '${item['rental_companies']?['name'] ?? ''} - ${item['daily_price']} ₺/gün',
+          }).toList();
+          break;
+
+        case 'car_listing':
+          final response = await supabase
+              .from('car_listings')
+              .select('id, title, price, location, images')
+              .ilike('title', '%$query%')
+              .limit(10);
+          results = (response as List).map((item) => <String, dynamic>{
+            'id': item['id'],
+            'name': item['title'],
+            'image_url': (item['images'] is List && (item['images'] as List).isNotEmpty)
+                ? item['images'][0]
+                : null,
+            'subtitle': '${item['price'] ?? 0} ₺ - ${item['location'] ?? ''}',
+          }).toList();
+          break;
+
+        case 'job_listing':
+          final response = await supabase
+              .from('job_listings')
+              .select('id, title, city, job_type')
+              .ilike('title', '%$query%')
+              .limit(10);
+          results = (response as List).map((item) => <String, dynamic>{
+            'id': item['id'],
+            'name': item['title'],
+            'image_url': null,
+            'subtitle': '${item['city'] ?? ''} - ${item['job_type'] ?? ''}',
+          }).toList();
+          break;
+
+        case 'promotion':
+          final response = await supabase
+              .from('promotions')
+              .select('id, name, code, type, value')
+              .or('name.ilike.%$query%,code.ilike.%$query%')
+              .limit(10);
+          results = (response as List).map((item) => <String, dynamic>{
+            'id': item['id'],
+            'name': '${item['name']} (${item['code']})',
+            'image_url': null,
+            'subtitle': item['type'] == 'percentage'
+                ? '%${item['value']} indirim'
+                : '${item['value']} ₺ indirim',
           }).toList();
           break;
       }
@@ -708,7 +808,8 @@ class _BannersScreenState extends ConsumerState<BannersScreen> {
                     DropdownMenuItem(value: 'home', child: Text('Ana Sayfa')),
                     DropdownMenuItem(value: 'rental', child: Text('Araç Kiralama')),
                     DropdownMenuItem(value: 'food', child: Text('Yemek')),
-                    DropdownMenuItem(value: 'store', child: Text('Market')),
+                    DropdownMenuItem(value: 'market', child: Text('Market')),
+                    DropdownMenuItem(value: 'store', child: Text('Mağaza')),
                     DropdownMenuItem(value: 'jobs', child: Text('İş İlanları')),
                     DropdownMenuItem(value: 'emlak', child: Text('Emlak')),
                     DropdownMenuItem(value: 'car_sales', child: Text('Araç Satış')),
@@ -751,8 +852,14 @@ class _BannersScreenState extends ConsumerState<BannersScreen> {
                     DropdownMenuItem(value: null, child: Text('Yok (Tıklanamaz)')),
                     DropdownMenuItem(value: 'restaurant', child: Text('Restoran')),
                     DropdownMenuItem(value: 'menu_item', child: Text('Yemek (Menü Ürünü)')),
+                    DropdownMenuItem(value: 'market', child: Text('Market')),
                     DropdownMenuItem(value: 'store', child: Text('Mağaza')),
                     DropdownMenuItem(value: 'product', child: Text('Ürün')),
+                    DropdownMenuItem(value: 'rental_car', child: Text('Kiralık Araç')),
+                    DropdownMenuItem(value: 'car_listing', child: Text('Satılık Araç')),
+                    DropdownMenuItem(value: 'job_listing', child: Text('İş İlanı')),
+                    DropdownMenuItem(value: 'promotion', child: Text('Promosyon / Kampanya')),
+                    DropdownMenuItem(value: 'screen', child: Text('Uygulama Sayfası')),
                     DropdownMenuItem(value: 'external', child: Text('Harici Link (URL)')),
                   ],
                   onChanged: isLoading
@@ -779,6 +886,35 @@ class _BannersScreenState extends ConsumerState<BannersScreen> {
                       prefixIcon: Icon(Icons.link),
                     ),
                     enabled: !isLoading,
+                  ),
+                ] else if (selectedLinkType == 'screen') ...[
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedLinkId,
+                    decoration: const InputDecoration(
+                      labelText: 'Uygulama Sayfası',
+                      prefixIcon: Icon(Icons.phone_android),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'home', child: Text('Ana Sayfa')),
+                      DropdownMenuItem(value: 'food', child: Text('Yemek Siparişi')),
+                      DropdownMenuItem(value: 'store', child: Text('Market / Mağaza')),
+                      DropdownMenuItem(value: 'taxi', child: Text('Taksi')),
+                      DropdownMenuItem(value: 'rental', child: Text('Araç Kiralama')),
+                      DropdownMenuItem(value: 'car_sales', child: Text('Araç Satış')),
+                      DropdownMenuItem(value: 'emlak', child: Text('Emlak')),
+                      DropdownMenuItem(value: 'jobs', child: Text('İş İlanları')),
+                      DropdownMenuItem(value: 'promotions', child: Text('Kampanyalar')),
+                      DropdownMenuItem(value: 'profile', child: Text('Profil')),
+                      DropdownMenuItem(value: 'wallet', child: Text('Cüzdan')),
+                    ],
+                    onChanged: isLoading
+                        ? null
+                        : (value) {
+                            setDialogState(() {
+                              selectedLinkId = value;
+                              selectedLinkName = value;
+                            });
+                          },
                   ),
                 ] else if (selectedLinkType != null) ...[
                   // Arama alanı

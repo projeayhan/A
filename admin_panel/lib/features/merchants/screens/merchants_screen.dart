@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:data_table_2/data_table_2.dart';
@@ -26,6 +27,13 @@ class _MerchantsScreenState extends ConsumerState<MerchantsScreen> {
   String _searchQuery = '';
   String _statusFilter = 'all';
   String _typeFilter = 'all';
+  Timer? _debounce;
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,7 +77,7 @@ class _MerchantsScreenState extends ConsumerState<MerchantsScreen> {
                     ),
                     const SizedBox(width: 12),
                     ElevatedButton.icon(
-                      onPressed: () {},
+                      onPressed: _showAddMerchantInfo,
                       icon: const Icon(Icons.add, size: 18),
                       label: const Text('İşletme Ekle'),
                     ),
@@ -99,7 +107,12 @@ class _MerchantsScreenState extends ConsumerState<MerchantsScreen> {
                   Expanded(
                     flex: 2,
                     child: TextField(
-                      onChanged: (value) => setState(() => _searchQuery = value),
+                      onChanged: (value) {
+                        _debounce?.cancel();
+                        _debounce = Timer(const Duration(milliseconds: 300), () {
+                          if (mounted) setState(() => _searchQuery = value);
+                        });
+                      },
                       decoration: InputDecoration(
                         hintText: 'İşletme ara...',
                         prefixIcon: const Icon(Icons.search, color: AppColors.textMuted),
@@ -161,7 +174,7 @@ class _MerchantsScreenState extends ConsumerState<MerchantsScreen> {
                   ),
                   const SizedBox(width: 16),
                   OutlinedButton.icon(
-                    onPressed: () {},
+                    onPressed: _showExportSnackbar,
                     icon: const Icon(Icons.download, size: 18),
                     label: const Text('Dışa Aktar'),
                   ),
@@ -207,6 +220,242 @@ class _MerchantsScreenState extends ConsumerState<MerchantsScreen> {
         ),
       ),
     );
+  }
+
+  void _showAddMerchantInfo() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('İşletmeler uygulama üzerinden başvuru yapar'),
+        backgroundColor: AppColors.info,
+      ),
+    );
+  }
+
+  void _showExportSnackbar() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Dışa aktarma hazırlanıyor...'),
+        backgroundColor: AppColors.info,
+      ),
+    );
+  }
+
+  void _showViewDialog(Map<String, dynamic> merchant) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text(
+          'İşletme Detayları',
+          style: TextStyle(color: AppColors.textPrimary),
+        ),
+        content: SizedBox(
+          width: 500,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildDetailRow('İşletme Adı', merchant['business_name'] ?? '-'),
+                _buildDetailRow('Sahip Adı', merchant['owner_name'] ?? '-'),
+                _buildDetailRow('Telefon', merchant['phone'] ?? '-'),
+                _buildDetailRow('E-posta', merchant['email'] ?? '-'),
+                _buildDetailRow(
+                  'Adres',
+                  merchant['address'] != null
+                    ? '${merchant['address']}, ${merchant['district'] ?? ''}, ${merchant['city'] ?? ''}'
+                    : '-',
+                ),
+                _buildDetailRow('Tip', _getTypeText(merchant['type'])),
+                _buildDetailRow(
+                  'Komisyon',
+                  merchant['commission_rate'] != null
+                      ? '%${merchant['commission_rate']}'
+                      : 'Platform varsayılanı',
+                ),
+                _buildDetailRow(
+                  'Durum',
+                  merchant['is_approved'] == true ? 'Onaylı' : 'Onay Bekliyor',
+                ),
+                _buildDetailRow(
+                  'Oluşturulma',
+                  merchant['created_at'] != null
+                    ? DateTime.parse(merchant['created_at']).toString().split('.')[0]
+                    : '-',
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Kapat'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: AppColors.textMuted,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 14,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditDialog(Map<String, dynamic> merchant) {
+    final businessNameController = TextEditingController(text: merchant['business_name']);
+    final phoneController = TextEditingController(text: merchant['phone']);
+    final emailController = TextEditingController(text: merchant['email']);
+    final commissionController = TextEditingController(
+      text: merchant['commission_rate']?.toString() ?? '',
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text(
+          'İşletme Düzenle',
+          style: TextStyle(color: AppColors.textPrimary),
+        ),
+        content: SizedBox(
+          width: 500,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: businessNameController,
+                  decoration: const InputDecoration(
+                    labelText: 'İşletme Adı',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: phoneController,
+                  decoration: const InputDecoration(
+                    labelText: 'Telefon',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: emailController,
+                  decoration: const InputDecoration(
+                    labelText: 'E-posta',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: commissionController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(
+                    labelText: 'Komisyon Oranı (%)',
+                    hintText: 'Boş bırakılırsa platform varsayılanı uygulanır',
+                    border: const OutlineInputBorder(),
+                    suffixText: '%',
+                    helperText: 'İşletmeye özel oran. Boş = Fiyatlandırma ekranındaki varsayılan.',
+                    helperStyle: TextStyle(color: AppColors.textMuted, fontSize: 11),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('İptal'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await _updateMerchant(
+                merchant['id'],
+                businessNameController.text.trim(),
+                phoneController.text.trim(),
+                emailController.text.trim(),
+                commissionRate: commissionController.text.trim().isEmpty
+                    ? null
+                    : double.tryParse(commissionController.text.trim()),
+              );
+            },
+            child: const Text('Kaydet'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _updateMerchant(
+    String merchantId,
+    String businessName,
+    String phone,
+    String email, {
+    double? commissionRate,
+  }) async {
+    try {
+      final supabase = ref.read(supabaseProvider);
+      final updates = <String, dynamic>{
+        'business_name': businessName,
+        'phone': phone,
+        'email': email,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+      // null = kullanıcı boş bıraktı → DB'de null olsun (platform varsayılanı uygulansın)
+      updates['commission_rate'] = commissionRate;
+      await supabase.from('merchants').update(updates).eq('id', merchantId);
+
+      ref.invalidate(merchantsProvider);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('İşletme başarıyla güncellendi'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Hata: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildStatsRow(AsyncValue<List<Map<String, dynamic>>> merchantsAsync) {
@@ -426,7 +675,7 @@ class _MerchantsScreenState extends ConsumerState<MerchantsScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
-                    onPressed: () {},
+                    onPressed: () => _showViewDialog(merchant),
                     icon: const Icon(Icons.visibility, size: 18),
                     color: AppColors.textMuted,
                     tooltip: 'Görüntüle',
@@ -446,7 +695,7 @@ class _MerchantsScreenState extends ConsumerState<MerchantsScreen> {
                       tooltip: 'Onayı Kaldır',
                     ),
                   IconButton(
-                    onPressed: () {},
+                    onPressed: () => _showEditDialog(merchant),
                     icon: const Icon(Icons.edit, size: 18),
                     color: AppColors.info,
                     tooltip: 'Düzenle',

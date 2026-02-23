@@ -60,7 +60,7 @@ class TaxiService {
     required String vehiclePlate,
     required String vehicleColor,
     required int vehicleYear,
-    required String vehicleType,
+    required List<String> vehicleTypes,
     String? email,
   }) async {
     // Oturumun kurulması için kısa bekleme
@@ -93,7 +93,7 @@ class TaxiService {
             'vehicle_plate': vehiclePlate,
             'vehicle_color': vehicleColor,
             'vehicle_year': vehicleYear,
-            'vehicle_type': vehicleType,
+            'vehicle_types': vehicleTypes,
             'status': 'pending',
             'is_online': false,
             'is_verified': false,
@@ -106,6 +106,23 @@ class TaxiService {
           .single();
 
       debugPrint('Driver profile created successfully: ${response['id']}');
+
+      // users tablosunda ad soyad güncelle (super_app girişinde yönlendirme kontrolü için)
+      try {
+        final parcalar = fullName.split(' ');
+        final ad = parcalar.first;
+        final soyad = parcalar.length > 1 ? parcalar.sublist(1).join(' ') : '';
+        await _client
+            .from('users')
+            .update({
+              'first_name': ad,
+              'last_name': soyad,
+              'phone': phone,
+            })
+            .eq('id', userId);
+      } catch (_) {
+        // users kaydı yoksa veya hata olursa devam et
+      }
 
       // Admin panel icin partner_applications tablosuna da ekle
       try {
@@ -122,7 +139,7 @@ class TaxiService {
           'vehicle_plate': vehiclePlate,
           'vehicle_color': vehicleColor,
           'vehicle_year': vehicleYear,
-          'vehicle_type': vehicleType,
+          'vehicle_type': vehicleTypes.join(','),
         });
         debugPrint('Partner application created for taxi driver');
       } catch (e) {
@@ -204,21 +221,29 @@ class TaxiService {
 
   // ==================== RIDE REQUESTS ====================
 
-  /// Bekleyen surusleri getir (son 5 dakika)
-  static Future<List<Map<String, dynamic>>> getPendingRides() async {
+  /// Bekleyen surusleri getir (son 5 dakika, kategori filtreli)
+  static Future<List<Map<String, dynamic>>> getPendingRides({
+    List<String>? driverVehicleTypes,
+  }) async {
     try {
       final fiveMinutesAgo = DateTime.now()
           .subtract(const Duration(minutes: 5))
           .toUtc()
           .toIso8601String();
 
-      final response = await _client
+      var query = _client
           .from('taxi_rides')
           .select()
           .eq('status', 'pending')
           .isFilter('driver_id', null)
-          .gte('created_at', fiveMinutesAgo)
-          .order('created_at', ascending: false);
+          .gte('created_at', fiveMinutesAgo);
+
+      // Sürücünün araç kategorilerine göre filtrele
+      if (driverVehicleTypes != null && driverVehicleTypes.isNotEmpty) {
+        query = query.inFilter('vehicle_type', driverVehicleTypes);
+      }
+
+      final response = await query.order('created_at', ascending: false);
 
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
@@ -790,6 +815,101 @@ class TaxiService {
     } catch (e) {
       debugPrint('getEarningsHistory error: $e');
       return [];
+    }
+  }
+
+  // ==================== DOCUMENTS ====================
+
+  /// Partner application ID'sini getir
+  static Future<String?> _getApplicationId() async {
+    final userId = SupabaseService.currentUser?.id;
+    if (userId == null) return null;
+
+    try {
+      final response = await _client
+          .from('partner_applications')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('application_type', 'taxi')
+          .maybeSingle();
+
+      return response?['id'] as String?;
+    } catch (e) {
+      debugPrint('getApplicationId error: $e');
+      return null;
+    }
+  }
+
+  /// Belgeleri getir
+  static Future<List<Map<String, dynamic>>> getDocuments() async {
+    final appId = await _getApplicationId();
+    if (appId == null) return [];
+
+    try {
+      final response = await _client
+          .from('partner_documents')
+          .select()
+          .eq('application_id', appId)
+          .order('created_at');
+
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      debugPrint('getDocuments error: $e');
+      return [];
+    }
+  }
+
+  /// Belge yukle
+  static Future<bool> uploadDocument({
+    required String type,
+    required Uint8List bytes,
+    required String fileName,
+  }) async {
+    final userId = SupabaseService.currentUser?.id;
+    final appId = await _getApplicationId();
+    if (userId == null || appId == null) return false;
+
+    try {
+      // Storage'a yukle
+      final safeName = fileName.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+      final path = 'documents/$userId/${type}_${DateTime.now().millisecondsSinceEpoch}_$safeName';
+
+      await _client.storage.from('images').uploadBinary(
+        path,
+        bytes,
+        fileOptions: const FileOptions(upsert: true),
+      );
+
+      final url = _client.storage.from('images').getPublicUrl(path);
+
+      // Mevcut belge var mi kontrol et
+      final existing = await _client
+          .from('partner_documents')
+          .select('id')
+          .eq('application_id', appId)
+          .eq('type', type)
+          .maybeSingle();
+
+      if (existing != null) {
+        await _client.from('partner_documents').update({
+          'url': url,
+          'status': 'pending',
+          'rejection_reason': null,
+          'updated_at': DateTime.now().toIso8601String(),
+        }).eq('id', existing['id']);
+      } else {
+        await _client.from('partner_documents').insert({
+          'application_id': appId,
+          'type': type,
+          'url': url,
+          'status': 'pending',
+        });
+      }
+
+      return true;
+    } catch (e) {
+      debugPrint('uploadDocument error: $e');
+      return false;
     }
   }
 }

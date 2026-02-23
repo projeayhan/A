@@ -141,24 +141,36 @@ class AmenityModel {
 
 /// Property type enumeration - Fallback için korunuyor
 enum PropertyType {
+  // Konut
   apartment('Daire', Icons.apartment),
   villa('Villa', Icons.villa),
+  twinVilla('İkiz Villa', Icons.holiday_village),
   residence('Rezidans', Icons.business),
+  penthouse('Penthouse', Icons.roofing),
+  bungalow('Bungalow', Icons.cottage),
+  detachedHouse('Müstakil Ev', Icons.house),
+  completeBuilding('Komple Bina', Icons.domain),
+  timeshare('Devremülk', Icons.calendar_month),
+  derelictBuilding('Metruk Bina', Icons.domain_disabled),
+  halfConstruction('Yarım İnşaat', Icons.construction),
+  // Arsa
   land('Arsa', Icons.landscape),
+  // Ticari
   office('Ofis', Icons.work_outline),
   shop('Dükkan', Icons.storefront),
-  building('Bina', Icons.domain),
-  penthouse('Penthouse', Icons.roofing);
+  building('Bina', Icons.domain);
 
   final String label;
   final IconData icon;
   const PropertyType(this.label, this.icon);
 }
 
-/// Listing type - Sale or Rent
+/// Listing type - Sale, Rent, Daily Rent, Project
 enum ListingType {
   sale('Satılık', Color(0xFF10B981)),
-  rent('Kiralık', Color(0xFF3B82F6));
+  rent('Kiralık', Color(0xFF3B82F6)),
+  dailyRent('Günlük Kiralık', Color(0xFFF59E0B)),
+  project('Projeler', Color(0xFF8B5CF6));
 
   final String label;
   final Color color;
@@ -583,67 +595,382 @@ class Property {
   ];
 }
 
-/// Search filter model
+/// Search filter model - 101evler benzeri
 class PropertyFilter {
-  final PropertyType? type;
+  // Basic filters
+  final PropertyType? type; // backward compat
   final ListingType? listingType;
-  final double? minPrice;
-  final double? maxPrice;
-  final int? minRooms;
-  final int? maxRooms;
-  final int? minSquareMeters;
-  final int? maxSquareMeters;
+  final Set<String>? selectedPropertyTypes;
   final String? city;
   final String? district;
+  final double? minPrice;
+  final double? maxPrice;
+  final int? minSquareMeters;
+  final int? maxSquareMeters;
+  final String? keyword;
+
+  // Detail (multi-select)
+  final Set<String>? roomTypes;
+  final Set<String>? buildingAges;
+  final Set<int>? floors;
+  final Set<String>? furnitureStatuses;
+  final Set<String>? ownerTypes;
+  final String? listingDateRange;
+
+  // Toggles
+  final bool? isOpenToTrade;
+  final bool? isInComplex;
+
+  // Exterior features
+  final bool? hasGarage;
+  final bool? hasGarden;
+  final bool? hasPrivatePool;
+  final bool? hasSharedPool;
+  final bool? hasSecurityCamera;
+  final bool? hasTerrace;
+  final bool? hasInsulation;
+  final bool? hasWaterTank;
+  final bool? hasWell;
+  final bool? hasBarbeque;
+  final bool? hasDoubleGlazing;
+  final bool? hasCoveredParking;
+  final bool? hasGenerator;
+  final bool? hasElevator;
   final bool? hasParking;
-  final bool? hasPool;
-  final bool? hasFurniture;
+  final bool? hasSandstoneHouse;
+
+  // Interior features
+  final bool? isDuplex;
+  final bool? hasAirConditioning;
+  final bool? hasBalcony;
+  final bool? hasShutter;
+  final bool? hasBuiltinKitchen;
+  final bool? hasBuiltinWardrobe;
+  final bool? hasIntercom;
+  final bool? hasFireplace;
+  final bool? hasCrown;
+  final bool? hasLaundryRoom;
+  final bool? hasParentBathroom;
+  final bool? hasParentCloset;
+  final bool? hasNaturalMarble;
+  final bool? hasPanelDoor;
+  final bool? hasParquet;
+  final bool? hasShower;
+  final bool? hasSteelDoor;
+  final bool? hasTvInfra;
+  final bool? hasVestibule;
+  final bool? hasWallpaper;
+  final bool? hasCeramic;
+  final bool? hasFireAlarm;
+  final bool? hasPantry;
+  final bool? hasSolarPower;
+  final bool? hasHydrophore;
+
+  // Location features
+  final bool? hasCityView;
+  final bool? isEastFacing;
+  final bool? isCityCenter;
+  final bool? hasMountainView;
+  final bool? hasNatureView;
+  final bool? isNorthFacing;
+  final bool? isSeafront;
+  final bool? hasSeaView;
+  final bool? isSouthFacing;
+  final bool? isWestFacing;
 
   const PropertyFilter({
     this.type,
     this.listingType,
-    this.minPrice,
-    this.maxPrice,
-    this.minRooms,
-    this.maxRooms,
-    this.minSquareMeters,
-    this.maxSquareMeters,
+    this.selectedPropertyTypes,
     this.city,
     this.district,
+    this.minPrice,
+    this.maxPrice,
+    this.minSquareMeters,
+    this.maxSquareMeters,
+    this.keyword,
+    this.roomTypes,
+    this.buildingAges,
+    this.floors,
+    this.furnitureStatuses,
+    this.ownerTypes,
+    this.listingDateRange,
+    this.isOpenToTrade,
+    this.isInComplex,
+    this.hasGarage,
+    this.hasGarden,
+    this.hasPrivatePool,
+    this.hasSharedPool,
+    this.hasSecurityCamera,
+    this.hasTerrace,
+    this.hasInsulation,
+    this.hasWaterTank,
+    this.hasWell,
+    this.hasBarbeque,
+    this.hasDoubleGlazing,
+    this.hasCoveredParking,
+    this.hasGenerator,
+    this.hasElevator,
     this.hasParking,
-    this.hasPool,
-    this.hasFurniture,
+    this.hasSandstoneHouse,
+    this.isDuplex,
+    this.hasAirConditioning,
+    this.hasBalcony,
+    this.hasShutter,
+    this.hasBuiltinKitchen,
+    this.hasBuiltinWardrobe,
+    this.hasIntercom,
+    this.hasFireplace,
+    this.hasCrown,
+    this.hasLaundryRoom,
+    this.hasParentBathroom,
+    this.hasParentCloset,
+    this.hasNaturalMarble,
+    this.hasPanelDoor,
+    this.hasParquet,
+    this.hasShower,
+    this.hasSteelDoor,
+    this.hasTvInfra,
+    this.hasVestibule,
+    this.hasWallpaper,
+    this.hasCeramic,
+    this.hasFireAlarm,
+    this.hasPantry,
+    this.hasSolarPower,
+    this.hasHydrophore,
+    this.hasCityView,
+    this.isEastFacing,
+    this.isCityCenter,
+    this.hasMountainView,
+    this.hasNatureView,
+    this.isNorthFacing,
+    this.isSeafront,
+    this.hasSeaView,
+    this.isSouthFacing,
+    this.isWestFacing,
   });
+
+  int get activeCount {
+    int count = 0;
+    // Basic
+    if (type != null) count++;
+    if (listingType != null) count++;
+    if (selectedPropertyTypes != null && selectedPropertyTypes!.isNotEmpty) count++;
+    if (city != null && city!.isNotEmpty) count++;
+    if (district != null && district!.isNotEmpty) count++;
+    if (minPrice != null) count++;
+    if (maxPrice != null) count++;
+    if (minSquareMeters != null) count++;
+    if (maxSquareMeters != null) count++;
+    if (keyword != null && keyword!.isNotEmpty) count++;
+    // Detail
+    if (roomTypes != null && roomTypes!.isNotEmpty) count++;
+    if (buildingAges != null && buildingAges!.isNotEmpty) count++;
+    if (floors != null && floors!.isNotEmpty) count++;
+    if (furnitureStatuses != null && furnitureStatuses!.isNotEmpty) count++;
+    if (ownerTypes != null && ownerTypes!.isNotEmpty) count++;
+    if (listingDateRange != null && listingDateRange!.isNotEmpty) count++;
+    // Toggles
+    if (isOpenToTrade != null) count++;
+    if (isInComplex != null) count++;
+    // Exterior features
+    if (hasGarage == true) count++;
+    if (hasGarden == true) count++;
+    if (hasPrivatePool == true) count++;
+    if (hasSharedPool == true) count++;
+    if (hasSecurityCamera == true) count++;
+    if (hasTerrace == true) count++;
+    if (hasInsulation == true) count++;
+    if (hasWaterTank == true) count++;
+    if (hasWell == true) count++;
+    if (hasBarbeque == true) count++;
+    if (hasDoubleGlazing == true) count++;
+    if (hasCoveredParking == true) count++;
+    if (hasGenerator == true) count++;
+    if (hasElevator == true) count++;
+    if (hasParking == true) count++;
+    if (hasSandstoneHouse == true) count++;
+    // Interior features
+    if (isDuplex == true) count++;
+    if (hasAirConditioning == true) count++;
+    if (hasBalcony == true) count++;
+    if (hasShutter == true) count++;
+    if (hasBuiltinKitchen == true) count++;
+    if (hasBuiltinWardrobe == true) count++;
+    if (hasIntercom == true) count++;
+    if (hasFireplace == true) count++;
+    if (hasCrown == true) count++;
+    if (hasLaundryRoom == true) count++;
+    if (hasParentBathroom == true) count++;
+    if (hasParentCloset == true) count++;
+    if (hasNaturalMarble == true) count++;
+    if (hasPanelDoor == true) count++;
+    if (hasParquet == true) count++;
+    if (hasShower == true) count++;
+    if (hasSteelDoor == true) count++;
+    if (hasTvInfra == true) count++;
+    if (hasVestibule == true) count++;
+    if (hasWallpaper == true) count++;
+    if (hasCeramic == true) count++;
+    if (hasFireAlarm == true) count++;
+    if (hasPantry == true) count++;
+    if (hasSolarPower == true) count++;
+    if (hasHydrophore == true) count++;
+    // Location features
+    if (hasCityView == true) count++;
+    if (isEastFacing == true) count++;
+    if (isCityCenter == true) count++;
+    if (hasMountainView == true) count++;
+    if (hasNatureView == true) count++;
+    if (isNorthFacing == true) count++;
+    if (isSeafront == true) count++;
+    if (hasSeaView == true) count++;
+    if (isSouthFacing == true) count++;
+    if (isWestFacing == true) count++;
+    return count;
+  }
 
   PropertyFilter copyWith({
     PropertyType? type,
     ListingType? listingType,
-    double? minPrice,
-    double? maxPrice,
-    int? minRooms,
-    int? maxRooms,
-    int? minSquareMeters,
-    int? maxSquareMeters,
+    Set<String>? selectedPropertyTypes,
     String? city,
     String? district,
+    double? minPrice,
+    double? maxPrice,
+    int? minSquareMeters,
+    int? maxSquareMeters,
+    String? keyword,
+    Set<String>? roomTypes,
+    Set<String>? buildingAges,
+    Set<int>? floors,
+    Set<String>? furnitureStatuses,
+    Set<String>? ownerTypes,
+    String? listingDateRange,
+    bool? isOpenToTrade,
+    bool? isInComplex,
+    bool? hasGarage,
+    bool? hasGarden,
+    bool? hasPrivatePool,
+    bool? hasSharedPool,
+    bool? hasSecurityCamera,
+    bool? hasTerrace,
+    bool? hasInsulation,
+    bool? hasWaterTank,
+    bool? hasWell,
+    bool? hasBarbeque,
+    bool? hasDoubleGlazing,
+    bool? hasCoveredParking,
+    bool? hasGenerator,
+    bool? hasElevator,
     bool? hasParking,
-    bool? hasPool,
-    bool? hasFurniture,
+    bool? hasSandstoneHouse,
+    bool? isDuplex,
+    bool? hasAirConditioning,
+    bool? hasBalcony,
+    bool? hasShutter,
+    bool? hasBuiltinKitchen,
+    bool? hasBuiltinWardrobe,
+    bool? hasIntercom,
+    bool? hasFireplace,
+    bool? hasCrown,
+    bool? hasLaundryRoom,
+    bool? hasParentBathroom,
+    bool? hasParentCloset,
+    bool? hasNaturalMarble,
+    bool? hasPanelDoor,
+    bool? hasParquet,
+    bool? hasShower,
+    bool? hasSteelDoor,
+    bool? hasTvInfra,
+    bool? hasVestibule,
+    bool? hasWallpaper,
+    bool? hasCeramic,
+    bool? hasFireAlarm,
+    bool? hasPantry,
+    bool? hasSolarPower,
+    bool? hasHydrophore,
+    bool? hasCityView,
+    bool? isEastFacing,
+    bool? isCityCenter,
+    bool? hasMountainView,
+    bool? hasNatureView,
+    bool? isNorthFacing,
+    bool? isSeafront,
+    bool? hasSeaView,
+    bool? isSouthFacing,
+    bool? isWestFacing,
   }) {
     return PropertyFilter(
       type: type ?? this.type,
       listingType: listingType ?? this.listingType,
-      minPrice: minPrice ?? this.minPrice,
-      maxPrice: maxPrice ?? this.maxPrice,
-      minRooms: minRooms ?? this.minRooms,
-      maxRooms: maxRooms ?? this.maxRooms,
-      minSquareMeters: minSquareMeters ?? this.minSquareMeters,
-      maxSquareMeters: maxSquareMeters ?? this.maxSquareMeters,
+      selectedPropertyTypes: selectedPropertyTypes ?? this.selectedPropertyTypes,
       city: city ?? this.city,
       district: district ?? this.district,
+      minPrice: minPrice ?? this.minPrice,
+      maxPrice: maxPrice ?? this.maxPrice,
+      minSquareMeters: minSquareMeters ?? this.minSquareMeters,
+      maxSquareMeters: maxSquareMeters ?? this.maxSquareMeters,
+      keyword: keyword ?? this.keyword,
+      roomTypes: roomTypes ?? this.roomTypes,
+      buildingAges: buildingAges ?? this.buildingAges,
+      floors: floors ?? this.floors,
+      furnitureStatuses: furnitureStatuses ?? this.furnitureStatuses,
+      ownerTypes: ownerTypes ?? this.ownerTypes,
+      listingDateRange: listingDateRange ?? this.listingDateRange,
+      isOpenToTrade: isOpenToTrade ?? this.isOpenToTrade,
+      isInComplex: isInComplex ?? this.isInComplex,
+      hasGarage: hasGarage ?? this.hasGarage,
+      hasGarden: hasGarden ?? this.hasGarden,
+      hasPrivatePool: hasPrivatePool ?? this.hasPrivatePool,
+      hasSharedPool: hasSharedPool ?? this.hasSharedPool,
+      hasSecurityCamera: hasSecurityCamera ?? this.hasSecurityCamera,
+      hasTerrace: hasTerrace ?? this.hasTerrace,
+      hasInsulation: hasInsulation ?? this.hasInsulation,
+      hasWaterTank: hasWaterTank ?? this.hasWaterTank,
+      hasWell: hasWell ?? this.hasWell,
+      hasBarbeque: hasBarbeque ?? this.hasBarbeque,
+      hasDoubleGlazing: hasDoubleGlazing ?? this.hasDoubleGlazing,
+      hasCoveredParking: hasCoveredParking ?? this.hasCoveredParking,
+      hasGenerator: hasGenerator ?? this.hasGenerator,
+      hasElevator: hasElevator ?? this.hasElevator,
       hasParking: hasParking ?? this.hasParking,
-      hasPool: hasPool ?? this.hasPool,
-      hasFurniture: hasFurniture ?? this.hasFurniture,
+      hasSandstoneHouse: hasSandstoneHouse ?? this.hasSandstoneHouse,
+      isDuplex: isDuplex ?? this.isDuplex,
+      hasAirConditioning: hasAirConditioning ?? this.hasAirConditioning,
+      hasBalcony: hasBalcony ?? this.hasBalcony,
+      hasShutter: hasShutter ?? this.hasShutter,
+      hasBuiltinKitchen: hasBuiltinKitchen ?? this.hasBuiltinKitchen,
+      hasBuiltinWardrobe: hasBuiltinWardrobe ?? this.hasBuiltinWardrobe,
+      hasIntercom: hasIntercom ?? this.hasIntercom,
+      hasFireplace: hasFireplace ?? this.hasFireplace,
+      hasCrown: hasCrown ?? this.hasCrown,
+      hasLaundryRoom: hasLaundryRoom ?? this.hasLaundryRoom,
+      hasParentBathroom: hasParentBathroom ?? this.hasParentBathroom,
+      hasParentCloset: hasParentCloset ?? this.hasParentCloset,
+      hasNaturalMarble: hasNaturalMarble ?? this.hasNaturalMarble,
+      hasPanelDoor: hasPanelDoor ?? this.hasPanelDoor,
+      hasParquet: hasParquet ?? this.hasParquet,
+      hasShower: hasShower ?? this.hasShower,
+      hasSteelDoor: hasSteelDoor ?? this.hasSteelDoor,
+      hasTvInfra: hasTvInfra ?? this.hasTvInfra,
+      hasVestibule: hasVestibule ?? this.hasVestibule,
+      hasWallpaper: hasWallpaper ?? this.hasWallpaper,
+      hasCeramic: hasCeramic ?? this.hasCeramic,
+      hasFireAlarm: hasFireAlarm ?? this.hasFireAlarm,
+      hasPantry: hasPantry ?? this.hasPantry,
+      hasSolarPower: hasSolarPower ?? this.hasSolarPower,
+      hasHydrophore: hasHydrophore ?? this.hasHydrophore,
+      hasCityView: hasCityView ?? this.hasCityView,
+      isEastFacing: isEastFacing ?? this.isEastFacing,
+      isCityCenter: isCityCenter ?? this.isCityCenter,
+      hasMountainView: hasMountainView ?? this.hasMountainView,
+      hasNatureView: hasNatureView ?? this.hasNatureView,
+      isNorthFacing: isNorthFacing ?? this.isNorthFacing,
+      isSeafront: isSeafront ?? this.isSeafront,
+      hasSeaView: hasSeaView ?? this.hasSeaView,
+      isSouthFacing: isSouthFacing ?? this.isSouthFacing,
+      isWestFacing: isWestFacing ?? this.isWestFacing,
     );
   }
 }

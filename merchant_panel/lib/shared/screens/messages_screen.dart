@@ -24,6 +24,13 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
   RealtimeChannel? _channel;
   String? _merchantId;
 
+  // Tab: 0 = Siparis mesajlari, 1 = Magaza mesajlari
+  int _selectedTab = 0;
+  List<Map<String, dynamic>> _storeConversations = [];
+  bool _isStoreLoading = true;
+  String? _selectedStoreCustomerId;
+  RealtimeChannel? _storeChannel;
+
   @override
   void initState() {
     super.initState();
@@ -35,6 +42,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
   @override
   void dispose() {
     _removeChannel();
+    _removeStoreChannel();
     super.dispose();
   }
 
@@ -45,12 +53,21 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
     }
   }
 
+  void _removeStoreChannel() {
+    if (_storeChannel != null) {
+      Supabase.instance.client.removeChannel(_storeChannel!);
+      _storeChannel = null;
+    }
+  }
+
   void _initLoad() {
     final merchant = ref.read(currentMerchantProvider).valueOrNull;
     if (merchant != null) {
       _merchantId = merchant.id;
       _loadConversations();
       _setupRealtimeSubscription();
+      _loadStoreConversations();
+      _setupStoreRealtimeSubscription();
       return;
     }
 
@@ -61,6 +78,8 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
         _merchantId = m.id;
         _loadConversations();
         _setupRealtimeSubscription();
+        _loadStoreConversations();
+        _setupStoreRealtimeSubscription();
       }
     });
   }
@@ -179,13 +198,111 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
         .subscribe();
   }
 
+  // ---- Store Messages ----
+
+  Future<void> _loadStoreConversations() async {
+    if (_merchantId == null) return;
+
+    try {
+      final messages = await Supabase.instance.client
+          .from('store_messages')
+          .select('id, customer_id, sender_type, sender_name, message, is_read, created_at')
+          .eq('merchant_id', _merchantId!)
+          .order('created_at', ascending: false);
+
+      // Group by customer_id
+      final Map<String, List<Map<String, dynamic>>> grouped = {};
+      for (final msg in messages) {
+        final customerId = msg['customer_id'] as String;
+        grouped.putIfAbsent(customerId, () => []);
+        grouped[customerId]!.add(Map<String, dynamic>.from(msg));
+      }
+
+      List<Map<String, dynamic>> conversations = [];
+      for (final entry in grouped.entries) {
+        final customerId = entry.key;
+        final msgs = entry.value;
+
+        final unreadCount = msgs.where((m) =>
+          m['sender_type'] == 'customer' && m['is_read'] != true
+        ).length;
+
+        final lastMessage = msgs.first;
+        // Musteri adini ilk customer mesajindan al
+        final customerName = msgs
+            .where((m) => m['sender_type'] == 'customer' && m['sender_name'] != null)
+            .map((m) => m['sender_name'] as String)
+            .firstOrNull ?? 'Musteri';
+
+        conversations.add({
+          'customer_id': customerId,
+          'merchant_id': _merchantId!,
+          'customer_name': customerName,
+          'last_message': lastMessage['message'] ?? '',
+          'last_message_sender': lastMessage['sender_type'] ?? '',
+          'last_message_time': lastMessage['created_at'] ?? '',
+          'unread_count': unreadCount,
+          'total_messages': msgs.length,
+        });
+      }
+
+      conversations.sort((a, b) =>
+        (b['last_message_time'] as String).compareTo(a['last_message_time'] as String)
+      );
+
+      if (mounted) {
+        setState(() {
+          _storeConversations = conversations;
+          _isStoreLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('loadStoreConversations error: $e');
+      if (mounted) setState(() => _isStoreLoading = false);
+    }
+  }
+
+  void _setupStoreRealtimeSubscription() {
+    if (_merchantId == null) return;
+    _removeStoreChannel();
+
+    _storeChannel = Supabase.instance.client
+        .channel('store_messages_screen_${_merchantId!}')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'store_messages',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'merchant_id',
+            value: _merchantId!,
+          ),
+          callback: (payload) {
+            _loadStoreConversations();
+            // Play sound if new customer message and no chat detail open
+            final newRecord = payload.newRecord;
+            if (newRecord.isNotEmpty && newRecord['sender_type'] == 'customer') {
+              NotificationSoundService.playMessageSound();
+            }
+          },
+        )
+        .subscribe();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final filtered = _showUnreadOnly
-        ? _conversations.where((c) => (c['unread_count'] as int) > 0).toList()
-        : _conversations;
+    final isOrderTab = _selectedTab == 0;
+    final conversations = isOrderTab ? _conversations : _storeConversations;
+    final loading = isOrderTab ? _isLoading : _isStoreLoading;
 
-    final totalUnread = _conversations.fold<int>(
+    final filtered = _showUnreadOnly
+        ? conversations.where((c) => (c['unread_count'] as int) > 0).toList()
+        : conversations;
+
+    final orderUnread = _conversations.fold<int>(
+      0, (sum, c) => sum + (c['unread_count'] as int),
+    );
+    final storeUnread = _storeConversations.fold<int>(
       0, (sum, c) => sum + (c['unread_count'] as int),
     );
 
@@ -193,76 +310,79 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
       children: [
         // Header
         Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
           decoration: BoxDecoration(
             color: AppColors.surface,
             border: Border(bottom: BorderSide(color: AppColors.border)),
           ),
-          child: Row(
+          child: Column(
             children: [
-              Icon(Icons.chat, color: AppColors.primary, size: 24),
-              const SizedBox(width: 12),
-              Text(
-                'Musteri Mesajlari',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              if (totalUnread > 0) ...[
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.error,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '$totalUnread',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
+              Row(
+                children: [
+                  Icon(Icons.chat, color: AppColors.primary, size: 24),
+                  const SizedBox(width: 12),
+                  Flexible(
+                    child: Text(
+                      'Mesajlar',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                ),
-              ],
-              const Spacer(),
-              // Filter toggle
-              FilterChip(
-                label: Text(
-                  'Sadece Okunmamis',
-                  style: TextStyle(
-                    color: _showUnreadOnly ? Colors.white : AppColors.textSecondary,
-                    fontSize: 12,
+                  const Spacer(),
+                  FilterChip(
+                    label: Text(
+                      'Okunmamis',
+                      style: TextStyle(
+                        color: _showUnreadOnly ? Colors.white : AppColors.textSecondary,
+                        fontSize: 12,
+                      ),
+                    ),
+                    selected: _showUnreadOnly,
+                    onSelected: (val) => setState(() => _showUnreadOnly = val),
+                    selectedColor: AppColors.primary,
+                    backgroundColor: AppColors.surfaceLight,
+                    checkmarkColor: Colors.white,
+                    side: BorderSide(
+                      color: _showUnreadOnly ? AppColors.primary : AppColors.border,
+                    ),
+                    visualDensity: VisualDensity.compact,
                   ),
-                ),
-                selected: _showUnreadOnly,
-                onSelected: (val) => setState(() => _showUnreadOnly = val),
-                selectedColor: AppColors.primary,
-                backgroundColor: AppColors.surfaceLight,
-                checkmarkColor: Colors.white,
-                side: BorderSide(
-                  color: _showUnreadOnly ? AppColors.primary : AppColors.border,
-                ),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    onPressed: () {
+                      if (_merchantId == null) {
+                        final m = ref.read(currentMerchantProvider).valueOrNull;
+                        if (m != null) {
+                          _merchantId = m.id;
+                          _setupRealtimeSubscription();
+                          _setupStoreRealtimeSubscription();
+                        }
+                      }
+                      if (isOrderTab) {
+                        setState(() => _isLoading = true);
+                        _loadConversations();
+                      } else {
+                        setState(() => _isStoreLoading = true);
+                        _loadStoreConversations();
+                      }
+                    },
+                    icon: Icon(Icons.refresh, color: AppColors.textSecondary),
+                    tooltip: 'Yenile',
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              IconButton(
-                onPressed: () {
-                  // merchantId null ise tekrar al
-                  if (_merchantId == null) {
-                    final m = ref.read(currentMerchantProvider).valueOrNull;
-                    if (m != null) {
-                      _merchantId = m.id;
-                      _setupRealtimeSubscription();
-                    }
-                  }
-                  setState(() => _isLoading = true);
-                  _loadConversations();
-                },
-                icon: Icon(Icons.refresh, color: AppColors.textSecondary),
-                tooltip: 'Yenile',
+              const SizedBox(height: 12),
+              // Tabs
+              Row(
+                children: [
+                  _buildTab('Siparis', 0, orderUnread),
+                  const SizedBox(width: 4),
+                  _buildTab('Magaza', 1, storeUnread),
+                ],
               ),
             ],
           ),
@@ -270,7 +390,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
 
         // Conversation List
         Expanded(
-          child: _isLoading
+          child: loading
               ? const Center(child: CircularProgressIndicator())
               : filtered.isEmpty
                   ? _buildEmptyState()
@@ -278,14 +398,21 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
                       itemCount: filtered.length,
                       itemBuilder: (context, index) {
                         final conv = filtered[index];
-                        return _buildConversationTile(conv);
+                        return isOrderTab
+                            ? _buildConversationTile(conv)
+                            : _buildStoreConversationTile(conv);
                       },
                     ),
         ),
       ],
     );
 
-    if (_selectedOrderId == null) {
+    // Detay paneli acik mi?
+    final hasDetail = isOrderTab
+        ? _selectedOrderId != null
+        : _selectedStoreCustomerId != null;
+
+    if (!hasDetail) {
       return conversationList;
     }
 
@@ -297,18 +424,83 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
         ),
         Container(width: 1, color: AppColors.border),
         Expanded(
-          child: _ChatDetailPanel(
-            key: ValueKey(_selectedOrderId),
-            orderId: _selectedOrderId!,
-            merchantId: _selectedMerchantId!,
-            onClose: () => setState(() {
-              _selectedOrderId = null;
-              _selectedMerchantId = null;
-            }),
-            onMessagesRead: () => _loadConversations(),
-          ),
+          child: isOrderTab
+              ? _ChatDetailPanel(
+                  key: ValueKey(_selectedOrderId),
+                  orderId: _selectedOrderId!,
+                  merchantId: _selectedMerchantId!,
+                  onClose: () => setState(() {
+                    _selectedOrderId = null;
+                    _selectedMerchantId = null;
+                  }),
+                  onMessagesRead: () => _loadConversations(),
+                )
+              : _StoreChatDetailPanel(
+                  key: ValueKey(_selectedStoreCustomerId),
+                  customerId: _selectedStoreCustomerId!,
+                  merchantId: _merchantId!,
+                  customerName: _storeConversations
+                      .where((c) => c['customer_id'] == _selectedStoreCustomerId)
+                      .map((c) => c['customer_name'] as String)
+                      .firstOrNull ?? 'Musteri',
+                  onClose: () => setState(() {
+                    _selectedStoreCustomerId = null;
+                  }),
+                  onMessagesRead: () => _loadStoreConversations(),
+                ),
         ),
       ],
+    );
+  }
+
+  Widget _buildTab(String label, int index, int unreadCount) {
+    final isSelected = _selectedTab == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _selectedTab = index),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: isSelected ? AppColors.primary : Colors.transparent,
+                width: 2,
+              ),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                  color: isSelected ? AppColors.primary : AppColors.textMuted,
+                ),
+              ),
+              if (unreadCount > 0) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.error,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '$unreadCount',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -547,6 +739,165 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
     );
   }
 
+  Widget _buildStoreConversationTile(Map<String, dynamic> conv) {
+    final customerId = conv['customer_id'] as String;
+    final isSelected = _selectedStoreCustomerId == customerId;
+    final unreadCount = conv['unread_count'] as int;
+    final lastMessageTime = DateTime.tryParse(conv['last_message_time'] as String);
+    final isFromCustomer = conv['last_message_sender'] == 'customer';
+
+    String timeStr = '';
+    if (lastMessageTime != null) {
+      final now = DateTime.now();
+      final diff = now.difference(lastMessageTime);
+      if (diff.inMinutes < 1) {
+        timeStr = 'Simdi';
+      } else if (diff.inMinutes < 60) {
+        timeStr = '${diff.inMinutes} dk';
+      } else if (diff.inHours < 24) {
+        timeStr = '${diff.inHours} saat';
+      } else {
+        timeStr = '${diff.inDays} gun';
+      }
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            _selectedStoreCustomerId = customerId;
+          });
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? AppColors.primary.withValues(alpha: 0.1)
+                : unreadCount > 0
+                    ? AppColors.warning.withValues(alpha: 0.05)
+                    : null,
+            border: Border(
+              left: BorderSide(
+                color: isSelected ? AppColors.primary : Colors.transparent,
+                width: 3,
+              ),
+              bottom: BorderSide(color: AppColors.border.withValues(alpha: 0.5)),
+            ),
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 22,
+                backgroundColor: unreadCount > 0
+                    ? AppColors.primary
+                    : AppColors.surfaceLight,
+                child: Text(
+                  (conv['customer_name'] as String).isNotEmpty
+                      ? (conv['customer_name'] as String)[0].toUpperCase()
+                      : 'M',
+                  style: TextStyle(
+                    color: unreadCount > 0 ? Colors.white : AppColors.textSecondary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            conv['customer_name'] as String,
+                            style: TextStyle(
+                              fontWeight: unreadCount > 0 ? FontWeight.bold : FontWeight.w500,
+                              color: AppColors.textPrimary,
+                              fontSize: 14,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Text(
+                          timeStr,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: unreadCount > 0 ? AppColors.primary : AppColors.textMuted,
+                            fontWeight: unreadCount > 0 ? FontWeight.w600 : FontWeight.normal,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Icon(Icons.storefront, size: 12, color: AppColors.textMuted),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Magaza mesaji',
+                          style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        if (!isFromCustomer) ...[
+                          Text(
+                            'Siz: ',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textMuted,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                        Expanded(
+                          child: Text(
+                            conv['last_message'] as String,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: unreadCount > 0
+                                  ? AppColors.textPrimary
+                                  : AppColors.textMuted,
+                              fontWeight: unreadCount > 0 ? FontWeight.w500 : FontWeight.normal,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              if (unreadCount > 0) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '$unreadCount',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Map<String, dynamic> _getStatusInfo(String status) {
     switch (status) {
       case 'pending':
@@ -571,7 +922,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
   }
 }
 
-// Chat detail panel - right side
+// Chat detail panel - right side (order messages)
 class _ChatDetailPanel extends StatefulWidget {
   final String orderId;
   final String merchantId;
@@ -1052,5 +1403,426 @@ class _ChatDetailPanelState extends State<_ChatDetailPanel> {
       default:
         return {'label': status, 'color': AppColors.textMuted, 'icon': Icons.help_outline};
     }
+  }
+}
+
+// Store chat detail panel - right side (store messages)
+class _StoreChatDetailPanel extends StatefulWidget {
+  final String customerId;
+  final String merchantId;
+  final String customerName;
+  final VoidCallback onClose;
+  final VoidCallback onMessagesRead;
+
+  const _StoreChatDetailPanel({
+    super.key,
+    required this.customerId,
+    required this.merchantId,
+    required this.customerName,
+    required this.onClose,
+    required this.onMessagesRead,
+  });
+
+  @override
+  State<_StoreChatDetailPanel> createState() => _StoreChatDetailPanelState();
+}
+
+class _StoreChatDetailPanelState extends State<_StoreChatDetailPanel> {
+  final _messageController = TextEditingController();
+  final _scrollController = ScrollController();
+  List<Map<String, dynamic>> _messages = [];
+  bool _isLoading = true;
+  bool _isSending = false;
+  RealtimeChannel? _channel;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+    _setupRealtimeSubscription();
+  }
+
+  @override
+  void dispose() {
+    _messageController.dispose();
+    _scrollController.dispose();
+    if (_channel != null) {
+      Supabase.instance.client.removeChannel(_channel!);
+    }
+    super.dispose();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      final messages = await Supabase.instance.client
+          .from('store_messages')
+          .select()
+          .eq('merchant_id', widget.merchantId)
+          .eq('customer_id', widget.customerId)
+          .order('created_at', ascending: true);
+
+      if (mounted) {
+        setState(() {
+          _messages = List<Map<String, dynamic>>.from(messages);
+          _isLoading = false;
+        });
+        _scrollToBottom();
+        _markMessagesAsRead();
+      }
+    } catch (e) {
+      debugPrint('StoreChatDetail loadData error: $e');
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _setupRealtimeSubscription() {
+    _channel = Supabase.instance.client
+        .channel('store_chat_detail_${widget.merchantId}_${widget.customerId}')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'store_messages',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'merchant_id',
+            value: widget.merchantId,
+          ),
+          callback: (payload) {
+            if (!mounted) return;
+            final newMsg = Map<String, dynamic>.from(payload.newRecord);
+            if (newMsg['customer_id'] != widget.customerId) return;
+            if (_messages.any((m) => m['id'] == newMsg['id'])) return;
+
+            setState(() => _messages.add(newMsg));
+            _scrollToBottom();
+
+            if (newMsg['sender_type'] == 'customer') {
+              NotificationSoundService.playMessageSound();
+              _markMessagesAsRead();
+            }
+          },
+        )
+        .subscribe();
+  }
+
+  Future<void> _markMessagesAsRead() async {
+    try {
+      await Supabase.instance.client
+          .from('store_messages')
+          .update({
+            'is_read': true,
+            'read_at': DateTime.now().toIso8601String(),
+          })
+          .eq('merchant_id', widget.merchantId)
+          .eq('customer_id', widget.customerId)
+          .eq('sender_type', 'customer')
+          .eq('is_read', false);
+
+      widget.onMessagesRead();
+    } catch (e) {
+      debugPrint('Mark store read error: $e');
+    }
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  Future<void> _sendMessage() async {
+    final text = _messageController.text.trim();
+    if (text.isEmpty || _isSending) return;
+
+    setState(() => _isSending = true);
+    _messageController.clear();
+
+    try {
+      await Supabase.instance.client.from('store_messages').insert({
+        'merchant_id': widget.merchantId,
+        'customer_id': widget.customerId,
+        'sender_type': 'merchant',
+        'sender_id': widget.merchantId,
+        'sender_name': 'Magaza',
+        'message': text,
+      });
+    } catch (e) {
+      if (mounted) {
+        AppDialogs.showError(context, 'Mesaj gonderilemedi: $e');
+      }
+    } finally {
+      if (mounted) setState(() => _isSending = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    return Column(
+      children: [
+        // Header
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            border: Border(bottom: BorderSide(color: AppColors.border)),
+          ),
+          child: Row(
+            children: [
+              IconButton(
+                onPressed: widget.onClose,
+                icon: Icon(Icons.arrow_back, color: AppColors.textSecondary),
+              ),
+              const SizedBox(width: 8),
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: AppColors.primary,
+                child: Text(
+                  widget.customerName.isNotEmpty
+                      ? widget.customerName[0].toUpperCase()
+                      : 'M',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.customerName,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        Icon(Icons.storefront, size: 12, color: AppColors.textMuted),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Magaza mesaji',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Messages
+        Expanded(
+          child: _messages.isEmpty
+              ? Center(
+                  child: Text(
+                    'Henuz mesaj yok',
+                    style: TextStyle(color: AppColors.textMuted),
+                  ),
+                )
+              : ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _messages.length,
+                  itemBuilder: (context, index) {
+                    final message = _messages[index];
+                    final isFromCustomer = message['sender_type'] == 'customer';
+                    final time = DateTime.tryParse(message['created_at'] ?? '');
+                    final timeStr = time != null
+                        ? '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}'
+                        : '';
+
+                    // Date separator
+                    Widget? dateSeparator;
+                    if (index == 0 || _isDifferentDay(
+                      _messages[index - 1]['created_at'] as String?,
+                      message['created_at'] as String?,
+                    )) {
+                      final dateStr = time != null ? _formatDate(time) : '';
+                      dateSeparator = Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        child: Center(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppColors.surfaceLight,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              dateStr,
+                              style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+
+                    return Column(
+                      children: [
+                        if (dateSeparator != null) dateSeparator,
+                        Align(
+                          alignment: isFromCustomer
+                              ? Alignment.centerLeft
+                              : Alignment.centerRight,
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            constraints: BoxConstraints(
+                              maxWidth: MediaQuery.of(context).size.width * 0.4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isFromCustomer
+                                  ? AppColors.surfaceLight
+                                  : AppColors.primary.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.only(
+                                topLeft: const Radius.circular(16),
+                                topRight: const Radius.circular(16),
+                                bottomLeft: Radius.circular(isFromCustomer ? 4 : 16),
+                                bottomRight: Radius.circular(isFromCustomer ? 16 : 4),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  message['message'] ?? '',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      isFromCustomer
+                                          ? (message['sender_name'] ?? 'Musteri')
+                                          : 'Siz',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: AppColors.textMuted,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      timeStr,
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: AppColors.textMuted,
+                                      ),
+                                    ),
+                                    if (!isFromCustomer && message['is_read'] == true) ...[
+                                      const SizedBox(width: 4),
+                                      Icon(Icons.done_all, size: 12, color: AppColors.primary),
+                                    ],
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+        ),
+
+        // Input
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            border: Border(top: BorderSide(color: AppColors.border)),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _messageController,
+                  style: TextStyle(color: AppColors.textPrimary),
+                  decoration: InputDecoration(
+                    hintText: 'Mesaj yazin...',
+                    hintStyle: TextStyle(color: AppColors.textMuted),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    filled: true,
+                    fillColor: AppColors.background,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide(color: AppColors.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide(color: AppColors.primary),
+                    ),
+                  ),
+                  onSubmitted: (_) => _sendMessage(),
+                  maxLines: null,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [AppColors.primary, AppColors.primaryDark],
+                  ),
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: IconButton(
+                  onPressed: _isSending ? null : _sendMessage,
+                  icon: _isSending
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.send, color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  bool _isDifferentDay(String? date1, String? date2) {
+    if (date1 == null || date2 == null) return true;
+    final d1 = DateTime.tryParse(date1);
+    final d2 = DateTime.tryParse(date2);
+    if (d1 == null || d2 == null) return true;
+    return d1.year != d2.year || d1.month != d2.month || d1.day != d2.day;
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final dateOnly = DateTime(date.year, date.month, date.day);
+
+    if (dateOnly == today) return 'Bugun';
+    if (dateOnly == yesterday) return 'Dun';
+    return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
   }
 }

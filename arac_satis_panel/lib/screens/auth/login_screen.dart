@@ -1,9 +1,7 @@
-import 'dart:math' show sin, pi;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../models/car_models.dart';
 import '../../services/dealer_service.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -26,8 +24,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   late AnimationController _entranceController;
   late Animation<double> _fadeIn;
   late Animation<Offset> _slideUp;
-  late AnimationController _shimmerController;
-
   static const _accent = Color(0xFF3B82F6);
   static const _accentLight = Color(0xFF60A5FA);
   static const _accentSecondary = Color(0xFFF59E0B);
@@ -39,11 +35,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       vsync: this,
       duration: const Duration(seconds: 3),
     )..repeat(reverse: true);
-
-    _shimmerController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 3000),
-    )..repeat();
 
     _entranceController = AnimationController(
       vsync: this,

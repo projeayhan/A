@@ -7,11 +7,15 @@ import 'food_home_screen.dart';
 class OrderSuccessScreen extends StatefulWidget {
   final String orderId;
   final double totalAmount;
+  final String restaurantName;
+  final String deliveryTime;
 
   const OrderSuccessScreen({
     super.key,
     required this.orderId,
     required this.totalAmount,
+    this.restaurantName = '',
+    this.deliveryTime = '',
   });
 
   @override
@@ -229,14 +233,14 @@ class _OrderSuccessScreenState extends State<OrderSuccessScreen>
                             _buildInfoRow(
                               Icons.restaurant,
                               'Restoran',
-                              'Burger King - Levent',
+                              widget.restaurantName.isNotEmpty ? widget.restaurantName : 'Restoran',
                               isDark,
                             ),
                             const SizedBox(height: 16),
                             _buildInfoRow(
                               Icons.schedule,
                               'Tahmini Teslimat',
-                              '25-35 dakika',
+                              widget.deliveryTime.isNotEmpty ? widget.deliveryTime : '25-35 dakika',
                               isDark,
                             ),
                             const SizedBox(height: 16),

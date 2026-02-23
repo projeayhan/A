@@ -484,17 +484,29 @@ class _SurgeScreenState extends ConsumerState<SurgeScreen> {
             ),
             ElevatedButton(
               onPressed: () async {
+                // Validasyon
+                if (nameController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
+                    const SnackBar(content: Text('Bölge adı zorunludur')),
+                  );
+                  return;
+                }
+                final minMult = double.tryParse(minMultiplierController.text);
+                final maxMult = double.tryParse(maxMultiplierController.text);
+                if (minMult != null && maxMult != null && minMult > maxMult) {
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
+                    const SnackBar(content: Text('Min çarpan, max çarpandan büyük olamaz')),
+                  );
+                  return;
+                }
+
                 final data = {
-                  'name': nameController.text,
+                  'name': nameController.text.trim(),
                   'center_latitude': double.tryParse(latController.text),
                   'center_longitude': double.tryParse(lngController.text),
                   'radius_km': double.tryParse(radiusController.text),
-                  'min_multiplier': double.tryParse(
-                    minMultiplierController.text,
-                  ),
-                  'max_multiplier': double.tryParse(
-                    maxMultiplierController.text,
-                  ),
+                  'min_multiplier': minMult,
+                  'max_multiplier': maxMult,
                   'demand_threshold': int.tryParse(
                     demandThresholdController.text,
                   ),

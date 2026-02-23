@@ -1,4 +1,3 @@
-import 'dart:math' show sin, pi;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -23,8 +22,6 @@ class _LoginScreenState extends State<LoginScreen>
   late AnimationController _entranceController;
   late Animation<double> _fadeIn;
   late Animation<Offset> _slideUp;
-  late AnimationController _shimmerController;
-
   static const _accent = Color(0xFFFF6B6B);
   static const _accentLight = Color(0xFFFF8A8A);
   static const _accentSecondary = Color(0xFF4ECDC4);
@@ -36,11 +33,6 @@ class _LoginScreenState extends State<LoginScreen>
       vsync: this,
       duration: const Duration(seconds: 3),
     )..repeat(reverse: true);
-
-    _shimmerController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 3000),
-    )..repeat();
 
     _entranceController = AnimationController(
       vsync: this,
@@ -67,6 +59,63 @@ class _LoginScreenState extends State<LoginScreen>
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  void _showPendingApprovalDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF111827),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.hourglass_top_rounded, color: Colors.orange, size: 36),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Hesabınız İnceleniyor',
+              style: TextStyle(
+                color: Color(0xFFF9FAFB),
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Şirketiniz admin tarafından incelenmektedir.\n\n'
+              'Onay durumu e-posta ile bildirilecektir. '
+              'Lütfen bekleyin.',
+              style: TextStyle(color: Color(0xFF9CA3AF)),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => Navigator.pop(ctx),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _accent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text('Tamam'),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _login() async {
@@ -103,11 +152,9 @@ class _LoginScreenState extends State<LoginScreen>
 
         if (companyResponse['is_approved'] != true) {
           await Supabase.instance.client.auth.signOut();
-          setState(() {
-            _error =
-                'Şirketiniz henüz onaylanmamış. Lütfen admin onayını bekleyin.';
-            _isLoading = false;
-          });
+          if (!mounted) return;
+          setState(() => _isLoading = false);
+          _showPendingApprovalDialog();
           return;
         }
 

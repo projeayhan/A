@@ -25,8 +25,7 @@ class _StoreProductDetailScreenState
     extends ConsumerState<StoreProductDetailScreen> {
   int _quantity = 1;
   int _selectedImageIndex = 0;
-  String? _selectedColor;
-  String? _selectedSize;
+  final Map<String, String> _selectedVariants = {};
   final PageController _imageController = PageController();
 
   // Animation keys
@@ -409,7 +408,7 @@ class _StoreProductDetailScreenState
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text(
-                              product.formattedPrice,
+                              '₺${_effectivePrice(product).toStringAsFixed(2)}',
                               style: TextStyle(
                                 fontSize: context.heading1Size + 10,
                                 fontWeight: FontWeight.bold,
@@ -451,18 +450,13 @@ class _StoreProductDetailScreenState
                                 StoreColors.primary,
                                 isDark,
                               ),
-                            _buildBadge(
-                              Icons.verified_user_outlined,
-                              'Orijinal Ürün',
-                              Colors.purple,
-                              isDark,
-                            ),
-                            _buildBadge(
-                              Icons.replay_rounded,
-                              '14 Gün İade',
-                              Colors.orange,
-                              isDark,
-                            ),
+                            if (product.promotionLabel != null && product.promotionLabel!.isNotEmpty)
+                              _buildBadge(
+                                Icons.local_offer_outlined,
+                                product.promotionLabel!,
+                                Colors.purple,
+                                isDark,
+                              ),
                           ],
                         ),
                       ],
@@ -482,9 +476,9 @@ class _StoreProductDetailScreenState
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (product.variants!.containsKey('Renk')) ...[
+                          for (final entry in product.variants!.entries) ...[
                             Text(
-                              'Renk Seçin',
+                              '${entry.key} Seçin',
                               style: TextStyle(
                                 fontSize: context.heading2Size,
                                 fontWeight: FontWeight.bold,
@@ -494,12 +488,12 @@ class _StoreProductDetailScreenState
                             const SizedBox(height: 12),
                             Wrap(
                               spacing: 10,
-                              children: (product.variants!['Renk'] as List<String>)
-                                  .map((color) {
-                                final isSelected = _selectedColor == color;
+                              runSpacing: 10,
+                              children: entry.value.map((option) {
+                                final isSelected = _getSelectedValue(entry.key) == option.value;
                                 return GestureDetector(
                                   onTap: () {
-                                    setState(() => _selectedColor = color);
+                                    setState(() => _setSelectedValue(entry.key, option.value));
                                   },
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(
@@ -518,7 +512,9 @@ class _StoreProductDetailScreenState
                                       ),
                                     ),
                                     child: Text(
-                                      color,
+                                      option.priceModifier > 0
+                                          ? '${option.value} +₺${option.priceModifier.toStringAsFixed(0)}'
+                                          : option.value,
                                       style: TextStyle(
                                         color: isSelected
                                             ? Colors.white
@@ -534,60 +530,6 @@ class _StoreProductDetailScreenState
                             ),
                             const SizedBox(height: 20),
                           ],
-                          if (product.variants!.containsKey('Beden') ||
-                              product.variants!.containsKey('Numara') ||
-                              product.variants!.containsKey('Boyut') ||
-                              product.variants!.containsKey('Kapasite')) ...[
-                            Text(
-                              _getSizeLabel(product.variants!),
-                              style: TextStyle(
-                                fontSize: context.heading2Size,
-                                fontWeight: FontWeight.bold,
-                                color: isDark ? Colors.white : Colors.black87,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Wrap(
-                              spacing: 10,
-                              runSpacing: 10,
-                              children: _getSizes(product.variants!).map((size) {
-                                final isSelected = _selectedSize == size;
-                                return GestureDetector(
-                                  onTap: () {
-                                    setState(() => _selectedSize = size);
-                                  },
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 10,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: isSelected
-                                          ? StoreColors.primary
-                                          : (isDark ? Colors.grey[800] : Colors.grey[100]),
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(
-                                        color: isSelected
-                                            ? StoreColors.primary
-                                            : (isDark ? Colors.grey[700]! : Colors.grey[300]!),
-                                      ),
-                                    ),
-                                    child: Text(
-                                      size,
-                                      style: TextStyle(
-                                        color: isSelected
-                                            ? Colors.white
-                                            : (isDark ? Colors.white : Colors.black87),
-                                        fontWeight: isSelected
-                                            ? FontWeight.w600
-                                            : FontWeight.normal,
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                            ),
-                          ],
                         ],
                       ),
                     ),
@@ -598,40 +540,32 @@ class _StoreProductDetailScreenState
                   ],
 
                   // Description
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Ürün Açıklaması',
-                          style: TextStyle(
-                            fontSize: context.heading2Size,
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? Colors.white : Colors.black87,
+                  if (product.description.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Ürün Açıklaması',
+                            style: TextStyle(
+                              fontSize: context.heading2Size,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? Colors.white : Colors.black87,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          product.description,
-                          style: TextStyle(
-                            fontSize: context.bodySize,
-                            color: isDark ? Colors.white70 : Colors.black87,
-                            height: 1.6,
+                          const SizedBox(height: 12),
+                          Text(
+                            product.description,
+                            style: TextStyle(
+                              fontSize: context.bodySize,
+                              color: isDark ? Colors.white70 : Colors.black87,
+                              height: 1.6,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          '• Yüksek kaliteli malzeme\n• Uzun ömürlü kullanım\n• Kolay bakım\n• Hızlı kargo ile kapınızda',
-                          style: TextStyle(
-                            fontSize: context.bodySize,
-                            color: isDark ? Colors.white70 : Colors.black87,
-                            height: 1.8,
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
 
                   const SizedBox(height: 100),
                 ],
@@ -702,23 +636,9 @@ class _StoreProductDetailScreenState
                   // Check if required variants are selected
                   final missingSelections = <String>[];
                   if (product.variants != null) {
-                    if (product.variants!.containsKey('Renk') && _selectedColor == null) {
-                      missingSelections.add('Renk');
-                    }
-                    // Check for size variants (Beden, Numara, Boyut, Kapasite)
-                    final hasSizeVariant = product.variants!.containsKey('Beden') ||
-                        product.variants!.containsKey('Numara') ||
-                        product.variants!.containsKey('Boyut') ||
-                        product.variants!.containsKey('Kapasite');
-                    if (hasSizeVariant && _selectedSize == null) {
-                      if (product.variants!.containsKey('Beden')) {
-                        missingSelections.add('Beden');
-                      } else if (product.variants!.containsKey('Numara')) {
-                        missingSelections.add('Numara');
-                      } else if (product.variants!.containsKey('Boyut')) {
-                        missingSelections.add('Boyut');
-                      } else if (product.variants!.containsKey('Kapasite')) {
-                        missingSelections.add('Kapasite');
+                    for (final key in product.variants!.keys) {
+                      if (!_selectedVariants.containsKey(key)) {
+                        missingSelections.add(key);
                       }
                     }
                   }
@@ -799,7 +719,7 @@ class _StoreProductDetailScreenState
                       Text(
                         _isAnimating
                             ? 'Ekleniyor...'
-                            : 'Sepete Ekle • ${(product.price * _quantity).toStringAsFixed(2)} ₺',
+                            : 'Sepete Ekle • ${(_effectivePrice(product) * _quantity).toStringAsFixed(2)} ₺',
                         style: TextStyle(
                           fontSize: context.heading2Size,
                           fontWeight: FontWeight.bold,
@@ -843,19 +763,25 @@ class _StoreProductDetailScreenState
     );
   }
 
-  String _getSizeLabel(Map<String, List<String>> variants) {
-    if (variants.containsKey('Beden')) return 'Beden Seçin';
-    if (variants.containsKey('Numara')) return 'Numara Seçin';
-    if (variants.containsKey('Boyut')) return 'Boyut Seçin';
-    if (variants.containsKey('Kapasite')) return 'Kapasite Seçin';
-    return 'Seçenek';
+  String? _getSelectedValue(String key) => _selectedVariants[key];
+
+  void _setSelectedValue(String key, String value) {
+    _selectedVariants[key] = value;
   }
 
-  List<String> _getSizes(Map<String, List<String>> variants) {
-    if (variants.containsKey('Beden')) return variants['Beden']!;
-    if (variants.containsKey('Numara')) return variants['Numara']!;
-    if (variants.containsKey('Boyut')) return variants['Boyut']!;
-    if (variants.containsKey('Kapasite')) return variants['Kapasite']!;
-    return [];
+  double _effectivePrice(StoreProduct product) {
+    var price = product.price;
+    if (product.variants != null) {
+      for (final entry in product.variants!.entries) {
+        final selected = _selectedVariants[entry.key];
+        if (selected != null) {
+          final option = entry.value.where((o) => o.value == selected).firstOrNull;
+          if (option != null) {
+            price += option.priceModifier;
+          }
+        }
+      }
+    }
+    return price;
   }
 }

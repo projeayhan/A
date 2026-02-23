@@ -28,8 +28,19 @@ final _storeProductsChangeProvider = StreamProvider<void>((ref) {
       });
 });
 
-// Kategoriler provider
+// Store categories tablosu değişikliklerini dinle
+final _storeCategoriesChangeProvider = StreamProvider<void>((ref) {
+  return SupabaseService.client
+      .from('store_categories')
+      .stream(primaryKey: ['id'])
+      .map((_) {
+        StoreService.invalidateCategories();
+      });
+});
+
+// Kategoriler provider (realtime ile)
 final storeCategoriesProvider = FutureProvider<List<StoreCategory>>((ref) async {
+  ref.watch(_storeCategoriesChangeProvider);
   return await StoreService.getCategories();
 });
 

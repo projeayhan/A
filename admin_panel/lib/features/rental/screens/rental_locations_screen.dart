@@ -519,12 +519,37 @@ class _RentalLocationsScreenState extends ConsumerState<RentalLocationsScreen> {
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('İptal')),
             ElevatedButton(
-              onPressed: () {
+              onPressed: () async {
+                if (nameController.text.trim().isEmpty || addressController.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Ad ve adres zorunludur'), backgroundColor: AppColors.error),
+                  );
+                  return;
+                }
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Lokasyon eklendi'), backgroundColor: AppColors.success),
-                );
-                ref.invalidate(allLocationsProvider);
+                try {
+                  final client = ref.read(supabaseClientProvider);
+                  await client.from('rental_locations').insert({
+                    'name': nameController.text.trim(),
+                    'address': addressController.text.trim(),
+                    'phone': phoneController.text.trim(),
+                    'opening_time': is24Hours ? '00:00' : (hoursController.text.split('-').first.trim()),
+                    'closing_time': is24Hours ? '23:59' : (hoursController.text.split('-').last.trim()),
+                    'is_airport': isAirport,
+                    'is_24_hours': is24Hours,
+                    'is_active': true,
+                  });
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Lokasyon eklendi'), backgroundColor: AppColors.success),
+                  );
+                  ref.invalidate(allLocationsProvider);
+                } catch (e) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
+                  );
+                }
               },
               child: const Text('Ekle'),
             ),
@@ -549,18 +574,72 @@ class _RentalLocationsScreenState extends ConsumerState<RentalLocationsScreen> {
   }
 
   void _showEditLocationDialog(RentalLocationView location) {
+    final nameController = TextEditingController(text: location.name);
+    final addressController = TextEditingController(text: location.address);
+    final phoneController = TextEditingController(text: location.phone);
+    final hoursController = TextEditingController(text: location.workingHours);
+    bool isAirport = location.isAirport;
+    bool is24Hours = location.is24Hours;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('${location.name} Düzenle'),
-        content: const SizedBox(
-          width: 500,
-          child: Text('Lokasyon düzenleme formu burada görüntülenecek.'),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text('${location.name} Düzenle'),
+          content: SizedBox(
+            width: 500,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Lokasyon Adı', border: OutlineInputBorder())),
+                  const SizedBox(height: 16),
+                  TextField(controller: addressController, decoration: const InputDecoration(labelText: 'Adres', border: OutlineInputBorder()), maxLines: 2),
+                  const SizedBox(height: 16),
+                  Row(children: [
+                    Expanded(child: TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'Telefon', border: OutlineInputBorder()))),
+                    const SizedBox(width: 16),
+                    Expanded(child: TextField(controller: hoursController, decoration: const InputDecoration(labelText: 'Çalışma Saatleri', border: OutlineInputBorder()))),
+                  ]),
+                  const SizedBox(height: 16),
+                  Row(children: [
+                    Expanded(child: CheckboxListTile(title: const Text('Havalimanı'), value: isAirport, onChanged: (v) => setDialogState(() => isAirport = v!), controlAffinity: ListTileControlAffinity.leading, contentPadding: EdgeInsets.zero)),
+                    Expanded(child: CheckboxListTile(title: const Text('7/24 Açık'), value: is24Hours, onChanged: (v) => setDialogState(() => is24Hours = v!), controlAffinity: ListTileControlAffinity.leading, contentPadding: EdgeInsets.zero)),
+                  ]),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('İptal')),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                try {
+                  final client = ref.read(supabaseClientProvider);
+                  await client.from('rental_locations').update({
+                    'name': nameController.text.trim(),
+                    'address': addressController.text.trim(),
+                    'phone': phoneController.text.trim(),
+                    'is_airport': isAirport,
+                    'is_24_hours': is24Hours,
+                  }).eq('id', location.id);
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Lokasyon güncellendi'), backgroundColor: AppColors.success),
+                  );
+                  ref.invalidate(allLocationsProvider);
+                } catch (e) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
+                  );
+                }
+              },
+              child: const Text('Kaydet'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('İptal')),
-          ElevatedButton(onPressed: () => Navigator.pop(context), child: const Text('Kaydet')),
-        ],
       ),
     );
   }
@@ -601,18 +680,28 @@ class _RentalLocationsScreenState extends ConsumerState<RentalLocationsScreen> {
   void _showDeleteConfirmDialog(RentalLocationView location) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Lokasyonu Sil'),
         content: Text('${location.name} lokasyonunu silmek istediğinize emin misiniz? Bu işlem geri alınamaz.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('İptal')),
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('İptal')),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('${location.name} silindi')),
-              );
-              ref.invalidate(allLocationsProvider);
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              try {
+                final client = ref.read(supabaseClientProvider);
+                await client.from('rental_locations').delete().eq('id', location.id);
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('${location.name} silindi'), backgroundColor: AppColors.success),
+                );
+                ref.invalidate(allLocationsProvider);
+              } catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Silme hatası: $e'), backgroundColor: AppColors.error),
+                );
+              }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             child: const Text('Sil'),

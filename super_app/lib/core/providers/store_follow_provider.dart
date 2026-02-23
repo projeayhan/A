@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/store/store_model.dart';
+import '../services/supabase_service.dart';
 
 // Takip Edilen Mağaza Modeli
 class FollowedStore {
@@ -76,45 +78,98 @@ class StoreFollowNotifier extends StateNotifier<StoreFollowState> {
     _loadFollowedStores();
   }
 
-  void _loadFollowedStores() {
-    // Mock data - gerçek uygulamada API'den veya local storage'dan çekilecek
-    // Şimdilik boş başlıyoruz
+  Future<void> _loadFollowedStores() async {
+    final userId = SupabaseService.currentUser?.id;
+    if (userId == null) return;
+
+    try {
+      final response = await SupabaseService.client
+          .from('merchant_followers')
+          .select('merchant_id, created_at, merchants(business_name, logo_url)')
+          .eq('user_id', userId);
+
+      final stores = (response as List).map((json) {
+        final merchant = json['merchants'] as Map<String, dynamic>?;
+        return FollowedStore(
+          id: json['merchant_id'] as String,
+          name: merchant?['business_name'] as String? ?? '',
+          logoUrl: merchant?['logo_url'] as String? ?? '',
+          followedAt: DateTime.tryParse(json['created_at'] ?? '') ?? DateTime.now(),
+        );
+      }).toList();
+
+      state = state.copyWith(followedStores: stores);
+    } catch (e) {
+      if (kDebugMode) debugPrint('Takip listesi yüklenemedi: $e');
+    }
   }
 
-  void followStore(Store store) {
+  Future<void> followStore(Store store) async {
     if (state.isFollowing(store.id)) return;
 
+    final userId = SupabaseService.currentUser?.id;
+    if (userId == null) return;
+
+    // Önce UI'ı güncelle (hızlı geri bildirim)
     final followedStore = FollowedStore(
       id: store.id,
       name: store.name,
       logoUrl: store.logoUrl,
       followedAt: DateTime.now(),
-      notificationsEnabled: true,
     );
-
     state = state.copyWith(
       followedStores: [...state.followedStores, followedStore],
     );
 
-    // Bildirim provider'ına mağaza takip bildirimi ekle
-    ref.read(storeNotificationProvider.notifier).addNotification(
-      StoreNotification(
-        id: 'follow_${store.id}_${DateTime.now().millisecondsSinceEpoch}',
-        storeId: store.id,
-        storeName: store.name,
-        storeLogoUrl: store.logoUrl,
-        type: StoreNotificationType.follow,
-        title: '${store.name} takip ediliyor',
-        message: 'Artık ${store.name} mağazasının indirim ve yeni ürün bildirimlerini alacaksınız.',
-        createdAt: DateTime.now(),
-      ),
-    );
+    try {
+      await SupabaseService.client.from('merchant_followers').insert({
+        'user_id': userId,
+        'merchant_id': store.id,
+      });
+
+      // Bildirim ekle
+      ref.read(storeNotificationProvider.notifier).addNotification(
+        StoreNotification(
+          id: 'follow_${store.id}_${DateTime.now().millisecondsSinceEpoch}',
+          storeId: store.id,
+          storeName: store.name,
+          storeLogoUrl: store.logoUrl,
+          type: StoreNotificationType.follow,
+          title: '${store.name} takip ediliyor',
+          message: 'Artık ${store.name} mağazasının indirim ve yeni ürün bildirimlerini alacaksınız.',
+          createdAt: DateTime.now(),
+        ),
+      );
+    } catch (e) {
+      // Hata olursa UI'ı geri al
+      if (kDebugMode) debugPrint('Takip hatası: $e');
+      state = state.copyWith(
+        followedStores: state.followedStores.where((s) => s.id != store.id).toList(),
+      );
+    }
   }
 
-  void unfollowStore(String storeId) {
+  Future<void> unfollowStore(String storeId) async {
+    final userId = SupabaseService.currentUser?.id;
+    if (userId == null) return;
+
+    // Önce UI'ı güncelle
+    final previousStores = state.followedStores;
     state = state.copyWith(
       followedStores: state.followedStores.where((s) => s.id != storeId).toList(),
     );
+
+    try {
+      await SupabaseService.client
+          .from('merchant_followers')
+          .delete()
+          .eq('user_id', userId)
+          .eq('merchant_id', storeId);
+    } catch (e) {
+      // Hata olursa geri al
+      if (kDebugMode) debugPrint('Takipten çıkma hatası: $e');
+      state = state.copyWith(followedStores: previousStores);
+    }
   }
 
   void toggleNotifications(String storeId) {

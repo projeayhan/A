@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:data_table_2/data_table_2.dart';
@@ -26,6 +27,13 @@ class _PartnersScreenState extends ConsumerState<PartnersScreen> {
   String _searchQuery = '';
   String _statusFilter = 'all';
   String _roleFilter = 'all';
+  Timer? _debounce;
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,7 +77,7 @@ class _PartnersScreenState extends ConsumerState<PartnersScreen> {
                     ),
                     const SizedBox(width: 12),
                     ElevatedButton.icon(
-                      onPressed: () {},
+                      onPressed: _showAddPartnerInfo,
                       icon: const Icon(Icons.add, size: 18),
                       label: const Text('Partner Ekle'),
                     ),
@@ -98,7 +106,12 @@ class _PartnersScreenState extends ConsumerState<PartnersScreen> {
                   Expanded(
                     flex: 2,
                     child: TextField(
-                      onChanged: (value) => setState(() => _searchQuery = value),
+                      onChanged: (value) {
+                        _debounce?.cancel();
+                        _debounce = Timer(const Duration(milliseconds: 300), () {
+                          if (mounted) setState(() => _searchQuery = value);
+                        });
+                      },
                       decoration: InputDecoration(
                         hintText: 'Partner ara...',
                         prefixIcon: const Icon(Icons.search, color: AppColors.textMuted),
@@ -156,7 +169,7 @@ class _PartnersScreenState extends ConsumerState<PartnersScreen> {
                   ),
                   const SizedBox(width: 16),
                   OutlinedButton.icon(
-                    onPressed: () {},
+                    onPressed: _showExportSnackBar,
                     icon: const Icon(Icons.download, size: 18),
                     label: const Text('Dışa Aktar'),
                   ),
@@ -199,6 +212,338 @@ class _PartnersScreenState extends ConsumerState<PartnersScreen> {
         ),
       ),
     );
+  }
+
+  void _showAddPartnerInfo() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Partnerler uygulama üzerinden başvuru yapar'),
+        backgroundColor: AppColors.info,
+      ),
+    );
+  }
+
+  void _showExportSnackBar() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Dışa aktarma hazırlanıyor...'),
+        backgroundColor: AppColors.info,
+      ),
+    );
+  }
+
+  void _showPartnerDetails(Map<String, dynamic> partner) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Partner Detayları', style: TextStyle(color: AppColors.textPrimary)),
+        content: SizedBox(
+          width: 500,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildDetailRow('Ad Soyad', partner['full_name'] ?? '-'),
+                _buildDetailRow('Telefon', partner['phone'] ?? '-'),
+                _buildDetailRow('E-posta', partner['email'] ?? '-'),
+                _buildDetailRow('Roller', partner['roles'] is List ? (partner['roles'] as List).join(', ') : '-'),
+                _buildDetailRow('Durum', partner['status'] ?? '-'),
+                _buildDetailRow('Onay Durumu', partner['is_approved'] == true ? 'Onaylı' : 'Bekliyor'),
+                _buildDetailRow('Toplam Teslimat', '${partner['total_deliveries'] ?? 0}'),
+                _buildDetailRow('Puan', '${(partner['rating'] ?? 0).toStringAsFixed(1)}'),
+                _buildDetailRow('Toplam Kazanç', '₺${(partner['total_earnings'] ?? 0).toStringAsFixed(2)}'),
+                _buildDetailRow('Şirket Adı', partner['company_name'] ?? '-'),
+                _buildDetailRow('Vergi No', partner['tax_number'] ?? '-'),
+                _buildDetailRow('IBAN', partner['iban'] ?? '-'),
+                _buildDetailRow('Oluşturma Tarihi', partner['created_at'] != null
+                    ? DateTime.parse(partner['created_at']).toString().substring(0, 16)
+                    : '-'),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Kapat'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 140,
+            child: Text(
+              '$label:',
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 14,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _approvePartner(String partnerId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Partneri Onayla', style: TextStyle(color: AppColors.textPrimary)),
+        content: const Text(
+          'Bu partneri onaylamak istediğinizden emin misiniz?',
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('İptal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
+            child: const Text('Onayla'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      final supabase = ref.read(supabaseProvider);
+      await supabase
+          .from('partners')
+          .update({
+            'status': 'approved',
+            'is_approved': true,
+          })
+          .eq('id', partnerId);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Partner başarıyla onaylandı'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+
+      ref.invalidate(partnersProvider);
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Hata: $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+
+  void _showEditPartnerDialog(Map<String, dynamic> partner) {
+    final fullNameController = TextEditingController(text: partner['full_name']);
+    final phoneController = TextEditingController(text: partner['phone']);
+    final emailController = TextEditingController(text: partner['email']);
+    final companyNameController = TextEditingController(text: partner['company_name']);
+    final taxNumberController = TextEditingController(text: partner['tax_number']);
+    final ibanController = TextEditingController(text: partner['iban']);
+    String selectedStatus = partner['status'] ?? 'pending';
+    bool isApproved = partner['is_approved'] ?? false;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Partner Düzenle', style: TextStyle(color: AppColors.textPrimary)),
+        content: SizedBox(
+          width: 500,
+          child: SingleChildScrollView(
+            child: StatefulBuilder(
+              builder: (context, setState) => Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: fullNameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Ad Soyad',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: phoneController,
+                    decoration: const InputDecoration(
+                      labelText: 'Telefon',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: emailController,
+                    decoration: const InputDecoration(
+                      labelText: 'E-posta',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: companyNameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Şirket Adı',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: taxNumberController,
+                    decoration: const InputDecoration(
+                      labelText: 'Vergi No',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: ibanController,
+                    decoration: const InputDecoration(
+                      labelText: 'IBAN',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    value: selectedStatus,
+                    decoration: const InputDecoration(
+                      labelText: 'Durum',
+                      border: OutlineInputBorder(),
+                    ),
+                    dropdownColor: AppColors.surface,
+                    items: const [
+                      DropdownMenuItem(value: 'pending', child: Text('Bekleyen')),
+                      DropdownMenuItem(value: 'approved', child: Text('Onaylı')),
+                      DropdownMenuItem(value: 'rejected', child: Text('Reddedildi')),
+                      DropdownMenuItem(value: 'suspended', child: Text('Askıda')),
+                    ],
+                    onChanged: (value) {
+                      setState(() {
+                        selectedStatus = value!;
+                        if (value == 'approved') {
+                          isApproved = true;
+                        }
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  CheckboxListTile(
+                    title: const Text('Onaylı', style: TextStyle(color: AppColors.textPrimary)),
+                    value: isApproved,
+                    onChanged: (value) {
+                      setState(() {
+                        isApproved = value ?? false;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('İptal'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              await _updatePartner(
+                partner['id'],
+                fullNameController.text,
+                phoneController.text,
+                emailController.text,
+                companyNameController.text,
+                taxNumberController.text,
+                ibanController.text,
+                selectedStatus,
+                isApproved,
+              );
+            },
+            child: const Text('Kaydet'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _updatePartner(
+    String partnerId,
+    String fullName,
+    String phone,
+    String email,
+    String companyName,
+    String taxNumber,
+    String iban,
+    String status,
+    bool isApproved,
+  ) async {
+    try {
+      final supabase = ref.read(supabaseProvider);
+      await supabase
+          .from('partners')
+          .update({
+            'full_name': fullName,
+            'phone': phone,
+            'email': email,
+            'company_name': companyName,
+            'tax_number': taxNumber,
+            'iban': iban,
+            'status': status,
+            'is_approved': isApproved,
+          })
+          .eq('id', partnerId);
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Partner başarıyla güncellendi'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+
+      ref.invalidate(partnersProvider);
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Hata: $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
   }
 
   Widget _buildStatsRow(AsyncValue<List<Map<String, dynamic>>> partnersAsync) {
@@ -381,13 +726,13 @@ class _PartnersScreenState extends ConsumerState<PartnersScreen> {
                     ],
                   ),
                   const SizedBox(width: 12),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text('Partner', style: TextStyle(fontWeight: FontWeight.w500)),
-                        Text('-', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                        Text(partner['full_name'] ?? 'Partner', style: const TextStyle(fontWeight: FontWeight.w500)),
+                        Text(partner['phone'] ?? '-', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
                       ],
                     ),
                   ),
@@ -413,20 +758,20 @@ class _PartnersScreenState extends ConsumerState<PartnersScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
-                    onPressed: () {},
+                    onPressed: () => _showPartnerDetails(partner),
                     icon: const Icon(Icons.visibility, size: 18),
                     color: AppColors.textMuted,
                     tooltip: 'Görüntüle',
                   ),
                   if (partner['status'] == 'pending')
                     IconButton(
-                      onPressed: () {},
+                      onPressed: () => _approvePartner(partner['id']),
                       icon: const Icon(Icons.check_circle, size: 18),
                       color: AppColors.success,
                       tooltip: 'Onayla',
                     ),
                   IconButton(
-                    onPressed: () {},
+                    onPressed: () => _showEditPartnerDialog(partner),
                     icon: const Icon(Icons.edit, size: 18),
                     color: AppColors.info,
                     tooltip: 'Düzenle',

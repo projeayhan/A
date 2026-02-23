@@ -398,16 +398,20 @@ class _CustomerChatSheetState extends State<CustomerChatSheet> {
   }
 
   void _subscribeToMessages() {
-    _messageChannel = CommunicationService.subscribeToMessages(widget.rideId, (message) {
-      if (mounted) {
-        // Duplikasyon kontrolü - aynı ID varsa ekleme
-        final exists = _messages.any((m) => m.id == message.id);
-        if (!exists) {
-          setState(() => _messages.add(message));
-          _scrollToBottom();
+    try {
+      _messageChannel = CommunicationService.subscribeToMessages(widget.rideId, (message) {
+        if (mounted) {
+          // Duplikasyon kontrolü - aynı ID varsa ekleme
+          final exists = _messages.any((m) => m.id == message.id);
+          if (!exists) {
+            setState(() => _messages.add(message));
+            _scrollToBottom();
+          }
         }
-      }
-    });
+      });
+    } catch (e) {
+      debugPrint('subscribeToMessages error: $e');
+    }
   }
 
   void _scrollToBottom() {
@@ -434,13 +438,37 @@ class _CustomerChatSheetState extends State<CustomerChatSheet> {
       content: text,
     );
 
-    // Realtime mesajı getirecek, sadece hata durumunda yeniden yükle
-    if (messageId == null && mounted) {
-      await _loadMessages();
-    }
-
     if (mounted) {
-      setState(() => _isSending = false);
+      if (messageId != null) {
+        // Mesajı hemen göster (realtime'a güvenme)
+        final optimisticMessage = RideMessage(
+          id: messageId,
+          rideId: widget.rideId,
+          senderType: 'customer',
+          senderId: '',
+          messageType: 'text',
+          content: text,
+          isRead: false,
+          createdAt: DateTime.now(),
+        );
+        final exists = _messages.any((m) => m.id == messageId);
+        if (!exists) {
+          setState(() => _messages.add(optimisticMessage));
+          _scrollToBottom();
+        }
+      } else {
+        // Hata durumunda yeniden yükle ve kullanıcıyı bilgilendir
+        await _loadMessages();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Mesaj gönderilemedi, tekrar deneyin'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+      if (mounted) setState(() => _isSending = false);
     }
   }
 

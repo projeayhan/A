@@ -77,6 +77,60 @@ class SupabaseService {
     return response;
   }
 
+  // Phone OTP - Send code via Twilio Verify (edge function)
+  static Future<void> sendPhoneOtp({required String phone}) async {
+    final response = await client.functions.invoke(
+      'phone-verify',
+      body: {'action': 'send', 'phone': phone},
+    );
+
+    final data = response.data as Map<String, dynamic>?;
+    if (data == null || data['success'] != true) {
+      throw Exception(data?['error'] ?? 'SMS gönderilemedi');
+    }
+  }
+
+  // Phone OTP - Verify code via Twilio Verify (edge function)
+  static Future<Map<String, dynamic>> verifyPhoneOtp({
+    required String phone,
+    required String code,
+  }) async {
+    final response = await client.functions.invoke(
+      'phone-verify',
+      body: {'action': 'verify', 'phone': phone, 'code': code},
+    );
+
+    final data = response.data as Map<String, dynamic>?;
+    if (data == null || data['success'] != true) {
+      throw Exception(data?['error'] ?? 'Doğrulama başarısız');
+    }
+
+    // Set session from edge function tokens
+    final refreshToken = data['refresh_token'] as String;
+    await client.auth.setSession(refreshToken);
+
+    return {
+      'is_new_user': data['is_new_user'] ?? false,
+      'user_id': data['user']?['id'],
+    };
+  }
+
+  // Update user profile (name etc. after OTP registration)
+  static Future<void> updateUserProfile({
+    required String firstName,
+    required String lastName,
+  }) async {
+    await client.auth.updateUser(
+      UserAttributes(
+        data: {
+          'full_name': '$firstName $lastName',
+          'first_name': firstName,
+          'last_name': lastName,
+        },
+      ),
+    );
+  }
+
   // Password Reset
   static Future<void> resetPassword(String email) async {
     await client.auth.resetPasswordForEmail(email);

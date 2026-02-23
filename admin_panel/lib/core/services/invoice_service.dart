@@ -295,7 +295,8 @@ class InvoiceService {
   }
 
   static String _getPaymentDescription(Map<String, dynamic> payment) {
-    final rideId = payment['ride_id']?.toString().substring(0, 8) ?? '';
+    final rideIdStr = payment['ride_id']?.toString() ?? '';
+    final rideId = rideIdStr.length > 8 ? rideIdStr.substring(0, 8) : rideIdStr;
     final paymentType = payment['payment_type'] ?? '';
 
     String typeLabel;
@@ -432,7 +433,7 @@ class InvoiceService {
                           pw.Expanded(
                             flex: 4,
                             child: pw.Text(
-                              'Yemek Siparisi #${order['id']?.toString().substring(0, 8) ?? ''}',
+                              'Yemek Siparisi #${(order['id']?.toString() ?? '').length > 8 ? order['id'].toString().substring(0, 8) : (order['id']?.toString() ?? '')}',
                               style: const pw.TextStyle(fontSize: 10),
                             ),
                           ),
@@ -633,6 +634,184 @@ class InvoiceService {
       case 'cancelled': return 'Iptal';
       default: return status ?? '-';
     }
+  }
+
+  // ==================== GENERIC EXPORTS ====================
+
+  /// Export users list to Excel
+  static Future<List<int>> exportUsersToExcel(List<Map<String, dynamic>> users) async {
+    final excel = Excel.createExcel();
+    final sheet = excel['Kullanicilar'];
+
+    sheet.appendRow([
+      TextCellValue('ID'),
+      TextCellValue('Ad Soyad'),
+      TextCellValue('E-posta'),
+      TextCellValue('Telefon'),
+      TextCellValue('Durum'),
+      TextCellValue('Yasakli'),
+      TextCellValue('Kayit Tarihi'),
+    ]);
+
+    final headerStyle = CellStyle(bold: true, backgroundColorHex: ExcelColor.blue600, fontColorHex: ExcelColor.white);
+    for (var i = 0; i < 7; i++) {
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0)).cellStyle = headerStyle;
+    }
+
+    for (final user in users) {
+      sheet.appendRow([
+        TextCellValue(user['id']?.toString() ?? ''),
+        TextCellValue(user['full_name']?.toString() ?? ''),
+        TextCellValue(user['email']?.toString() ?? ''),
+        TextCellValue(user['phone']?.toString() ?? ''),
+        TextCellValue(user['status']?.toString() ?? 'active'),
+        TextCellValue(user['is_banned'] == true ? 'Evet' : 'Hayir'),
+        TextCellValue(_formatDateTime(user['created_at']?.toString())),
+      ]);
+    }
+
+    sheet.setColumnWidth(0, 15);
+    sheet.setColumnWidth(1, 25);
+    sheet.setColumnWidth(2, 30);
+    sheet.setColumnWidth(3, 15);
+    sheet.setColumnWidth(4, 12);
+    sheet.setColumnWidth(5, 10);
+    sheet.setColumnWidth(6, 18);
+
+    excel.delete('Sheet1');
+    return excel.encode()!;
+  }
+
+  /// Export orders list to Excel
+  static Future<List<int>> exportOrdersToExcel(List<Map<String, dynamic>> orders) async {
+    final excel = Excel.createExcel();
+    final sheet = excel['Siparisler'];
+
+    sheet.appendRow([
+      TextCellValue('Siparis No'),
+      TextCellValue('Tarih'),
+      TextCellValue('Musteri'),
+      TextCellValue('Isletme'),
+      TextCellValue('Tutar'),
+      TextCellValue('Odeme Yontemi'),
+      TextCellValue('Durum'),
+      TextCellValue('Teslimat Adresi'),
+    ]);
+
+    final headerStyle = CellStyle(bold: true, backgroundColorHex: ExcelColor.blue600, fontColorHex: ExcelColor.white);
+    for (var i = 0; i < 8; i++) {
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0)).cellStyle = headerStyle;
+    }
+
+    for (final order in orders) {
+      sheet.appendRow([
+        TextCellValue(order['id']?.toString() ?? ''),
+        TextCellValue(_formatDateTime(order['created_at']?.toString())),
+        TextCellValue(order['customer_name']?.toString() ?? ''),
+        TextCellValue(order['merchant_name']?.toString() ?? ''),
+        DoubleCellValue(double.tryParse(order['total_amount']?.toString() ?? '0') ?? 0),
+        TextCellValue(order['payment_method']?.toString() ?? ''),
+        TextCellValue(_getOrderStatusLabel(order['status'])),
+        TextCellValue(order['delivery_address']?.toString() ?? ''),
+      ]);
+    }
+
+    sheet.setColumnWidth(0, 15);
+    sheet.setColumnWidth(1, 18);
+    sheet.setColumnWidth(2, 25);
+    sheet.setColumnWidth(3, 25);
+    sheet.setColumnWidth(4, 12);
+    sheet.setColumnWidth(5, 15);
+    sheet.setColumnWidth(6, 15);
+    sheet.setColumnWidth(7, 30);
+
+    excel.delete('Sheet1');
+    return excel.encode()!;
+  }
+
+  /// Export logs to Excel
+  static Future<List<int>> exportLogsToExcel(List<Map<String, dynamic>> logs) async {
+    final excel = Excel.createExcel();
+    final sheet = excel['Log Kayitlari'];
+
+    sheet.appendRow([
+      TextCellValue('Tarih'),
+      TextCellValue('Admin'),
+      TextCellValue('Islem Tipi'),
+      TextCellValue('Ciddiyet'),
+      TextCellValue('Aciklama'),
+      TextCellValue('Hedef'),
+      TextCellValue('IP Adresi'),
+    ]);
+
+    final headerStyle = CellStyle(bold: true, backgroundColorHex: ExcelColor.blue600, fontColorHex: ExcelColor.white);
+    for (var i = 0; i < 7; i++) {
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0)).cellStyle = headerStyle;
+    }
+
+    for (final log in logs) {
+      sheet.appendRow([
+        TextCellValue(_formatDateTime(log['created_at']?.toString())),
+        TextCellValue(log['admin_users']?['full_name']?.toString() ?? log['admin_id']?.toString() ?? ''),
+        TextCellValue(log['action_type']?.toString() ?? ''),
+        TextCellValue(log['severity']?.toString() ?? ''),
+        TextCellValue(log['description']?.toString() ?? ''),
+        TextCellValue(log['target_type']?.toString() ?? ''),
+        TextCellValue(log['ip_address']?.toString() ?? ''),
+      ]);
+    }
+
+    sheet.setColumnWidth(0, 18);
+    sheet.setColumnWidth(1, 20);
+    sheet.setColumnWidth(2, 15);
+    sheet.setColumnWidth(3, 12);
+    sheet.setColumnWidth(4, 40);
+    sheet.setColumnWidth(5, 15);
+    sheet.setColumnWidth(6, 15);
+
+    excel.delete('Sheet1');
+    return excel.encode()!;
+  }
+
+  /// Export finance/transactions to Excel
+  static Future<List<int>> exportFinanceToExcel(List<Map<String, dynamic>> transactions) async {
+    final excel = Excel.createExcel();
+    final sheet = excel['Finans'];
+
+    sheet.appendRow([
+      TextCellValue('Tarih'),
+      TextCellValue('Islem Tipi'),
+      TextCellValue('Aciklama'),
+      TextCellValue('Tutar'),
+      TextCellValue('Para Birimi'),
+      TextCellValue('Durum'),
+    ]);
+
+    final headerStyle = CellStyle(bold: true, backgroundColorHex: ExcelColor.blue600, fontColorHex: ExcelColor.white);
+    for (var i = 0; i < 6; i++) {
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0)).cellStyle = headerStyle;
+    }
+
+    for (final t in transactions) {
+      sheet.appendRow([
+        TextCellValue(_formatDateTime(t['created_at']?.toString())),
+        TextCellValue(t['type']?.toString() ?? ''),
+        TextCellValue(t['description']?.toString() ?? ''),
+        DoubleCellValue(double.tryParse(t['amount']?.toString() ?? '0') ?? 0),
+        TextCellValue(t['currency']?.toString() ?? 'TRY'),
+        TextCellValue(t['status']?.toString() ?? ''),
+      ]);
+    }
+
+    sheet.setColumnWidth(0, 18);
+    sheet.setColumnWidth(1, 15);
+    sheet.setColumnWidth(2, 35);
+    sheet.setColumnWidth(3, 12);
+    sheet.setColumnWidth(4, 12);
+    sheet.setColumnWidth(5, 12);
+
+    excel.delete('Sheet1');
+    return excel.encode()!;
   }
 }
 

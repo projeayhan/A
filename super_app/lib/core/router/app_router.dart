@@ -173,8 +173,14 @@ final routerProvider = Provider<GoRouter>((ref) {
         return AppRoutes.login;
       }
 
-      // If logged in and on auth page, redirect to home
+      // If logged in and on auth page, redirect to home (or personalInfo if no name)
       if (isLoggedIn && isLoggingIn) {
+        final user = authState.user;
+        final metadata = user?.userMetadata;
+        final name = metadata?['full_name'] ?? metadata?['first_name'] ?? '';
+        if (name.toString().trim().isEmpty) {
+          return AppRoutes.personalInfo;
+        }
         return AppRoutes.home;
       }
 
@@ -295,6 +301,8 @@ final routerProvider = Provider<GoRouter>((ref) {
               return OrderSuccessScreen(
                 orderId: orderId,
                 totalAmount: extra['totalAmount'] ?? 0.0,
+                restaurantName: extra['restaurantName'] ?? '',
+                deliveryTime: extra['deliveryTime'] ?? '',
               );
             },
           ),

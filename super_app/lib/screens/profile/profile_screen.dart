@@ -44,9 +44,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               // Custom Header with Profile Info
               _buildProfileHeader(isDark, user, profileData),
 
-              // Stats Cards
-              _buildStatsSection(isDark, profileData, statsAsync.valueOrNull),
-
               // Menu Sections
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: context.pagePaddingH),
@@ -318,106 +315,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildStatsSection(
-    bool isDark,
-    UserProfile? profile,
-    Map<String, dynamic>? stats,
-  ) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceDark : Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 15,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          _buildStatItem(
-            icon: Icons.shopping_bag_outlined,
-            value: '${stats?['orderCount'] ?? profile?.totalOrders ?? 0}',
-            label: 'Sipariş',
-            color: const Color(0xFF3B82F6),
-            isDark: isDark,
-          ),
-          _buildStatDivider(isDark),
-          _buildStatItem(
-            icon: Icons.favorite_outline,
-            value: '${profile?.totalFavorites ?? 0}',
-            label: 'Favori',
-            color: const Color(0xFFEC4899),
-            isDark: isDark,
-          ),
-          _buildStatDivider(isDark),
-          _buildStatItem(
-            icon: Icons.star_outline,
-            value: profile?.averageRating.toStringAsFixed(1) ?? '0.0',
-            label: 'Puan',
-            color: const Color(0xFFF59E0B),
-            isDark: isDark,
-          ),
-          _buildStatDivider(isDark),
-          _buildStatItem(
-            icon: Icons.card_giftcard_outlined,
-            value: '${stats?['couponCount'] ?? 0}',
-            label: 'Kupon',
-            color: const Color(0xFF10B981),
-            isDark: isDark,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatItem({
-    required IconData icon,
-    required String value,
-    required String label,
-    required Color color,
-    required bool isDark,
-  }) {
-    return Expanded(
-      child: Column(
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: color, size: 20),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : const Color(0xFF1F2937),
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[500])),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatDivider(bool isDark) {
-    return Container(
-      width: 1,
-      height: 50,
-      color: isDark ? Colors.grey[700] : Colors.grey[200],
     );
   }
 

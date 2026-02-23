@@ -14,13 +14,14 @@ class StoreService {
   static Future<List<StoreCategory>> getCategories() async {
     return _cache.getOrFetch<List<StoreCategory>>(
       'store_categories',
-      ttl: const Duration(hours: 24),
+      ttl: const Duration(minutes: 30),
       fetcher: () async {
         try {
           final response = await _client
               .from('store_categories')
               .select()
-              .order('name');
+              .eq('is_active', true)
+              .order('sort_order');
 
           return (response as List)
               .map((json) => StoreCategory.fromJson(json))
@@ -75,7 +76,7 @@ class StoreService {
           .select('*, products(count)')
           .eq('type', 'store')
           .eq('is_approved', true)
-          .contains('category_tags', [categoryId])
+          .contains('store_category_ids', [categoryId])
           .order('rating', ascending: false);
 
       return (response as List)
@@ -450,6 +451,11 @@ class StoreService {
       if (kDebugMode) print('StoreService.createOrder Error: $e');
       rethrow;
     }
+  }
+
+  /// Realtime invalidation: store_categories değiştiğinde çağır
+  static void invalidateCategories() {
+    _cache.invalidate('store_categories');
   }
 
   /// Realtime invalidation: stores değiştiğinde çağır

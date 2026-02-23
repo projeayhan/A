@@ -194,51 +194,61 @@ class RestaurantService {
     double? customerLat,
     double? customerLon,
   }) async {
-    try {
-      // Müşteri konumu varsa, teslimat bölgesi içindeki restoranları getir
-      if (customerLat != null && customerLon != null) {
-        final deliveryRangeResponse = await _client
-            .rpc('get_restaurants_in_delivery_range', params: {
-              'p_customer_lat': customerLat,
-              'p_customer_lon': customerLon,
-            });
+    final cacheKey = customerLat != null && customerLon != null
+        ? 'restaurants_${customerLat.toStringAsFixed(3)}_${customerLon.toStringAsFixed(3)}'
+        : 'restaurants_all';
 
-        final deliverableIds = (deliveryRangeResponse as List)
-            .map((json) => json['merchant_id'] as String)
-            .toList();
+    return _cache.getOrFetch<List<Restaurant>>(
+      cacheKey,
+      ttl: const Duration(minutes: 2),
+      fetcher: () async {
+        try {
+          // Müşteri konumu varsa, teslimat bölgesi içindeki restoranları getir
+          if (customerLat != null && customerLon != null) {
+            final deliveryRangeResponse = await _client
+                .rpc('get_restaurants_in_delivery_range', params: {
+                  'p_customer_lat': customerLat,
+                  'p_customer_lon': customerLon,
+                });
 
-        if (deliverableIds.isEmpty) return [];
+            final deliverableIds = (deliveryRangeResponse as List)
+                .map((json) => json['merchant_id'] as String)
+                .toList();
 
-        final response = await _client
-            .from('merchants')
-            .select()
-            .inFilter('id', deliverableIds)
-            .eq('type', 'restaurant')
-            .eq('is_approved', true)
-            .eq('is_open', true)
-            .order('rating', ascending: false);
+            if (deliverableIds.isEmpty) return [];
 
-        return (response as List)
-            .map((json) => Restaurant.fromMerchantJson(json))
-            .toList();
-      }
+            final response = await _client
+                .from('merchants')
+                .select()
+                .inFilter('id', deliverableIds)
+                .eq('type', 'restaurant')
+                .eq('is_approved', true)
+                .eq('is_open', true)
+                .order('rating', ascending: false);
 
-      // Konum yoksa tüm restoranları getir
-      final response = await _client
-          .from('merchants')
-          .select()
-          .eq('type', 'restaurant')
-          .eq('is_approved', true)
-          .eq('is_open', true)
-          .order('rating', ascending: false);
+            return (response as List)
+                .map((json) => Restaurant.fromMerchantJson(json))
+                .toList();
+          }
 
-      return (response as List)
-          .map((json) => Restaurant.fromMerchantJson(json))
-          .toList();
-    } catch (e) {
-      if (kDebugMode) print('Error fetching restaurants: $e');
-      return [];
-    }
+          // Konum yoksa tüm restoranları getir
+          final response = await _client
+              .from('merchants')
+              .select()
+              .eq('type', 'restaurant')
+              .eq('is_approved', true)
+              .eq('is_open', true)
+              .order('rating', ascending: false);
+
+          return (response as List)
+              .map((json) => Restaurant.fromMerchantJson(json))
+              .toList();
+        } catch (e) {
+          if (kDebugMode) print('Error fetching restaurants: $e');
+          return [];
+        }
+      },
+    );
   }
 
   // Restoran kategorilerini getir

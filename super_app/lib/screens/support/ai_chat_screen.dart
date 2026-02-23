@@ -1,7 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/services/ai_chat_service.dart';
+import '../../core/services/live_support_service.dart';
+import '../../core/services/notification_sound_service.dart';
 import '../../core/utils/app_dialogs.dart';
 
 class AiChatScreen extends ConsumerStatefulWidget {
@@ -19,6 +24,14 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   bool _isLoading = false;
   bool _isInitializing = true;
 
+  // Live support state
+  bool _isLiveMode = false;
+  String? _liveTicketId;
+  int? _liveTicketNumber;
+  StreamSubscription? _liveMsgSubscription;
+  RealtimeChannel? _liveStatusChannel;
+  int _lastLiveMsgCount = 0;
+
   @override
   void initState() {
     super.initState();
@@ -27,6 +40,8 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
 
   @override
   void dispose() {
+    _liveMsgSubscription?.cancel();
+    _liveStatusChannel?.unsubscribe();
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -65,6 +80,17 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
       ));
     }
 
+    // Check for existing live support ticket
+    try {
+      final existingTicket = await LiveSupportService.getExistingTicket();
+      if (existingTicket != null && mounted) {
+        _enterLiveMode(
+          ticketId: existingTicket['id'] as String,
+          ticketNumber: existingTicket['ticket_number'],
+        );
+      }
+    } catch (_) {}
+
     setState(() {
       _isInitializing = false;
     });
@@ -83,9 +109,119 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     });
   }
 
+  // ─── Live Support Mode ───
+
+  void _enterLiveMode({required String ticketId, dynamic ticketNumber}) {
+    _liveMsgSubscription?.cancel();
+    _liveStatusChannel?.unsubscribe();
+
+    setState(() {
+      _isLiveMode = true;
+      _liveTicketId = ticketId;
+      _liveTicketNumber = ticketNumber is int ? ticketNumber : int.tryParse('$ticketNumber');
+      _messages.add(ChatMessage(
+        role: 'system',
+        content: 'Canlı destek moduna geçildi. Bir temsilci en kısa sürede bağlanacak.',
+        timestamp: DateTime.now(),
+      ));
+    });
+    _scrollToBottom();
+
+    // Subscribe to live messages
+    final result = LiveSupportService.subscribeToMessages(
+      ticketId: ticketId,
+      onMessages: (messages) {
+        if (!mounted) return;
+
+        final hasNewAgentMsg = messages.length > _lastLiveMsgCount &&
+            messages.isNotEmpty &&
+            messages.last['sender_type'] == 'agent';
+
+        setState(() {
+          // Remove old live messages and re-add all
+          _messages.removeWhere((m) => m.isLiveMessage);
+          for (final msg in messages) {
+            final senderType = msg['sender_type'] as String? ?? '';
+            if (senderType == 'system') continue;
+            _messages.add(ChatMessage(
+              role: senderType == 'customer' ? 'user' : 'live_agent',
+              content: msg['message'] as String? ?? '',
+              timestamp: DateTime.tryParse(msg['created_at'] ?? ''),
+              isLiveMessage: true,
+              senderName: msg['sender_name'] as String?,
+            ));
+          }
+          _lastLiveMsgCount = messages.length;
+        });
+
+        // Notification for new agent message
+        if (hasNewAgentMsg) {
+          NotificationSoundService.playNotificationSound();
+          HapticFeedback.mediumImpact();
+        }
+
+        _scrollToBottom();
+      },
+    );
+    _liveMsgSubscription = result.subscription;
+
+    // Subscribe to ticket status changes
+    _liveStatusChannel = LiveSupportService.subscribeToTicketStatus(
+      ticketId: ticketId,
+      onStatusChange: (status) {
+        if (status == 'resolved' || status == 'closed') {
+          _exitLiveMode();
+        }
+      },
+    );
+  }
+
+  void _exitLiveMode() {
+    _liveMsgSubscription?.cancel();
+    _liveStatusChannel?.unsubscribe();
+    if (!mounted) return;
+    setState(() {
+      _isLiveMode = false;
+      _liveTicketId = null;
+      _liveTicketNumber = null;
+      _lastLiveMsgCount = 0;
+      _messages.add(ChatMessage(
+        role: 'system',
+        content: 'Canlı destek sona erdi. Tekrar AI asistana bağlandınız.',
+        timestamp: DateTime.now(),
+      ));
+    });
+    _scrollToBottom();
+  }
+
+  Future<void> _sendLiveMessage(String message) async {
+    if (_liveTicketId == null) return;
+    _messageController.clear();
+    setState(() => _isLoading = true);
+    try {
+      await LiveSupportService.sendMessage(
+        ticketId: _liveTicketId!,
+        message: message,
+      );
+    } catch (e) {
+      if (mounted) {
+        await AppDialogs.showError(context, 'Mesaj gönderilemedi: $e');
+      }
+    }
+    if (mounted) setState(() => _isLoading = false);
+  }
+
+  // ─── AI Chat ───
+
   Future<void> _sendMessage() async {
     final message = _messageController.text.trim();
     if (message.isEmpty || _isLoading) return;
+
+    // Live mode → send to ticket
+    if (_isLiveMode) {
+      await _sendLiveMessage(message);
+      return;
+    }
 
     _messageController.clear();
 
@@ -114,6 +250,23 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
           content: response['message'],
           timestamp: DateTime.now(),
         ));
+
+        // Handle actions (e.g. connect_live_support)
+        final actions = response['actions'] as List<dynamic>?;
+        if (actions != null) {
+          for (final action in actions) {
+            final a = action as Map<String, dynamic>;
+            if (a['type'] == 'connect_live_support') {
+              final payload = a['payload'] as Map<String, dynamic>?;
+              if (payload != null && payload['ticket_id'] != null) {
+                Future.microtask(() => _enterLiveMode(
+                  ticketId: payload['ticket_id'] as String,
+                  ticketNumber: payload['ticket_number'],
+                ));
+              }
+            }
+          }
+        }
       } else {
         _messages.add(ChatMessage(
           role: 'assistant',
@@ -148,22 +301,40 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
               ),
             ),
             const SizedBox(height: 20),
-            ListTile(
-              leading: Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppColors.warning.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
+            if (!_isLiveMode)
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.support_agent, color: AppColors.warning),
                 ),
-                child: Icon(Icons.support_agent, color: AppColors.warning),
+                title: const Text('Canlı Desteğe Bağlan'),
+                subtitle: const Text('Bir temsilciye aktarılın'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _escalateToHuman();
+                },
               ),
-              title: const Text('Canlı Desteğe Bağlan'),
-              subtitle: const Text('Bir temsilciye aktarılın'),
-              onTap: () {
-                Navigator.pop(context);
-                _escalateToHuman();
-              },
-            ),
+            if (_isLiveMode)
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.close, color: AppColors.error),
+                ),
+                title: const Text('Canlı Desteği Kapat'),
+                subtitle: const Text('AI asistana geri dön'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _exitLiveMode();
+                },
+              ),
             ListTile(
               leading: Container(
                 padding: const EdgeInsets.all(10),
@@ -180,7 +351,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
                 _startNewChat();
               },
             ),
-            if (_sessionId != null) ...[
+            if (_sessionId != null && !_isLiveMode) ...[
               ListTile(
                 leading: Container(
                   padding: const EdgeInsets.all(10),
@@ -227,12 +398,22 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   }
 
   Future<void> _startNewChat() async {
+    // Cleanup live mode if active
+    if (_isLiveMode) {
+      _liveMsgSubscription?.cancel();
+      _liveStatusChannel?.unsubscribe();
+    }
+
     if (_sessionId != null) {
       await AiChatService.closeSession(_sessionId!);
     }
 
     setState(() {
       _sessionId = null;
+      _isLiveMode = false;
+      _liveTicketId = null;
+      _liveTicketNumber = null;
+      _lastLiveMsgCount = 0;
       _messages.clear();
       _messages.add(ChatMessage(
         role: 'assistant',
@@ -300,6 +481,8 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
     );
   }
 
+  // ─── Build ───
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -308,9 +491,11 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
       backgroundColor: isDark ? AppColors.backgroundDark : const Color(0xFFF5F5F5),
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: isDark ? AppColors.surfaceDark : Colors.white,
+        backgroundColor: _isLiveMode
+            ? const Color(0xFFFF8C00)
+            : (isDark ? AppColors.surfaceDark : Colors.white),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: Icon(Icons.arrow_back, color: _isLiveMode ? Colors.white : null),
           onPressed: () => Navigator.pop(context),
         ),
         title: Row(
@@ -318,35 +503,45 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                gradient: AppColors.primaryGradient,
+                gradient: _isLiveMode
+                    ? const LinearGradient(colors: [Color(0xFFFF6B00), Color(0xFFFF8C00)])
+                    : AppColors.primaryGradient,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.smart_toy, color: Colors.white, size: 20),
+              child: Icon(
+                _isLiveMode ? Icons.support_agent : Icons.smart_toy,
+                color: Colors.white,
+                size: 20,
+              ),
             ),
             const SizedBox(width: 12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'SuperCyp Asistan',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                Text(
+                  _isLiveMode ? 'Canlı Destek #${_liveTicketNumber ?? ''}' : 'SuperCyp Asistan',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: _isLiveMode ? Colors.white : null,
+                  ),
                 ),
                 Row(
                   children: [
                     Container(
                       width: 8,
                       height: 8,
-                      decoration: const BoxDecoration(
-                        color: AppColors.success,
+                      decoration: BoxDecoration(
+                        color: _isLiveMode ? Colors.white : AppColors.success,
                         shape: BoxShape.circle,
                       ),
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      'Çevrimiçi',
+                      _isLiveMode ? 'Temsilciye bağlı' : 'Çevrimiçi',
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.grey[600],
+                        color: _isLiveMode ? Colors.white70 : Colors.grey[600],
                       ),
                     ),
                   ],
@@ -355,15 +550,36 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
             ),
           ],
         ),
+        iconTheme: _isLiveMode ? const IconThemeData(color: Colors.white) : null,
         actions: [
           IconButton(
-            icon: const Icon(Icons.more_vert),
+            icon: Icon(Icons.more_vert, color: _isLiveMode ? Colors.white : null),
             onPressed: _showOptionsMenu,
           ),
         ],
       ),
       body: Column(
         children: [
+          // Live mode banner
+          if (_isLiveMode)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+              color: const Color(0xFFFF8C00).withValues(alpha: 0.1),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, size: 16, color: Color(0xFFFF8C00)),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Canlı destek modundasınız. Mesajlarınız temsilciye iletilecek.',
+                      style: TextStyle(fontSize: 12, color: Color(0xFFFF8C00)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
           // Chat messages
           Expanded(
             child: _isInitializing
@@ -382,7 +598,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
           ),
 
           // Quick actions
-          if (_messages.length <= 2) _buildQuickActions(),
+          if (_messages.length <= 2 && !_isLiveMode) _buildQuickActions(),
 
           // Input area
           _buildInputArea(isDark),
@@ -394,6 +610,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
   Widget _buildMessageBubble(ChatMessage message, bool isDark) {
     final isUser = message.role == 'user';
     final isSystem = message.role == 'system';
+    final isLiveAgent = message.role == 'live_agent';
 
     if (isSystem) {
       return Container(
@@ -435,10 +652,16 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
                 width: 32,
                 height: 32,
                 decoration: BoxDecoration(
-                  gradient: AppColors.primaryGradient,
+                  gradient: isLiveAgent
+                      ? const LinearGradient(colors: [Color(0xFFFF6B00), Color(0xFFFF8C00)])
+                      : AppColors.primaryGradient,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.smart_toy, color: Colors.white, size: 18),
+                child: Icon(
+                  isLiveAgent ? Icons.support_agent : Icons.smart_toy,
+                  color: Colors.white,
+                  size: 18,
+                ),
               ),
               const SizedBox(width: 8),
             ],
@@ -448,7 +671,9 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
                 decoration: BoxDecoration(
                   color: isUser
                       ? AppColors.primary
-                      : (isDark ? AppColors.surfaceDark : Colors.white),
+                      : isLiveAgent
+                          ? const Color(0xFFFFF3E0)
+                          : (isDark ? AppColors.surfaceDark : Colors.white),
                   borderRadius: BorderRadius.only(
                     topLeft: const Radius.circular(16),
                     topRight: const Radius.circular(16),
@@ -466,12 +691,25 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (isLiveAgent && message.senderName != null) ...[
+                      Text(
+                        message.senderName!,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFFFF8C00),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                    ],
                     Text(
                       message.content,
                       style: TextStyle(
                         color: isUser
                             ? Colors.white
-                            : (isDark ? Colors.white : Colors.black87),
+                            : isLiveAgent
+                                ? Colors.black87
+                                : (isDark ? Colors.white : Colors.black87),
                         fontSize: 15,
                       ),
                     ),
@@ -483,7 +721,9 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
                           fontSize: 10,
                           color: isUser
                               ? Colors.white70
-                              : (isDark ? Colors.grey[500] : Colors.grey[600]),
+                              : isLiveAgent
+                                  ? Colors.black38
+                                  : (isDark ? Colors.grey[500] : Colors.grey[600]),
                         ),
                       ),
                     ],
@@ -626,7 +866,7 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
                 textInputAction: TextInputAction.send,
                 onSubmitted: (_) => _sendMessage(),
                 decoration: InputDecoration(
-                  hintText: 'Mesajınızı yazın...',
+                  hintText: _isLiveMode ? 'Temsilciye mesaj yazın...' : 'Mesajınızı yazın...',
                   hintStyle: TextStyle(color: Colors.grey[500]),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(
@@ -640,7 +880,9 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
           const SizedBox(width: 8),
           Container(
             decoration: BoxDecoration(
-              gradient: AppColors.primaryGradient,
+              gradient: _isLiveMode
+                  ? const LinearGradient(colors: [Color(0xFFFF6B00), Color(0xFFFF8C00)])
+                  : AppColors.primaryGradient,
               borderRadius: BorderRadius.circular(24),
             ),
             child: IconButton(
@@ -673,15 +915,19 @@ class _AiChatScreenState extends ConsumerState<AiChatScreen> {
 }
 
 class ChatMessage {
-  final String role;
+  final String role; // 'user', 'assistant', 'system', 'live_agent'
   final String content;
   final DateTime? timestamp;
   final bool isError;
+  final bool isLiveMessage;
+  final String? senderName;
 
   ChatMessage({
     required this.role,
     required this.content,
     this.timestamp,
     this.isError = false,
+    this.isLiveMessage = false,
+    this.senderName,
   });
 }

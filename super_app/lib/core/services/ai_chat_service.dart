@@ -5,7 +5,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-enum AiStreamEventType { session, chunk, actions, searchResults, rentalResults, done, error }
+enum AiStreamEventType { session, chunk, actions, searchResults, rentalResults, priceComparison, done, error }
 
 class AiStreamEvent {
   final AiStreamEventType type;
@@ -16,6 +16,7 @@ class AiStreamEvent {
   final List<Map<String, dynamic>>? actions;
   final List<Map<String, dynamic>>? searchResults;
   final List<Map<String, dynamic>>? rentalResults;
+  final Map<String, dynamic>? priceComparison;
   final String? error;
 
   const AiStreamEvent._({
@@ -27,6 +28,7 @@ class AiStreamEvent {
     this.actions,
     this.searchResults,
     this.rentalResults,
+    this.priceComparison,
     this.error,
   });
 
@@ -40,6 +42,8 @@ class AiStreamEvent {
       AiStreamEvent._(type: AiStreamEventType.searchResults, searchResults: products);
   factory AiStreamEvent.rentalResults(List<Map<String, dynamic>> cars) =>
       AiStreamEvent._(type: AiStreamEventType.rentalResults, rentalResults: cars);
+  factory AiStreamEvent.priceComparison(Map<String, dynamic> data) =>
+      AiStreamEvent._(type: AiStreamEventType.priceComparison, priceComparison: data);
   factory AiStreamEvent.done(String fullMessage, int tokensUsed) =>
       AiStreamEvent._(type: AiStreamEventType.done, fullMessage: fullMessage, tokensUsed: tokensUsed);
   factory AiStreamEvent.error(String error) =>
@@ -284,6 +288,8 @@ class AiChatService {
           return AiStreamEvent.rentalResults(
             (data['cars'] as List).map((e) => Map<String, dynamic>.from(e as Map)).toList(),
           );
+        case 'price_comparison':
+          return AiStreamEvent.priceComparison(Map<String, dynamic>.from(data as Map));
         case 'done':
           return AiStreamEvent.done(
             data['message'] as String,

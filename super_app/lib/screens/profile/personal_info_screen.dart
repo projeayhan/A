@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../../core/theme/app_theme.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/providers/user_provider.dart';
@@ -23,6 +23,9 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
   late TextEditingController _birthDateController;
   String _selectedGender = 'Erkek';
   bool _isEditing = false;
+  bool _isFirstTimeSetup = false;
+  bool _isPhoneVerified = false;
+  bool _isVerifyingPhone = false;
   int _actualOrderCount = 0;
 
   @override
@@ -40,7 +43,26 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
       if (userProfile != null) {
         _populateControllers(userProfile);
       }
+      // Auth user'dan telefon ve e-posta doldur (profil henüz yüklenmemişse)
+      final authUser = SupabaseService.currentUser;
+      if (authUser != null) {
+        if (_phoneController.text.trim().isEmpty && (authUser.phone ?? '').isNotEmpty) {
+          _phoneController.text = authUser.phone!;
+        }
+        if (_emailController.text.trim().isEmpty && (authUser.email ?? '').isNotEmpty) {
+          _emailController.text = authUser.email!;
+        }
+      }
       _loadActualOrderCount();
+      _checkPhoneVerification();
+      // Auto-enable editing if name is empty (first-time setup after OTP)
+      final firstName = _firstNameController.text.trim();
+      if (firstName.isEmpty) {
+        setState(() {
+          _isEditing = true;
+          _isFirstTimeSetup = true;
+        });
+      }
     });
   }
 
@@ -102,7 +124,7 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
+        leading: _isFirstTimeSetup ? const SizedBox.shrink() : IconButton(
           icon: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
@@ -120,8 +142,9 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
           ),
           onPressed: () => context.pop(),
         ),
+        automaticallyImplyLeading: false,
         title: Text(
-          'Kişisel Bilgiler',
+          _isFirstTimeSetup ? 'Hoş Geldiniz!' : 'Kişisel Bilgiler',
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -168,9 +191,8 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
                 controller: _firstNameController,
                 label: 'Ad',
                 icon: Icons.person_outline,
-                enabled: false, // Google'dan geliyor, değiştirilemez
+                enabled: _isEditing,
                 isDark: isDark,
-                suffix: _buildGoogleBadge(),
               ),
 
               const SizedBox(height: 16),
@@ -179,9 +201,8 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
                 controller: _lastNameController,
                 label: 'Soyad',
                 icon: Icons.person_outline,
-                enabled: false, // Google'dan geliyor, değiştirilemez
+                enabled: _isEditing,
                 isDark: isDark,
-                suffix: _buildGoogleBadge(),
               ),
 
               const SizedBox(height: 16),
@@ -203,22 +224,15 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
                 label: 'E-posta',
                 icon: Icons.email_outlined,
                 keyboardType: TextInputType.emailAddress,
-                enabled: false, // Google'dan geliyor, değiştirilemez
+                enabled: false,
                 isDark: isDark,
-                suffix: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: Colors.green.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Icon(Icons.verified, size: 14, color: Colors.green),
-                    ),
-                    const SizedBox(width: 6),
-                    _buildGoogleBadge(),
-                  ],
+                suffix: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Icon(Icons.verified, size: 14, color: Colors.green),
                 ),
               ),
 
@@ -229,24 +243,57 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
                 label: 'Telefon',
                 icon: Icons.phone_outlined,
                 keyboardType: TextInputType.phone,
-                enabled: _isEditing,
+                enabled: _isEditing && !_isFirstTimeSetup,
                 isDark: isDark,
-                suffix: TextButton(
-                  onPressed: () => _showVerifyPhoneDialog(),
-                  style: TextButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  child: Text(
-                    'Doğrula',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
+                suffix: _phoneController.text.trim().isNotEmpty && (!_isEditing || _isFirstTimeSetup)
+                    ? _isPhoneVerified
+                        ? Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: const Icon(
+                              Icons.verified,
+                              size: 14,
+                              color: Colors.green,
+                            ),
+                          )
+                        : GestureDetector(
+                            onTap: _isVerifyingPhone
+                                ? null
+                                : _startPhoneVerification,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: _isVerifyingPhone
+                                  ? const SizedBox(
+                                      height: 14,
+                                      width: 14,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Text(
+                                      'Doğrula',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                            ),
+                          )
+                    : null,
               ),
 
               const SizedBox(height: 32),
@@ -858,128 +905,6 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
     }
   }
 
-  void _showVerifyPhoneDialog() {
-    final phoneInputController = TextEditingController(text: _phoneController.text);
-    final otpController = TextEditingController();
-    bool codeSent = false;
-    bool isLoading = false;
-
-    showDialog(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Row(
-            children: [
-              const Icon(Icons.phone_android, color: AppColors.primary),
-              const SizedBox(width: 12),
-              Text(codeSent ? 'Kodu Girin' : 'Telefon Doğrulama'),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (!codeSent) ...[
-                const Text('Telefon numaranızı girin, SMS ile doğrulama kodu göndereceğiz.'),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: phoneInputController,
-                  keyboardType: TextInputType.phone,
-                  decoration: InputDecoration(
-                    hintText: '+90 5XX XXX XX XX',
-                    prefixIcon: const Icon(Icons.phone),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-              ] else ...[
-                Text('${phoneInputController.text} numarasına gönderilen 6 haneli kodu girin.'),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: otpController,
-                  keyboardType: TextInputType.number,
-                  maxLength: 6,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 24, letterSpacing: 8, fontWeight: FontWeight.bold),
-                  decoration: InputDecoration(
-                    hintText: '------',
-                    counterText: '',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                ),
-              ],
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: isLoading ? null : () => Navigator.pop(context),
-              child: Text('İptal', style: TextStyle(color: Colors.grey[600])),
-            ),
-            ElevatedButton(
-              onPressed: isLoading ? null : () async {
-                if (!codeSent) {
-                  final phone = phoneInputController.text.trim();
-                  if (phone.isEmpty) return;
-                  setDialogState(() => isLoading = true);
-                  try {
-                    await SupabaseService.client.auth.signInWithOtp(phone: phone);
-                    setDialogState(() { codeSent = true; isLoading = false; });
-                  } catch (e) {
-                    setDialogState(() => isLoading = false);
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Kod gönderilemedi: $e'), backgroundColor: Colors.red),
-                      );
-                    }
-                  }
-                } else {
-                  final otp = otpController.text.trim();
-                  if (otp.length != 6) return;
-                  setDialogState(() => isLoading = true);
-                  try {
-                    await SupabaseService.client.auth.verifyOTP(
-                      phone: phoneInputController.text.trim(),
-                      token: otp,
-                      type: OtpType.sms,
-                    );
-                    // Telefonu users tablosuna da kaydet
-                    final user = SupabaseService.currentUser;
-                    if (user != null) {
-                      await SupabaseService.client.from('users').update({
-                        'phone': phoneInputController.text.trim(),
-                      }).eq('id', user.id);
-                    }
-                    setState(() {
-                      _phoneController.text = phoneInputController.text.trim();
-                    });
-                    if (context.mounted) Navigator.pop(context);
-                    if (mounted) {
-                      await AppDialogs.showSuccess(context, 'Telefon numaranız doğrulandı!');
-                      ref.read(userProfileProvider.notifier).refresh();
-                    }
-                  } catch (e) {
-                    setDialogState(() => isLoading = false);
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Doğrulama başarısız: $e'), backgroundColor: Colors.red),
-                      );
-                    }
-                  }
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-              child: isLoading
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : Text(codeSent ? 'Doğrula' : 'Kod Gönder', style: const TextStyle(color: Colors.white)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _showDeactivateDialog() {
     showDialog(
       context: context,
@@ -1042,15 +967,214 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
             gender: _mapGenderToDb(_selectedGender),
           );
 
+      // Auth metadata'yı da güncelle (router redirect isim kontrolü için)
+      if (success) {
+        try {
+          await SupabaseService.updateUserProfile(
+            firstName: _firstNameController.text,
+            lastName: _lastNameController.text,
+          );
+        } catch (_) {}
+      }
+
       if (mounted) {
         if (success) {
-          await AppDialogs.showSuccess(context, 'Bilgileriniz başarıyla güncellendi');
+          _checkPhoneVerification();
+          if (_isFirstTimeSetup) {
+            // İlk kurulum tamamlandı, ana sayfaya yönlendir
+            context.go('/');
+          } else {
+            await AppDialogs.showSuccess(context, 'Bilgileriniz başarıyla güncellendi');
+          }
         } else {
           setState(() => _isEditing = true); // Revert editing state on failure
           await AppDialogs.showError(context, 'Güncelleme başarısız oldu');
         }
       }
     }
+  }
+
+  void _checkPhoneVerification() {
+    final user = SupabaseService.currentUser;
+    if (user == null) return;
+    final authPhone = user.phone ?? '';
+    final profilePhone = _phoneController.text.trim();
+    // Normalize both to +90XXXXXXXXXX format for comparison
+    final normalizedAuth = authPhone.isNotEmpty ? _normalizePhoneNumber(authPhone) : '';
+    final normalizedProfile = profilePhone.isNotEmpty ? _normalizePhoneNumber(profilePhone) : '';
+    setState(() {
+      _isPhoneVerified = normalizedAuth.isNotEmpty &&
+          normalizedAuth == normalizedProfile &&
+          user.phoneConfirmedAt != null;
+    });
+  }
+
+  String _normalizePhoneNumber(String phone) {
+    String cleaned = phone.replaceAll(RegExp(r'[\s\-\(\)]'), '');
+    if (cleaned.startsWith('+90')) return cleaned;
+    if (cleaned.startsWith('90') && cleaned.length == 12) return '+$cleaned';
+    if (cleaned.startsWith('0')) return '+90${cleaned.substring(1)}';
+    if (cleaned.length == 10 && cleaned.startsWith('5')) return '+90$cleaned';
+    if (cleaned.startsWith('+')) return cleaned;
+    return '+90$cleaned';
+  }
+
+  Future<void> _startPhoneVerification() async {
+    final phone = _phoneController.text.trim();
+    if (phone.isEmpty) {
+      await AppDialogs.showError(context, 'Lütfen önce telefon numarası girin');
+      return;
+    }
+
+    final normalizedPhone = _normalizePhoneNumber(phone);
+    if (normalizedPhone.length < 12) {
+      await AppDialogs.showError(context, 'Geçersiz telefon numarası');
+      return;
+    }
+
+    setState(() => _isVerifyingPhone = true);
+
+    try {
+      // Use Twilio Verify via edge function (Supabase built-in doesn't work for Turkey)
+      await SupabaseService.sendPhoneOtp(phone: normalizedPhone);
+
+      if (mounted) {
+        setState(() => _isVerifyingPhone = false);
+        _showOtpDialog(normalizedPhone);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isVerifyingPhone = false);
+        await AppDialogs.showError(
+          context,
+          'SMS gönderilemedi: ${e.toString().replaceAll('Exception: ', '')}',
+        );
+      }
+    }
+  }
+
+  void _showOtpDialog(String normalizedPhone) {
+    final otpController = TextEditingController();
+    bool isVerifying = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.sms_outlined, color: AppColors.primary),
+              SizedBox(width: 12),
+              Text('Telefon Doğrulama'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '$normalizedPhone numarasına gönderilen 6 haneli kodu girin',
+                style: TextStyle(color: Colors.grey[600], fontSize: 14),
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                controller: otpController,
+                keyboardType: TextInputType.number,
+                maxLength: 6,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 8,
+                ),
+                decoration: InputDecoration(
+                  hintText: '000000',
+                  counterText: '',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(
+                      color: AppColors.primary,
+                      width: 2,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: isVerifying
+                  ? null
+                  : () => Navigator.pop(dialogContext),
+              child: Text(
+                'İptal',
+                style: TextStyle(color: Colors.grey[600]),
+              ),
+            ),
+            FilledButton(
+              onPressed: isVerifying
+                  ? null
+                  : () async {
+                      final otp = otpController.text.trim();
+                      if (otp.length != 6) return;
+
+                      setDialogState(() => isVerifying = true);
+
+                      try {
+                        // Use Twilio Verify via edge function
+                        await SupabaseService.verifyPhoneOtp(
+                          phone: normalizedPhone,
+                          code: otp,
+                        );
+
+                        if (mounted) {
+                          Navigator.pop(dialogContext);
+                          setState(() => _isPhoneVerified = true);
+                          await AppDialogs.showSuccess(
+                            context,
+                            'Telefon numaranız doğrulandı',
+                          );
+                        }
+                      } catch (e) {
+                        setDialogState(() => isVerifying = false);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Doğrulama hatası: ${e.toString().replaceAll('Exception: ', '')}',
+                              ),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
+                    },
+              style: FilledButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: isVerifying
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text('Doğrula'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   String _mapGenderToDb(String uiGender) {
@@ -1083,35 +1207,4 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
     return months[month - 1];
   }
 
-  Widget _buildGoogleBadge() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.blue.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: const Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'G',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.blue,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(width: 4),
-          Text(
-            'Google',
-            style: TextStyle(
-              fontSize: 10,
-              color: Colors.blue,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
