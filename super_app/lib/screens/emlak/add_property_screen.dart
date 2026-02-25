@@ -70,15 +70,13 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
     {'code': 'GBP', 'symbol': '£', 'name': 'İngiliz Sterlini'},
   ];
 
-  // Features
-  bool _hasParking = false;
-  bool _hasBalcony = false;
-  bool _hasFurniture = false;
-  bool _hasPool = false;
-  bool _hasGym = false;
-  bool _hasSecurity = false;
-  bool _hasElevator = false;
-  bool _isSmartHome = false;
+  // Features - 101evler
+  String? _roomType;
+  String? _furnitureStatus;
+  String? _heatingType;
+  String? _deedType;
+  final _netSquareMetersController = TextEditingController();
+  final Map<String, bool> _features = {};
 
   // Images - Bytes olarak sakla (Storage'a yüklemek için)
   final List<_UploadedImage> _uploadedImages = [];
@@ -160,15 +158,74 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
             }
           }
 
-          // Özellikler
-          _hasParking = property.hasParking;
-          _hasBalcony = property.hasBalcony;
-          _hasFurniture = property.hasFurniture;
-          _hasPool = property.hasPool;
-          _hasGym = property.hasGym;
-          _hasSecurity = property.hasSecurity;
-          _hasElevator = property.hasElevator;
-          _isSmartHome = property.isSmartHome;
+          // Dropdowns
+          _roomType = property.roomType;
+          _furnitureStatus = property.furnitureStatus;
+          _heatingType = property.heatingType;
+          _deedType = property.deedType;
+          if (property.netSquareMeters != null) {
+            _netSquareMetersController.text = property.netSquareMeters.toString();
+          }
+          // Quick amenities (bunlar da feature map'ine eklenmeli)
+          _features['hasFurniture'] = property.hasFurniture;
+          _features['hasPool'] = property.hasPool;
+          _features['hasGym'] = property.hasGym;
+          _features['hasSecurity'] = property.hasSecurity;
+          _features['isSmartHome'] = property.isSmartHome;
+          // Tüm boolean özellikler
+          _features['isOpenToTrade'] = property.isOpenToTrade;
+          _features['isInComplex'] = property.isInComplex;
+          _features['hasGarage'] = property.hasGarage;
+          _features['hasGarden'] = property.hasGarden;
+          _features['hasPrivatePool'] = property.hasPrivatePool;
+          _features['hasSharedPool'] = property.hasSharedPool;
+          _features['hasSecurityCamera'] = property.hasSecurityCamera;
+          _features['hasTerrace'] = property.hasTerrace;
+          _features['hasInsulation'] = property.hasInsulation;
+          _features['hasWaterTank'] = property.hasWaterTank;
+          _features['hasWell'] = property.hasWell;
+          _features['hasBarbeque'] = property.hasBarbeque;
+          _features['hasDoubleGlazing'] = property.hasDoubleGlazing;
+          _features['hasCoveredParking'] = property.hasCoveredParking;
+          _features['hasGenerator'] = property.hasGenerator;
+          _features['hasElevator'] = property.hasElevator;
+          _features['hasParking'] = property.hasParking;
+          _features['hasSandstoneHouse'] = property.hasSandstoneHouse;
+          _features['isDuplex'] = property.isDuplex;
+          _features['hasAirConditioning'] = property.hasAirConditioning;
+          _features['hasBalcony'] = property.hasBalcony;
+          _features['hasShutter'] = property.hasShutter;
+          _features['hasBuiltinKitchen'] = property.hasBuiltinKitchen;
+          _features['hasBuiltinWardrobe'] = property.hasBuiltinWardrobe;
+          _features['hasIntercom'] = property.hasIntercom;
+          _features['hasFireplace'] = property.hasFireplace;
+          _features['hasCrown'] = property.hasCrown;
+          _features['hasLaundryRoom'] = property.hasLaundryRoom;
+          _features['hasParentBathroom'] = property.hasParentBathroom;
+          _features['hasParentCloset'] = property.hasParentCloset;
+          _features['hasNaturalMarble'] = property.hasNaturalMarble;
+          _features['hasPanelDoor'] = property.hasPanelDoor;
+          _features['hasParquet'] = property.hasParquet;
+          _features['hasShower'] = property.hasShower;
+          _features['hasSteelDoor'] = property.hasSteelDoor;
+          _features['hasTvInfra'] = property.hasTvInfra;
+          _features['hasVestibule'] = property.hasVestibule;
+          _features['hasWallpaper'] = property.hasWallpaper;
+          _features['hasCeramic'] = property.hasCeramic;
+          _features['hasFireAlarm'] = property.hasFireAlarm;
+          _features['hasPantry'] = property.hasPantry;
+          _features['hasSolarPower'] = property.hasSolarPower;
+          _features['hasHydrophore'] = property.hasHydrophore;
+          _features['hasCityView'] = property.hasCityView;
+          _features['isEastFacing'] = property.isEastFacing;
+          _features['isCityCenter'] = property.isCityCenter;
+          _features['hasMountainView'] = property.hasMountainView;
+          _features['hasNatureView'] = property.hasNatureView;
+          _features['isNorthFacing'] = property.isNorthFacing;
+          _features['isSeafront'] = property.isSeafront;
+          _features['hasSeaView'] = property.hasSeaView;
+          _features['isSouthFacing'] = property.isSouthFacing;
+          _features['isWestFacing'] = property.isWestFacing;
 
           // Görseller - Mevcut URL'leri sakla (düzenleme modunda)
           _existingImageUrls = List.from(property.images);
@@ -219,8 +276,11 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
       if (mounted) {
         setState(() {
           _districtList = districts;
+          // Edit modunda mevcut district'i koru
           if (_districtList.isNotEmpty) {
-            _selectedDistrict = _districtList.first;
+            if (!_districtList.contains(_selectedDistrict)) {
+              _selectedDistrict = _districtList.first;
+            }
           }
         });
       }
@@ -246,6 +306,7 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
     _addressController.dispose();
     _latitudeController.dispose();
     _longitudeController.dispose();
+    _netSquareMetersController.dispose();
     super.dispose();
   }
 
@@ -467,23 +528,40 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
 
       final propertyService = ref.read(propertyServiceProvider);
 
-      // Amenities listesi oluştur
+      // Amenities listesi oluştur (display amaçlı)
+      const featureLabels = {
+        'hasGarage': 'Garaj', 'hasGarden': 'Bahçe', 'hasPrivatePool': 'Özel Havuz',
+        'hasSharedPool': 'Ortak Havuz', 'hasSecurityCamera': 'Güvenlik Kamerası',
+        'hasTerrace': 'Teras', 'hasInsulation': 'Isı Yalıtımı', 'hasWaterTank': 'Su Deposu',
+        'hasWell': 'Su Kuyusu', 'hasBarbeque': 'Barbekü', 'hasDoubleGlazing': 'Çift Cam',
+        'hasCoveredParking': 'Kapalı Otopark', 'hasGenerator': 'Jeneratör',
+        'hasElevator': 'Asansör', 'hasParking': 'Otopark', 'hasSandstoneHouse': 'Taş Ev',
+        'isDuplex': 'Dubleks', 'hasAirConditioning': 'Klima', 'hasBalcony': 'Balkon',
+        'hasShutter': 'Kepenk', 'hasBuiltinKitchen': 'Ankastre Mutfak',
+        'hasBuiltinWardrobe': 'Gömme Dolap', 'hasIntercom': 'İnterkom',
+        'hasFireplace': 'Şömine', 'hasCrown': 'Kartonpiyer',
+        'hasLaundryRoom': 'Çamaşır Odası', 'hasParentBathroom': 'Ebeveyn Banyosu',
+        'hasParentCloset': 'Ebeveyn Giyinme', 'hasNaturalMarble': 'Doğal Mermer',
+        'hasPanelDoor': 'Panel Kapı', 'hasParquet': 'Parke', 'hasShower': 'Duşakabin',
+        'hasSteelDoor': 'Çelik Kapı', 'hasTvInfra': 'TV Altyapısı',
+        'hasVestibule': 'Vestiyer', 'hasWallpaper': 'Duvar Kağıdı',
+        'hasCeramic': 'Seramik', 'hasFireAlarm': 'Yangın Alarmı', 'hasPantry': 'Kiler',
+        'hasSolarPower': 'Güneş Enerjisi', 'hasHydrophore': 'Hidrofor',
+      };
       final amenities = <String>[];
-      if (_hasParking) amenities.add('Otopark');
-      if (_hasBalcony) amenities.add('Balkon');
-      if (_hasFurniture) amenities.add('Eşyalı');
-      if (_hasPool) amenities.add('Havuz');
-      if (_hasGym) amenities.add('Spor Salonu');
-      if (_hasSecurity) amenities.add('Güvenlik');
-      if (_hasElevator) amenities.add('Asansör');
-      if (_isSmartHome) amenities.add('Akıllı Ev');
+      for (final entry in _features.entries) {
+        if (entry.value && featureLabels.containsKey(entry.key)) {
+          amenities.add(featureLabels[entry.key]!);
+        }
+      }
 
       // Property oluştur
-      // Seçilen property type'ı enum'a dönüştür (DB'ye kaydederken name kullanılacak)
       final propertyType = PropertyType.values.firstWhere(
         (e) => e.name == _selectedPropertyTypeName,
         orElse: () => PropertyType.apartment,
       );
+
+      bool f(String key) => _features[key] ?? false;
 
       final property = Property(
         id: widget.isEditMode ? widget.propertyId! : '',
@@ -508,16 +586,71 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
         floor: int.tryParse(_floorController.text),
         totalFloors: int.tryParse(_totalFloorsController.text),
         buildingAge: int.tryParse(_buildingAgeController.text),
-        hasParking: _hasParking,
-        hasBalcony: _hasBalcony,
-        hasFurniture: _hasFurniture,
-        hasPool: _hasPool,
-        hasGym: _hasGym,
-        hasSecurity: _hasSecurity,
-        hasElevator: _hasElevator,
-        isSmartHome: _isSmartHome,
+        hasParking: f('hasParking'),
+        hasBalcony: f('hasBalcony'),
+        hasFurniture: f('hasFurniture'),
+        hasPool: f('hasPool'),
+        hasGym: f('hasGym'),
+        hasSecurity: f('hasSecurity'),
+        hasElevator: f('hasElevator'),
+        isSmartHome: f('isSmartHome'),
+        roomType: _roomType,
+        furnitureStatus: _furnitureStatus,
+        heatingType: _heatingType,
+        deedType: _deedType,
+        netSquareMeters: int.tryParse(_netSquareMetersController.text),
+        isOpenToTrade: f('isOpenToTrade'),
+        isInComplex: f('isInComplex'),
+        hasGarage: f('hasGarage'),
+        hasGarden: f('hasGarden'),
+        hasPrivatePool: f('hasPrivatePool'),
+        hasSharedPool: f('hasSharedPool'),
+        hasSecurityCamera: f('hasSecurityCamera'),
+        hasTerrace: f('hasTerrace'),
+        hasInsulation: f('hasInsulation'),
+        hasWaterTank: f('hasWaterTank'),
+        hasWell: f('hasWell'),
+        hasBarbeque: f('hasBarbeque'),
+        hasDoubleGlazing: f('hasDoubleGlazing'),
+        hasCoveredParking: f('hasCoveredParking'),
+        hasGenerator: f('hasGenerator'),
+        hasSandstoneHouse: f('hasSandstoneHouse'),
+        isDuplex: f('isDuplex'),
+        hasAirConditioning: f('hasAirConditioning'),
+        hasShutter: f('hasShutter'),
+        hasBuiltinKitchen: f('hasBuiltinKitchen'),
+        hasBuiltinWardrobe: f('hasBuiltinWardrobe'),
+        hasIntercom: f('hasIntercom'),
+        hasFireplace: f('hasFireplace'),
+        hasCrown: f('hasCrown'),
+        hasLaundryRoom: f('hasLaundryRoom'),
+        hasParentBathroom: f('hasParentBathroom'),
+        hasParentCloset: f('hasParentCloset'),
+        hasNaturalMarble: f('hasNaturalMarble'),
+        hasPanelDoor: f('hasPanelDoor'),
+        hasParquet: f('hasParquet'),
+        hasShower: f('hasShower'),
+        hasSteelDoor: f('hasSteelDoor'),
+        hasTvInfra: f('hasTvInfra'),
+        hasVestibule: f('hasVestibule'),
+        hasWallpaper: f('hasWallpaper'),
+        hasCeramic: f('hasCeramic'),
+        hasFireAlarm: f('hasFireAlarm'),
+        hasPantry: f('hasPantry'),
+        hasSolarPower: f('hasSolarPower'),
+        hasHydrophore: f('hasHydrophore'),
+        hasCityView: f('hasCityView'),
+        isEastFacing: f('isEastFacing'),
+        isCityCenter: f('isCityCenter'),
+        hasMountainView: f('hasMountainView'),
+        hasNatureView: f('hasNatureView'),
+        isNorthFacing: f('isNorthFacing'),
+        isSeafront: f('isSeafront'),
+        hasSeaView: f('hasSeaView'),
+        isSouthFacing: f('isSouthFacing'),
+        isWestFacing: f('isWestFacing'),
         amenities: amenities,
-        images: imageUrls, // Storage URL'leri kullan
+        images: imageUrls,
         status: widget.isEditMode ? (_existingProperty?.status ?? PropertyStatus.pending) : PropertyStatus.pending,
         isFeatured: _existingProperty?.isFeatured ?? false,
         isPremium: _existingProperty?.isPremium ?? false,
@@ -529,38 +662,13 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
       Property? resultProperty;
 
       if (widget.isEditMode) {
-        // Güncelle - Map olarak gönder
-        final updates = {
-          'title': property.title,
-          'description': property.description,
-          'property_type': property.type.name,
-          'listing_type': property.listingType.name,
-          'price': property.price,
-          'currency': _selectedCurrency,
-          'city': property.location.city,
-          'district': property.location.district,
-          'neighborhood': property.location.neighborhood,
-          'address': property.location.address,
-          'latitude': property.location.latitude,
-          'longitude': property.location.longitude,
-          'square_meters': property.squareMeters,
-          'rooms': property.rooms,
-          'bathrooms': property.bathrooms,
-          'floor': property.floor,
-          'total_floors': property.totalFloors,
-          'building_age': property.buildingAge,
-          'has_parking': property.hasParking,
-          'has_balcony': property.hasBalcony,
-          'has_furniture': property.hasFurniture,
-          'has_pool': property.hasPool,
-          'has_gym': property.hasGym,
-          'has_security': property.hasSecurity,
-          'has_elevator': property.hasElevator,
-          'is_smart_home': property.isSmartHome,
-          'amenities': property.amenities,
-          'images': property.images,
-          'updated_at': DateTime.now().toIso8601String(),
-        };
+        // Güncelle - toJson tüm alanları içerir
+        final updates = property.toJson();
+        updates.remove('status');
+        updates.remove('is_featured');
+        updates.remove('is_premium');
+        updates['images'] = property.images;
+        updates['updated_at'] = DateTime.now().toIso8601String();
         resultProperty = await propertyService.updateProperty(widget.propertyId!, updates);
       } else {
         // Yeni oluştur
@@ -668,19 +776,24 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
       child: Row(
         children: [
-          GestureDetector(
-            onTap: _previousStep,
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E293B) : Colors.grey[100],
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: isDark ? Colors.white : Colors.grey[800],
-                size: 20,
+          Material(
+            color: isDark ? const Color(0xFF1E293B) : Colors.grey[100],
+            borderRadius: BorderRadius.circular(12),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                _previousStep();
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: SizedBox(
+                width: 44,
+                height: 44,
+                child: Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  color: isDark ? Colors.white : Colors.grey[800],
+                  size: 20,
+                ),
               ),
             ),
           ),
@@ -768,24 +881,36 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
             ),
           ),
           const SizedBox(height: 12),
-          Row(
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: ListingType.values.map((type) {
               final isSelected = _listingType == type;
-              return Expanded(
-                child: GestureDetector(
-                  onTap: () => setState(() => _listingType = type),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    margin: EdgeInsets.only(
-                      right: type == ListingType.sale ? 8 : 0,
-                      left: type == ListingType.rent ? 8 : 0,
-                    ),
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? type.color
-                          : (isDark ? const Color(0xFF1E293B) : Colors.grey[100]),
-                      borderRadius: BorderRadius.circular(16),
+              final icon = switch (type) {
+                ListingType.sale => Icons.sell_rounded,
+                ListingType.rent => Icons.vpn_key_rounded,
+                ListingType.dailyRent => Icons.calendar_today_rounded,
+                ListingType.project => Icons.apartment_rounded,
+              };
+              return SizedBox(
+                width: (MediaQuery.of(context).size.width - 48) / 2,
+                child: Material(
+                  color: isSelected
+                      ? type.color
+                      : (isDark ? const Color(0xFF1E293B) : Colors.grey[100]),
+                  borderRadius: BorderRadius.circular(16),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      setState(() => _listingType = type);
+                    },
+                    borderRadius: BorderRadius.circular(16),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
                       border: isSelected
                           ? null
                           : Border.all(
@@ -804,19 +929,18 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
                     child: Column(
                       children: [
                         Icon(
-                          type == ListingType.sale
-                              ? Icons.sell_rounded
-                              : Icons.vpn_key_rounded,
+                          icon,
                           color: isSelected
                               ? Colors.white
                               : (isDark ? Colors.grey[400] : Colors.grey[600]),
-                          size: 32,
+                          size: 28,
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 8),
                         Text(
                           type.label,
+                          textAlign: TextAlign.center,
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 14,
                             fontWeight: FontWeight.w600,
                             color: isSelected
                                 ? Colors.white
@@ -826,6 +950,7 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
                       ],
                     ),
                   ),
+                ),
                 ),
               );
             }).toList(),
@@ -862,18 +987,25 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
                 data: (types) {
                   final type = types[index];
                   final isSelected = _selectedPropertyTypeName == type.name;
-                  return GestureDetector(
-                    onTap: () => setState(() {
-                      _selectedPropertyTypeName = type.name;
-                      _selectedPropertyTypeModel = type;
-                    }),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? EmlakColors.primary
-                            : (isDark ? const Color(0xFF1E293B) : Colors.grey[100]),
-                        borderRadius: BorderRadius.circular(12),
+                  return Material(
+                    color: isSelected
+                        ? EmlakColors.primary
+                        : (isDark ? const Color(0xFF1E293B) : Colors.grey[100]),
+                    borderRadius: BorderRadius.circular(12),
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        setState(() {
+                          _selectedPropertyTypeName = type.name;
+                          _selectedPropertyTypeModel = type;
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
                         border: isSelected
                             ? null
                             : Border.all(
@@ -907,6 +1039,7 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
                         ],
                       ),
                     ),
+                  ),
                   );
                 },
                 loading: () => _buildFallbackPropertyTypeItem(index, isDark),
@@ -1295,15 +1428,22 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
             children: [
               // GPS Konumu Al
               Expanded(
-                child: GestureDetector(
-                  onTap: _isGettingLocation ? null : _getCurrentLocation,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    decoration: BoxDecoration(
-                      color: EmlakColors.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: EmlakColors.primary),
-                    ),
+                child: Material(
+                  color: EmlakColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: _isGettingLocation ? null : () {
+                      HapticFeedback.selectionClick();
+                      _getCurrentLocation();
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: EmlakColors.primary),
+                      ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -1331,33 +1471,42 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
                     ),
                   ),
                 ),
+                ),
               ),
               const SizedBox(width: 12),
               // Koordinat Gir
               Expanded(
-                child: GestureDetector(
-                  onTap: _showCoordinateDialog,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    decoration: BoxDecoration(
-                      color: EmlakColors.secondary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: EmlakColors.secondary),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.edit_location_alt, color: EmlakColors.secondary, size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Koordinat Gir',
-                          style: TextStyle(
-                            color: EmlakColors.secondary,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
+                child: Material(
+                  color: EmlakColors.secondary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      _showCoordinateDialog();
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: EmlakColors.secondary),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.edit_location_alt, color: EmlakColors.secondary, size: 20),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Koordinat Gir',
+                            style: TextStyle(
+                              color: EmlakColors.secondary,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -1445,14 +1594,16 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
                               ),
                             ),
                           ),
-                          GestureDetector(
+                          InkWell(
                             onTap: () {
+                              HapticFeedback.selectionClick();
                               setState(() {
                                 _selectedLocation = null;
                                 _latitudeController.clear();
                                 _longitudeController.clear();
                               });
                             },
+                            customBorder: const CircleBorder(),
                             child: const Icon(Icons.close, size: 18, color: Colors.grey),
                           ),
                         ],
@@ -1478,26 +1629,14 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
   }
 
   Widget _buildStep4Features(bool isDark) {
-    final features = <Map<String, dynamic>>[
-      {'key': 'parking', 'icon': Icons.local_parking_rounded, 'label': 'Otopark', 'value': _hasParking},
-      {'key': 'balcony', 'icon': Icons.balcony_rounded, 'label': 'Balkon', 'value': _hasBalcony},
-      {'key': 'furniture', 'icon': Icons.chair_rounded, 'label': 'Eşyalı', 'value': _hasFurniture},
-      {'key': 'pool', 'icon': Icons.pool_rounded, 'label': 'Havuz', 'value': _hasPool},
-      {'key': 'gym', 'icon': Icons.fitness_center_rounded, 'label': 'Spor Salonu', 'value': _hasGym},
-      {'key': 'security', 'icon': Icons.security_rounded, 'label': 'Güvenlik', 'value': _hasSecurity},
-      {'key': 'elevator', 'icon': Icons.elevator_rounded, 'label': 'Asansör', 'value': _hasElevator},
-      {'key': 'smartHome', 'icon': Icons.smart_toy_rounded, 'label': 'Akıllı Ev', 'value': _isSmartHome},
-    ];
-
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 10),
-
           Text(
-            'Olanakları Seçin',
+            'Özellikler',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
@@ -1506,110 +1645,159 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
           ),
           const SizedBox(height: 8),
           Text(
-            'Emlağınızda bulunan özellikleri işaretleyin',
+            'Emlağınızın detaylı özelliklerini girin',
             style: TextStyle(
               fontSize: 14,
               color: isDark ? Colors.grey[500] : Colors.grey[600],
             ),
           ),
-
           const SizedBox(height: 20),
+          // Oda Tipi
+          _buildFormDropdown(label: 'Oda Tipi', value: _roomType, items: const ['1+0','1+1','2+1','2+2','3+1','3+2','4+1','4+2','5','5+1','5+2','5+3','5+4','6+1','6+2','6+3','6+4','7+1','7+2','7+3','8+'], onChanged: (v) => setState(() => _roomType = v), isDark: isDark),
+          const SizedBox(height: 16),
+          // Eşya Durumu
+          _buildFormDropdown(label: 'Eşya Durumu', value: _furnitureStatus, items: const ['Eşyasız','Yarı Eşyalı','Eşyalı','Ful Eşyalı','Sadece Beyaz Eşya'], onChanged: (v) => setState(() => _furnitureStatus = v), isDark: isDark),
+          const SizedBox(height: 16),
+          // Isıtma Tipi
+          _buildFormDropdown(label: 'Isıtma Tipi', value: _heatingType, items: const ['Kombi','Merkezi','Yerden Isıtma','Doğalgaz','Klima','Soba','Güneş Enerjisi','Yok'], onChanged: (v) => setState(() => _heatingType = v), isDark: isDark),
+          const SizedBox(height: 16),
+          // Tapu Tipi
+          _buildFormDropdown(label: 'Tapu Tipi', value: _deedType, items: const ['Kat Mülkiyeti','Kat İrtifakı','Arsa Tapusu','Hisseli','Koçan'], onChanged: (v) => setState(() => _deedType = v), isDark: isDark),
+          const SizedBox(height: 16),
+          // Net m²
+          _buildTextField(controller: _netSquareMetersController, label: 'Net m²', hint: '0', isDark: isDark, keyboardType: TextInputType.number),
+          const SizedBox(height: 20),
+          // Toggles
+          _buildFeatureToggle('Takasa Açık', 'isOpenToTrade', isDark),
+          const SizedBox(height: 8),
+          _buildFeatureToggle('Site İçerisinde', 'isInComplex', isDark),
+          const SizedBox(height: 20),
+          // Dış Özellikler
+          _buildFeatureSection(title: 'Dış Özellikler', icon: Icons.home_outlined, features: const [
+            ['hasGarage','Garaj'],['hasGarden','Bahçe'],['hasPrivatePool','Özel Havuz'],
+            ['hasSharedPool','Ortak Havuz'],['hasSecurityCamera','Güvenlik Kamerası'],
+            ['hasTerrace','Teras'],['hasInsulation','Isı Yalıtımı'],['hasWaterTank','Su Deposu'],
+            ['hasWell','Su Kuyusu'],['hasBarbeque','Barbekü'],['hasDoubleGlazing','Çift Cam'],
+            ['hasCoveredParking','Kapalı Otopark'],['hasGenerator','Jeneratör'],
+            ['hasElevator','Asansör'],['hasParking','Otopark'],['hasSandstoneHouse','Taş Ev'],
+          ], isDark: isDark),
+          const SizedBox(height: 12),
+          // İç Özellikler
+          _buildFeatureSection(title: 'İç Özellikler', icon: Icons.chair_outlined, features: const [
+            ['isDuplex','Dubleks'],['hasAirConditioning','Klima'],['hasBalcony','Balkon'],
+            ['hasShutter','Kepenk'],['hasBuiltinKitchen','Ankastre Mutfak'],
+            ['hasBuiltinWardrobe','Gömme Dolap'],['hasIntercom','İnterkom'],
+            ['hasFireplace','Şömine'],['hasCrown','Kartonpiyer'],['hasLaundryRoom','Çamaşır Odası'],
+            ['hasParentBathroom','Ebeveyn Banyosu'],['hasParentCloset','Ebeveyn Giyinme'],
+            ['hasNaturalMarble','Doğal Mermer'],['hasPanelDoor','Panel Kapı'],
+            ['hasParquet','Parke'],['hasShower','Duşakabin'],['hasSteelDoor','Çelik Kapı'],
+            ['hasTvInfra','TV Altyapısı'],['hasVestibule','Vestiyer'],['hasWallpaper','Duvar Kağıdı'],
+            ['hasCeramic','Seramik'],['hasFireAlarm','Yangın Alarmı'],['hasPantry','Kiler'],
+            ['hasSolarPower','Güneş Enerjisi'],['hasHydrophore','Hidrofor'],
+          ], isDark: isDark),
+          const SizedBox(height: 12),
+          // Konum Özellikleri
+          _buildFeatureSection(title: 'Konum Özellikleri', icon: Icons.location_on_outlined, features: const [
+            ['hasCityView','Şehir Manzarası'],['isEastFacing','Doğu Cepheli'],
+            ['isCityCenter','Şehir Merkezi'],['hasMountainView','Dağ Manzarası'],
+            ['hasNatureView','Doğa Manzarası'],['isNorthFacing','Kuzey Cepheli'],
+            ['isSeafront','Denize Sıfır'],['hasSeaView','Deniz Manzarası'],
+            ['isSouthFacing','Güney Cepheli'],['isWestFacing','Batı Cepheli'],
+          ], isDark: isDark),
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
 
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 2.2,
+  Widget _buildFormDropdown({
+    required String label,
+    required String? value,
+    required List<String> items,
+    required ValueChanged<String?> onChanged,
+    required bool isDark,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: isDark ? Colors.grey[300] : Colors.grey[700])),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E293B) : Colors.grey[100],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: isDark ? Colors.grey[800]! : Colors.grey[200]!),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: value,
+              isExpanded: true,
+              hint: Text('Seçiniz', style: TextStyle(color: isDark ? Colors.grey[500] : Colors.grey[400])),
+              dropdownColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+              icon: Icon(Icons.keyboard_arrow_down_rounded, color: isDark ? Colors.grey[400] : Colors.grey[600]),
+              items: items.map((item) => DropdownMenuItem(value: item, child: Text(item, style: TextStyle(color: isDark ? Colors.white : Colors.grey[900])))).toList(),
+              onChanged: onChanged,
             ),
-            itemCount: features.length,
-            itemBuilder: (context, index) {
-              final feature = features[index];
-              final isSelected = feature['value'] as bool;
+          ),
+        ),
+      ],
+    );
+  }
 
-              return GestureDetector(
-                onTap: () {
-                  setState(() {
-                    switch (feature['key']) {
-                      case 'parking':
-                        _hasParking = !_hasParking;
-                      case 'balcony':
-                        _hasBalcony = !_hasBalcony;
-                      case 'furniture':
-                        _hasFurniture = !_hasFurniture;
-                      case 'pool':
-                        _hasPool = !_hasPool;
-                      case 'gym':
-                        _hasGym = !_hasGym;
-                      case 'security':
-                        _hasSecurity = !_hasSecurity;
-                      case 'elevator':
-                        _hasElevator = !_hasElevator;
-                      case 'smartHome':
-                        _isSmartHome = !_isSmartHome;
-                    }
-                  });
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? EmlakColors.primary.withValues(alpha: 0.1)
-                        : (isDark ? const Color(0xFF1E293B) : Colors.grey[100]),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isSelected
-                          ? EmlakColors.primary
-                          : (isDark ? Colors.grey[800]! : Colors.grey[200]!),
-                      width: isSelected ? 2 : 1,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? EmlakColors.primary
-                              : (isDark ? Colors.grey[800] : Colors.grey[200]),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(
-                          feature['icon'] as IconData,
-                          color: isSelected
-                              ? Colors.white
-                              : (isDark ? Colors.grey[400] : Colors.grey[600]),
-                          size: 22,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          feature['label'] as String,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                            color: isSelected
-                                ? EmlakColors.primary
-                                : (isDark ? Colors.white : Colors.grey[800]),
-                          ),
-                        ),
-                      ),
-                      if (isSelected)
-                        Icon(
-                          Icons.check_circle_rounded,
-                          color: EmlakColors.primary,
-                          size: 22,
-                        ),
-                    ],
-                  ),
-                ),
+  Widget _buildFeatureToggle(String label, String key, bool isDark) {
+    final isActive = _features[key] ?? false;
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: isActive ? EmlakColors.primary : (isDark ? Colors.grey[800]! : Colors.grey[200]!)),
+      ),
+      child: SwitchListTile(
+        title: Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: isDark ? Colors.white : Colors.grey[800])),
+        value: isActive,
+        activeColor: EmlakColors.primary,
+        onChanged: (v) => setState(() => _features[key] = v),
+        dense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  Widget _buildFeatureSection({
+    required String title,
+    required IconData icon,
+    required List<List<String>> features,
+    required bool isDark,
+  }) {
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        leading: Icon(icon, color: EmlakColors.primary, size: 22),
+        title: Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.grey[900])),
+        tilePadding: const EdgeInsets.symmetric(horizontal: 16),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        children: [
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: features.map((f) {
+              final key = f[0];
+              final lbl = f[1];
+              final sel = _features[key] ?? false;
+              return FilterChip(
+                label: Text(lbl),
+                selected: sel,
+                onSelected: (v) => setState(() => _features[key] = v),
+                selectedColor: EmlakColors.primary.withValues(alpha: 0.2),
+                checkmarkColor: EmlakColors.primary,
+                labelStyle: TextStyle(color: sel ? EmlakColors.primary : (isDark ? Colors.grey[400] : Colors.grey[700]), fontWeight: sel ? FontWeight.w600 : FontWeight.w400, fontSize: 13),
+                backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.grey[100],
+                side: BorderSide(color: sel ? EmlakColors.primary : (isDark ? Colors.grey[700]! : Colors.grey[300]!)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               );
-            },
+            }).toList(),
           ),
         ],
       ),
@@ -1648,18 +1836,25 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
             children: [
               // Gallery Button
               Expanded(
-                child: GestureDetector(
-                  onTap: _addPhotos,
-                  child: Container(
-                    height: 140,
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1E293B) : Colors.grey[100],
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: EmlakColors.primary.withValues(alpha: 0.5),
-                        width: 2,
+                child: Material(
+                  color: isDark ? const Color(0xFF1E293B) : Colors.grey[100],
+                  borderRadius: BorderRadius.circular(16),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      _addPhotos();
+                    },
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      height: 140,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: EmlakColors.primary.withValues(alpha: 0.5),
+                          width: 2,
+                        ),
                       ),
-                    ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -1697,22 +1892,30 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
                     ),
                   ),
                 ),
+                ),
               ),
               const SizedBox(width: 12),
               // Camera Button
               Expanded(
-                child: GestureDetector(
-                  onTap: _takePhoto,
-                  child: Container(
-                    height: 140,
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1E293B) : Colors.grey[100],
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: EmlakColors.secondary.withValues(alpha: 0.5),
-                        width: 2,
+                child: Material(
+                  color: isDark ? const Color(0xFF1E293B) : Colors.grey[100],
+                  borderRadius: BorderRadius.circular(16),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      _takePhoto();
+                    },
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      height: 140,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: EmlakColors.secondary.withValues(alpha: 0.5),
+                          width: 2,
+                        ),
                       ),
-                    ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -1749,6 +1952,7 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
                       ],
                     ),
                   ),
+                ),
                 ),
               ),
             ],
@@ -1842,26 +2046,29 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
                     Positioned(
                       top: 4,
                       right: 4,
-                      child: GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            if (isExisting) {
-                              _existingImageUrls.removeAt(index);
-                            } else {
-                              _uploadedImages.removeAt(index - _existingImageUrls.length);
-                            }
-                          });
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: Colors.red,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.close,
-                            color: Colors.white,
-                            size: 16,
+                      child: Material(
+                        color: Colors.red,
+                        shape: const CircleBorder(),
+                        clipBehavior: Clip.antiAlias,
+                        child: InkWell(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setState(() {
+                              if (isExisting) {
+                                _existingImageUrls.removeAt(index);
+                              } else {
+                                _uploadedImages.removeAt(index - _existingImageUrls.length);
+                              }
+                            });
+                          },
+                          customBorder: const CircleBorder(),
+                          child: const Padding(
+                            padding: EdgeInsets.all(4),
+                            child: Icon(
+                              Icons.close,
+                              color: Colors.white,
+                              size: 16,
+                            ),
                           ),
                         ),
                       ),
@@ -1902,17 +2109,24 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
   Widget _buildFallbackPropertyTypeItem(int index, bool isDark) {
     final type = PropertyType.values[index];
     final isSelected = _selectedPropertyTypeName == type.name;
-    return GestureDetector(
-      onTap: () => setState(() {
-        _selectedPropertyTypeName = type.name;
-      }),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? EmlakColors.primary
-              : (isDark ? const Color(0xFF1E293B) : Colors.grey[100]),
-          borderRadius: BorderRadius.circular(12),
+    return Material(
+      color: isSelected
+          ? EmlakColors.primary
+          : (isDark ? const Color(0xFF1E293B) : Colors.grey[100]),
+      borderRadius: BorderRadius.circular(12),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          setState(() {
+            _selectedPropertyTypeName = type.name;
+          });
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
           border: isSelected
               ? null
               : Border.all(
@@ -1945,6 +2159,7 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
             ),
           ],
         ),
+      ),
       ),
     );
   }
@@ -2036,23 +2251,32 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
         children: [
           if (_currentStep > 0)
             Expanded(
-              child: GestureDetector(
-                onTap: _previousStep,
-                child: Container(
-                  height: 56,
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
+              child: Material(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(16),
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    _previousStep();
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    height: 56,
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Center(
-                    child: Text(
-                      'Geri',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: isDark ? Colors.white : Colors.grey[800],
+                    child: Center(
+                      child: Text(
+                        'Geri',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? Colors.white : Colors.grey[800],
+                        ),
                       ),
                     ),
                   ),
@@ -2062,44 +2286,55 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
           if (_currentStep > 0) const SizedBox(width: 16),
           Expanded(
             flex: _currentStep > 0 ? 2 : 1,
-            child: GestureDetector(
-              onTap: _nextStep,
-              child: Container(
-                height: 56,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: EmlakColors.primaryGradient,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: EmlakColors.primary.withValues(alpha: 0.3),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(16),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  _nextStep();
+                },
+                borderRadius: BorderRadius.circular(16),
+                child: Ink(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: EmlakColors.primaryGradient,
                     ),
-                  ],
-                ),
-                child: Center(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        isLastStep ? 'İlanı Yayınla' : 'Devam Et',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: EmlakColors.primary.withValues(alpha: 0.3),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
                       ),
-                      if (!isLastStep) ...[
-                        const SizedBox(width: 8),
-                        const Icon(
-                          Icons.arrow_forward_rounded,
-                          color: Colors.white,
-                          size: 20,
-                        ),
-                      ],
                     ],
+                  ),
+                  child: SizedBox(
+                    height: 56,
+                    child: Center(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            isLastStep ? 'İlanı Yayınla' : 'Devam Et',
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
+                          if (!isLastStep) ...[
+                            const SizedBox(width: 8),
+                            const Icon(
+                              Icons.arrow_forward_rounded,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),

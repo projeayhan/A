@@ -683,34 +683,10 @@ Widget buildSearchResultCard(
                     ),
                   ],
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    gradient: AppColors.primaryGradient,
-                    borderRadius:
-                        BorderRadius.circular(12),
-                  ),
-                  child: const Row(
-                    children: [
-                      Text(
-                        'Sec',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      SizedBox(width: 6),
-                      Icon(
-                        Icons.arrow_forward,
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                    ],
-                  ),
+                Icon(
+                  Icons.chevron_right,
+                  color: theme.colorScheme.primary,
+                  size: 28,
                 ),
               ],
             ),

@@ -46,6 +46,40 @@ class PropertyService {
   SupabaseClient get _client => Supabase.instance.client;
   String? get _userId => _client.auth.currentUser?.id;
 
+  // Kur cache'i
+  Map<String, double>? _exchangeRates;
+  DateTime? _ratesLastFetched;
+
+  /// Döviz kurlarını çek (4 saat cache - DB günde 6 kez güncelleniyor)
+  Future<Map<String, double>> getExchangeRates() async {
+    if (_exchangeRates != null && _ratesLastFetched != null &&
+        DateTime.now().difference(_ratesLastFetched!).inHours < 4) {
+      return _exchangeRates!;
+    }
+    try {
+      final response = await _client.from('exchange_rates').select('currency, rate_to_usd');
+      final rates = <String, double>{};
+      for (final row in (response as List)) {
+        rates[row['currency'] as String] = double.parse(row['rate_to_usd'].toString());
+      }
+      if (rates.isNotEmpty) {
+        _exchangeRates = rates;
+        _ratesLastFetched = DateTime.now();
+      }
+      return rates;
+    } catch (e) {
+      debugPrint('Kur çekme hatası: $e');
+      return _exchangeRates ?? {'TL': 0.023, 'USD': 1.0, 'EUR': 1.18, 'GBP': 1.35};
+    }
+  }
+
+  /// Fiyatı bir para biriminden diğerine çevir
+  double _convertPrice(double price, String fromCurrency, String toCurrency, Map<String, double> rates) {
+    final fromRate = rates[fromCurrency] ?? 1.0;
+    final toRate = rates[toCurrency] ?? 1.0;
+    return price * fromRate / toRate;
+  }
+
   // ==================== İLAN SORGULAMA ====================
 
   /// Tüm aktif ilanları getir
@@ -121,11 +155,41 @@ class PropertyService {
       if (filter.district != null) {
         query = query.eq('district', filter.district!);
       }
-      if (filter.minPrice != null) {
-        query = query.gte('price', filter.minPrice!);
-      }
-      if (filter.maxPrice != null) {
-        query = query.lte('price', filter.maxPrice!);
+      // Fiyat + Para birimi (cross-currency dönüşüm)
+      final hasCurrency = filter.currency != null && filter.currency!.isNotEmpty;
+      final hasPrice = filter.minPrice != null || filter.maxPrice != null;
+
+      if (hasCurrency && hasPrice) {
+        // Cross-currency: fiyat aralığını tüm para birimlerine çevir
+        final rates = await getExchangeRates();
+        final selectedCur = filter.currency!;
+        const currencies = ['TL', 'USD', 'EUR', 'GBP'];
+        final orParts = <String>[];
+
+        for (final cur in currencies) {
+          final conditions = <String>['currency.eq.$cur'];
+          if (filter.minPrice != null) {
+            final converted = _convertPrice(filter.minPrice!, selectedCur, cur, rates);
+            conditions.add('price.gte.${converted.round()}');
+          }
+          if (filter.maxPrice != null) {
+            final converted = _convertPrice(filter.maxPrice!, selectedCur, cur, rates);
+            conditions.add('price.lte.${converted.round()}');
+          }
+          orParts.add('and(${conditions.join(',')})');
+        }
+        query = query.or(orParts.join(','));
+      } else if (hasCurrency) {
+        // Sadece para birimi seçilmiş, fiyat aralığı yok
+        query = query.eq('currency', filter.currency!);
+      } else if (hasPrice) {
+        // Sadece fiyat aralığı, para birimi yok
+        if (filter.minPrice != null) {
+          query = query.gte('price', filter.minPrice!);
+        }
+        if (filter.maxPrice != null) {
+          query = query.lte('price', filter.maxPrice!);
+        }
       }
       // Oda tipi - çoklu seçim
       if (filter.roomTypes?.isNotEmpty == true) {
@@ -137,13 +201,33 @@ class PropertyService {
       if (filter.maxSquareMeters != null) {
         query = query.lte('square_meters', filter.maxSquareMeters!);
       }
+      // Bina yaşı - çoklu seçim (aralıklı)
+      if (filter.buildingAges?.isNotEmpty == true) {
+        final conditions = <String>[];
+        for (final age in filter.buildingAges!) {
+          if (age == 'project') {
+            conditions.add('building_age.is.null');
+          } else if (age.contains('-')) {
+            final parts = age.split('-');
+            final min = int.parse(parts[0]);
+            final max = int.parse(parts[1]);
+            conditions.add('and(building_age.gte.$min,building_age.lte.$max)');
+          } else if (age.endsWith('+')) {
+            final min = int.parse(age.replaceAll('+', ''));
+            conditions.add('building_age.gte.$min');
+          } else {
+            conditions.add('building_age.eq.${int.parse(age)}');
+          }
+        }
+        query = query.or(conditions.join(','));
+      }
       // Kat - çoklu seçim
       if (filter.floors?.isNotEmpty == true) {
         query = query.inFilter('floor', filter.floors!.toList());
       }
       // Eşya durumu - çoklu seçim
       if (filter.furnitureStatuses?.isNotEmpty == true) {
-        query = query.inFilter('interior_status', filter.furnitureStatuses!.toList());
+        query = query.inFilter('furniture_status', filter.furnitureStatuses!.toList());
       }
       // İlan sahibi
       if (filter.ownerTypes?.isNotEmpty == true) {
@@ -296,6 +380,30 @@ class PropertyService {
     );
   }
 
+  /// Öne çıkan + premium ilanları birlikte getir
+  Future<List<Property>> getFeaturedAndPremiumProperties({
+    String? city,
+    int limit = 100,
+  }) async {
+    var query = _client
+        .from('properties')
+        .select(_selectWithRealtor)
+        .eq('status', 'active')
+        .or('is_premium.eq.true,is_featured.eq.true');
+
+    if (city != null && city.isNotEmpty) {
+      query = query.eq('city', city);
+    }
+
+    final response = await query
+        .order('is_premium', ascending: false)
+        .order('is_featured', ascending: false)
+        .order('created_at', ascending: false)
+        .limit(limit);
+
+    return (response as List).map((json) => Property.fromJson(json)).toList();
+  }
+
   /// İlan detayını getir
   Future<Property?> getPropertyById(String propertyId) async {
     return _cache.getOrFetch<Property?>(
@@ -354,6 +462,9 @@ class PropertyService {
       if (filter.listingType != null) {
         query = query.eq('listing_type', filter.listingType!.name);
       }
+      if (filter.type != null) {
+        query = query.eq('property_type', filter.type!.name);
+      }
       if (filter.selectedPropertyTypes?.isNotEmpty == true) {
         query = query.inFilter('property_type', filter.selectedPropertyTypes!.toList());
       }
@@ -363,6 +474,28 @@ class PropertyService {
       if (filter.maxPrice != null) {
         query = query.lte('price', filter.maxPrice!);
       }
+      if (filter.minSquareMeters != null) {
+        query = query.gte('square_meters', filter.minSquareMeters!);
+      }
+      if (filter.maxSquareMeters != null) {
+        query = query.lte('square_meters', filter.maxSquareMeters!);
+      }
+      if (filter.roomTypes?.isNotEmpty == true) {
+        query = query.inFilter('room_type', filter.roomTypes!.toList());
+      }
+      // Boolean feature filters
+      if (filter.hasPrivatePool == true) query = query.eq('has_private_pool', true);
+      if (filter.hasSharedPool == true) query = query.eq('has_shared_pool', true);
+      if (filter.isSeafront == true) query = query.eq('is_seafront', true);
+      if (filter.hasSeaView == true) query = query.eq('has_sea_view', true);
+      if (filter.hasGarden == true) query = query.eq('has_garden', true);
+      if (filter.hasGarage == true) query = query.eq('has_garage', true);
+      if (filter.hasElevator == true) query = query.eq('has_elevator', true);
+      if (filter.hasParking == true) query = query.eq('has_parking', true);
+      if (filter.hasTerrace == true) query = query.eq('has_terrace', true);
+      if (filter.hasBalcony == true) query = query.eq('has_balcony', true);
+      if (filter.hasAirConditioning == true) query = query.eq('has_air_conditioning', true);
+      if (filter.hasSecurityCamera == true) query = query.eq('has_security_camera', true);
     }
 
     final response = await query

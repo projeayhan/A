@@ -41,6 +41,7 @@ import '../../screens/emlak/property_search_screen.dart';
 import '../../screens/emlak/add_property_screen.dart';
 import '../../screens/emlak/my_property_listings_screen.dart';
 import '../../screens/emlak/emlak_favorites_screen.dart';
+import '../../screens/emlak/featured_properties_screen.dart';
 import '../../screens/emlak/chat_list_screen.dart';
 import '../../screens/emlak/chat_screen.dart';
 import '../../screens/car_sales/car_sales_home_screen.dart';
@@ -100,6 +101,7 @@ class AppRoutes {
   static const String emlakAdd = '/emlak/add';
   static const String emlakMyListings = '/emlak/my-listings';
   static const String emlakFavorites = '/emlak/favorites';
+  static const String emlakFeatured = '/emlak/featured';
   static const String emlakChats = '/emlak/chats';
   static const String emlakChat = '/emlak/chat/:conversationId';
 
@@ -506,6 +508,15 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: AppRoutes.emlakFavorites,
             name: 'emlakFavorites',
             builder: (context, state) => const EmlakFavoritesScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.emlakFeatured,
+            name: 'emlakFeatured',
+            builder: (context, state) {
+              final extra = state.extra as Map<String, dynamic>?;
+              final city = extra?['city'] as String?;
+              return FeaturedPropertiesScreen(city: city);
+            },
           ),
           GoRoute(
             path: AppRoutes.emlakChats,

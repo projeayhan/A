@@ -1,9 +1,11 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/name_masking.dart';
 import '../../models/rental/rental_models.dart';
+import '../../widgets/common/shimmer_widgets.dart';
 import 'booking_screen.dart';
 import 'all_reviews_screen.dart';
 
@@ -55,6 +57,10 @@ class _CarDetailScreenState extends State<CarDetailScreen>
   List<RentalReview> _reviews = [];
   RatingsSummary? _ratingsSummary;
   bool _isLoadingReviews = true;
+
+  // Collapsible sections
+  bool _isFeaturesExpanded = false;
+  bool _isSpecsExpanded = true;
 
   @override
   void initState() {
@@ -159,7 +165,12 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                 borderRadius: BorderRadius.circular(14),
               ),
             ),
-            onPressed: () {},
+            onPressed: () {
+              final c = widget.car;
+              SharePlus.instance.share(
+                ShareParams(text: '${c.brandName} ${c.model} - ₺${c.discountedDailyPrice.toInt()}/gün\nSuperCyp\'de kirala!'),
+              );
+            },
           ),
           const SizedBox(width: 8),
           Padding(
@@ -626,6 +637,85 @@ class _CarDetailScreenState extends State<CarDetailScreen>
     );
   }
 
+  Widget _buildCollapsibleSection({
+    required ThemeData theme,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool isExpanded,
+    required VoidCallback onToggle,
+    required Widget content,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Card(
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: theme.dividerColor),
+        ),
+        child: Column(
+          children: [
+            InkWell(
+              onTap: onToggle,
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  children: [
+                    Icon(icon, color: theme.colorScheme.primary, size: 22),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                          ),
+                          if (!isExpanded && subtitle.isNotEmpty)
+                            Text(
+                              subtitle,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    AnimatedRotation(
+                      turns: isExpanded ? 0.5 : 0,
+                      duration: const Duration(milliseconds: 200),
+                      child: Icon(
+                        Icons.expand_more,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeInOut,
+              child: isExpanded
+                  ? Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 0, 14, 14),
+                      child: content,
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildFeaturesSection(RentalCar car, ThemeData theme) {
     final features = CarFeature.allFeatures
         .where((f) => car.featureIds.contains(f.id))
@@ -638,47 +728,38 @@ class _CarDetailScreenState extends State<CarDetailScreen>
           offset: Offset(0, _slideAnimation.value * 1.2),
           child: Opacity(
             opacity: _fadeAnimation.value,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '\u00D6zellikler',
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.onSurface,
+            child: _buildCollapsibleSection(
+              theme: theme,
+              icon: Icons.auto_awesome,
+              title: '\u00D6zellikler',
+              subtitle: '${features.length} \u00F6zellik',
+              isExpanded: _isFeaturesExpanded,
+              onToggle: () => setState(() => _isFeaturesExpanded = !_isFeaturesExpanded),
+              content: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: features.map((feature) {
+                  return Chip(
+                    avatar: Icon(
+                      _getFeatureIcon(feature.icon),
+                      color: theme.colorScheme.primary,
+                      size: 18,
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: features.map((feature) {
-                      return Chip(
-                        avatar: Icon(
-                          _getFeatureIcon(feature.icon),
-                          color: theme.colorScheme.primary,
-                          size: 18,
-                        ),
-                        label: Text(
-                          feature.name,
-                          style: TextStyle(
-                            color: theme.colorScheme.onSurface,
-                            fontSize: 13,
-                          ),
-                        ),
-                        backgroundColor: theme.cardColor,
-                        side: BorderSide(color: AppColors.borderLight),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                      );
-                    }).toList(),
-                  ),
-                ],
+                    label: Text(
+                      feature.name,
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurface,
+                        fontSize: 13,
+                      ),
+                    ),
+                    backgroundColor: theme.cardColor,
+                    side: BorderSide(color: AppColors.borderLight),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                  );
+                }).toList(),
               ),
             ),
           ),
@@ -688,6 +769,16 @@ class _CarDetailScreenState extends State<CarDetailScreen>
   }
 
   Widget _buildSpecificationsSection(RentalCar car, ThemeData theme) {
+    final specs = [
+      _SpecItem(Icons.directions_car, car.brandName, 'Marka'),
+      _SpecItem(Icons.local_offer, car.model, 'Model'),
+      _SpecItem(Icons.calendar_today, car.year.toString(), 'Y\u0131l'),
+      _SpecItem(Icons.speed, car.transmissionName, '\u015Eanz\u0131man'),
+      _SpecItem(Icons.local_gas_station, car.fuelTypeName, 'Yak\u0131t'),
+      _SpecItem(Icons.event_seat, '${car.seats} ki\u015Fi', 'Koltuk'),
+      _SpecItem(Icons.sensor_door, '${car.doors} kap\u0131', 'Kap\u0131'),
+    ];
+
     return AnimatedBuilder(
       animation: _mainController,
       builder: (context, child) {
@@ -695,51 +786,21 @@ class _CarDetailScreenState extends State<CarDetailScreen>
           offset: Offset(0, _slideAnimation.value * 1.4),
           child: Opacity(
             opacity: _fadeAnimation.value,
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Teknik \u00D6zellikler',
-                    style: TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Card(
-                    elevation: 1,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(14),
-                      child: Column(
-                        children: [
-                          _buildSpecRow('Marka', car.brandName, theme),
-                          _buildSpecDivider(),
-                          _buildSpecRow('Model', car.model, theme),
-                          _buildSpecDivider(),
-                          _buildSpecRow('Y\u0131l', car.year.toString(), theme),
-                          _buildSpecDivider(),
-                          _buildSpecRow('Renk', car.color, theme),
-                          _buildSpecDivider(),
-                          _buildSpecRow('Kap\u0131 Say\u0131s\u0131', '${car.doors} kap\u0131', theme),
-                          _buildSpecDivider(),
-                          _buildSpecRow('Kilometre', '${car.mileage} km', theme),
-                          _buildSpecDivider(),
-                          _buildSpecRow(
-                            'S\u0131n\u0131rs\u0131z Km',
-                            car.hasUnlimitedMileage ? 'Evet' : 'Hay\u0131r',
-                            theme,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+            child: _buildCollapsibleSection(
+              theme: theme,
+              icon: Icons.build_circle_outlined,
+              title: 'Teknik \u00D6zellikler',
+              subtitle: '${car.brandName} \u00B7 ${car.transmissionName} \u00B7 ${car.fuelTypeName}',
+              isExpanded: _isSpecsExpanded,
+              onToggle: () => setState(() => _isSpecsExpanded = !_isSpecsExpanded),
+              content: GridView.count(
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                childAspectRatio: 2.2,
+                children: specs.map((spec) => _buildSpecGridItem(spec, theme)).toList(),
               ),
             ),
           ),
@@ -748,36 +809,44 @@ class _CarDetailScreenState extends State<CarDetailScreen>
     );
   }
 
-  Widget _buildSpecRow(String label, String value, ThemeData theme) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+  Widget _buildSpecGridItem(_SpecItem spec, ThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(10),
+      ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: theme.colorScheme.onSurfaceVariant,
-              fontSize: 14,
-            ),
-          ),
-          Text(
-            value,
-            style: TextStyle(
-              color: theme.colorScheme.onSurface,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
+          Icon(spec.icon, color: theme.colorScheme.primary, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  spec.value,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  spec.label,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildSpecDivider() {
-    return Divider(
-      color: Colors.grey.shade200,
-      height: 1,
     );
   }
 
@@ -858,18 +927,7 @@ class _CarDetailScreenState extends State<CarDetailScreen>
   }
 
   Widget _buildLoadingRatingSummary(ThemeData theme) {
-    return Card(
-      elevation: 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Center(
-          child: CircularProgressIndicator(color: theme.colorScheme.primary),
-        ),
-      ),
-    );
+    return const ShimmerRatingSummary();
   }
 
   Widget _buildRatingSummaryCard(ThemeData theme) {
@@ -1280,4 +1338,11 @@ class _CarDetailScreenState extends State<CarDetailScreen>
         return Icons.check_circle;
     }
   }
+}
+
+class _SpecItem {
+  final IconData icon;
+  final String value;
+  final String label;
+  const _SpecItem(this.icon, this.value, this.label);
 }

@@ -361,7 +361,8 @@
       "WebFetch(domain:developers.google.com)",
       "Bash(mcp__supabase__execute_sql graphql_query=\"{ searchDocs\\(query: \"\"store_messages\"\", limit: 5\\) { nodes { ... on Guide { title href } } } }\")",
       "Bash(Select-String \"error\")",
-      "Bash(Select-Object -First 20)"
+      "Bash(Select-Object -First 20)",
+      "Bash(Select-String:*)"
     ]
   }
 }

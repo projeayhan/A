@@ -150,21 +150,24 @@ class _MyPropertyListingsScreenState extends ConsumerState<MyPropertyListingsScr
       confirmDismiss: (direction) async {
         return await _showDeleteConfirmation();
       },
-      child: GestureDetector(
-        onTap: () => context.push('/emlak/property/${property.id}'),
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          decoration: BoxDecoration(
-            color: EmlakColors.card(isDark),
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: Material(
+          color: EmlakColors.card(isDark),
+          borderRadius: BorderRadius.circular(16),
+          clipBehavior: Clip.antiAlias,
+          elevation: 2,
+          shadowColor: Colors.black.withValues(alpha: 0.05),
+          child: InkWell(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              context.push('/emlak/property/${property.id}');
+            },
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
               ),
-            ],
-          ),
           child: Column(
             children: [
               // Image and Status Badge
@@ -365,6 +368,8 @@ class _MyPropertyListingsScreenState extends ConsumerState<MyPropertyListingsScr
           ),
         ),
       ),
+      ),
+      ),
     );
   }
 
@@ -516,33 +521,44 @@ class _MyPropertyListingsScreenState extends ConsumerState<MyPropertyListingsScr
             ),
             if (status == 'active') ...[
               const SizedBox(height: 24),
-              GestureDetector(
-                onTap: () => context.push('/emlak/add'),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 14,
-                  ),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [EmlakColors.primary, const Color(0xFF059669)],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.add, color: Colors.white),
-                      SizedBox(width: 8),
-                      Text(
-                        'İlan Ver',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+              Material(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(12),
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    context.push('/emlak/add');
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Ink(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [EmlakColors.primary, const Color(0xFF059669)],
                       ),
-                    ],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 14,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.add, color: Colors.white),
+                          SizedBox(width: 8),
+                          Text(
+                            'İlan Ver',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),

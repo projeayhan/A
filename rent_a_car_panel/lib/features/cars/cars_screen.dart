@@ -879,11 +879,11 @@ class _AddCarDialogState extends State<_AddCarDialog> {
 
   bool _isLoading = false;
 
-  // Image upload state
+  // Image upload state - multiple images (up to 10)
   String _imageSource = 'url'; // 'url' or 'upload'
-  PlatformFile? _selectedFile;
+  final List<String> _uploadedImageUrls = [];
   bool _isUploadingImage = false;
-  String? _uploadedImageUrl;
+  final _imageUrlController2 = TextEditingController(); // for single URL add
 
   @override
   void dispose() {
@@ -893,6 +893,7 @@ class _AddCarDialogState extends State<_AddCarDialog> {
     _plateController.dispose();
     _dailyPriceController.dispose();
     _imageUrlController.dispose();
+    _imageUrlController2.dispose();
     super.dispose();
   }
 
@@ -1087,12 +1088,26 @@ class _AddCarDialogState extends State<_AddCarDialog> {
                 const SizedBox(height: 16),
 
                 // Image section
-                const Text(
-                  'Araç Görseli',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
+                Row(
+                  children: [
+                    const Text(
+                      'Araç Görselleri',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${_uploadedImageUrls.length}/10',
+                      style: TextStyle(
+                        color: _uploadedImageUrls.length >= 10
+                            ? AppColors.error
+                            : AppColors.textMuted,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 12),
 
@@ -1103,13 +1118,7 @@ class _AddCarDialogState extends State<_AddCarDialog> {
                       label: const Text('URL ile ekle'),
                       selected: _imageSource == 'url',
                       onSelected: (selected) {
-                        if (selected) {
-                          setState(() {
-                            _imageSource = 'url';
-                            _selectedFile = null;
-                            _uploadedImageUrl = null;
-                          });
-                        }
+                        if (selected) setState(() => _imageSource = 'url');
                       },
                     ),
                     const SizedBox(width: 8),
@@ -1117,30 +1126,55 @@ class _AddCarDialogState extends State<_AddCarDialog> {
                       label: const Text('Dosya yükle'),
                       selected: _imageSource == 'upload',
                       onSelected: (selected) {
-                        if (selected) {
-                          setState(() {
-                            _imageSource = 'upload';
-                            _imageUrlController.clear();
-                          });
-                        }
+                        if (selected) setState(() => _imageSource = 'upload');
                       },
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
 
-                // URL input or file upload
+                // URL input
                 if (_imageSource == 'url')
-                  TextFormField(
-                    controller: _imageUrlController,
-                    decoration: const InputDecoration(
-                      labelText: 'Görsel URL',
-                      hintText: 'https://...',
-                      prefixIcon: Icon(Icons.link),
-                    ),
-                  )
-                else
-                  _buildImageUploadSection(),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _imageUrlController,
+                          decoration: const InputDecoration(
+                            labelText: 'Görsel URL',
+                            hintText: 'https://...',
+                            prefixIcon: Icon(Icons.link),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton.filled(
+                        onPressed: _uploadedImageUrls.length >= 10
+                            ? null
+                            : () {
+                                final url = _imageUrlController.text.trim();
+                                if (url.isNotEmpty && Uri.tryParse(url)?.hasAbsolutePath == true) {
+                                  setState(() {
+                                    _uploadedImageUrls.add(url);
+                                    _imageUrlController.clear();
+                                  });
+                                }
+                              },
+                        icon: const Icon(Icons.add),
+                        tooltip: 'URL ekle',
+                      ),
+                    ],
+                  ),
+
+                // File upload button
+                if (_imageSource == 'upload')
+                  _buildFileUploadButton(),
+
+                const SizedBox(height: 12),
+
+                // Uploaded images grid
+                if (_uploadedImageUrls.isNotEmpty)
+                  _buildImageGrid(),
                 const SizedBox(height: 24),
 
                 // Buttons
@@ -1173,168 +1207,170 @@ class _AddCarDialogState extends State<_AddCarDialog> {
     );
   }
 
-  Widget _buildImageUploadSection() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        border: Border.all(color: AppColors.textMuted.withValues(alpha: 0.3)),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        children: [
-          if (_selectedFile != null || _uploadedImageUrl != null) ...[
-            // Preview
-            Container(
-              height: 120,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: AppColors.surfaceLight,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: _uploadedImageUrl != null
-                  ? Image.network(
-                      _uploadedImageUrl!,
-                      fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) => const Icon(
-                        Icons.broken_image,
-                        size: 48,
-                        color: AppColors.textMuted,
-                      ),
-                    )
-                  : _selectedFile?.bytes != null
-                      ? Image.memory(
-                          _selectedFile!.bytes!,
-                          fit: BoxFit.contain,
-                        )
-                      : const Icon(
-                          Icons.image,
-                          size: 48,
-                          color: AppColors.textMuted,
-                        ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (_uploadedImageUrl != null)
-                  const Row(
-                    children: [
-                      Icon(Icons.check_circle, color: AppColors.success, size: 16),
-                      SizedBox(width: 4),
-                      Text('Yüklendi', style: TextStyle(color: AppColors.success)),
-                    ],
-                  )
-                else if (_selectedFile != null)
+  Widget _buildFileUploadButton() {
+    return InkWell(
+      onTap: (_isUploadingImage || _uploadedImageUrls.length >= 10)
+          ? null
+          : _pickImages,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        height: 80,
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: AppColors.surfaceLight,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: AppColors.primary.withValues(alpha: 0.3),
+          ),
+        ),
+        child: _isUploadingImage
+            ? const Center(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    SizedBox(width: 12),
+                    Text('Yükleniyor...'),
+                  ],
+                ),
+              )
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.cloud_upload_outlined,
+                    size: 32,
+                    color: AppColors.primary,
+                  ),
+                  const SizedBox(height: 4),
                   Text(
-                    _selectedFile!.name,
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    _uploadedImageUrls.length >= 10
+                        ? 'Maksimum 10 görsel eklendi'
+                        : 'Resim seçmek için tıklayın (birden fazla seçebilirsiniz)',
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
                   ),
-                const SizedBox(width: 12),
-                TextButton.icon(
-                  onPressed: () {
-                    setState(() {
-                      _selectedFile = null;
-                      _uploadedImageUrl = null;
-                    });
-                  },
-                  icon: const Icon(Icons.close, size: 16),
-                  label: const Text('Kaldır'),
-                  style: TextButton.styleFrom(foregroundColor: AppColors.error),
-                ),
-              ],
-            ),
-          ] else ...[
-            // Upload button
-            InkWell(
-              onTap: _isUploadingImage ? null : _pickImage,
-              borderRadius: BorderRadius.circular(8),
-              child: Container(
-                height: 120,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceLight,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: AppColors.primary.withValues(alpha: 0.3),
-                    style: BorderStyle.solid,
+                  const Text(
+                    'JPG, PNG, GIF, WEBP (max 5MB)',
+                    style: TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 11,
+                    ),
                   ),
-                ),
-                child: _isUploadingImage
-                    ? const Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            CircularProgressIndicator(),
-                            SizedBox(height: 8),
-                            Text('Yükleniyor...'),
-                          ],
-                        ),
-                      )
-                    : const Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.cloud_upload_outlined,
-                            size: 40,
-                            color: AppColors.primary,
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            'Resim seçmek için tıklayın',
-                            style: TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 13,
-                            ),
-                          ),
-                          SizedBox(height: 4),
-                          Text(
-                            'JPG, PNG, GIF, WEBP (max 5MB)',
-                            style: TextStyle(
-                              color: AppColors.textMuted,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ],
-                      ),
+                ],
               ),
-            ),
-          ],
-        ],
       ),
     );
   }
 
-  Future<void> _pickImage() async {
+  Widget _buildImageGrid() {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: List.generate(_uploadedImageUrls.length, (index) {
+        final url = _uploadedImageUrls[index];
+        return Stack(
+          children: [
+            Container(
+              width: 100,
+              height: 80,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: index == 0
+                      ? AppColors.primary
+                      : AppColors.textMuted.withValues(alpha: 0.3),
+                  width: index == 0 ? 2 : 1,
+                ),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Image.network(
+                url,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const Icon(
+                  Icons.broken_image,
+                  color: AppColors.textMuted,
+                ),
+              ),
+            ),
+            // Index badge
+            if (index == 0)
+              Positioned(
+                left: 4,
+                top: 4,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'Kapak',
+                    style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            // Remove button
+            Positioned(
+              right: 2,
+              top: 2,
+              child: InkWell(
+                onTap: () {
+                  setState(() => _uploadedImageUrls.removeAt(index));
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: const BoxDecoration(
+                    color: AppColors.error,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.close, size: 14, color: Colors.white),
+                ),
+              ),
+            ),
+          ],
+        );
+      }),
+    );
+  }
+
+  Future<void> _pickImages() async {
+    final remaining = 10 - _uploadedImageUrls.length;
+    if (remaining <= 0) return;
+
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.image,
-        allowMultiple: false,
+        allowMultiple: true,
         withData: true,
       );
 
       if (result != null && result.files.isNotEmpty) {
-        final file = result.files.first;
+        final files = result.files.take(remaining).toList();
 
-        // Check file size (max 5MB)
-        if (file.size > 5 * 1024 * 1024) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Dosya boyutu 5MB\'dan küçük olmalıdır'),
-                backgroundColor: AppColors.error,
-              ),
-            );
+        for (final file in files) {
+          if (file.size > 5 * 1024 * 1024) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('${file.name}: 5MB\'dan büyük, atlandı'),
+                  backgroundColor: AppColors.warning,
+                ),
+              );
+            }
+            continue;
           }
-          return;
+
+          if (file.bytes == null) continue;
+
+          await _uploadSingleImage(file);
         }
-
-        setState(() {
-          _selectedFile = file;
-        });
-
-        // Upload to Supabase Storage
-        await _uploadImage(file);
       }
     } catch (e) {
       if (mounted) {
@@ -1345,7 +1381,7 @@ class _AddCarDialogState extends State<_AddCarDialog> {
     }
   }
 
-  Future<void> _uploadImage(PlatformFile file) async {
+  Future<void> _uploadSingleImage(PlatformFile file) async {
     if (file.bytes == null) return;
 
     setState(() => _isUploadingImage = true);
@@ -1363,7 +1399,7 @@ class _AddCarDialogState extends State<_AddCarDialog> {
           .getPublicUrl(path);
 
       setState(() {
-        _uploadedImageUrl = publicUrl;
+        _uploadedImageUrls.add(publicUrl);
         _isUploadingImage = false;
       });
     } catch (e) {
@@ -1382,15 +1418,9 @@ class _AddCarDialogState extends State<_AddCarDialog> {
   void _save() {
     if (!_formKey.currentState!.validate()) return;
 
-    // Determine image URL
-    String? imageUrl;
-    if (_imageSource == 'url') {
-      imageUrl = _imageUrlController.text.trim().isEmpty
-          ? null
-          : _imageUrlController.text.trim();
-    } else {
-      imageUrl = _uploadedImageUrl;
-    }
+    // First image is the cover (image_url), all go into images array
+    final String? coverUrl =
+        _uploadedImageUrls.isNotEmpty ? _uploadedImageUrls.first : null;
 
     setState(() => _isLoading = true);
 
@@ -1406,7 +1436,8 @@ class _AddCarDialogState extends State<_AddCarDialog> {
       'fuel_type': _fuelType,
       'seats': _seats,
       'doors': _doors,
-      'image_url': imageUrl,
+      'image_url': coverUrl,
+      'images': _uploadedImageUrls,
       'status': 'available',
       'is_active': true,
     });

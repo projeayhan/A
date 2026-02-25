@@ -28,10 +28,7 @@ class PropertyDetailScreen extends ConsumerStatefulWidget {
   ConsumerState<PropertyDetailScreen> createState() => _PropertyDetailScreenState();
 }
 
-class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen>
-    with TickerProviderStateMixin {
-  late AnimationController _fadeController;
-  late AnimationController _slideController;
+class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
   late PageController _imageController;
 
   int _currentImageIndex = 0;
@@ -42,16 +39,6 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen>
   @override
   void initState() {
     super.initState();
-
-    _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 600),
-      vsync: this,
-    );
-
-    _slideController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
 
     _imageController = PageController();
 
@@ -72,8 +59,6 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen>
         });
         // Görüntüleme kaydı
         service.trackPropertyView(widget.propertyId);
-        _fadeController.forward();
-        _slideController.forward();
       } else {
         // İlan bulunamadı
         if (mounted) {
@@ -130,8 +115,6 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen>
 
   @override
   void dispose() {
-    _fadeController.dispose();
-    _slideController.dispose();
     _imageController.dispose();
     super.dispose();
   }
@@ -225,7 +208,7 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen>
     bool isDark,
   ) {
     return SizedBox(
-      height: size.height * 0.32,
+      height: size.height * 0.42,
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -365,26 +348,24 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen>
     double size = 44,
     bool isActive = false,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: isActive ? EmlakColors.accent : Colors.white.withValues(alpha: 0.9),
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.15),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Icon(
-          icon,
-          color: isActive ? Colors.white : Colors.grey[800],
-          size: size * 0.5,
+    return Material(
+      color: isActive ? EmlakColors.accent : Colors.white.withValues(alpha: 0.9),
+      shape: const CircleBorder(),
+      elevation: 4,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
+        customBorder: const CircleBorder(),
+        child: SizedBox(
+          width: size,
+          height: size,
+          child: Icon(
+            icon,
+            color: isActive ? Colors.white : Colors.grey[800],
+            size: size * 0.5,
+          ),
         ),
       ),
     );
@@ -393,53 +374,49 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen>
   Widget _buildFavoriteButton(Property property) {
     final isFavorite = ref.watch(isEmlakFavoriteProvider(property.id));
 
-    return GestureDetector(
-      onTap: () {
-        final favoriteProperty = FavoriteProperty(
-          id: property.id,
-          title: property.title,
-          imageUrl: property.images.isNotEmpty ? property.images.first : '',
-          location: property.location.shortAddress,
-          price: property.price,
-          type: property.listingType == ListingType.sale ? 'sale' : 'rent',
-          propertyType: property.type.label,
-          rooms: property.rooms,
-          area: property.squareMeters,
-          addedAt: DateTime.now(),
-        );
-        ref.read(emlakFavoriteProvider.notifier).toggleProperty(favoriteProperty);
+    return Material(
+      color: isFavorite ? EmlakColors.accent : Colors.white.withValues(alpha: 0.9),
+      shape: const CircleBorder(),
+      elevation: 4,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          final favoriteProperty = FavoriteProperty(
+            id: property.id,
+            title: property.title,
+            imageUrl: property.images.isNotEmpty ? property.images.first : '',
+            location: property.location.shortAddress,
+            price: property.price,
+            type: property.listingType == ListingType.sale ? 'sale' : 'rent',
+            propertyType: property.type.label,
+            rooms: property.rooms,
+            area: property.squareMeters,
+            addedAt: DateTime.now(),
+          );
+          ref.read(emlakFavoriteProvider.notifier).toggleProperty(favoriteProperty);
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              isFavorite
-                  ? '${property.title} favorilerden kaldırıldı'
-                  : '${property.title} favorilere eklendi',
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                isFavorite
+                    ? '${property.title} favorilerden kaldırıldı'
+                    : '${property.title} favorilere eklendi',
+              ),
+              backgroundColor: isFavorite ? Colors.red : EmlakColors.primary,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 2),
             ),
-            backgroundColor: isFavorite ? Colors.red : EmlakColors.primary,
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 2),
+          );
+        },
+        customBorder: const CircleBorder(),
+        child: SizedBox(
+          width: 44,
+          height: 44,
+          child: Icon(
+            isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+            color: isFavorite ? Colors.white : Colors.grey[800],
+            size: 22,
           ),
-        );
-      },
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: isFavorite ? EmlakColors.accent : Colors.white.withValues(alpha: 0.9),
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.15),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Icon(
-          isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-          color: isFavorite ? Colors.white : Colors.grey[800],
-          size: 22,
         ),
       ),
     );
@@ -484,17 +461,7 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen>
     Property property,
     bool isDark,
   ) {
-    return SlideTransition(
-      position: Tween<Offset>(
-        begin: const Offset(0, 0.3),
-        end: Offset.zero,
-      ).animate(CurvedAnimation(
-        parent: _slideController,
-        curve: Curves.easeOutCubic,
-      )),
-      child: FadeTransition(
-        opacity: _fadeController,
-        child: Container(
+    return Container(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -646,8 +613,6 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen>
               ),
             ],
           ),
-        ),
-      ),
     );
   }
 
@@ -907,8 +872,14 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen>
             ),
             clipBehavior: Clip.antiAlias,
             child: hasCoordinates
-                ? GestureDetector(
-                    onTap: () => _openInMaps(property),
+                ? Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      _openInMaps(property);
+                    },
+                    borderRadius: BorderRadius.circular(14),
                     child: Stack(
                       children: [
                         FlutterMap(
@@ -994,7 +965,8 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen>
                         ),
                       ],
                     ),
-                  )
+                  ),
+                )
                 : // Konum bilgisi yoksa placeholder göster
                   InkWell(
                     onTap: () => _searchInMaps(property),
@@ -1202,25 +1174,32 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen>
                   ),
                 ),
                 // Chat Button
-                GestureDetector(
-                  onTap: _isStartingChat ? null : _startChat,
-                  child: Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: EmlakColors.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: _isStartingChat ? null : () {
+                      HapticFeedback.selectionClick();
+                      _startChat();
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: EmlakColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: _isStartingChat
+                          ? const Padding(
+                              padding: EdgeInsets.all(12),
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Icon(
+                              Icons.chat_bubble_outline_rounded,
+                              color: EmlakColors.primary,
+                              size: 22,
+                            ),
                     ),
-                    child: _isStartingChat
-                        ? const Padding(
-                            padding: EdgeInsets.all(12),
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Icon(
-                            Icons.chat_bubble_outline_rounded,
-                            color: EmlakColors.primary,
-                            size: 22,
-                          ),
                   ),
                 ),
               ],
@@ -1283,13 +1262,20 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen>
     Property property,
     bool isDark,
   ) {
-    return GestureDetector(
-      onTap: () => context.push('/emlak/property/${property.id}'),
+    return Material(
+      color: isDark ? const Color(0xFF1E293B) : Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      elevation: 0,
+      child: InkWell(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        context.push('/emlak/property/${property.id}');
+      },
+      borderRadius: BorderRadius.circular(16),
       child: Container(
         width: 160,
         margin: const EdgeInsets.symmetric(horizontal: 6),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E293B) : Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
@@ -1361,6 +1347,7 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen>
           ],
         ),
       ),
+      ),
     );
   }
 
@@ -1400,74 +1387,92 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen>
       child: Row(
         children: [
           // Call Button (icon only)
-          GestureDetector(
-            onTap: property.agent != null ? () => _callAgent(property.agent!) : null,
-            child: Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                border: Border.all(color: EmlakColors.primary, width: 1.5),
-                borderRadius: BorderRadius.circular(14),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: property.agent != null ? () {
+                HapticFeedback.selectionClick();
+                _callAgent(property.agent!);
+              } : null,
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  border: Border.all(color: EmlakColors.primary, width: 1.5),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(Icons.phone_rounded, color: EmlakColors.primary, size: 22),
               ),
-              child: Icon(Icons.phone_rounded, color: EmlakColors.primary, size: 22),
             ),
           ),
           const SizedBox(width: 10),
           // Message Button (icon only)
-          GestureDetector(
-            onTap: _isStartingChat ? null : _startChat,
-            child: Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: EmlakColors.secondary,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: _isStartingChat
-                  ? const Center(
-                      child: SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
+          Material(
+            color: EmlakColors.secondary,
+            borderRadius: BorderRadius.circular(14),
+            child: InkWell(
+              onTap: _isStartingChat ? null : () {
+                HapticFeedback.selectionClick();
+                _startChat();
+              },
+              borderRadius: BorderRadius.circular(14),
+              child: SizedBox(
+                width: 48,
+                height: 48,
+                child: _isStartingChat
+                    ? const Center(
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
                         ),
+                      )
+                    : const Icon(
+                        Icons.chat_bubble_rounded,
+                        color: Colors.white,
+                        size: 20,
                       ),
-                    )
-                  : const Icon(
-                      Icons.chat_bubble_rounded,
-                      color: Colors.white,
-                      size: 20,
-                    ),
+              ),
             ),
           ),
           const SizedBox(width: 10),
           // Schedule Button (primary CTA - expanded)
           Expanded(
-            child: GestureDetector(
-              onTap: () => _scheduleVisit(context, property),
-              child: Container(
-                height: 48,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: EmlakColors.primaryGradient,
-                  ),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.calendar_month_rounded, color: Colors.white, size: 20),
-                    SizedBox(width: 8),
-                    Text(
-                      'Randevu Al',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                      ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  _scheduleVisit(context, property);
+                },
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  height: 48,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: EmlakColors.primaryGradient,
                     ),
-                  ],
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.calendar_month_rounded, color: Colors.white, size: 20),
+                      SizedBox(width: 8),
+                      Text(
+                        'Randevu Al',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -1753,48 +1758,55 @@ class _ScheduleVisitSheetState extends State<_ScheduleVisitSheet> {
                         final date = DateTime.now().add(Duration(days: index + 1));
                         final isSelected = _selectedDate?.day == date.day &&
                             _selectedDate?.month == date.month;
-                        return GestureDetector(
-                          onTap: () => setState(() => _selectedDate = date),
-                          child: Container(
-                            width: 60,
-                            margin: const EdgeInsets.only(right: 8),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? EmlakColors.primary
-                                  : (isDark ? Colors.grey[800] : Colors.grey[100]),
-                              borderRadius: BorderRadius.circular(12),
-                              border: isSelected
-                                  ? null
-                                  : Border.all(
-                                      color: isDark
-                                          ? Colors.grey[700]!
-                                          : Colors.grey[300]!,
+                        return Material(
+                          color: isSelected
+                              ? EmlakColors.primary
+                              : (isDark ? Colors.grey[800] : Colors.grey[100]),
+                          borderRadius: BorderRadius.circular(12),
+                          child: InkWell(
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              setState(() => _selectedDate = date);
+                            },
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              width: 60,
+                              margin: const EdgeInsets.only(right: 8),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                border: isSelected
+                                    ? null
+                                    : Border.all(
+                                        color: isDark
+                                            ? Colors.grey[700]!
+                                            : Colors.grey[300]!,
+                                      ),
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    _getDayName(date.weekday),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: isSelected
+                                          ? Colors.white.withValues(alpha: 0.8)
+                                          : (isDark ? Colors.grey[400] : Colors.grey[600]),
                                     ),
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  _getDayName(date.weekday),
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: isSelected
-                                        ? Colors.white.withValues(alpha: 0.8)
-                                        : (isDark ? Colors.grey[400] : Colors.grey[600]),
                                   ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${date.day}',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w700,
-                                    color: isSelected
-                                        ? Colors.white
-                                        : (isDark ? Colors.white : Colors.grey[900]),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${date.day}',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w700,
+                                      color: isSelected
+                                          ? Colors.white
+                                          : (isDark ? Colors.white : Colors.grey[900]),
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         );
@@ -1816,17 +1828,23 @@ class _ScheduleVisitSheetState extends State<_ScheduleVisitSheet> {
                     runSpacing: 8,
                     children: times.map((time) {
                       final isSelected = _selectedTime == time;
-                      return GestureDetector(
-                        onTap: () => setState(() => _selectedTime = time),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 20,
-                            vertical: 12,
+                      return Material(
+                        color: isSelected
+                            ? EmlakColors.primary
+                            : (isDark ? Colors.grey[800] : Colors.grey[100]),
+                        borderRadius: BorderRadius.circular(10),
+                        child: InkWell(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setState(() => _selectedTime = time);
+                          },
+                          borderRadius: BorderRadius.circular(10),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 12,
                           ),
                           decoration: BoxDecoration(
-                            color: isSelected
-                                ? EmlakColors.primary
-                                : (isDark ? Colors.grey[800] : Colors.grey[100]),
                             borderRadius: BorderRadius.circular(10),
                             border: isSelected
                                 ? null
@@ -1846,6 +1864,7 @@ class _ScheduleVisitSheetState extends State<_ScheduleVisitSheet> {
                             ),
                           ),
                         ),
+                      ),
                       );
                     }).toList(),
                   ),
@@ -2004,19 +2023,24 @@ class _FullScreenGalleryState extends State<_FullScreenGallery> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   // Kapat butonu
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.5),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.close,
-                        color: Colors.white,
-                        size: 24,
+                  Material(
+                    color: Colors.black.withValues(alpha: 0.5),
+                    shape: const CircleBorder(),
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        Navigator.pop(context);
+                      },
+                      customBorder: const CircleBorder(),
+                      child: const SizedBox(
+                        width: 44,
+                        height: 44,
+                        child: Icon(
+                          Icons.close,
+                          color: Colors.white,
+                          size: 24,
+                        ),
                       ),
                     ),
                   ),
@@ -2055,25 +2079,32 @@ class _FullScreenGalleryState extends State<_FullScreenGallery> {
                   itemCount: widget.images.length,
                   itemBuilder: (context, index) {
                     final isSelected = index == _currentIndex;
-                    return GestureDetector(
-                      onTap: () {
-                        _pageController.animateToPage(
-                          index,
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeInOut,
-                        );
-                      },
-                      child: Container(
-                        width: 60,
-                        height: 60,
-                        margin: const EdgeInsets.only(right: 8),
-                        decoration: BoxDecoration(
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: Material(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(8),
+                        clipBehavior: Clip.antiAlias,
+                        child: InkWell(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            _pageController.animateToPage(
+                              index,
+                              duration: const Duration(milliseconds: 300),
+                              curve: Curves.easeInOut,
+                            );
+                          },
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: isSelected ? Colors.white : Colors.transparent,
-                            width: 2,
-                          ),
-                        ),
+                          child: Container(
+                            width: 60,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: isSelected ? Colors.white : Colors.transparent,
+                                width: 2,
+                              ),
+                            ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(6),
                           child: Opacity(
@@ -2097,6 +2128,8 @@ class _FullScreenGalleryState extends State<_FullScreenGallery> {
                           ),
                         ),
                       ),
+                    ),
+                    ),
                     );
                   },
                 ),

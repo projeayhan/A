@@ -356,6 +356,65 @@ class Property {
   final bool hasSecurity;
   final bool hasElevator;
   final bool isSmartHome;
+  // 101evler fields
+  final String? roomType;
+  final String? furnitureStatus;
+  final String? heatingType;
+  final String? deedType;
+  final int? netSquareMeters;
+  final bool isOpenToTrade;
+  final bool isInComplex;
+  // Exterior
+  final bool hasGarage;
+  final bool hasGarden;
+  final bool hasPrivatePool;
+  final bool hasSharedPool;
+  final bool hasSecurityCamera;
+  final bool hasTerrace;
+  final bool hasInsulation;
+  final bool hasWaterTank;
+  final bool hasWell;
+  final bool hasBarbeque;
+  final bool hasDoubleGlazing;
+  final bool hasCoveredParking;
+  final bool hasGenerator;
+  final bool hasSandstoneHouse;
+  // Interior
+  final bool isDuplex;
+  final bool hasAirConditioning;
+  final bool hasShutter;
+  final bool hasBuiltinKitchen;
+  final bool hasBuiltinWardrobe;
+  final bool hasIntercom;
+  final bool hasFireplace;
+  final bool hasCrown;
+  final bool hasLaundryRoom;
+  final bool hasParentBathroom;
+  final bool hasParentCloset;
+  final bool hasNaturalMarble;
+  final bool hasPanelDoor;
+  final bool hasParquet;
+  final bool hasShower;
+  final bool hasSteelDoor;
+  final bool hasTvInfra;
+  final bool hasVestibule;
+  final bool hasWallpaper;
+  final bool hasCeramic;
+  final bool hasFireAlarm;
+  final bool hasPantry;
+  final bool hasSolarPower;
+  final bool hasHydrophore;
+  // Location
+  final bool hasCityView;
+  final bool isEastFacing;
+  final bool isCityCenter;
+  final bool hasMountainView;
+  final bool hasNatureView;
+  final bool isNorthFacing;
+  final bool isSeafront;
+  final bool hasSeaView;
+  final bool isSouthFacing;
+  final bool isWestFacing;
   final List<String> amenities;
   final DateTime createdAt;
   final DateTime? updatedAt;
@@ -391,6 +450,61 @@ class Property {
     this.hasSecurity = false,
     this.hasElevator = false,
     this.isSmartHome = false,
+    this.roomType,
+    this.furnitureStatus,
+    this.heatingType,
+    this.deedType,
+    this.netSquareMeters,
+    this.isOpenToTrade = false,
+    this.isInComplex = false,
+    this.hasGarage = false,
+    this.hasGarden = false,
+    this.hasPrivatePool = false,
+    this.hasSharedPool = false,
+    this.hasSecurityCamera = false,
+    this.hasTerrace = false,
+    this.hasInsulation = false,
+    this.hasWaterTank = false,
+    this.hasWell = false,
+    this.hasBarbeque = false,
+    this.hasDoubleGlazing = false,
+    this.hasCoveredParking = false,
+    this.hasGenerator = false,
+    this.hasSandstoneHouse = false,
+    this.isDuplex = false,
+    this.hasAirConditioning = false,
+    this.hasShutter = false,
+    this.hasBuiltinKitchen = false,
+    this.hasBuiltinWardrobe = false,
+    this.hasIntercom = false,
+    this.hasFireplace = false,
+    this.hasCrown = false,
+    this.hasLaundryRoom = false,
+    this.hasParentBathroom = false,
+    this.hasParentCloset = false,
+    this.hasNaturalMarble = false,
+    this.hasPanelDoor = false,
+    this.hasParquet = false,
+    this.hasShower = false,
+    this.hasSteelDoor = false,
+    this.hasTvInfra = false,
+    this.hasVestibule = false,
+    this.hasWallpaper = false,
+    this.hasCeramic = false,
+    this.hasFireAlarm = false,
+    this.hasPantry = false,
+    this.hasSolarPower = false,
+    this.hasHydrophore = false,
+    this.hasCityView = false,
+    this.isEastFacing = false,
+    this.isCityCenter = false,
+    this.hasMountainView = false,
+    this.hasNatureView = false,
+    this.isNorthFacing = false,
+    this.isSeafront = false,
+    this.hasSeaView = false,
+    this.isSouthFacing = false,
+    this.isWestFacing = false,
     this.amenities = const [],
     required this.createdAt,
     this.updatedAt,
@@ -447,6 +561,61 @@ class Property {
       hasSecurity: json['has_security'] as bool? ?? false,
       hasElevator: json['has_elevator'] as bool? ?? false,
       isSmartHome: json['is_smart_home'] as bool? ?? false,
+      roomType: json['room_type'] as String?,
+      furnitureStatus: json['furniture_status'] as String?,
+      heatingType: json['heating_type'] as String?,
+      deedType: json['deed_type'] as String?,
+      netSquareMeters: json['net_square_meters'] as int?,
+      isOpenToTrade: json['is_open_to_trade'] as bool? ?? false,
+      isInComplex: json['is_in_complex'] as bool? ?? false,
+      hasGarage: json['has_garage'] as bool? ?? false,
+      hasGarden: json['has_garden'] as bool? ?? false,
+      hasPrivatePool: json['has_private_pool'] as bool? ?? false,
+      hasSharedPool: json['has_shared_pool'] as bool? ?? false,
+      hasSecurityCamera: json['has_security_camera'] as bool? ?? false,
+      hasTerrace: json['has_terrace'] as bool? ?? false,
+      hasInsulation: json['has_insulation'] as bool? ?? false,
+      hasWaterTank: json['has_water_tank'] as bool? ?? false,
+      hasWell: json['has_well'] as bool? ?? false,
+      hasBarbeque: json['has_barbeque'] as bool? ?? false,
+      hasDoubleGlazing: json['has_double_glazing'] as bool? ?? false,
+      hasCoveredParking: json['has_covered_parking'] as bool? ?? false,
+      hasGenerator: json['has_generator'] as bool? ?? false,
+      hasSandstoneHouse: json['has_sandstone_house'] as bool? ?? false,
+      isDuplex: json['is_duplex'] as bool? ?? false,
+      hasAirConditioning: json['has_air_conditioning'] as bool? ?? false,
+      hasShutter: json['has_shutter'] as bool? ?? false,
+      hasBuiltinKitchen: json['has_builtin_kitchen'] as bool? ?? false,
+      hasBuiltinWardrobe: json['has_builtin_wardrobe'] as bool? ?? false,
+      hasIntercom: json['has_intercom'] as bool? ?? false,
+      hasFireplace: json['has_fireplace'] as bool? ?? false,
+      hasCrown: json['has_crown'] as bool? ?? false,
+      hasLaundryRoom: json['has_laundry_room'] as bool? ?? false,
+      hasParentBathroom: json['has_parent_bathroom'] as bool? ?? false,
+      hasParentCloset: json['has_parent_closet'] as bool? ?? false,
+      hasNaturalMarble: json['has_natural_marble'] as bool? ?? false,
+      hasPanelDoor: json['has_panel_door'] as bool? ?? false,
+      hasParquet: json['has_parquet'] as bool? ?? false,
+      hasShower: json['has_shower'] as bool? ?? false,
+      hasSteelDoor: json['has_steel_door'] as bool? ?? false,
+      hasTvInfra: json['has_tv_infra'] as bool? ?? false,
+      hasVestibule: json['has_vestibule'] as bool? ?? false,
+      hasWallpaper: json['has_wallpaper'] as bool? ?? false,
+      hasCeramic: json['has_ceramic'] as bool? ?? false,
+      hasFireAlarm: json['has_fire_alarm'] as bool? ?? false,
+      hasPantry: json['has_pantry'] as bool? ?? false,
+      hasSolarPower: json['has_solar_power'] as bool? ?? false,
+      hasHydrophore: json['has_hydrophore'] as bool? ?? false,
+      hasCityView: json['has_city_view'] as bool? ?? false,
+      isEastFacing: json['is_east_facing'] as bool? ?? false,
+      isCityCenter: json['is_city_center'] as bool? ?? false,
+      hasMountainView: json['has_mountain_view'] as bool? ?? false,
+      hasNatureView: json['has_nature_view'] as bool? ?? false,
+      isNorthFacing: json['is_north_facing'] as bool? ?? false,
+      isSeafront: json['is_seafront'] as bool? ?? false,
+      hasSeaView: json['has_sea_view'] as bool? ?? false,
+      isSouthFacing: json['is_south_facing'] as bool? ?? false,
+      isWestFacing: json['is_west_facing'] as bool? ?? false,
       amenities: (json['amenities'] as List<dynamic>?)?.cast<String>() ?? [],
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: json['updated_at'] != null
@@ -489,6 +658,61 @@ class Property {
       'has_security': hasSecurity,
       'has_elevator': hasElevator,
       'is_smart_home': isSmartHome,
+      'room_type': roomType,
+      'furniture_status': furnitureStatus,
+      'heating_type': heatingType,
+      'deed_type': deedType,
+      'net_square_meters': netSquareMeters,
+      'is_open_to_trade': isOpenToTrade,
+      'is_in_complex': isInComplex,
+      'has_garage': hasGarage,
+      'has_garden': hasGarden,
+      'has_private_pool': hasPrivatePool,
+      'has_shared_pool': hasSharedPool,
+      'has_security_camera': hasSecurityCamera,
+      'has_terrace': hasTerrace,
+      'has_insulation': hasInsulation,
+      'has_water_tank': hasWaterTank,
+      'has_well': hasWell,
+      'has_barbeque': hasBarbeque,
+      'has_double_glazing': hasDoubleGlazing,
+      'has_covered_parking': hasCoveredParking,
+      'has_generator': hasGenerator,
+      'has_sandstone_house': hasSandstoneHouse,
+      'is_duplex': isDuplex,
+      'has_air_conditioning': hasAirConditioning,
+      'has_shutter': hasShutter,
+      'has_builtin_kitchen': hasBuiltinKitchen,
+      'has_builtin_wardrobe': hasBuiltinWardrobe,
+      'has_intercom': hasIntercom,
+      'has_fireplace': hasFireplace,
+      'has_crown': hasCrown,
+      'has_laundry_room': hasLaundryRoom,
+      'has_parent_bathroom': hasParentBathroom,
+      'has_parent_closet': hasParentCloset,
+      'has_natural_marble': hasNaturalMarble,
+      'has_panel_door': hasPanelDoor,
+      'has_parquet': hasParquet,
+      'has_shower': hasShower,
+      'has_steel_door': hasSteelDoor,
+      'has_tv_infra': hasTvInfra,
+      'has_vestibule': hasVestibule,
+      'has_wallpaper': hasWallpaper,
+      'has_ceramic': hasCeramic,
+      'has_fire_alarm': hasFireAlarm,
+      'has_pantry': hasPantry,
+      'has_solar_power': hasSolarPower,
+      'has_hydrophore': hasHydrophore,
+      'has_city_view': hasCityView,
+      'is_east_facing': isEastFacing,
+      'is_city_center': isCityCenter,
+      'has_mountain_view': hasMountainView,
+      'has_nature_view': hasNatureView,
+      'is_north_facing': isNorthFacing,
+      'is_seafront': isSeafront,
+      'has_sea_view': hasSeaView,
+      'is_south_facing': isSouthFacing,
+      'is_west_facing': isWestFacing,
       'amenities': amenities,
       'images': images,
       'is_featured': isFeatured,
@@ -524,6 +748,61 @@ class Property {
     bool? hasSecurity,
     bool? hasElevator,
     bool? isSmartHome,
+    String? roomType,
+    String? furnitureStatus,
+    String? heatingType,
+    String? deedType,
+    int? netSquareMeters,
+    bool? isOpenToTrade,
+    bool? isInComplex,
+    bool? hasGarage,
+    bool? hasGarden,
+    bool? hasPrivatePool,
+    bool? hasSharedPool,
+    bool? hasSecurityCamera,
+    bool? hasTerrace,
+    bool? hasInsulation,
+    bool? hasWaterTank,
+    bool? hasWell,
+    bool? hasBarbeque,
+    bool? hasDoubleGlazing,
+    bool? hasCoveredParking,
+    bool? hasGenerator,
+    bool? hasSandstoneHouse,
+    bool? isDuplex,
+    bool? hasAirConditioning,
+    bool? hasShutter,
+    bool? hasBuiltinKitchen,
+    bool? hasBuiltinWardrobe,
+    bool? hasIntercom,
+    bool? hasFireplace,
+    bool? hasCrown,
+    bool? hasLaundryRoom,
+    bool? hasParentBathroom,
+    bool? hasParentCloset,
+    bool? hasNaturalMarble,
+    bool? hasPanelDoor,
+    bool? hasParquet,
+    bool? hasShower,
+    bool? hasSteelDoor,
+    bool? hasTvInfra,
+    bool? hasVestibule,
+    bool? hasWallpaper,
+    bool? hasCeramic,
+    bool? hasFireAlarm,
+    bool? hasPantry,
+    bool? hasSolarPower,
+    bool? hasHydrophore,
+    bool? hasCityView,
+    bool? isEastFacing,
+    bool? isCityCenter,
+    bool? hasMountainView,
+    bool? hasNatureView,
+    bool? isNorthFacing,
+    bool? isSeafront,
+    bool? hasSeaView,
+    bool? isSouthFacing,
+    bool? isWestFacing,
     List<String>? amenities,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -559,6 +838,61 @@ class Property {
       hasSecurity: hasSecurity ?? this.hasSecurity,
       hasElevator: hasElevator ?? this.hasElevator,
       isSmartHome: isSmartHome ?? this.isSmartHome,
+      roomType: roomType ?? this.roomType,
+      furnitureStatus: furnitureStatus ?? this.furnitureStatus,
+      heatingType: heatingType ?? this.heatingType,
+      deedType: deedType ?? this.deedType,
+      netSquareMeters: netSquareMeters ?? this.netSquareMeters,
+      isOpenToTrade: isOpenToTrade ?? this.isOpenToTrade,
+      isInComplex: isInComplex ?? this.isInComplex,
+      hasGarage: hasGarage ?? this.hasGarage,
+      hasGarden: hasGarden ?? this.hasGarden,
+      hasPrivatePool: hasPrivatePool ?? this.hasPrivatePool,
+      hasSharedPool: hasSharedPool ?? this.hasSharedPool,
+      hasSecurityCamera: hasSecurityCamera ?? this.hasSecurityCamera,
+      hasTerrace: hasTerrace ?? this.hasTerrace,
+      hasInsulation: hasInsulation ?? this.hasInsulation,
+      hasWaterTank: hasWaterTank ?? this.hasWaterTank,
+      hasWell: hasWell ?? this.hasWell,
+      hasBarbeque: hasBarbeque ?? this.hasBarbeque,
+      hasDoubleGlazing: hasDoubleGlazing ?? this.hasDoubleGlazing,
+      hasCoveredParking: hasCoveredParking ?? this.hasCoveredParking,
+      hasGenerator: hasGenerator ?? this.hasGenerator,
+      hasSandstoneHouse: hasSandstoneHouse ?? this.hasSandstoneHouse,
+      isDuplex: isDuplex ?? this.isDuplex,
+      hasAirConditioning: hasAirConditioning ?? this.hasAirConditioning,
+      hasShutter: hasShutter ?? this.hasShutter,
+      hasBuiltinKitchen: hasBuiltinKitchen ?? this.hasBuiltinKitchen,
+      hasBuiltinWardrobe: hasBuiltinWardrobe ?? this.hasBuiltinWardrobe,
+      hasIntercom: hasIntercom ?? this.hasIntercom,
+      hasFireplace: hasFireplace ?? this.hasFireplace,
+      hasCrown: hasCrown ?? this.hasCrown,
+      hasLaundryRoom: hasLaundryRoom ?? this.hasLaundryRoom,
+      hasParentBathroom: hasParentBathroom ?? this.hasParentBathroom,
+      hasParentCloset: hasParentCloset ?? this.hasParentCloset,
+      hasNaturalMarble: hasNaturalMarble ?? this.hasNaturalMarble,
+      hasPanelDoor: hasPanelDoor ?? this.hasPanelDoor,
+      hasParquet: hasParquet ?? this.hasParquet,
+      hasShower: hasShower ?? this.hasShower,
+      hasSteelDoor: hasSteelDoor ?? this.hasSteelDoor,
+      hasTvInfra: hasTvInfra ?? this.hasTvInfra,
+      hasVestibule: hasVestibule ?? this.hasVestibule,
+      hasWallpaper: hasWallpaper ?? this.hasWallpaper,
+      hasCeramic: hasCeramic ?? this.hasCeramic,
+      hasFireAlarm: hasFireAlarm ?? this.hasFireAlarm,
+      hasPantry: hasPantry ?? this.hasPantry,
+      hasSolarPower: hasSolarPower ?? this.hasSolarPower,
+      hasHydrophore: hasHydrophore ?? this.hasHydrophore,
+      hasCityView: hasCityView ?? this.hasCityView,
+      isEastFacing: isEastFacing ?? this.isEastFacing,
+      isCityCenter: isCityCenter ?? this.isCityCenter,
+      hasMountainView: hasMountainView ?? this.hasMountainView,
+      hasNatureView: hasNatureView ?? this.hasNatureView,
+      isNorthFacing: isNorthFacing ?? this.isNorthFacing,
+      isSeafront: isSeafront ?? this.isSeafront,
+      hasSeaView: hasSeaView ?? this.hasSeaView,
+      isSouthFacing: isSouthFacing ?? this.isSouthFacing,
+      isWestFacing: isWestFacing ?? this.isWestFacing,
       amenities: amenities ?? this.amenities,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -587,11 +921,11 @@ class Property {
   }
 
   List<PropertyFeature> get features => [
-    PropertyFeature(icon: Icons.bed_outlined, label: 'Oda', value: '$rooms+1'),
+    PropertyFeature(icon: Icons.bed_outlined, label: 'Oda', value: roomType ?? '$rooms'),
     PropertyFeature(icon: Icons.bathtub_outlined, label: 'Banyo', value: '$bathrooms'),
     PropertyFeature(icon: Icons.square_foot, label: 'm²', value: '$squareMeters'),
     if (floor != null)
-      PropertyFeature(icon: Icons.stairs, label: 'Kat', value: '$floor/$totalFloors'),
+      PropertyFeature(icon: Icons.stairs, label: 'Kat', value: '$floor${totalFloors != null ? '/$totalFloors' : ''}'),
   ];
 }
 
@@ -605,6 +939,7 @@ class PropertyFilter {
   final String? district;
   final double? minPrice;
   final double? maxPrice;
+  final String? currency;
   final int? minSquareMeters;
   final int? maxSquareMeters;
   final String? keyword;
@@ -686,6 +1021,7 @@ class PropertyFilter {
     this.district,
     this.minPrice,
     this.maxPrice,
+    this.currency,
     this.minSquareMeters,
     this.maxSquareMeters,
     this.keyword,
@@ -760,6 +1096,7 @@ class PropertyFilter {
     if (district != null && district!.isNotEmpty) count++;
     if (minPrice != null) count++;
     if (maxPrice != null) count++;
+    if (currency != null && currency!.isNotEmpty) count++;
     if (minSquareMeters != null) count++;
     if (maxSquareMeters != null) count++;
     if (keyword != null && keyword!.isNotEmpty) count++;
@@ -838,6 +1175,7 @@ class PropertyFilter {
     String? district,
     double? minPrice,
     double? maxPrice,
+    String? currency,
     int? minSquareMeters,
     int? maxSquareMeters,
     String? keyword,
@@ -909,6 +1247,7 @@ class PropertyFilter {
       district: district ?? this.district,
       minPrice: minPrice ?? this.minPrice,
       maxPrice: maxPrice ?? this.maxPrice,
+      currency: currency ?? this.currency,
       minSquareMeters: minSquareMeters ?? this.minSquareMeters,
       maxSquareMeters: maxSquareMeters ?? this.maxSquareMeters,
       keyword: keyword ?? this.keyword,

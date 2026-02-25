@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/name_masking.dart';
 import '../../models/rental/rental_models.dart';
+import '../../widgets/common/shimmer_widgets.dart';
 
 class AllReviewsScreen extends StatefulWidget {
   final String companyId;
@@ -97,7 +98,16 @@ class _AllReviewsScreenState extends State<AllReviewsScreen> {
         centerTitle: true,
       ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator(color: colors.primary))
+          ? Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  const ShimmerRatingSummary(),
+                  const SizedBox(height: 16),
+                  ...List.generate(4, (_) => const ShimmerReviewCard()),
+                ],
+              ),
+            )
           : RefreshIndicator(
               onRefresh: _loadReviews,
               color: colors.primary,
@@ -265,55 +275,92 @@ class _AllReviewsScreenState extends State<AllReviewsScreen> {
   }
 
   Widget _buildFilterSort(ThemeData theme) {
+    final colors = theme.colorScheme;
+    final sortOptions = {
+      'newest': 'En Yeni',
+      'oldest': 'En Eski',
+      'highest': 'Y\u00FCksek Puan',
+      'lowest': 'D\u00FC\u015F\u00FCk Puan',
+    };
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: DropdownButtonFormField<String>(
-              initialValue: _sortBy,
-              decoration: const InputDecoration(
-                prefixIcon: Icon(Icons.sort),
-                contentPadding: EdgeInsets.symmetric(horizontal: 12),
-              ),
-              items: const [
-                DropdownMenuItem(value: 'newest', child: Text('En Yeni')),
-                DropdownMenuItem(value: 'oldest', child: Text('En Eski')),
-                DropdownMenuItem(value: 'highest', child: Text('En Yüksek Puan')),
-                DropdownMenuItem(value: 'lowest', child: Text('En Düşük Puan')),
-              ],
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() => _sortBy = value);
-                  _loadReviews();
-                }
-              },
+          // Sort chips
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: sortOptions.entries.map((entry) {
+                final isSelected = _sortBy == entry.key;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ChoiceChip(
+                    label: Text(entry.value),
+                    selected: isSelected,
+                    onSelected: (_) {
+                      setState(() => _sortBy = entry.key);
+                      _loadReviews();
+                    },
+                    selectedColor: colors.primary.withValues(alpha: 0.15),
+                    labelStyle: TextStyle(
+                      color: isSelected ? colors.primary : colors.onSurfaceVariant,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                      fontSize: 13,
+                    ),
+                    side: BorderSide(
+                      color: isSelected ? colors.primary : colors.outlineVariant,
+                    ),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    showCheckmark: false,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                );
+              }).toList(),
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: DropdownButtonFormField<int?>(
-              initialValue: _filterRating,
-              decoration: const InputDecoration(
-                prefixIcon: Icon(Icons.filter_list),
-                contentPadding: EdgeInsets.symmetric(horizontal: 12),
-              ),
-              hint: const Text('Tüm Puanlar'),
-              items: const [
-                DropdownMenuItem(value: null, child: Text('Tüm Puanlar')),
-                DropdownMenuItem(value: 5, child: Text('5 Yıldız')),
-                DropdownMenuItem(value: 4, child: Text('4 Yıldız')),
-                DropdownMenuItem(value: 3, child: Text('3 Yıldız')),
-                DropdownMenuItem(value: 2, child: Text('2 Yıldız')),
-                DropdownMenuItem(value: 1, child: Text('1 Yıldız')),
+          const SizedBox(height: 8),
+          // Rating filter chips
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildRatingFilterChip(null, 'T\u00FCm\u00FC', colors),
+                ...[5, 4, 3, 2, 1].map((r) =>
+                  _buildRatingFilterChip(r, '\u2605 $r', colors),
+                ),
               ],
-              onChanged: (value) {
-                setState(() => _filterRating = value);
-                _loadReviews();
-              },
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildRatingFilterChip(int? rating, String label, ColorScheme colors) {
+    final isSelected = _filterRating == rating;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: FilterChip(
+        label: Text(label),
+        selected: isSelected,
+        onSelected: (_) {
+          setState(() => _filterRating = isSelected ? null : rating);
+          _loadReviews();
+        },
+        selectedColor: colors.primary.withValues(alpha: 0.15),
+        labelStyle: TextStyle(
+          color: isSelected ? colors.primary : colors.onSurfaceVariant,
+          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+          fontSize: 13,
+        ),
+        side: BorderSide(
+          color: isSelected ? colors.primary : colors.outlineVariant,
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        showCheckmark: false,
+        visualDensity: VisualDensity.compact,
       ),
     );
   }

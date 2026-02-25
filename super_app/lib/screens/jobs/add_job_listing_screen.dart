@@ -1341,7 +1341,7 @@ class _AddJobListingScreenState extends State<AddJobListingScreen>
               margin: EdgeInsets.only(
                 right: type != WorkArrangement.values.last ? 12 : 0,
               ),
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
               decoration: BoxDecoration(
                 color: isSelected
                     ? type.color
@@ -1365,6 +1365,9 @@ class _AddJobListingScreenState extends State<AddJobListingScreen>
                   const SizedBox(height: 8),
                   Text(
                     type.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
                     style: TextStyle(
                       color: isSelected
                           ? Colors.white

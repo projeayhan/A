@@ -104,34 +104,8 @@ class CarDetailScreen extends ConsumerWidget {
                       flex: 2,
                       child: Column(
                         children: [
-                          // Image
-                          Card(
-                            clipBehavior: Clip.antiAlias,
-                            child: AspectRatio(
-                              aspectRatio: 16 / 9,
-                              child: car['image_url'] != null
-                                  ? Image.network(
-                                      car['image_url'],
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => Container(
-                                        color: AppColors.surfaceLight,
-                                        child: const Icon(
-                                          Icons.directions_car,
-                                          size: 80,
-                                          color: AppColors.textMuted,
-                                        ),
-                                      ),
-                                    )
-                                  : Container(
-                                      color: AppColors.surfaceLight,
-                                      child: const Icon(
-                                        Icons.directions_car,
-                                        size: 80,
-                                        color: AppColors.textMuted,
-                                      ),
-                                    ),
-                            ),
-                          ),
+                          // Image carousel
+                          _buildImageCarousel(car),
                           const SizedBox(height: 16),
 
                           // Specs
@@ -295,6 +269,66 @@ class CarDetailScreen extends ConsumerWidget {
         },
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Hata: $e')),
+      ),
+    );
+  }
+
+  Widget _buildImageCarousel(Map<String, dynamic> car) {
+    // Collect all image URLs: images array + fallback to image_url
+    final List<String> imageUrls = [];
+    if (car['images'] != null && car['images'] is List) {
+      for (final img in car['images']) {
+        if (img is String && img.isNotEmpty) imageUrls.add(img);
+      }
+    }
+    if (imageUrls.isEmpty && car['image_url'] != null) {
+      imageUrls.add(car['image_url'] as String);
+    }
+
+    if (imageUrls.isEmpty) {
+      return Card(
+        clipBehavior: Clip.antiAlias,
+        child: AspectRatio(
+          aspectRatio: 16 / 9,
+          child: Container(
+            color: AppColors.surfaceLight,
+            child: const Icon(
+              Icons.directions_car,
+              size: 80,
+              color: AppColors.textMuted,
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (imageUrls.length == 1) {
+      return Card(
+        clipBehavior: Clip.antiAlias,
+        child: AspectRatio(
+          aspectRatio: 16 / 9,
+          child: Image.network(
+            imageUrls.first,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => Container(
+              color: AppColors.surfaceLight,
+              child: const Icon(
+                Icons.directions_car,
+                size: 80,
+                color: AppColors.textMuted,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Multiple images - show PageView carousel
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: AspectRatio(
+        aspectRatio: 16 / 9,
+        child: _ImageCarousel(imageUrls: imageUrls),
       ),
     );
   }
@@ -478,5 +512,134 @@ class CarDetailScreen extends ConsumerWidget {
       case 'lpg': return 'LPG';
       default: return fuel ?? '-';
     }
+  }
+}
+
+class _ImageCarousel extends StatefulWidget {
+  final List<String> imageUrls;
+
+  const _ImageCarousel({required this.imageUrls});
+
+  @override
+  State<_ImageCarousel> createState() => _ImageCarouselState();
+}
+
+class _ImageCarouselState extends State<_ImageCarousel> {
+  final PageController _pageController = PageController();
+  int _currentPage = 0;
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        PageView.builder(
+          controller: _pageController,
+          itemCount: widget.imageUrls.length,
+          onPageChanged: (index) => setState(() => _currentPage = index),
+          itemBuilder: (context, index) {
+            return Image.network(
+              widget.imageUrls[index],
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(
+                color: AppColors.surfaceLight,
+                child: const Icon(
+                  Icons.broken_image,
+                  size: 48,
+                  color: AppColors.textMuted,
+                ),
+              ),
+            );
+          },
+        ),
+        // Left arrow
+        if (_currentPage > 0)
+          Positioned(
+            left: 8,
+            top: 0,
+            bottom: 0,
+            child: Center(
+              child: IconButton(
+                onPressed: () => _pageController.previousPage(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                ),
+                icon: const Icon(Icons.chevron_left, size: 32),
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.black54,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        // Right arrow
+        if (_currentPage < widget.imageUrls.length - 1)
+          Positioned(
+            right: 8,
+            top: 0,
+            bottom: 0,
+            child: Center(
+              child: IconButton(
+                onPressed: () => _pageController.nextPage(
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
+                ),
+                icon: const Icon(Icons.chevron_right, size: 32),
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.black54,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        // Page indicator
+        Positioned(
+          bottom: 8,
+          left: 0,
+          right: 0,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(widget.imageUrls.length, (index) {
+              return Container(
+                width: index == _currentPage ? 10 : 6,
+                height: index == _currentPage ? 10 : 6,
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: index == _currentPage
+                      ? AppColors.primary
+                      : Colors.white54,
+                ),
+              );
+            }),
+          ),
+        ),
+        // Counter
+        Positioned(
+          top: 8,
+          right: 8,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.black54,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              '${_currentPage + 1}/${widget.imageUrls.length}',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }

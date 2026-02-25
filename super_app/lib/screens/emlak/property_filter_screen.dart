@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/emlak/emlak_models.dart';
 import '../../core/providers/emlak_provider.dart';
@@ -49,11 +50,11 @@ const _buildingAgeLabels = {
 
 /// Eşya durumu seçenekleri
 const _furnitureOptions = {
-  'unfurnished': 'Eşyasız',
-  'semi_furnished': 'Yarı Eşyalı',
-  'furnished': 'Eşyalı',
-  'full_furnished': 'Ful Eşyalı',
-  'white_only': 'Sadece Beyaz Eşya',
+  'Eşyasız': 'Eşyasız',
+  'Yarı Eşyalı': 'Yarı Eşyalı',
+  'Eşyalı': 'Eşyalı',
+  'Ful Eşyalı': 'Ful Eşyalı',
+  'Sadece Beyaz Eşya': 'Sadece Beyaz Eşya',
 };
 
 /// İlan sahibi seçenekleri
@@ -171,6 +172,7 @@ class _PropertyFilterScreenState extends ConsumerState<PropertyFilterScreen> {
   double? _minPrice;
   double? _maxPrice;
   String? _selectedPricePreset;
+  String? _selectedCurrency;
 
   // === Alan ===
   int? _minSqm;
@@ -217,6 +219,7 @@ class _PropertyFilterScreenState extends ConsumerState<PropertyFilterScreen> {
     _keyword = f.keyword ?? '';
     _minPrice = f.minPrice;
     _maxPrice = f.maxPrice;
+    _selectedCurrency = f.currency;
     _minSqm = f.minSquareMeters;
     _maxSqm = f.maxSquareMeters;
     _isOpenToTrade = f.isOpenToTrade ?? false;
@@ -326,6 +329,7 @@ class _PropertyFilterScreenState extends ConsumerState<PropertyFilterScreen> {
       district: _selectedDistrict.isEmpty ? null : _selectedDistrict,
       minPrice: _minPrice,
       maxPrice: _maxPrice,
+      currency: _selectedCurrency,
       minSquareMeters: _minSqm,
       maxSquareMeters: _maxSqm,
       keyword: _keyword.isEmpty ? null : _keyword,
@@ -404,6 +408,7 @@ class _PropertyFilterScreenState extends ConsumerState<PropertyFilterScreen> {
       _minPrice = null;
       _maxPrice = null;
       _selectedPricePreset = null;
+      _selectedCurrency = null;
       _minSqm = null;
       _maxSqm = null;
       _keyword = '';
@@ -590,18 +595,22 @@ class _PropertyFilterScreenState extends ConsumerState<PropertyFilterScreen> {
         children: types.map((t) {
           final sel = _listingType == t.$1;
           return Expanded(
-            child: GestureDetector(
-              onTap: () => setState(() => _listingType = _listingType == t.$1 ? null : t.$1),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: sel ? EmlakColors.primary : Colors.transparent,
-                ),
-                child: Center(
-                  child: Text(t.$2, style: TextStyle(
-                    color: sel ? Colors.white : EmlakColors.textPrimary(isDark),
-                    fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
-                    fontSize: 13,
-                  )),
+            child: Material(
+              color: sel ? EmlakColors.primary : Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  setState(() => _listingType = _listingType == t.$1 ? null : t.$1);
+                },
+                child: SizedBox(
+                  height: 44,
+                  child: Center(
+                    child: Text(t.$2, style: TextStyle(
+                      color: sel ? Colors.white : EmlakColors.textPrimary(isDark),
+                      fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
+                      fontSize: 13,
+                    )),
+                  ),
                 ),
               ),
             ),
@@ -657,23 +666,31 @@ class _PropertyFilterScreenState extends ConsumerState<PropertyFilterScreen> {
   Widget _buildCategoryBtn(String label, String cat, bool isDark) {
     final sel = _selectedCategory == cat;
     return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() {
-          if (_selectedCategory == cat) { _selectedCategory = null; _selectedPropertyTypes.clear(); }
-          else { _selectedCategory = cat; _selectedPropertyTypes.clear(); }
-        }),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: sel ? EmlakColors.primary : EmlakColors.surface(isDark),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: sel ? EmlakColors.primary : EmlakColors.border(isDark)),
+      child: Material(
+        color: sel ? EmlakColors.primary : EmlakColors.surface(isDark),
+        borderRadius: BorderRadius.circular(10),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            setState(() {
+              if (_selectedCategory == cat) { _selectedCategory = null; _selectedPropertyTypes.clear(); }
+              else { _selectedCategory = cat; _selectedPropertyTypes.clear(); }
+            });
+          },
+          borderRadius: BorderRadius.circular(10),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: sel ? EmlakColors.primary : EmlakColors.border(isDark)),
+            ),
+            child: Center(child: Text(label, style: TextStyle(
+              color: sel ? Colors.white : EmlakColors.textSecondary(isDark),
+              fontWeight: sel ? FontWeight.w700 : FontWeight.w500, fontSize: 13,
+            ))),
           ),
-          child: Center(child: Text(label, style: TextStyle(
-            color: sel ? Colors.white : EmlakColors.textSecondary(isDark),
-            fontWeight: sel ? FontWeight.w700 : FontWeight.w500, fontSize: 13,
-          ))),
         ),
       ),
     );
@@ -697,9 +714,27 @@ class _PropertyFilterScreenState extends ConsumerState<PropertyFilterScreen> {
   // 4. Fiyat Aralığı
   // ==========================================
   Widget _buildPriceSection(bool isDark) {
+    const currencyOptions = [
+      {'code': 'TL', 'symbol': '₺'},
+      {'code': 'USD', 'symbol': '\$'},
+      {'code': 'EUR', 'symbol': '€'},
+      {'code': 'GBP', 'symbol': '£'},
+    ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Para Birimi Seçici
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            // "Tümü" butonu
+            _buildCurrencyChip(null, 'Tümü', isDark),
+            ...currencyOptions.map((c) =>
+              _buildCurrencyChip(c['code']!, '${c['symbol']} ${c['code']}', isDark)),
+          ],
+        ),
+        const SizedBox(height: 12),
         _buildDropdown(
           value: _selectedPricePreset,
           hint: 'Lütfen Seçiniz',
@@ -723,6 +758,45 @@ class _PropertyFilterScreenState extends ConsumerState<PropertyFilterScreen> {
           onMaxChanged: (v) { _maxPrice = v.isNotEmpty ? double.tryParse(v) : null; _selectedPricePreset = null; },
         ),
       ],
+    );
+  }
+
+  Widget _buildCurrencyChip(String? code, String label, bool isDark) {
+    final isSelected = _selectedCurrency == code;
+    return Material(
+      color: isSelected
+          ? EmlakColors.primary
+          : (isDark ? const Color(0xFF1E293B) : Colors.grey[100]),
+      borderRadius: BorderRadius.circular(20),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          setState(() => _selectedCurrency = code);
+        },
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isSelected
+                  ? EmlakColors.primary
+                  : (isDark ? Colors.grey[700]! : Colors.grey[300]!),
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+              color: isSelected
+                  ? Colors.white
+                  : (isDark ? Colors.grey[400] : Colors.grey[700]),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -794,8 +868,12 @@ class _PropertyFilterScreenState extends ConsumerState<PropertyFilterScreen> {
     return Wrap(
       children: _dateOptions.entries.map((e) {
         final s = _listingDateRange == e.key;
-        return SizedBox(width: w, child: GestureDetector(
-          onTap: () => setState(() => _listingDateRange = e.key),
+        return SizedBox(width: w, child: InkWell(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            setState(() => _listingDateRange = e.key);
+          },
+          borderRadius: BorderRadius.circular(8),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -871,8 +949,12 @@ class _PropertyFilterScreenState extends ConsumerState<PropertyFilterScreen> {
   // ==========================================
 
   Widget _buildCheckboxTile(String label, bool sel, bool isDark, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
+    return InkWell(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onTap();
+      },
+      borderRadius: BorderRadius.circular(8),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Row(mainAxisSize: MainAxisSize.min, children: [

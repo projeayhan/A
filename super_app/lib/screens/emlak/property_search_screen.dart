@@ -1,10 +1,13 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/emlak/emlak_models.dart';
 import '../../services/emlak/property_service.dart';
+import '../../core/providers/emlak_provider.dart';
 
 class PropertySearchScreen extends ConsumerStatefulWidget {
   const PropertySearchScreen({super.key});
@@ -20,15 +23,16 @@ class _PropertySearchScreenState extends ConsumerState<PropertySearchScreen>
   final _focusNode = FocusNode();
 
   List<Property> _searchResults = [];
-  List<String> _recentSearches = [
-    'Kadıköy daire',
-    'Beşiktaş kiralık',
-    'Deniz manzaralı villa',
-    'Ataşehir rezidans',
-  ];
+  List<String> _recentSearches = [];
 
   bool _isSearching = false;
   PropertyFilter _filter = const PropertyFilter();
+  SortOption _sortOption = SortOption.newest;
+
+  Timer? _debounce;
+
+  static const _recentSearchesKey = 'emlak_recent_searches';
+  static const _maxRecentSearches = 10;
 
   @override
   void initState() {
@@ -40,14 +44,69 @@ class _PropertySearchScreenState extends ConsumerState<PropertySearchScreen>
 
     _focusNode.requestFocus();
     _animationController.forward();
+    _loadRecentSearches();
   }
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _animationController.dispose();
     _searchController.dispose();
     _focusNode.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadRecentSearches() async {
+    final prefs = await SharedPreferences.getInstance();
+    final searches = prefs.getStringList(_recentSearchesKey) ?? [];
+    if (mounted) {
+      setState(() => _recentSearches = searches);
+    }
+  }
+
+  Future<void> _saveRecentSearch(String query) async {
+    if (query.trim().isEmpty) return;
+    final trimmed = query.trim();
+
+    // Zaten varsa önce kaldır (en üste eklemek için)
+    _recentSearches.remove(trimmed);
+    _recentSearches.insert(0, trimmed);
+
+    // Maksimum sayıyı aşmasın
+    if (_recentSearches.length > _maxRecentSearches) {
+      _recentSearches = _recentSearches.sublist(0, _maxRecentSearches);
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_recentSearchesKey, _recentSearches);
+  }
+
+  Future<void> _clearRecentSearches() async {
+    setState(() => _recentSearches = []);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_recentSearchesKey);
+  }
+
+  Future<void> _removeRecentSearch(String query) async {
+    setState(() => _recentSearches.remove(query));
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_recentSearchesKey, _recentSearches);
+  }
+
+  void _onSearchChanged(String query) {
+    _debounce?.cancel();
+    if (query.isEmpty) {
+      setState(() {
+        _searchResults = [];
+        _isSearching = false;
+      });
+      return;
+    }
+
+    setState(() => _isSearching = true);
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      _search(query);
+    });
   }
 
   Future<void> _search(String query) async {
@@ -61,9 +120,16 @@ class _PropertySearchScreenState extends ConsumerState<PropertySearchScreen>
 
     setState(() => _isSearching = true);
 
+    // Son aramalara kaydet
+    _saveRecentSearch(query);
+
     try {
       final service = PropertyService();
-      final results = await service.searchProperties(searchQuery: query);
+      final results = await service.searchProperties(
+        searchQuery: query,
+        filter: _filter,
+        sortOption: _sortOption,
+      );
 
       if (mounted) {
         setState(() {
@@ -83,7 +149,53 @@ class _PropertySearchScreenState extends ConsumerState<PropertySearchScreen>
 
   void _applyFilter(PropertyFilter filter) {
     setState(() => _filter = filter);
-    _search(_searchController.text);
+    if (_searchController.text.isNotEmpty) {
+      _search(_searchController.text);
+    }
+  }
+
+  void _applyQuickFilter(PropertyFilter filter) {
+    setState(() {
+      _filter = filter;
+      _searchController.text = '';
+    });
+    // Hızlı filtre ile tüm ilanları ara (boş query yerine wildcard)
+    _searchWithFilter(filter);
+  }
+
+  Future<void> _searchWithFilter(PropertyFilter filter) async {
+    setState(() => _isSearching = true);
+    try {
+      final service = PropertyService();
+      final results = await service.getProperties(
+        filter: filter,
+        sortOption: _sortOption,
+        limit: 50,
+      );
+
+      if (mounted) {
+        setState(() {
+          _searchResults = results;
+          _isSearching = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _searchResults = [];
+          _isSearching = false;
+        });
+      }
+    }
+  }
+
+  void _setSortOption(SortOption option) {
+    setState(() => _sortOption = option);
+    if (_searchController.text.isNotEmpty) {
+      _search(_searchController.text);
+    } else if (_searchResults.isNotEmpty) {
+      _searchWithFilter(_filter);
+    }
   }
 
   @override
@@ -106,7 +218,7 @@ class _PropertySearchScreenState extends ConsumerState<PropertySearchScreen>
 
               // Content
               Expanded(
-                child: _searchController.text.isEmpty
+                child: _searchController.text.isEmpty && _searchResults.isEmpty
                     ? _buildRecentSearches(isDark)
                     : _isSearching
                         ? _buildLoadingState()
@@ -122,23 +234,30 @@ class _PropertySearchScreenState extends ConsumerState<PropertySearchScreen>
   }
 
   Widget _buildSearchHeader(BuildContext context, bool isDark) {
+    final activeFilterCount = _filter.activeCount;
+
     return Container(
       padding: const EdgeInsets.all(16),
       child: Row(
         children: [
-          GestureDetector(
-            onTap: () => context.pop(),
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E293B) : Colors.grey[100],
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: isDark ? Colors.white : Colors.grey[800],
-                size: 20,
+          Material(
+            color: isDark ? const Color(0xFF1E293B) : Colors.grey[100],
+            borderRadius: BorderRadius.circular(12),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                context.pop();
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: SizedBox(
+                width: 44,
+                height: 44,
+                child: Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  color: isDark ? Colors.white : Colors.grey[800],
+                  size: 20,
+                ),
               ),
             ),
           ),
@@ -163,7 +282,10 @@ class _PropertySearchScreenState extends ConsumerState<PropertySearchScreen>
                   child: TextField(
                     controller: _searchController,
                     focusNode: _focusNode,
-                    onChanged: _search,
+                    onChanged: _onSearchChanged,
+                    onSubmitted: (query) {
+                      if (query.isNotEmpty) _search(query);
+                    },
                     style: TextStyle(
                       color: isDark ? Colors.white : Colors.grey[900],
                       fontSize: 16,
@@ -179,12 +301,16 @@ class _PropertySearchScreenState extends ConsumerState<PropertySearchScreen>
                         color: EmlakColors.primary,
                       ),
                       suffixIcon: _searchController.text.isNotEmpty
-                          ? GestureDetector(
-                              onTap: () {
+                          ? IconButton(
+                              onPressed: () {
+                                HapticFeedback.selectionClick();
                                 _searchController.clear();
-                                _search('');
+                                setState(() {
+                                  _searchResults = [];
+                                  _isSearching = false;
+                                });
                               },
-                              child: Icon(
+                              icon: Icon(
                                 Icons.close_rounded,
                                 color: isDark ? Colors.grey[500] : Colors.grey[400],
                               ),
@@ -202,23 +328,56 @@ class _PropertySearchScreenState extends ConsumerState<PropertySearchScreen>
             ),
           ),
           const SizedBox(width: 12),
-          GestureDetector(
-            onTap: () => _showFilterSheet(context),
-            child: Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
+          Stack(
+            children: [
+              Material(
                 color: EmlakColors.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: EmlakColors.primary.withValues(alpha: 0.3),
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    _showFilterSheet(context);
+                  },
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: EmlakColors.primary.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.tune_rounded,
+                      color: EmlakColors.primary,
+                    ),
+                  ),
                 ),
               ),
-              child: Icon(
-                Icons.tune_rounded,
-                color: EmlakColors.primary,
-              ),
-            ),
+              if (activeFilterCount > 0)
+                Positioned(
+                  top: -2,
+                  right: -2,
+                  child: Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      color: EmlakColors.accent,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: EmlakColors.background(isDark), width: 2),
+                    ),
+                    child: Text(
+                      '$activeFilterCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ],
       ),
@@ -234,21 +393,21 @@ class _PropertySearchScreenState extends ConsumerState<PropertySearchScreen>
         children: [
           _buildFilterChip(
             label: 'Tümü',
-            isSelected: _filter.listingType == null,
-            onTap: () => _applyFilter(_filter.copyWith()),
+            isSelected: _filter.listingType == null && _filter.type == null,
+            onTap: () => _applyFilter(const PropertyFilter()),
             isDark: isDark,
           ),
           _buildFilterChip(
             label: 'Satılık',
             isSelected: _filter.listingType == ListingType.sale,
-            onTap: () => _applyFilter(PropertyFilter(listingType: ListingType.sale)),
+            onTap: () => _applyFilter(const PropertyFilter(listingType: ListingType.sale)),
             isDark: isDark,
             color: ListingType.sale.color,
           ),
           _buildFilterChip(
             label: 'Kiralık',
             isSelected: _filter.listingType == ListingType.rent,
-            onTap: () => _applyFilter(PropertyFilter(listingType: ListingType.rent)),
+            onTap: () => _applyFilter(const PropertyFilter(listingType: ListingType.rent)),
             isDark: isDark,
             color: ListingType.rent.color,
           ),
@@ -281,29 +440,39 @@ class _PropertySearchScreenState extends ConsumerState<PropertySearchScreen>
   }) {
     final activeColor = color ?? EmlakColors.primary;
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? activeColor : Colors.transparent,
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: Material(
+        color: isSelected ? activeColor : Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            onTap();
+          },
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected
-                ? activeColor
-                : (isDark ? Colors.grey[700]! : Colors.grey[300]!),
-          ),
-        ),
-        child: Center(
-          child: Text(
-            label,
-            style: TextStyle(
-              color: isSelected
-                  ? Colors.white
-                  : (isDark ? Colors.grey[400] : Colors.grey[600]),
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-              fontSize: 13,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isSelected
+                    ? activeColor
+                    : (isDark ? Colors.grey[700]! : Colors.grey[300]!),
+              ),
+            ),
+            child: Center(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: isSelected
+                      ? Colors.white
+                      : (isDark ? Colors.grey[400] : Colors.grey[600]),
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  fontSize: 13,
+                ),
+              ),
             ),
           ),
         ),
@@ -312,74 +481,97 @@ class _PropertySearchScreenState extends ConsumerState<PropertySearchScreen>
   }
 
   Widget _buildRecentSearches(bool isDark) {
+    final citiesAsync = ref.watch(citiesProvider);
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Recent Searches
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Son Aramalar',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: isDark ? Colors.white : Colors.grey[900],
-                ),
-              ),
-              TextButton(
-                onPressed: () => setState(() => _recentSearches = []),
-                child: Text(
-                  'Temizle',
+          if (_recentSearches.isNotEmpty) ...[
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Son Aramalar',
                   style: TextStyle(
-                    color: EmlakColors.primary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : Colors.grey[900],
+                  ),
+                ),
+                TextButton(
+                  onPressed: _clearRecentSearches,
+                  child: Text(
+                    'Temizle',
+                    style: TextStyle(
+                      color: EmlakColors.primary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ..._recentSearches.map((search) {
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF1E293B) : Colors.grey[100],
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    Icons.history_rounded,
+                    color: isDark ? Colors.grey[500] : Colors.grey[400],
+                    size: 20,
+                  ),
+                ),
+                title: Text(
+                  search,
+                  style: TextStyle(
+                    color: isDark ? Colors.white : Colors.grey[800],
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          ..._recentSearches.map((search) {
-            return ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1E293B) : Colors.grey[100],
-                  borderRadius: BorderRadius.circular(10),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    GestureDetector(
+                      onTap: () => _removeRecentSearch(search),
+                      child: Padding(
+                        padding: const EdgeInsets.all(4),
+                        child: Icon(
+                          Icons.close_rounded,
+                          color: isDark ? Colors.grey[600] : Colors.grey[400],
+                          size: 16,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Icon(
+                      Icons.north_west_rounded,
+                      color: isDark ? Colors.grey[600] : Colors.grey[400],
+                      size: 18,
+                    ),
+                  ],
                 ),
-                child: Icon(
-                  Icons.history_rounded,
-                  color: isDark ? Colors.grey[500] : Colors.grey[400],
-                  size: 20,
-                ),
-              ),
-              title: Text(
-                search,
-                style: TextStyle(
-                  color: isDark ? Colors.white : Colors.grey[800],
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              trailing: Icon(
-                Icons.north_west_rounded,
-                color: isDark ? Colors.grey[600] : Colors.grey[400],
-                size: 18,
-              ),
-              onTap: () {
-                _searchController.text = search;
-                _search(search);
-              },
-            );
-          }),
+                onTap: () {
+                  _searchController.text = search;
+                  _searchController.selection = TextSelection.fromPosition(
+                    TextPosition(offset: search.length),
+                  );
+                  _search(search);
+                },
+              );
+            }),
+            const SizedBox(height: 32),
+          ],
 
-          const SizedBox(height: 32),
-
-          // Popular Locations
+          // Popular Locations - DB'den
           Text(
             'Popüler Lokasyonlar',
             style: TextStyle(
@@ -389,56 +581,72 @@ class _PropertySearchScreenState extends ConsumerState<PropertySearchScreen>
             ),
           ),
           const SizedBox(height: 16),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              'Girne',
-              'Lefkoşa',
-              'Gazimağusa',
-              'Alsancak',
-              'Lapta',
-              'Long Beach',
-              'Bellapais',
-            ].map((location) {
-              return GestureDetector(
-                onTap: () {
-                  _searchController.text = location;
-                  _search(location);
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF1E293B) : Colors.grey[100],
+          citiesAsync.when(
+            loading: () => Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: List.generate(5, (_) => Container(
+                width: 100,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E293B) : Colors.grey[200],
+                  borderRadius: BorderRadius.circular(25),
+                ),
+              )),
+            ),
+            error: (_, __) => const SizedBox.shrink(),
+            data: (cities) => Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: cities.map((location) {
+                return Material(
+                  color: isDark ? const Color(0xFF1E293B) : Colors.grey[100],
+                  borderRadius: BorderRadius.circular(25),
+                  clipBehavior: Clip.antiAlias,
+                  child: InkWell(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      _searchController.text = location;
+                      _searchController.selection = TextSelection.fromPosition(
+                        TextPosition(offset: location.length),
+                      );
+                      _search(location);
+                    },
                     borderRadius: BorderRadius.circular(25),
-                    border: Border.all(
-                      color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.location_on_outlined,
-                        color: EmlakColors.primary,
-                        size: 18,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
                       ),
-                      const SizedBox(width: 6),
-                      Text(
-                        location,
-                        style: TextStyle(
-                          color: isDark ? Colors.white : Colors.grey[800],
-                          fontWeight: FontWeight.w500,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(25),
+                        border: Border.all(
+                          color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
                         ),
                       ),
-                    ],
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.location_on_outlined,
+                            color: EmlakColors.primary,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            location,
+                            style: TextStyle(
+                              color: isDark ? Colors.white : Colors.grey[800],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
-              );
-            }).toList(),
+                );
+              }).toList(),
+            ),
           ),
 
           const SizedBox(height: 32),
@@ -461,7 +669,11 @@ class _PropertySearchScreenState extends ConsumerState<PropertySearchScreen>
                   label: 'Havuzlu',
                   color: Colors.blue,
                   isDark: isDark,
-                  onTap: () {},
+                  onTap: () {
+                    _applyQuickFilter(const PropertyFilter(
+                      hasPrivatePool: true,
+                    ));
+                  },
                 ),
               ),
               const SizedBox(width: 12),
@@ -471,7 +683,11 @@ class _PropertySearchScreenState extends ConsumerState<PropertySearchScreen>
                   label: 'Denize Sıfır',
                   color: Colors.cyan,
                   isDark: isDark,
-                  onTap: () {},
+                  onTap: () {
+                    _applyQuickFilter(const PropertyFilter(
+                      isSeafront: true,
+                    ));
+                  },
                 ),
               ),
             ],
@@ -485,7 +701,10 @@ class _PropertySearchScreenState extends ConsumerState<PropertySearchScreen>
                   label: 'Premium',
                   color: Colors.amber,
                   isDark: isDark,
-                  onTap: () {},
+                  onTap: () {
+                    // Premium ilanları göster
+                    context.push('/emlak/featured');
+                  },
                 ),
               ),
               const SizedBox(width: 12),
@@ -495,7 +714,12 @@ class _PropertySearchScreenState extends ConsumerState<PropertySearchScreen>
                   label: 'Akıllı Ev',
                   color: Colors.purple,
                   isDark: isDark,
-                  onTap: () {},
+                  onTap: () {
+                    _searchController.text = 'Akıllı Ev';
+                    _applyQuickFilter(const PropertyFilter(
+                      keyword: 'akıllı ev',
+                    ));
+                  },
                 ),
               ),
             ],
@@ -512,37 +736,45 @@ class _PropertySearchScreenState extends ConsumerState<PropertySearchScreen>
     required bool isDark,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E293B) : Colors.grey[100],
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
+    return Material(
+      color: isDark ? const Color(0xFF1E293B) : Colors.grey[100],
+      borderRadius: BorderRadius.circular(16),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
+            ),
           ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(12),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 24),
               ),
-              child: Icon(icon, color: color, size: 24),
-            ),
-            const SizedBox(width: 12),
-            Text(
-              label,
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: isDark ? Colors.white : Colors.grey[800],
+              const SizedBox(width: 12),
+              Text(
+                label,
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white : Colors.grey[800],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -625,24 +857,32 @@ class _PropertySearchScreenState extends ConsumerState<PropertySearchScreen>
                   color: isDark ? Colors.grey[500] : Colors.grey[600],
                 ),
               ),
-              GestureDetector(
-                onTap: () {},
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.sort_rounded,
-                      size: 18,
-                      color: EmlakColors.primary,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Sırala',
-                      style: TextStyle(
+              InkWell(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  _showSortSheet(context);
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.sort_rounded,
+                        size: 18,
                         color: EmlakColors.primary,
-                        fontWeight: FontWeight.w500,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 4),
+                      Text(
+                        _sortOption.label,
+                        style: TextStyle(
+                          color: EmlakColors.primary,
+                          fontWeight: FontWeight.w500,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -663,24 +903,27 @@ class _PropertySearchScreenState extends ConsumerState<PropertySearchScreen>
   }
 
   Widget _buildSearchResultCard(Property property, bool isDark) {
-    return GestureDetector(
-      onTap: () => context.push('/emlak/property/${property.id}'),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E293B) : Colors.white,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Material(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        clipBehavior: Clip.antiAlias,
+        elevation: 2,
+        shadowColor: Colors.black.withValues(alpha: 0.06),
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            context.push('/emlak/property/${property.id}');
+          },
           borderRadius: BorderRadius.circular(14),
-          border: property.isPremium
-              ? Border.all(color: EmlakColors.accent, width: 2)
-              : null,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: property.isPremium
+                  ? Border.all(color: EmlakColors.accent, width: 2)
+                  : null,
             ),
-          ],
-        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -689,22 +932,28 @@ class _PropertySearchScreenState extends ConsumerState<PropertySearchScreen>
               children: [
                 ClipRRect(
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
-                  child: CachedNetworkImage(
-                    imageUrl: property.images.first,
-                    height: 180,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    placeholder: (_, __) => Container(
-                      height: 180,
-                      color: Colors.grey[200],
-                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                    ),
-                    errorWidget: (_, __, ___) => Container(
-                      height: 180,
-                      color: EmlakColors.primary.withValues(alpha: 0.2),
-                      child: const Icon(Icons.image, color: Colors.white54, size: 40),
-                    ),
-                  ),
+                  child: property.images.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: property.images.first,
+                          height: 180,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          placeholder: (_, _) => Container(
+                            height: 180,
+                            color: Colors.grey[200],
+                            child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                          ),
+                          errorWidget: (_, _, _) => Container(
+                            height: 180,
+                            color: EmlakColors.primary.withValues(alpha: 0.2),
+                            child: const Icon(Icons.image, color: Colors.white54, size: 40),
+                          ),
+                        )
+                      : Container(
+                          height: 180,
+                          color: EmlakColors.primary.withValues(alpha: 0.2),
+                          child: const Icon(Icons.home, color: Colors.white54, size: 40),
+                        ),
                 ),
                 // Listing type badge
                 Positioned(
@@ -843,6 +1092,8 @@ class _PropertySearchScreenState extends ConsumerState<PropertySearchScreen>
           ],
         ),
       ),
+      ),
+      ),
     );
   }
 
@@ -874,8 +1125,77 @@ class _PropertySearchScreenState extends ConsumerState<PropertySearchScreen>
         onApply: (filter) {
           Navigator.pop(context);
           _applyFilter(filter);
+          // Filtre uygulandıysa ve arama kutusu boşsa, filtreli arama yap
+          if (_searchController.text.isEmpty && filter.activeCount > 0) {
+            _searchWithFilter(filter);
+          }
         },
       ),
+    );
+  }
+
+  void _showSortSheet(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[400],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Text(
+                  'Sıralama',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : Colors.grey[900],
+                  ),
+                ),
+              ),
+              ...SortOption.values.map((option) {
+                final isSelected = _sortOption == option;
+                return ListTile(
+                  leading: Icon(
+                    option.icon,
+                    color: isSelected ? EmlakColors.primary : (isDark ? Colors.grey[500] : Colors.grey[600]),
+                  ),
+                  title: Text(
+                    option.label,
+                    style: TextStyle(
+                      color: isSelected ? EmlakColors.primary : (isDark ? Colors.white : Colors.grey[800]),
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                    ),
+                  ),
+                  trailing: isSelected
+                      ? Icon(Icons.check_circle, color: EmlakColors.primary)
+                      : null,
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    Navigator.pop(context);
+                    _setSortOption(option);
+                  },
+                );
+              }),
+              const SizedBox(height: 16),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -895,13 +1215,25 @@ class _FilterSheet extends StatefulWidget {
 
 class _FilterSheetState extends State<_FilterSheet> {
   late PropertyFilter _filter;
-  RangeValues _priceRange = const RangeValues(0, 50000000);
-  RangeValues _sizeRange = const RangeValues(0, 500);
+  late RangeValues _priceRange;
+  late RangeValues _sizeRange;
+  Set<String> _selectedRooms = {};
 
   @override
   void initState() {
     super.initState();
     _filter = widget.filter;
+
+    // Mevcut filtre değerlerinden başlat
+    _priceRange = RangeValues(
+      widget.filter.minPrice ?? 0,
+      widget.filter.maxPrice ?? 50000000,
+    );
+    _sizeRange = RangeValues(
+      (widget.filter.minSquareMeters ?? 0).toDouble(),
+      (widget.filter.maxSquareMeters ?? 500).toDouble(),
+    );
+    _selectedRooms = widget.filter.roomTypes ?? {};
   }
 
   @override
@@ -944,6 +1276,7 @@ class _FilterSheetState extends State<_FilterSheet> {
                       _filter = const PropertyFilter();
                       _priceRange = const RangeValues(0, 50000000);
                       _sizeRange = const RangeValues(0, 500);
+                      _selectedRooms = {};
                     });
                   },
                   child: Text(
@@ -971,20 +1304,20 @@ class _FilterSheetState extends State<_FilterSheet> {
                       _buildOptionChip(
                         'Tümü',
                         _filter.listingType == null,
-                        () => setState(() => _filter = _filter.copyWith()),
+                        () => setState(() => _filter = const PropertyFilter()),
                         isDark,
                       ),
                       _buildOptionChip(
                         'Satılık',
                         _filter.listingType == ListingType.sale,
-                        () => setState(() => _filter = PropertyFilter(
+                        () => setState(() => _filter = _filter.copyWith(
                             listingType: ListingType.sale)),
                         isDark,
                       ),
                       _buildOptionChip(
                         'Kiralık',
                         _filter.listingType == ListingType.rent,
-                        () => setState(() => _filter = PropertyFilter(
+                        () => setState(() => _filter = _filter.copyWith(
                             listingType: ListingType.rent)),
                         isDark,
                       ),
@@ -1025,7 +1358,9 @@ class _FilterSheetState extends State<_FilterSheet> {
                         ),
                       ),
                       Text(
-                        _formatPrice(_priceRange.end),
+                        _priceRange.end >= 50000000
+                            ? '50M+ TL'
+                            : _formatPrice(_priceRange.end),
                         style: TextStyle(
                           color: EmlakColors.primary,
                           fontWeight: FontWeight.w600,
@@ -1061,7 +1396,9 @@ class _FilterSheetState extends State<_FilterSheet> {
                         ),
                       ),
                       Text(
-                        '${_sizeRange.end.toInt()} m²',
+                        _sizeRange.end >= 500
+                            ? '500+ m²'
+                            : '${_sizeRange.end.toInt()} m²',
                         style: TextStyle(
                           color: EmlakColors.primary,
                           fontWeight: FontWeight.w600,
@@ -1088,29 +1425,52 @@ class _FilterSheetState extends State<_FilterSheet> {
                   const SizedBox(height: 12),
                   Row(
                     children: ['1+1', '2+1', '3+1', '4+1', '5+'].map((room) {
+                      final isSelected = _selectedRooms.contains(room);
                       return Expanded(
-                        child: GestureDetector(
-                          onTap: () {},
-                          child: Container(
-                            margin: const EdgeInsets.only(right: 8),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? Colors.grey[800]
-                                  : Colors.grey[100],
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: Material(
+                            color: isSelected
+                                ? EmlakColors.primary
+                                : (isDark ? Colors.grey[800] : Colors.grey[100]),
+                            borderRadius: BorderRadius.circular(10),
+                            clipBehavior: Clip.antiAlias,
+                            child: InkWell(
+                              onTap: () {
+                                HapticFeedback.selectionClick();
+                                setState(() {
+                                  if (isSelected) {
+                                    _selectedRooms.remove(room);
+                                  } else {
+                                    _selectedRooms = {..._selectedRooms, room};
+                                  }
+                                });
+                              },
                               borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: isDark
-                                    ? Colors.grey[700]!
-                                    : Colors.grey[300]!,
-                              ),
-                            ),
-                            child: Center(
-                              child: Text(
-                                room,
-                                style: TextStyle(
-                                  color: isDark ? Colors.white : Colors.grey[800],
-                                  fontWeight: FontWeight.w500,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? EmlakColors.primary
+                                        : (isDark
+                                            ? Colors.grey[700]!
+                                            : Colors.grey[300]!),
+                                  ),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    room,
+                                    style: TextStyle(
+                                      color: isSelected
+                                          ? Colors.white
+                                          : (isDark ? Colors.white : Colors.grey[800]),
+                                      fontWeight: isSelected
+                                          ? FontWeight.w600
+                                          : FontWeight.w500,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
@@ -1146,7 +1506,35 @@ class _FilterSheetState extends State<_FilterSheet> {
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
-                onPressed: () => widget.onApply(_filter),
+                onPressed: () {
+                  // Tüm filtre değerlerini birleştir
+                  PropertyFilter finalFilter = _filter;
+
+                  // Fiyat aralığı (varsayılan sınırlar değilse)
+                  final hasMinPrice = _priceRange.start > 0;
+                  final hasMaxPrice = _priceRange.end < 50000000;
+                  if (hasMinPrice || hasMaxPrice) {
+                    finalFilter = PropertyFilter(
+                      type: finalFilter.type,
+                      listingType: finalFilter.listingType,
+                      minPrice: hasMinPrice ? _priceRange.start : null,
+                      maxPrice: hasMaxPrice ? _priceRange.end : null,
+                      minSquareMeters: _sizeRange.start > 0 ? _sizeRange.start.toInt() : null,
+                      maxSquareMeters: _sizeRange.end < 500 ? _sizeRange.end.toInt() : null,
+                      roomTypes: _selectedRooms.isNotEmpty ? _selectedRooms : null,
+                    );
+                  } else {
+                    finalFilter = PropertyFilter(
+                      type: finalFilter.type,
+                      listingType: finalFilter.listingType,
+                      minSquareMeters: _sizeRange.start > 0 ? _sizeRange.start.toInt() : null,
+                      maxSquareMeters: _sizeRange.end < 500 ? _sizeRange.end.toInt() : null,
+                      roomTypes: _selectedRooms.isNotEmpty ? _selectedRooms : null,
+                    );
+                  }
+
+                  widget.onApply(finalFilter);
+                },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: EmlakColors.primary,
                   shape: RoundedRectangleBorder(
@@ -1186,27 +1574,37 @@ class _FilterSheetState extends State<_FilterSheet> {
     VoidCallback onTap,
     bool isDark,
   ) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected ? EmlakColors.primary : Colors.transparent,
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: Material(
+        color: isSelected ? EmlakColors.primary : Colors.transparent,
+        borderRadius: BorderRadius.circular(25),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            onTap();
+          },
           borderRadius: BorderRadius.circular(25),
-          border: Border.all(
-            color: isSelected
-                ? EmlakColors.primary
-                : (isDark ? Colors.grey[700]! : Colors.grey[300]!),
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected
-                ? Colors.white
-                : (isDark ? Colors.grey[400] : Colors.grey[600]),
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(25),
+              border: Border.all(
+                color: isSelected
+                    ? EmlakColors.primary
+                    : (isDark ? Colors.grey[700]! : Colors.grey[300]!),
+              ),
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                color: isSelected
+                    ? Colors.white
+                    : (isDark ? Colors.grey[400] : Colors.grey[600]),
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+              ),
+            ),
           ),
         ),
       ),

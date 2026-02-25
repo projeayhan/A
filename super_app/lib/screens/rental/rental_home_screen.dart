@@ -6,6 +6,7 @@ import '../../core/theme/app_responsive.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/rental/rental_models.dart';
 import '../../core/services/rental_service.dart';
+import '../../widgets/common/shimmer_widgets.dart';
 import 'car_detail_screen.dart';
 import 'my_bookings_screen.dart';
 import 'rental_car_cards.dart';
@@ -43,6 +44,7 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
   String _pickupCustomAddressNote = '';
   String _dropoffCustomAddressNote = '';
 
+  bool _isLoading = true;
   List<RentalCar> _cars = [];
   List<RentalLocation> _locations = [];
   // Hero banner carousel icin
@@ -123,32 +125,19 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
 
   Future<void> _loadData() async {
     try {
-      // Gercek verileri Supabase'den cek
       final cars = await RentalService.getAvailableCars();
       final locations = await RentalService.getLocations();
-
-      // Rental banner'ini cek
       await _loadRentalBanner();
-
-      debugPrint('=== RENTAL DATA LOADED ===');
-      debugPrint('Cars from Supabase: ${cars.length}');
-      debugPrint('Locations from Supabase: ${locations.length}');
-      for (var car in cars) {
-        debugPrint(
-            '  - ${car.brandName} ${car.model} (${car.dailyPrice} TL/gun)');
-      }
 
       if (mounted) {
         setState(() {
           _cars = cars;
           _locations = locations;
-
-          // Varsayilan lokasyonlari ayarla
+          _isLoading = false;
           if (_locations.isNotEmpty) {
-            _selectedPickupLocation = _locations.first;
-            _selectedDropoffLocation = _locations.first;
+            _selectedPickupLocation ??= _locations.first;
+            _selectedDropoffLocation ??= _locations.first;
           }
-
         });
       }
     } catch (e) {
@@ -157,6 +146,7 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
         setState(() {
           _cars = [];
           _locations = [];
+          _isLoading = false;
         });
       }
     }
@@ -294,8 +284,8 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
             // Premium App Bar
             _buildPremiumAppBar(theme, size),
 
-            // Search Card
-            SliverToBoxAdapter(child: _buildSearchCard(theme)),
+            // Search Pill
+            SliverToBoxAdapter(child: _buildSearchPill(theme)),
 
             // Category Selector
             SliverToBoxAdapter(child: _buildCategorySelector(theme)),
@@ -415,20 +405,6 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    ShaderMask(
-                      shaderCallback: (bounds) =>
-                          AppColors.primaryGradient.createShader(bounds),
-                      child: const Text(
-                        'PREMIUM',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 3,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
                     Text(
                       _currentBannerTitle,
                       style: const TextStyle(
@@ -493,88 +469,254 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
     );
   }
 
-  Widget _buildSearchCard(ThemeData theme) {
+  String _formatShortDate(DateTime date) {
+    final months = ['Oca', 'Sub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Agu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+    return '${date.day} ${months[date.month - 1]}';
+  }
+
+  int get _rentalDays {
+    final days = _dropoffDate.difference(_pickupDate).inDays;
+    return days < 1 ? 1 : days;
+  }
+
+  String get _pickupLocationName {
+    if (_isPickupCustomAddress) return _pickupCustomAddress;
+    return _selectedPickupLocation?.name ?? 'Lokasyon Secin';
+  }
+
+  Widget _buildSearchPill(ThemeData theme) {
     return FadeTransition(
       opacity: _fadeAnimation,
-      child: Card(
-        margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        elevation: 2,
-        shadowColor: Colors.black.withValues(alpha: 0.06),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          child: Column(
-            children: [
-              // Pickup Location
-              _buildLocationField(
-                theme: theme,
-                icon: _isPickupCustomAddress ? Icons.home : Icons.location_on,
-                iconColor: _isPickupCustomAddress
-                    ? theme.colorScheme.primary
-                    : AppColors.success,
-                label: 'Alis Noktasi',
-                value: _isPickupCustomAddress
-                    ? _pickupCustomAddress
-                    : (_selectedPickupLocation?.name ?? 'Lokasyon Secin'),
-                isCustomAddress: _isPickupCustomAddress,
-                onTap: () => _handleShowLocationPicker(true),
-              ),
-
-              Divider(color: theme.dividerColor, height: 16),
-
-              // Dropoff Location
-              _buildLocationField(
-                theme: theme,
-                icon: _isDropoffCustomAddress ? Icons.home : Icons.flag,
-                iconColor: _isDropoffCustomAddress
-                    ? theme.colorScheme.primary
-                    : AppColors.error,
-                label: 'Teslim Noktasi',
-                value: _isDropoffCustomAddress
-                    ? _dropoffCustomAddress
-                    : (_selectedDropoffLocation?.name ?? 'Lokasyon Secin'),
-                isCustomAddress: _isDropoffCustomAddress,
-                onTap: () => _handleShowLocationPicker(false),
-              ),
-
-              Divider(color: theme.dividerColor, height: 16),
-
-              // Date Selection
-              Row(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+        child: Material(
+          color: theme.cardColor,
+          borderRadius: BorderRadius.circular(28),
+          elevation: 2,
+          shadowColor: Colors.black.withValues(alpha: 0.08),
+          child: InkWell(
+            onTap: _openSearchSheet,
+            borderRadius: BorderRadius.circular(28),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
                 children: [
+                  Icon(Icons.search, color: theme.colorScheme.primary, size: 22),
+                  const SizedBox(width: 12),
                   Expanded(
-                    child: _buildDateField(
-                      theme: theme,
-                      icon: Icons.calendar_today,
-                      label: 'Alis Tarihi',
-                      value:
-                          '${_pickupDate.day}/${_pickupDate.month}/${_pickupDate.year}',
-                      onTap: () => _selectDate(true),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _pickupLocationName,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: theme.colorScheme.onSurface,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${_formatShortDate(_pickupDate)} - ${_formatShortDate(_dropoffDate)}  ·  $_rentalDays gun',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   Container(
-                    width: 1,
-                    height: 50,
-                    color: theme.dividerColor,
-                    margin: const EdgeInsets.symmetric(horizontal: 12),
-                  ),
-                  Expanded(
-                    child: _buildDateField(
-                      theme: theme,
-                      icon: Icons.event_available,
-                      label: 'Teslim Tarihi',
-                      value:
-                          '${_dropoffDate.day}/${_dropoffDate.month}/${_dropoffDate.year}',
-                      onTap: () => _selectDate(false),
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
                     ),
+                    child: Icon(Icons.tune, color: theme.colorScheme.primary, size: 18),
                   ),
                 ],
               ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
-              const SizedBox(height: 10),
+  void _openSearchSheet() {
+    final theme = Theme.of(context);
 
-              // Search Button
-              _buildSearchButton(theme),
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) => Container(
+          height: MediaQuery.of(context).size.height * 0.75,
+          decoration: BoxDecoration(
+            color: theme.cardColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              // Handle
+              Container(
+                margin: const EdgeInsets.only(top: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.dividerColor,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              // Title
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                child: Row(
+                  children: [
+                    Text(
+                      'Arac Ara',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: Icon(Icons.close, color: theme.colorScheme.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Pickup Location
+                      _buildSheetField(
+                        theme: theme,
+                        icon: _isPickupCustomAddress ? Icons.home : Icons.location_on,
+                        iconColor: _isPickupCustomAddress ? theme.colorScheme.primary : AppColors.success,
+                        label: 'Alis Noktasi',
+                        value: _isPickupCustomAddress
+                            ? _pickupCustomAddress
+                            : (_selectedPickupLocation?.name ?? 'Lokasyon Secin'),
+                        onTap: () {
+                          Navigator.pop(context);
+                          _handleShowLocationPicker(true);
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      // Dropoff Location
+                      _buildSheetField(
+                        theme: theme,
+                        icon: _isDropoffCustomAddress ? Icons.home : Icons.flag,
+                        iconColor: _isDropoffCustomAddress ? theme.colorScheme.primary : AppColors.error,
+                        label: 'Teslim Noktasi',
+                        value: _isDropoffCustomAddress
+                            ? _dropoffCustomAddress
+                            : (_selectedDropoffLocation?.name ?? 'Lokasyon Secin'),
+                        onTap: () {
+                          Navigator.pop(context);
+                          _handleShowLocationPicker(false);
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      // Dates
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildSheetDateField(
+                              theme: theme,
+                              label: 'Alis Tarihi',
+                              value: '${_pickupDate.day}/${_pickupDate.month}/${_pickupDate.year}',
+                              onTap: () async {
+                                Navigator.pop(context);
+                                await _selectDate(true);
+                                if (mounted) _openSearchSheet();
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildSheetDateField(
+                              theme: theme,
+                              label: 'Teslim Tarihi',
+                              value: '${_dropoffDate.day}/${_dropoffDate.month}/${_dropoffDate.year}',
+                              onTap: () async {
+                                Navigator.pop(context);
+                                await _selectDate(false);
+                                if (mounted) _openSearchSheet();
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      // Duration info
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.access_time, color: theme.colorScheme.primary, size: 18),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Toplam $_rentalDays gun',
+                              style: TextStyle(
+                                color: theme.colorScheme.primary,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
+                ),
+              ),
+              // Search button
+              Padding(
+                padding: EdgeInsets.only(
+                  left: 20, right: 20,
+                  top: 8,
+                  bottom: MediaQuery.of(context).padding.bottom + 16,
+                ),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _searchCars();
+                    },
+                    icon: const Icon(Icons.search, size: 20),
+                    label: const Text(
+                      'Arac Ara',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: theme.colorScheme.primary,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      elevation: 0,
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -582,71 +724,52 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
     );
   }
 
-  Widget _buildLocationField({
+  Widget _buildSheetField({
     required ThemeData theme,
     required IconData icon,
     required Color iconColor,
     required String label,
     required String value,
     required VoidCallback onTap,
-    bool isCustomAddress = false,
   }) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
-      child: Row(
-        children: [
-          Icon(icon, color: iconColor, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textSecondaryLight,
-                      ),
-                    ),
-                    if (isCustomAddress) ...[
-                      const SizedBox(width: 6),
-                      Text(
-                        'Adrese Teslim',
-                        style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                          color: theme.colorScheme.primary,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: theme.colorScheme.onSurface,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: theme.scaffoldBackgroundColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: theme.dividerColor),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: iconColor, size: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant)),
+                  const SizedBox(height: 2),
+                  Text(
+                    value,
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: theme.colorScheme.onSurface),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          Icon(Icons.chevron_right, color: AppColors.textSecondaryLight, size: 18),
-        ],
+            Icon(Icons.chevron_right, color: theme.colorScheme.onSurfaceVariant, size: 20),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildDateField({
+  Widget _buildSheetDateField({
     required ThemeData theme,
-    required IconData icon,
     required String label,
     required String value,
     required VoidCallback onTap,
@@ -654,73 +777,29 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: theme.colorScheme.primary, size: 16),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: AppColors.textSecondaryLight,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
-              color: theme.colorScheme.onSurface,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSearchButton(ThemeData theme) {
-    return Container(
-      width: double.infinity,
-      height: 42,
-      decoration: BoxDecoration(
-        gradient: AppColors.primaryGradient,
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.15),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: _searchCars,
-          borderRadius: BorderRadius.circular(10),
-          child: const Center(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: theme.scaffoldBackgroundColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: theme.dividerColor),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant)),
+            const SizedBox(height: 4),
+            Row(
               children: [
-                Icon(Icons.search, color: Colors.white, size: 18),
-                SizedBox(width: 6),
+                Icon(Icons.calendar_today, color: theme.colorScheme.primary, size: 16),
+                const SizedBox(width: 8),
                 Text(
-                  'Arac Ara',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
+                  value,
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: theme.colorScheme.onSurface),
                 ),
               ],
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -806,7 +885,18 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
   }
 
   Widget _buildFeaturedCarousel(ThemeData theme, Size size) {
+    if (_isLoading) {
+      return SizedBox(
+        height: 220,
+        child: PageView(
+          controller: PageController(viewportFraction: 0.85),
+          children: const [ShimmerFeaturedCard(), ShimmerFeaturedCard()],
+        ),
+      );
+    }
+
     final premiumCars = _cars.where((car) => car.isPremium).toList();
+    if (premiumCars.isEmpty) return const SizedBox.shrink();
 
     return SizedBox(
       height: 220,
@@ -824,33 +914,50 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
   Widget _buildSectionTitle(ThemeData theme, String title) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: theme.colorScheme.onSurface,
-            ),
-          ),
-          TextButton(
-            onPressed: () {},
-            child: Text(
-              'Tumunu Gor',
-              style: TextStyle(
-                color: theme.colorScheme.primary,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+          color: theme.colorScheme.onSurface,
+        ),
       ),
     );
   }
 
   Widget _buildCarList(ThemeData theme) {
+    if (_isLoading) {
+      return SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        sliver: SliverList(
+          delegate: SliverChildBuilderDelegate(
+            (context, index) => const ShimmerCarCard(),
+            childCount: 4,
+          ),
+        ),
+      );
+    }
+
+    if (_filteredCars.isEmpty) {
+      return SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Center(
+            child: Column(
+              children: [
+                Icon(Icons.directions_car, size: 56, color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.3)),
+                const SizedBox(height: 12),
+                Text(
+                  'Arac bulunamadi',
+                  style: TextStyle(fontSize: 16, color: theme.colorScheme.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       sliver: SliverList(

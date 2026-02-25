@@ -144,6 +144,15 @@ final premiumPropertiesProvider = FutureProvider<List<Property>>((ref) async {
 });
 
 // ============================================
+// ÖNE ÇIKAN + PREMİUM BİRLEŞİK PROVIDER
+// ============================================
+
+final featuredAndPremiumProvider = FutureProvider.family<List<Property>, String?>((ref, city) async {
+  final service = ref.watch(propertyServiceProvider);
+  return service.getFeaturedAndPremiumProperties(city: city);
+});
+
+// ============================================
 // İLAN DETAY PROVIDER
 // ============================================
 

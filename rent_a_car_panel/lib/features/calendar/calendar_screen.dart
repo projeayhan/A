@@ -4,13 +4,21 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../core/supabase_config.dart';
 import '../../core/theme.dart';
-import '../bookings/bookings_screen.dart';
+
+// View mode: week or month
+final calendarViewModeProvider = StateProvider<String>((ref) => 'month'); // 'week' or 'month'
 
 // Provider for selected week start date
 final selectedWeekStartProvider = StateProvider<DateTime>((ref) {
   final now = DateTime.now();
   // Start from Monday of current week
   return now.subtract(Duration(days: now.weekday - 1));
+});
+
+// Provider for selected month
+final selectedMonthProvider = StateProvider<DateTime>((ref) {
+  final now = DateTime.now();
+  return DateTime(now.year, now.month, 1);
 });
 
 // Filter providers
@@ -23,8 +31,6 @@ final calendarCarsProvider = FutureProvider.autoDispose((ref) async {
   final client = ref.watch(supabaseClientProvider);
   final companyId = await ref.watch(companyIdProvider.future);
 
-  debugPrint('CalendarCarsProvider - companyId: $companyId');
-
   if (companyId == null) return <Map<String, dynamic>>[];
 
   final response = await client
@@ -34,26 +40,36 @@ final calendarCarsProvider = FutureProvider.autoDispose((ref) async {
       .eq('is_active', true)
       .order('brand');
 
-  debugPrint('CalendarCarsProvider - loaded ${response.length} cars');
   return List<Map<String, dynamic>>.from(response);
 });
 
-// Provider for bookings in selected week range
+// Provider for bookings in selected range (week or month)
 final weekBookingsProvider = FutureProvider.autoDispose((ref) async {
   final client = ref.watch(supabaseClientProvider);
   final companyId = await ref.watch(companyIdProvider.future);
-  final weekStart = ref.watch(selectedWeekStartProvider);
+  final viewMode = ref.watch(calendarViewModeProvider);
 
   if (companyId == null) return <Map<String, dynamic>>[];
 
-  final weekEnd = weekStart.add(const Duration(days: 7));
+  DateTime rangeStart;
+  DateTime rangeEnd;
+
+  if (viewMode == 'month') {
+    final monthStart = ref.watch(selectedMonthProvider);
+    rangeStart = monthStart;
+    rangeEnd = DateTime(monthStart.year, monthStart.month + 1, 0); // last day of month
+  } else {
+    final weekStart = ref.watch(selectedWeekStartProvider);
+    rangeStart = weekStart;
+    rangeEnd = weekStart.add(const Duration(days: 7));
+  }
 
   final response = await client
       .from('rental_bookings')
       .select('id, car_id, customer_name, customer_phone, pickup_date, dropoff_date, status, total_amount, company_notes')
       .eq('company_id', companyId)
-      .gte('dropoff_date', weekStart.toIso8601String().split('T')[0])
-      .lte('pickup_date', weekEnd.toIso8601String().split('T')[0])
+      .gte('dropoff_date', rangeStart.toIso8601String().split('T')[0])
+      .lte('pickup_date', rangeEnd.toIso8601String().split('T')[0])
       .order('pickup_date');
 
   return List<Map<String, dynamic>>.from(response);
@@ -67,6 +83,52 @@ class CalendarScreen extends ConsumerStatefulWidget {
 }
 
 class _CalendarScreenState extends ConsumerState<CalendarScreen> {
+  // Scroll controllers for month view sync
+  final ScrollController _monthHeaderScrollController = ScrollController();
+  final ScrollController _monthBodyScrollController = ScrollController();
+  final ScrollController _carNamesScrollController = ScrollController();
+  final ScrollController _carRowsScrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    // Sync horizontal scroll: header ↔ body
+    _monthHeaderScrollController.addListener(() {
+      if (_monthBodyScrollController.hasClients &&
+          _monthBodyScrollController.offset != _monthHeaderScrollController.offset) {
+        _monthBodyScrollController.jumpTo(_monthHeaderScrollController.offset);
+      }
+    });
+    _monthBodyScrollController.addListener(() {
+      if (_monthHeaderScrollController.hasClients &&
+          _monthHeaderScrollController.offset != _monthBodyScrollController.offset) {
+        _monthHeaderScrollController.jumpTo(_monthBodyScrollController.offset);
+      }
+    });
+    // Sync vertical scroll: car names ↔ car rows
+    _carNamesScrollController.addListener(() {
+      if (_carRowsScrollController.hasClients &&
+          _carRowsScrollController.offset != _carNamesScrollController.offset) {
+        _carRowsScrollController.jumpTo(_carNamesScrollController.offset);
+      }
+    });
+    _carRowsScrollController.addListener(() {
+      if (_carNamesScrollController.hasClients &&
+          _carNamesScrollController.offset != _carRowsScrollController.offset) {
+        _carNamesScrollController.jumpTo(_carRowsScrollController.offset);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _monthHeaderScrollController.dispose();
+    _monthBodyScrollController.dispose();
+    _carNamesScrollController.dispose();
+    _carRowsScrollController.dispose();
+    super.dispose();
+  }
+
   // Selection state - click based (first click = start, second click = end)
   String? _selectedCarId;
   DateTime? _selectionStartDate;
@@ -143,7 +205,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   Widget build(BuildContext context) {
     final carsAsync = ref.watch(calendarCarsProvider);
     final bookingsAsync = ref.watch(weekBookingsProvider);
+    final viewMode = ref.watch(calendarViewModeProvider);
     final weekStart = ref.watch(selectedWeekStartProvider);
+    final monthStart = ref.watch(selectedMonthProvider);
     final searchQuery = ref.watch(calendarSearchProvider).toLowerCase();
     final statusFilter = ref.watch(calendarStatusFilterProvider);
     final showOnlyBooked = ref.watch(showOnlyBookedProvider);
@@ -152,7 +216,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       backgroundColor: AppColors.background,
       body: Column(
         children: [
-          // Header with week navigation
+          // Header with navigation
           _buildHeader(context, ref, weekStart),
 
           // Filters and stats bar
@@ -177,7 +241,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 data: (bookings) {
                   // Apply filters
                   var filteredCars = cars.where((car) {
-                    // Search filter
                     if (searchQuery.isNotEmpty) {
                       final carName = '${car['brand']} ${car['model']}'.toLowerCase();
                       final plate = (car['plate'] ?? '').toString().toLowerCase();
@@ -185,28 +248,17 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                         return false;
                       }
                     }
-
-                    // Status filter
                     final carStatus = car['status'] ?? 'available';
-                    if (statusFilter == 'maintenance' && carStatus != 'maintenance') {
-                      return false;
-                    }
-                    if (statusFilter == 'available' && carStatus != 'available') {
-                      return false;
-                    }
-
-                    // Show only booked filter
+                    if (statusFilter == 'maintenance' && carStatus != 'maintenance') return false;
+                    if (statusFilter == 'available' && carStatus != 'available') return false;
                     if (showOnlyBooked || statusFilter == 'booked') {
-                      final hasBooking = bookings.any((b) => b['car_id'] == car['id']);
-                      if (!hasBooking) return false;
+                      if (!bookings.any((b) => b['car_id'] == car['id'])) return false;
                     }
-
                     return true;
                   }).toList();
 
-                  debugPrint('Calendar filter state: showOnlyBooked=$showOnlyBooked, statusFilter=$statusFilter, searchQuery=$searchQuery');
-                  debugPrint('Filtered cars: ${filteredCars.length} / ${cars.length}');
-                  return _buildTimeline(context, ref, filteredCars, bookings, weekStart, cars.length);
+                  final rangeStart = viewMode == 'month' ? monthStart : weekStart;
+                  return _buildTimeline(context, ref, filteredCars, bookings, rangeStart, cars.length);
                 },
               ),
             ),
@@ -474,24 +526,52 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   }
 
   Widget _buildHeader(BuildContext context, WidgetRef ref, DateTime weekStart) {
+    final viewMode = ref.watch(calendarViewModeProvider);
+    final monthStart = ref.watch(selectedMonthProvider);
     final weekEnd = weekStart.add(const Duration(days: 6));
     final dateFormat = DateFormat('d MMM', 'tr_TR');
+    final monthFormat = DateFormat('MMMM yyyy', 'tr_TR');
 
     return Container(
       padding: const EdgeInsets.all(16),
       color: AppColors.surface,
       child: Row(
         children: [
+          // View mode toggle
+          SegmentedButton<String>(
+            segments: const [
+              ButtonSegment(value: 'week', label: Text('Hafta'), icon: Icon(Icons.view_week, size: 18)),
+              ButtonSegment(value: 'month', label: Text('Ay'), icon: Icon(Icons.calendar_month, size: 18)),
+            ],
+            selected: {viewMode},
+            onSelectionChanged: (value) {
+              ref.read(calendarViewModeProvider.notifier).state = value.first;
+            },
+            style: ButtonStyle(
+              visualDensity: VisualDensity.compact,
+              textStyle: WidgetStatePropertyAll(const TextStyle(fontSize: 13)),
+            ),
+          ),
+          const SizedBox(width: 16),
+
+          // Navigation
           IconButton(
             icon: const Icon(Icons.chevron_left),
             onPressed: () {
-              ref.read(selectedWeekStartProvider.notifier).state =
-                  weekStart.subtract(const Duration(days: 7));
+              if (viewMode == 'month') {
+                ref.read(selectedMonthProvider.notifier).state =
+                    DateTime(monthStart.year, monthStart.month - 1, 1);
+              } else {
+                ref.read(selectedWeekStartProvider.notifier).state =
+                    weekStart.subtract(const Duration(days: 7));
+              }
             },
           ),
           const SizedBox(width: 8),
           Text(
-            '${dateFormat.format(weekStart)} - ${dateFormat.format(weekEnd)}',
+            viewMode == 'month'
+                ? monthFormat.format(monthStart)
+                : '${dateFormat.format(weekStart)} - ${dateFormat.format(weekEnd)}',
             style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -501,42 +581,56 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           IconButton(
             icon: const Icon(Icons.chevron_right),
             onPressed: () {
-              ref.read(selectedWeekStartProvider.notifier).state =
-                  weekStart.add(const Duration(days: 7));
+              if (viewMode == 'month') {
+                ref.read(selectedMonthProvider.notifier).state =
+                    DateTime(monthStart.year, monthStart.month + 1, 1);
+              } else {
+                ref.read(selectedWeekStartProvider.notifier).state =
+                    weekStart.add(const Duration(days: 7));
+              }
             },
           ),
           const Spacer(),
           OutlinedButton.icon(
             onPressed: () {
               final now = DateTime.now();
-              ref.read(selectedWeekStartProvider.notifier).state =
-                  now.subtract(Duration(days: now.weekday - 1));
+              if (viewMode == 'month') {
+                ref.read(selectedMonthProvider.notifier).state =
+                    DateTime(now.year, now.month, 1);
+              } else {
+                ref.read(selectedWeekStartProvider.notifier).state =
+                    now.subtract(Duration(days: now.weekday - 1));
+              }
             },
             icon: const Icon(Icons.today, size: 18),
             label: const Text('Bugün'),
           ),
-          const SizedBox(width: 24),
-          // Legend - Rezervasyon Durumları
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceLight,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                const Text('Durum: ', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
-                const SizedBox(width: 8),
-                _buildLegendItem(Colors.red[400]!, 'Aktif (Müşteride)'),
-                const SizedBox(width: 12),
-                _buildLegendItem(Colors.orange[400]!, 'Beklemede'),
-                const SizedBox(width: 12),
-                _buildLegendItem(Colors.green[400]!, 'Onaylandı'),
-                const SizedBox(width: 12),
-                _buildLegendItem(Colors.blue[400]!, 'Tamamlandı'),
-                const SizedBox(width: 12),
-                _buildLegendItem(AppColors.warning, 'Bakımda'),
-              ],
+          const SizedBox(width: 16),
+          // Legend - compact
+          Flexible(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceLight,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildLegendItem(Colors.red[400]!, 'Aktif'),
+                    const SizedBox(width: 8),
+                    _buildLegendItem(Colors.orange[400]!, 'Bekleme'),
+                    const SizedBox(width: 8),
+                    _buildLegendItem(Colors.green[400]!, 'Onaylı'),
+                    const SizedBox(width: 8),
+                    _buildLegendItem(Colors.blue[400]!, 'Tamam'),
+                    const SizedBox(width: 8),
+                    _buildLegendItem(AppColors.warning, 'Bakım'),
+                  ],
+                ),
+              ),
             ),
           ),
         ],
@@ -567,7 +661,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     WidgetRef ref,
     List<Map<String, dynamic>> cars,
     List<Map<String, dynamic>> bookings,
-    DateTime weekStart,
+    DateTime rangeStart,
     int totalCarCount,
   ) {
     if (cars.isEmpty) {
@@ -578,19 +672,183 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       );
     }
 
-    final days = List.generate(7, (i) => weekStart.add(Duration(days: i)));
+    final viewMode = ref.watch(calendarViewModeProvider);
+    final int dayCount;
+    if (viewMode == 'month') {
+      dayCount = DateTime(rangeStart.year, rangeStart.month + 1, 0).day;
+    } else {
+      dayCount = 7;
+    }
+
+    final days = List.generate(dayCount, (i) => rangeStart.add(Duration(days: i)));
     final dayFormat = DateFormat('EEE', 'tr_TR');
     final dateFormat = DateFormat('d', 'tr_TR');
 
+    final isMonthView = viewMode == 'month';
+    final double cellWidth = isMonthView ? 48 : 0; // 0 = use Expanded
+    final double totalDaysWidth = isMonthView ? cellWidth * dayCount : 0;
+
+    Widget buildDayHeaders() {
+      return Row(
+        children: days.map((day) {
+          final isToday = _isSameDay(day, DateTime.now());
+          final isWeekend = day.weekday == 6 || day.weekday == 7;
+          final header = Container(
+            width: isMonthView ? cellWidth : null,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            decoration: BoxDecoration(
+              color: isToday
+                  ? AppColors.primary.withValues(alpha: 0.15)
+                  : isWeekend && isMonthView
+                      ? AppColors.surfaceLight.withValues(alpha: 0.5)
+                      : null,
+              border: Border(
+                right: BorderSide(color: AppColors.surfaceLight),
+                bottom: BorderSide(color: AppColors.surfaceLight),
+              ),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  isMonthView ? dayFormat.format(day).substring(0, 3) : dayFormat.format(day),
+                  style: TextStyle(
+                    fontSize: isMonthView ? 10 : 12,
+                    color: isToday ? AppColors.primary : AppColors.textMuted,
+                  ),
+                ),
+                Text(
+                  dateFormat.format(day),
+                  style: TextStyle(
+                    fontSize: isMonthView ? 13 : 16,
+                    fontWeight: FontWeight.bold,
+                    color: isToday ? AppColors.primary : null,
+                  ),
+                ),
+              ],
+            ),
+          );
+          return isMonthView ? header : Expanded(child: header);
+        }).toList(),
+      );
+    }
+
+    if (isMonthView) {
+      // Month view: fixed car column + horizontally scrollable days
+      return Column(
+        children: [
+          // Header row
+          Row(
+            children: [
+              Container(
+                width: 180,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  border: Border(
+                    right: BorderSide(color: AppColors.surfaceLight),
+                    bottom: BorderSide(color: AppColors.surfaceLight),
+                  ),
+                ),
+                child: const Text('Araçlar', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: _monthHeaderScrollController,
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(
+                    width: totalDaysWidth,
+                    child: buildDayHeaders(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          // Car rows
+          Expanded(
+            child: Row(
+              children: [
+                // Fixed car names column
+                SizedBox(
+                  width: 180,
+                  child: ListView.builder(
+                    controller: _carNamesScrollController,
+                    itemCount: cars.length,
+                    itemBuilder: (context, index) {
+                      final car = cars[index];
+                      final isMaintenance = (car['status'] ?? 'available') == 'maintenance';
+                      return Container(
+                        height: 50,
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.surface,
+                          border: Border(
+                            right: BorderSide(color: AppColors.surfaceLight),
+                            bottom: BorderSide(color: AppColors.surfaceLight),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            if (isMaintenance)
+                              const Padding(
+                                padding: EdgeInsets.only(right: 8),
+                                child: Icon(Icons.build, size: 14, color: AppColors.warning),
+                              ),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    '${car['brand']} ${car['model']}',
+                                    style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text(
+                                    car['plate'] ?? '',
+                                    style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                // Scrollable days grid
+                Expanded(
+                  child: SingleChildScrollView(
+                    controller: _monthBodyScrollController,
+                    scrollDirection: Axis.horizontal,
+                    child: SizedBox(
+                      width: totalDaysWidth,
+                      child: ListView.builder(
+                        controller: _carRowsScrollController,
+                        itemCount: cars.length,
+                        itemBuilder: (context, index) {
+                          final car = cars[index];
+                          return _buildCarDayCells(context, ref, car, bookings, days, cellWidth);
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Week view: original layout
     return SingleChildScrollView(
       child: Column(
         children: [
-          // Day headers
           Container(
             color: AppColors.surface,
             child: Row(
               children: [
-                // Car column header
                 Container(
                   width: 180,
                   padding: const EdgeInsets.all(12),
@@ -600,12 +858,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                       bottom: BorderSide(color: AppColors.surfaceLight),
                     ),
                   ),
-                  child: const Text(
-                    'Araçlar',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
+                  child: const Text('Araçlar', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
-                // Day columns
                 ...days.map((day) {
                   final isToday = _isSameDay(day, DateTime.now());
                   return Expanded(
@@ -622,18 +876,11 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                         children: [
                           Text(
                             dayFormat.format(day),
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: isToday ? AppColors.primary : AppColors.textMuted,
-                            ),
+                            style: TextStyle(fontSize: 12, color: isToday ? AppColors.primary : AppColors.textMuted),
                           ),
                           Text(
                             dateFormat.format(day),
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: isToday ? AppColors.primary : null,
-                            ),
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isToday ? AppColors.primary : null),
                           ),
                         ],
                       ),
@@ -643,9 +890,80 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               ],
             ),
           ),
-          // Car rows
-          ...cars.map((car) => _buildCarRow(context, ref, car, bookings, days)),
+          ...cars.map((car) => _buildCarRow(context, ref, car, bookings, days, false, 0)),
         ],
+      ),
+    );
+  }
+
+  // Month view: just the day cells for one car (no car name column)
+  Widget _buildCarDayCells(
+    BuildContext context,
+    WidgetRef ref,
+    Map<String, dynamic> car,
+    List<Map<String, dynamic>> bookings,
+    List<DateTime> days,
+    double cellWidth,
+  ) {
+    final carBookings = bookings.where((b) => b['car_id'] == car['id']).toList();
+    final isMaintenance = (car['status'] ?? 'available') == 'maintenance';
+    final carId = car['id'] as String;
+
+    return Container(
+      height: 50,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        border: Border(bottom: BorderSide(color: AppColors.surfaceLight)),
+      ),
+      child: Row(
+        children: days.map((day) {
+          final isToday = _isSameDay(day, DateTime.now());
+          final isSelected = _isDateInSelection(carId, day);
+          final dayBooking = carBookings.cast<Map<String, dynamic>?>().firstWhere(
+            (b) {
+              if (b == null) return false;
+              final pickupDate = DateTime.parse(b['pickup_date']);
+              final dropoffDate = DateTime.parse(b['dropoff_date']);
+              return !day.isBefore(pickupDate) && !day.isAfter(dropoffDate);
+            },
+            orElse: () => null,
+          );
+          final hasBooking = dayBooking != null;
+          final canSelect = !isMaintenance && !hasBooking;
+
+          return GestureDetector(
+            onTap: () => _handleCellTap(carId, day, canSelect, dayBooking),
+            child: Container(
+              width: cellWidth,
+              margin: const EdgeInsets.all(1),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? AppColors.primary.withValues(alpha: 0.4)
+                    : isMaintenance
+                        ? AppColors.warning.withValues(alpha: 0.3)
+                        : dayBooking != null
+                            ? _getBookingColor(dayBooking['status'])
+                            : isToday
+                                ? AppColors.primary.withValues(alpha: 0.1)
+                                : AppColors.surfaceLight,
+                borderRadius: BorderRadius.circular(3),
+                border: isSelected
+                    ? Border.all(color: AppColors.primary, width: 2)
+                    : isToday
+                        ? Border.all(color: AppColors.primary, width: 1)
+                        : null,
+              ),
+              child: dayBooking != null
+                  ? Center(
+                      child: Text(
+                        _getBookingInitials(dayBooking['customer_name']),
+                        style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                      ),
+                    )
+                  : null,
+            ),
+          );
+        }).toList(),
       ),
     );
   }
@@ -656,6 +974,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     Map<String, dynamic> car,
     List<Map<String, dynamic>> bookings,
     List<DateTime> days,
+    bool isMonthView,
+    double cellWidth,
   ) {
     final carBookings = bookings.where((b) => b['car_id'] == car['id']).toList();
     final carStatus = car['status'] ?? 'available';
@@ -715,7 +1035,6 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             final isToday = _isSameDay(day, DateTime.now());
             final isSelected = _isDateInSelection(carId, day);
 
-            // Find booking for this day
             final dayBooking = carBookings.cast<Map<String, dynamic>?>().firstWhere(
               (b) {
                 if (b == null) return false;

@@ -228,37 +228,48 @@ class _EmlakFavoritesScreenState extends ConsumerState<EmlakFavoritesScreen>
               ),
             ),
             const SizedBox(height: 32),
-            GestureDetector(
-              onTap: () => context.push('/emlak'),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [EmlakColors.primary, const Color(0xFF059669)],
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: EmlakColors.primary.withValues(alpha: 0.3),
-                      blurRadius: 12,
-                      offset: const Offset(0, 6),
+            Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  context.push('/emlak');
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Ink(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [EmlakColors.primary, const Color(0xFF059669)],
                     ),
-                  ],
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.search, color: Colors.white),
-                    SizedBox(width: 8),
-                    Text(
-                      'İlanları Keşfet',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: EmlakColors.primary.withValues(alpha: 0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 6),
                       ),
+                    ],
+                  ),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.search, color: Colors.white),
+                        SizedBox(width: 8),
+                        Text(
+                          'İlanları Keşfet',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -306,42 +317,44 @@ class _EmlakFavoritesScreenState extends ConsumerState<EmlakFavoritesScreen>
   Widget _buildFavoriteCard(FavoriteProperty property, bool isDark, bool isSelected) {
     final isSale = property.type == 'sale';
 
-    return GestureDetector(
-      onTap: () {
-        if (_isSelectionMode) {
-          _toggleSelection(property.id);
-        } else {
-          context.push('/emlak/property/${property.id}');
-        }
-      },
-      onLongPress: () {
-        if (!_isSelectionMode) {
-          _toggleSelectionMode();
-          _toggleSelection(property.id);
-        }
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? EmlakColors.primary.withValues(alpha: 0.1)
-              : EmlakColors.card(isDark),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Material(
+        color: isSelected
+            ? EmlakColors.primary.withValues(alpha: 0.1)
+            : EmlakColors.card(isDark),
+        borderRadius: BorderRadius.circular(14),
+        clipBehavior: Clip.antiAlias,
+        elevation: 2,
+        shadowColor: Colors.black.withValues(alpha: 0.05),
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            if (_isSelectionMode) {
+              _toggleSelection(property.id);
+            } else {
+              context.push('/emlak/property/${property.id}');
+            }
+          },
+          onLongPress: () {
+            HapticFeedback.mediumImpact();
+            if (!_isSelectionMode) {
+              _toggleSelectionMode();
+              _toggleSelection(property.id);
+            }
+          },
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isSelected
-                ? EmlakColors.primary
-                : Colors.transparent,
-            width: 2,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: isSelected
+                    ? EmlakColors.primary
+                    : Colors.transparent,
+                width: 2,
+              ),
             ),
-          ],
-        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -423,19 +436,21 @@ class _EmlakFavoritesScreenState extends ConsumerState<EmlakFavoritesScreen>
                   Positioned(
                     bottom: 10,
                     right: 10,
-                    child: GestureDetector(
-                      onTap: () => _removeFavorite(property),
-                      child: Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.9),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.favorite,
-                          color: EmlakColors.error,
-                          size: 18,
+                    child: Material(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      shape: const CircleBorder(),
+                      clipBehavior: Clip.antiAlias,
+                      child: InkWell(
+                        onTap: () => _removeFavorite(property),
+                        customBorder: const CircleBorder(),
+                        child: SizedBox(
+                          width: 36,
+                          height: 36,
+                          child: Icon(
+                            Icons.favorite,
+                            color: EmlakColors.error,
+                            size: 18,
+                          ),
                         ),
                       ),
                     ),
@@ -511,6 +526,8 @@ class _EmlakFavoritesScreenState extends ConsumerState<EmlakFavoritesScreen>
             ),
           ],
         ),
+      ),
+      ),
       ),
     );
   }
