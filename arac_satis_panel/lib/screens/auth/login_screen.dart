@@ -85,7 +85,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       if (!mounted) return;
 
       if (isDealer) {
-        context.go('/panel');
+        context.go('/dashboard');
       } else {
         final application = await dealerService.getApplicationStatus();
         if (!mounted) return;
@@ -128,40 +128,57 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   }
 
   void _showPendingDialog() {
+    Supabase.instance.client.auth.signOut();
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF111827),
-        shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16)),
-        title: Row(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              width: 72,
+              height: 72,
               decoration: BoxDecoration(
-                color: _accentSecondary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
+                color: Colors.orange.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.hourglass_empty,
-                  color: Color(0xFFF59E0B)),
+              child: const Icon(Icons.hourglass_top_rounded, color: Colors.orange, size: 36),
             ),
-            const SizedBox(width: 12),
-            const Text('Başvuru Beklemede',
-                style: TextStyle(color: Color(0xFFF9FAFB))),
+            const SizedBox(height: 16),
+            const Text(
+              'Hesabınız İnceleniyor',
+              style: TextStyle(
+                color: Color(0xFFF9FAFB),
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Galeri başvurunuz admin tarafından incelenmektedir.\n\n'
+              'Onay durumu e-posta ile bildirilecektir. '
+              'Lütfen bekleyin.',
+              style: TextStyle(color: Color(0xFF9CA3AF)),
+              textAlign: TextAlign.center,
+            ),
           ],
         ),
-        content: const Text(
-          'Başvurunuz inceleme aşamasındadır. Onaylandığında size bildirim göndereceğiz.',
-          style: TextStyle(color: Color(0xFF9CA3AF)),
-        ),
         actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Supabase.instance.client.auth.signOut();
-            },
-            style: TextButton.styleFrom(foregroundColor: _accent),
-            child: const Text('Tamam'),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => Navigator.pop(ctx),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _accent,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text('Tamam'),
+            ),
           ),
         ],
       ),
@@ -734,37 +751,80 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                           ),
                                   ),
                                 ),
-                                const SizedBox(height: 24),
+                                const SizedBox(height: 20),
 
-                                // Register link
+                                // Divider
                                 Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.center,
                                   children: [
-                                    const Text(
-                                      'Hesabınız yok mu?',
-                                      style: TextStyle(
-                                        color: Color(0xFF6B7280),
-                                        fontSize: 14,
+                                    Expanded(
+                                      child: Container(
+                                        height: 1,
+                                        color:
+                                            const Color(0xFF1F2937),
                                       ),
                                     ),
-                                    TextButton(
-                                      onPressed: () =>
-                                          context.go('/register'),
-                                      style: TextButton.styleFrom(
-                                        foregroundColor: _accent,
-                                        padding: const EdgeInsets.only(
-                                            left: 4),
-                                      ),
-                                      child: const Text(
-                                        'Kayıt Olun',
+                                    Padding(
+                                      padding:
+                                          const EdgeInsets.symmetric(
+                                              horizontal: 16),
+                                      child: Text(
+                                        'veya',
                                         style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 14,
+                                          color: const Color(
+                                                  0xFF6B7280)
+                                              .withValues(
+                                                  alpha: 0.7),
+                                          fontSize: 13,
                                         ),
                                       ),
                                     ),
+                                    Expanded(
+                                      child: Container(
+                                        height: 1,
+                                        color:
+                                            const Color(0xFF1F2937),
+                                      ),
+                                    ),
                                   ],
+                                ),
+                                const SizedBox(height: 20),
+
+                                // Register
+                                SizedBox(
+                                  height: 48,
+                                  child: OutlinedButton.icon(
+                                    onPressed: () =>
+                                        context.go('/application'),
+                                    icon: const Icon(Icons.store,
+                                        size: 18),
+                                    label: const Text(
+                                      'Galerici Başvurusu Yap',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: _accent,
+                                      side: BorderSide(
+                                        color: _accent.withValues(
+                                            alpha: 0.4),
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'Başvurunuz admin onayından sonra aktif olacaktır.',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: Color(0xFF4B5563),
+                                    fontSize: 12,
+                                  ),
                                 ),
                               ],
                             ),

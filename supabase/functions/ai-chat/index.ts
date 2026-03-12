@@ -1057,7 +1057,7 @@ async function executeToolCall(
       });
 
       const storePromises = expandedKeywords.map(keyword => {
-        const rpcParams: Record<string, unknown> = { p_search_query: keyword };
+        const rpcParams: Record<string, unknown> = { p_search_query: keyword, p_merchant_type: 'market' };
         if (addressData?.latitude && addressData?.longitude) {
           rpcParams.p_customer_lat = addressData.latitude;
           rpcParams.p_customer_lon = addressData.longitude;

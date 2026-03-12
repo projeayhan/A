@@ -1348,7 +1348,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              context.go('/panel');
+              context.go('/listings');
             },
             child: const Text('Tamam'),
           ),

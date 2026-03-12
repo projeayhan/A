@@ -303,6 +303,8 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                 child: CachedNetworkImage(
                   imageUrl: store.logoUrl,
                   fit: BoxFit.cover,
+                  memCacheWidth: 100,
+                  memCacheHeight: 100,
                   placeholder: (_, __) => Container(
                     color: Colors.grey[200],
                     child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
@@ -410,6 +412,8 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                 child: CachedNetworkImage(
                   imageUrl: product.imageUrl,
                   fit: BoxFit.cover,
+                  memCacheWidth: 100,
+                  memCacheHeight: 100,
                   placeholder: (_, __) => Container(
                     color: Colors.grey[200],
                     child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
@@ -834,6 +838,9 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
         if (jobId != null) context.push('/jobs/detail/$jobId');
         break;
       case 'car_message':
+        final carConvId = data['conversation_id'] as String?;
+        if (carConvId != null) context.push('/car-sales/chat/$carConvId');
+        break;
       case 'car_favorite':
         final listingId = data['listing_id'] as String?;
         if (listingId != null) context.push('/car-sales/detail/$listingId');
@@ -1191,6 +1198,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                         child: ListView.separated(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           scrollDirection: Axis.horizontal,
+                          addAutomaticKeepAlives: false,
                           itemCount: filteredFeaturedStores.length,
                           separatorBuilder: (_, __) => const SizedBox(width: 8),
                           itemBuilder: (context, index) {
@@ -1219,10 +1227,11 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                       ),
                       const SizedBox(height: 8),
                       SizedBox(
-                        height: 210,
+                        height: 220,
                         child: ListView.separated(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           scrollDirection: Axis.horizontal,
+                          addAutomaticKeepAlives: false,
                           itemCount: filteredBestSellers.length,
                           separatorBuilder: (_, __) => const SizedBox(width: 8),
                           itemBuilder: (context, index) {

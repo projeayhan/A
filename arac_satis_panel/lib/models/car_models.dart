@@ -1022,51 +1022,37 @@ class CarListingPromotion {
   }
 }
 
-/// İletişim Talebi
-class CarContactRequest {
+/// Galeri Değerlendirmesi
+class CarDealerReview {
   final String id;
-  final String listingId;
-  final String? dealerId;
+  final String dealerId;
   final String? userId;
-  final String name;
-  final String phone;
-  final String? email;
-  final String? message;
-  final String status;
-  final DateTime? repliedAt;
-  final String? replyMessage;
+  final String? listingId;
+  final int rating;
+  final String? comment;
+  final String? reviewerName;
   final DateTime createdAt;
 
-  const CarContactRequest({
+  const CarDealerReview({
     required this.id,
-    required this.listingId,
-    this.dealerId,
+    required this.dealerId,
     this.userId,
-    required this.name,
-    required this.phone,
-    this.email,
-    this.message,
-    this.status = 'new',
-    this.repliedAt,
-    this.replyMessage,
+    this.listingId,
+    required this.rating,
+    this.comment,
+    this.reviewerName,
     required this.createdAt,
   });
 
-  factory CarContactRequest.fromJson(Map<String, dynamic> json) {
-    return CarContactRequest(
+  factory CarDealerReview.fromJson(Map<String, dynamic> json) {
+    return CarDealerReview(
       id: json['id'] as String,
-      listingId: json['listing_id'] as String,
-      dealerId: json['dealer_id'] as String?,
+      dealerId: json['dealer_id'] as String,
       userId: json['user_id'] as String?,
-      name: json['name'] as String,
-      phone: json['phone'] as String,
-      email: json['email'] as String?,
-      message: json['message'] as String?,
-      status: json['status'] as String? ?? 'new',
-      repliedAt: json['replied_at'] != null
-          ? DateTime.parse(json['replied_at'] as String)
-          : null,
-      replyMessage: json['reply_message'] as String?,
+      listingId: json['listing_id'] as String?,
+      rating: json['rating'] as int,
+      comment: json['comment'] as String?,
+      reviewerName: json['reviewer_name'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
     );
   }

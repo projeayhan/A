@@ -101,20 +101,6 @@ final listingDetailProvider = FutureProvider.family<CarListing?, String>((ref, l
   return service.getListingById(listingId);
 });
 
-// ==================== PROMOSYON PROVİDERLARI ====================
-
-/// Promosyon fiyatları
-final promotionPricesProvider = FutureProvider<List<PromotionPrice>>((ref) async {
-  final service = ref.watch(dealerServiceProvider);
-  return service.getPromotionPrices();
-});
-
-/// Aktif promosyonlar
-final activePromotionsProvider = FutureProvider<List<CarListingPromotion>>((ref) async {
-  final service = ref.watch(dealerServiceProvider);
-  return service.getActivePromotions();
-});
-
 // ==================== PERFORMANS İSTATİSTİKLERİ ====================
 
 /// Performans istatistikleri için family provider
@@ -124,16 +110,16 @@ final listingPerformanceStatsProvider = FutureProvider.family<Map<String, dynami
   return service.getListingPerformanceStats(days: days);
 });
 
-// ==================== İLETİŞİM TALEPLERİ ====================
+// ==================== DEĞERLENDİRMELER ====================
 
-/// Tüm iletişim talepleri
-final contactRequestsProvider = FutureProvider<List<CarContactRequest>>((ref) async {
+/// Galeri değerlendirmeleri
+final dealerReviewsProvider = FutureProvider<List<CarDealerReview>>((ref) async {
   final service = ref.watch(dealerServiceProvider);
-  return service.getContactRequests();
+  return service.getDealerReviews();
 });
 
-/// Yeni iletişim talepleri
-final newContactRequestsProvider = FutureProvider<List<CarContactRequest>>((ref) async {
+/// Değerlendirme istatistikleri
+final reviewStatsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
   final service = ref.watch(dealerServiceProvider);
-  return service.getContactRequests(status: 'new');
+  return service.getReviewStats();
 });

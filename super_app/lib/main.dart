@@ -214,6 +214,11 @@ class _SuperAppState extends ConsumerState<SuperApp> with WidgetsBindingObserver
         }
         break;
       case 'car_message':
+        final conversationId = data['conversation_id'] as String?;
+        if (conversationId != null) {
+          router.push('/car-sales/chat/$conversationId');
+        }
+        break;
       case 'car_favorite':
         final listingId = data['listing_id'] as String?;
         if (listingId != null) {

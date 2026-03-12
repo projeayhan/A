@@ -1,19 +1,14 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'dart:math' as math;
 import '../../core/theme/app_responsive.dart';
 import '../../models/car_sales/car_sales_models.dart';
 import '../../services/car_sales_service.dart';
-import '../../core/providers/banner_provider.dart';
-import '../../widgets/common/generic_banner_carousel.dart';
 import 'car_detail_screen.dart';
 import 'add_car_listing_screen.dart';
 import 'my_car_listings_screen.dart';
 import 'car_search_screen.dart';
-import 'car_sales_painters.dart';
 import 'brand_search_sheet.dart';
 import 'advanced_filter_sheet.dart';
 import 'filter_selection_sheet.dart';
@@ -26,23 +21,16 @@ class CarSalesHomeScreen extends StatefulWidget {
 }
 
 class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
-    with TickerProviderStateMixin {
+    with SingleTickerProviderStateMixin {
   late AnimationController _headerController;
-  late AnimationController _carShowcaseController;
-  late AnimationController _pulseController;
   late Animation<double> _headerAnimation;
-  // ignore: unused_field
-  late Animation<double> _carRotation;
-  late Animation<double> _pulseAnimation;
 
   final ScrollController _scrollController = ScrollController();
-  int _currentShowcaseIndex = 0;
 
   // Supabase service
   final CarSalesService _carSalesService = CarSalesService.instance;
 
   // Gerçek veriler
-  List<CarListingData> _featuredListings = [];
   List<CarListingData> _recentListings = [];
   List<CarListingData> _filteredListings = [];
   bool _isLoading = true;
@@ -59,9 +47,6 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
   RangeValues _mileageRange = const RangeValues(0, 500000);
   bool _isGridView = false;
 
-  // ValueNotifier kullanarak scroll offset'i izle - setState'den çok daha performanslı
-  final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(0);
-
   // Supabase'den gelen filtre tipleri
   List<CarBodyTypeData> _bodyTypesData = [];
   List<CarFuelTypeData> _fuelTypesData = [];
@@ -76,46 +61,15 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
       vsync: this,
     );
 
-    _carShowcaseController = AnimationController(
-      duration: const Duration(seconds: 20),
-      vsync: this,
-    )..repeat();
-
-    _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 2000),
-      vsync: this,
-    )..repeat(reverse: true);
-
     _headerAnimation = CurvedAnimation(
       parent: _headerController,
       curve: Curves.easeOutBack,
     );
 
-    _carRotation = Tween<double>(
-      begin: 0,
-      end: 2 * math.pi,
-    ).animate(_carShowcaseController);
-
-    _pulseAnimation = Tween<double>(
-      begin: 1.0,
-      end: 1.05,
-    ).animate(CurvedAnimation(
-      parent: _pulseController,
-      curve: Curves.easeInOut,
-    ));
-
     _headerController.forward();
-
-    // ValueNotifier ile scroll offset güncelleme - setState çağırmaz, sadece dinleyen widget'lar güncellenir
-    _scrollController.addListener(() {
-      _scrollOffsetNotifier.value = _scrollController.offset;
-    });
 
     // Gerçek verileri yükle
     _loadData();
-
-    // Auto-scroll showcase
-    Future.delayed(const Duration(seconds: 5), _autoScrollShowcase);
   }
 
   /// CarListingData'yı CarListing'e dönüştür
@@ -209,7 +163,6 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
 
     try {
       final results = await Future.wait([
-        _carSalesService.getFeaturedListings(limit: 10),
         _carSalesService.getActiveListings(limit: 50),
         _carSalesService.getBodyTypes(),
         _carSalesService.getFuelTypes(),
@@ -218,13 +171,12 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
 
       if (mounted) {
         setState(() {
-          _featuredListings = results[0] as List<CarListingData>;
-          _recentListings = results[1] as List<CarListingData>;
-          _filteredListings = results[1] as List<CarListingData>;
+          _recentListings = results[0] as List<CarListingData>;
+          _filteredListings = results[0] as List<CarListingData>;
           _totalActiveListings = _recentListings.length;
-          _bodyTypesData = results[2] as List<CarBodyTypeData>;
-          _fuelTypesData = results[3] as List<CarFuelTypeData>;
-          _transmissionsData = results[4] as List<CarTransmissionData>;
+          _bodyTypesData = results[1] as List<CarBodyTypeData>;
+          _fuelTypesData = results[2] as List<CarFuelTypeData>;
+          _transmissionsData = results[3] as List<CarTransmissionData>;
           _isLoading = false;
         });
 
@@ -248,50 +200,35 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
   /// Gelişmiş filtreleme
   void _applyFilter() {
     _filteredListings = _recentListings.where((listing) {
-      // Gövde tipi filtresi (string ID karşılaştırması)
       if (_selectedBodyTypeIds.isNotEmpty &&
           !_selectedBodyTypeIds.contains(listing.bodyType)) {
         return false;
       }
-
-      // Yakıt tipi filtresi (string ID karşılaştırması)
       if (_selectedFuelTypeIds.isNotEmpty &&
           !_selectedFuelTypeIds.contains(listing.fuelType)) {
         return false;
       }
-
-      // Vites tipi filtresi (string ID karşılaştırması)
       if (_selectedTransmissionIds.isNotEmpty &&
           !_selectedTransmissionIds.contains(listing.transmission)) {
         return false;
       }
-
-      // Marka filtresi
       if (_selectedBrandIds.isNotEmpty) {
         if (!_selectedBrandIds.contains(listing.brandId)) {
           return false;
         }
       }
-
-      // Fiyat aralığı filtresi
       if (listing.price < _priceRange.start || listing.price > _priceRange.end) {
         return false;
       }
-
-      // Yıl aralığı filtresi
       if (listing.year < _yearRange.start || listing.year > _yearRange.end) {
         return false;
       }
-
-      // Kilometre aralığı filtresi
       if (listing.mileage < _mileageRange.start || listing.mileage > _mileageRange.end) {
         return false;
       }
-
       return true;
     }).toList();
 
-    // Sıralama uygula
     _sortListings();
   }
 
@@ -371,26 +308,10 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
     });
   }
 
-  void _autoScrollShowcase() {
-    if (!mounted) return;
-    // Sadece gerçek verileri kullan
-    final featuredCars = _featuredListings.isNotEmpty
-        ? _featuredListings
-        : _recentListings;
-    if (featuredCars.isEmpty) return;
-    setState(() {
-      _currentShowcaseIndex = (_currentShowcaseIndex + 1) % featuredCars.length;
-    });
-    Future.delayed(const Duration(seconds: 5), _autoScrollShowcase);
-  }
-
   @override
   void dispose() {
     _headerController.dispose();
-    _carShowcaseController.dispose();
-    _pulseController.dispose();
     _scrollController.dispose();
-    _scrollOffsetNotifier.dispose();
     super.dispose();
   }
 
@@ -405,125 +326,62 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
         backgroundColor: CarSalesColors.background(isDark),
         body: Stack(
           children: [
-            // Background gradient animation
-            _buildAnimatedBackground(isDark, size),
-
             // Main content with RefreshIndicator
             RefreshIndicator(
               onRefresh: () => _loadData(forceRefresh: true),
               color: CarSalesColors.primary,
               child: CustomScrollView(
-              controller: _scrollController,
-              physics: const AlwaysScrollableScrollPhysics(
-                parent: BouncingScrollPhysics(),
-              ),
-              slivers: [
-                // Animated App Bar
-                _buildSliverAppBar(isDark, size),
-
-                // Premium Car Showcase
-                SliverToBoxAdapter(
-                  child: _buildPremiumShowcase(isDark, size),
+                controller: _scrollController,
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
                 ),
+                slivers: [
+                  // App Bar
+                  _buildSliverAppBar(isDark, size),
 
-                // Banner Carousel - Quick Actions'dan önce
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    child: Consumer(
-                      builder: (context, ref, _) {
-                        return GenericBannerCarousel(
-                          bannerProvider: carSalesBannersProvider,
-                          height: 160,
-                          primaryColor: Colors.red,
-                          defaultTitle: 'Araç Fırsatları',
-                          defaultSubtitle: 'Hayalinizdeki araca ulaşın!',
-                        );
-                      },
+                  // Compact Filter Bar
+                  SliverToBoxAdapter(
+                    child: _buildCompactFilterBar(isDark),
+                  ),
+
+                  // Popular Brands
+                  SliverToBoxAdapter(
+                    child: _buildPopularBrands(isDark),
+                  ),
+
+                  // Sort & View Bar
+                  SliverToBoxAdapter(
+                    child: _buildSortAndViewBar(isDark),
+                  ),
+
+                  // Active Filters
+                  if (_activeFilterCount > 0)
+                    SliverToBoxAdapter(
+                      child: _buildActiveFilters(isDark),
                     ),
+
+                  // İlanlar
+                  SliverToBoxAdapter(
+                    child: _buildSectionHeader(isDark, 'İlanlar'),
                   ),
-                ),
 
-                // Quick Actions
-                SliverToBoxAdapter(
-                  child: _buildQuickActions(isDark),
-                ),
-
-                // Category Filter
-                SliverToBoxAdapter(
-                  child: _buildCategoryFilter(isDark),
-                ),
-
-                // Popular Brands
-                SliverToBoxAdapter(
-                  child: _buildPopularBrands(isDark),
-                ),
-
-                // Featured Listings
-                SliverToBoxAdapter(
-                  child: _buildSectionHeader(
-                    isDark,
-                    'Öne Çıkan İlanlar',
-                    'Tümünü Gör',
-                    () {},
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    sliver: _buildRecentListings(isDark),
                   ),
-                ),
 
-                SliverToBoxAdapter(
-                  child: _buildFeaturedListings(isDark),
-                ),
-
-                // Recent Listings
-                SliverToBoxAdapter(
-                  child: _buildSectionHeader(
-                    isDark,
-                    'Son Eklenen İlanlar',
-                    'Tümünü Gör',
-                    () {},
+                  // Bottom spacing
+                  SliverToBoxAdapter(
+                    child: SizedBox(height: context.bottomNavPadding),
                   ),
-                ),
-
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  sliver: _buildRecentListings(isDark),
-                ),
-
-                // Bottom spacing
-                SliverToBoxAdapter(
-                  child: SizedBox(height: context.bottomNavPadding),
-                ),
-              ],
-            ),
+                ],
+              ),
             ),
 
             // Floating Add Button
             _buildFloatingAddButton(isDark),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildAnimatedBackground(bool isDark, Size size) {
-    return Positioned.fill(
-      // ValueListenableBuilder sadece scrollOffset değiştiğinde bu widget'ı rebuild eder
-      // Tüm ekran yerine sadece background yeniden çizilir
-      child: ValueListenableBuilder<double>(
-        valueListenable: _scrollOffsetNotifier,
-        builder: (context, scrollOffset, child) {
-          return AnimatedBuilder(
-            animation: _carShowcaseController,
-            builder: (context, child) {
-              return CustomPaint(
-                painter: BackgroundPainter(
-                  isDark: isDark,
-                  animationValue: _carShowcaseController.value,
-                  scrollOffset: scrollOffset,
-                ),
-              );
-            },
-          );
-        },
       ),
     );
   }
@@ -558,24 +416,24 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                   end: Offset.zero,
                 ).animate(_headerAnimation),
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 12, 0),
                   child: Row(
                     children: [
                       // Logo & Title
                       Container(
-                        width: 48,
-                        height: 48,
+                        width: 40,
+                        height: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                         child: const Icon(
                           Icons.directions_car,
                           color: Colors.white,
-                          size: 28,
+                          size: 24,
                         ),
                       ),
-                      const SizedBox(width: 14),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -585,7 +443,7 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                               'Araç Satış',
                               style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 22,
+                                fontSize: 20,
                                 fontWeight: FontWeight.bold,
                                 letterSpacing: -0.5,
                               ),
@@ -594,29 +452,18 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                               '$_totalActiveListings aktif ilan',
                               style: TextStyle(
                                 color: Colors.white.withValues(alpha: 0.8),
-                                fontSize: 13,
+                                fontSize: 12,
                               ),
                             ),
                           ],
                         ),
                       ),
-                      // Refresh Button
-                      _buildIconButton(
-                        Icons.refresh,
-                        () => _loadData(forceRefresh: true),
-                      ),
-                      const SizedBox(width: 8),
-                      // Search Button
-                      _buildIconButton(
-                        Icons.search,
-                        () => _navigateToSearch(),
-                      ),
-                      const SizedBox(width: 8),
-                      // Filter Button
-                      _buildIconButton(
-                        Icons.tune,
-                        () => _showFilterSheet(),
-                      ),
+                      // Quick action icons
+                      _buildAppBarIcon(Icons.list_alt, () => _navigateToMyListings()),
+                      _buildAppBarIcon(Icons.favorite_outline, () => context.push('/car-sales/favorites')),
+                      _buildAppBarIcon(Icons.chat_bubble_outline, () => context.push('/car-sales/chats')),
+                      _buildAppBarIcon(Icons.search, () => _navigateToSearch()),
+                      _buildAppBarIcon(Icons.tune, () => _showFilterSheet()),
                     ],
                   ),
                 ),
@@ -628,431 +475,32 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
     );
   }
 
-  Widget _buildIconButton(IconData icon, VoidCallback onTap) {
+  Widget _buildAppBarIcon(IconData icon, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Icon(
-          icon,
-          color: Colors.white,
-          size: 22,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPremiumShowcase(bool isDark, Size size) {
-    // Sadece gerçek verileri kullan - demo veri kullanma
-    if (_recentListings.isEmpty) return const SizedBox.shrink();
-
-    // En son eklenen 5 ilanı göster
-    final featuredCars = _recentListings.take(5).map((e) => _convertToCarListing(e)).toList();
-    if (featuredCars.isEmpty) return const SizedBox.shrink();
-
-    return Container(
-      height: 320,
-      margin: const EdgeInsets.only(top: 16),
-      child: Stack(
-        children: [
-          // Car Cards PageView
-          PageView.builder(
-            itemCount: featuredCars.length,
-            onPageChanged: (index) {
-              setState(() => _currentShowcaseIndex = index);
-            },
-            itemBuilder: (context, index) {
-              final car = featuredCars[index];
-              return _buildShowcaseCard(car, isDark, index);
-            },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(10),
           ),
-
-          // Page Indicators
-          Positioned(
-            bottom: 20,
-            left: 0,
-            right: 0,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(featuredCars.length, (index) {
-                final isActive = index == _currentShowcaseIndex;
-                return AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                  width: isActive ? 24 : 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: isActive
-                        ? CarSalesColors.primary
-                        : CarSalesColors.textTertiary(isDark),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                );
-              }),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildShowcaseCard(CarListing car, bool isDark, int index) {
-    return AnimatedBuilder(
-      animation: _pulseController,
-      builder: (context, child) {
-        final scale = index == _currentShowcaseIndex
-            ? _pulseAnimation.value
-            : 1.0;
-
-        return Transform.scale(
-          scale: scale * 0.92,
-          child: GestureDetector(
-            onTap: () => _navigateToDetail(car),
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: car.brand.isPremium
-                      ? [const Color(0xFF1E293B), const Color(0xFF0F172A)]
-                      : [CarSalesColors.primary, CarSalesColors.primaryDark],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: (car.brand.isPremium
-                        ? const Color(0xFF1E293B)
-                        : CarSalesColors.primary).withValues(alpha: 0.4),
-                    blurRadius: 30,
-                    offset: const Offset(0, 15),
-                  ),
-                ],
-              ),
-              child: Stack(
-                children: [
-                  // Background Pattern
-                  Positioned.fill(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(24),
-                      child: CustomPaint(
-                        painter: CardPatternPainter(),
-                      ),
-                    ),
-                  ),
-
-                  // Content
-                  Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Header
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            // Premium Badge
-                            if (car.isPremiumListing)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: CarSalesColors.goldGradient,
-                                  ),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.star,
-                                      color: Colors.white,
-                                      size: 14,
-                                    ),
-                                    SizedBox(width: 4),
-                                    Text(
-                                      'PREMIUM',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 0.5,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            // Like Button
-                            Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.2),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                Icons.favorite_border,
-                                color: Colors.white.withValues(alpha: 0.9),
-                                size: 20,
-                              ),
-                            ),
-                          ],
-                        ),
-
-                        const Spacer(),
-
-                        // Car Image
-                        Expanded(
-                          flex: 3,
-                          child: Center(
-                            child: Hero(
-                              tag: 'car_${car.id}',
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(16),
-                                child: CachedNetworkImage(
-                                  imageUrl: car.images.first,
-                                  fit: BoxFit.cover,
-                                  width: double.infinity,
-                                  memCacheWidth: 600,
-                                  memCacheHeight: 400,
-                                  placeholder: (_, __) => Container(
-                                    color: Colors.white.withValues(alpha: 0.1),
-                                    child: const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white24)),
-                                  ),
-                                  errorWidget: (_, __, ___) => Container(
-                                    color: Colors.white.withValues(alpha: 0.1),
-                                    child: const Icon(
-                                      Icons.directions_car,
-                                      color: Colors.white54,
-                                      size: 80,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 16),
-
-                        // Car Info
-                        Text(
-                          car.fullName,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            _buildCarInfoChip(
-                              Icons.calendar_today,
-                              car.year.toString(),
-                            ),
-                            const SizedBox(width: 12),
-                            _buildCarInfoChip(
-                              Icons.speed,
-                              car.formattedMileage,
-                            ),
-                            const SizedBox(width: 12),
-                            _buildCarInfoChip(
-                              car.fuelType.icon,
-                              car.fuelType.label,
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-
-                        // Price
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              car.fullFormattedPrice,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: const Text(
-                                'İncele',
-                                style: TextStyle(
-                                  color: CarSalesColors.primary,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildCarInfoChip(IconData icon, String text) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: Colors.white70, size: 14),
-        const SizedBox(width: 4),
-        Text(
-          text,
-          style: const TextStyle(
-            color: Colors.white70,
-            fontSize: 12,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildQuickActions(bool isDark) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: _buildQuickActionCard(
-              isDark,
-              Icons.add_circle_outline,
-              'İlan Ver',
-              'Aracını sat',
-              CarSalesColors.sportGradient,
-              () => _navigateToAddListing(),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _buildQuickActionCard(
-              isDark,
-              Icons.list_alt,
-              'İlanlarım',
-              'Yönet',
-              CarSalesColors.primaryGradient,
-              () => _navigateToMyListings(),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _buildQuickActionCard(
-              isDark,
-              Icons.favorite_outline,
-              'Favoriler',
-              'Kaydedilenler',
-              CarSalesColors.goldGradient,
-              () => context.push('/car-sales/favorites'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuickActionCard(
-    bool isDark,
-    IconData icon,
-    String title,
-    String subtitle,
-    List<Color> gradientColors,
-    VoidCallback onTap,
-  ) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: gradientColors,
-          ),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: gradientColors.first.withValues(alpha: 0.3),
-              blurRadius: 12,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, color: Colors.white, size: 28),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            Text(
-              subtitle,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.8),
-                fontSize: 11,
-              ),
-            ),
-          ],
+          child: Icon(icon, color: Colors.white, size: 18),
         ),
       ),
     );
   }
 
-  Widget _buildCategoryFilter(bool isDark) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Sıralama ve Görünüm Bar'ı
-        _buildSortAndViewBar(isDark),
-
-        // Kompakt Filtre Bar'ı
-        _buildCompactFilterBar(isDark),
-
-        // Aktif Filtreler
-        if (_activeFilterCount > 0) _buildActiveFilters(isDark),
-      ],
-    );
-  }
-
-  /// Kompakt filtre bar'ı - dropdown tarzı butonlar
+  /// Kompakt filtre bar'ı
   Widget _buildCompactFilterBar(bool isDark) {
     return Container(
-      height: 48,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      height: 44,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: ListView(
         scrollDirection: Axis.horizontal,
         children: [
-          // Gövde Tipi
           _buildFilterDropdownButton(
             isDark: isDark,
             label: 'Gövde',
@@ -1061,7 +509,6 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
             onTap: () => _showBodyTypeSheet(isDark),
           ),
           const SizedBox(width: 8),
-          // Yakıt Tipi
           _buildFilterDropdownButton(
             isDark: isDark,
             label: 'Yakıt',
@@ -1070,7 +517,6 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
             onTap: () => _showFuelTypeSheet(isDark),
           ),
           const SizedBox(width: 8),
-          // Vites Tipi
           _buildFilterDropdownButton(
             isDark: isDark,
             label: 'Vites',
@@ -1079,7 +525,6 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
             onTap: () => _showTransmissionSheet(isDark),
           ),
           const SizedBox(width: 8),
-          // Fiyat Aralığı
           _buildFilterDropdownButton(
             isDark: isDark,
             label: 'Fiyat',
@@ -1088,7 +533,6 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
             onTap: () => _showFilterSheet(),
           ),
           const SizedBox(width: 8),
-          // Tüm Filtreler
           _buildFilterDropdownButton(
             isDark: isDark,
             label: 'Tümü',
@@ -1102,7 +546,6 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
     );
   }
 
-  /// Filtre dropdown butonu
   Widget _buildFilterDropdownButton({
     required bool isDark,
     required String label,
@@ -1172,7 +615,6 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
     );
   }
 
-  /// Gövde tipi seçim sheet'i
   void _showBodyTypeSheet(bool isDark) {
     showModalBottomSheet(
       context: context,
@@ -1196,7 +638,6 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
     );
   }
 
-  /// Yakıt tipi seçim sheet'i
   void _showFuelTypeSheet(bool isDark) {
     showModalBottomSheet(
       context: context,
@@ -1221,7 +662,6 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
     );
   }
 
-  /// Vites tipi seçim sheet'i
   void _showTransmissionSheet(bool isDark) {
     showModalBottomSheet(
       context: context,
@@ -1245,33 +685,29 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
     );
   }
 
-  /// Sıralama ve Görünüm Bar'ı
   Widget _buildSortAndViewBar(bool isDark) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: CarSalesColors.card(isDark),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: CarSalesColors.border(isDark)),
       ),
       child: Row(
         children: [
-          // Sonuç sayısı
           Expanded(
             child: Text(
               '${_filteredListings.length} araç bulundu',
               style: TextStyle(
                 color: CarSalesColors.textSecondary(isDark),
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: FontWeight.w500,
               ),
             ),
           ),
-
-          // Sıralama dropdown
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: CarSalesColors.surface(isDark),
               borderRadius: BorderRadius.circular(8),
@@ -1284,32 +720,29 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                 children: [
                   Icon(
                     _currentSortOption.icon,
-                    size: 16,
+                    size: 14,
                     color: CarSalesColors.primary,
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 4),
                   Text(
                     _currentSortOption.label.split(' ').first,
                     style: TextStyle(
                       color: CarSalesColors.textPrimary(isDark),
-                      fontSize: 13,
+                      fontSize: 12,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: 2),
                   Icon(
                     Icons.keyboard_arrow_down,
-                    size: 18,
+                    size: 16,
                     color: CarSalesColors.textSecondary(isDark),
                   ),
                 ],
               ),
             ),
           ),
-
-          const SizedBox(width: 12),
-
-          // Görünüm toggle
+          const SizedBox(width: 8),
           Container(
             decoration: BoxDecoration(
               color: CarSalesColors.surface(isDark),
@@ -1336,21 +769,20 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
           color: isSelected ? CarSalesColors.primary : Colors.transparent,
           borderRadius: BorderRadius.circular(6),
         ),
         child: Icon(
           icon,
-          size: 18,
+          size: 16,
           color: isSelected ? Colors.white : CarSalesColors.textSecondary(isDark),
         ),
       ),
     );
   }
 
-  /// Sıralama seçenekleri
   void _showSortOptions(bool isDark) {
     showModalBottomSheet(
       context: context,
@@ -1360,7 +792,7 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
         child: Container(
           decoration: BoxDecoration(
             color: CarSalesColors.card(isDark),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1375,12 +807,12 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                padding: const EdgeInsets.symmetric(vertical: 12),
                 child: Text(
                   'Sırala',
                   style: TextStyle(
                     color: CarSalesColors.textPrimary(isDark),
-                    fontSize: 18,
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -1395,17 +827,17 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                   Navigator.pop(context);
                 },
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   child: Row(
                     children: [
                       Icon(
                         option.icon,
-                        size: 22,
+                        size: 20,
                         color: _currentSortOption == option
                             ? CarSalesColors.primary
                             : CarSalesColors.textSecondary(isDark),
                       ),
-                      const SizedBox(width: 16),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           option.label,
@@ -1413,7 +845,7 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                             color: _currentSortOption == option
                                 ? CarSalesColors.primary
                                 : CarSalesColors.textPrimary(isDark),
-                            fontSize: 15,
+                            fontSize: 14,
                             fontWeight: _currentSortOption == option
                                 ? FontWeight.w600
                                 : FontWeight.normal,
@@ -1421,12 +853,12 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                         ),
                       ),
                       if (_currentSortOption == option)
-                        const Icon(Icons.check, color: CarSalesColors.primary, size: 20),
+                        const Icon(Icons.check, color: CarSalesColors.primary, size: 18),
                     ],
                   ),
                 ),
               )),
-              SizedBox(height: MediaQuery.of(context).padding.bottom + 12),
+              SizedBox(height: MediaQuery.of(context).padding.bottom + 8),
             ],
           ),
         ),
@@ -1434,10 +866,9 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
     );
   }
 
-  /// Aktif filtreler
   Widget _buildActiveFilters(bool isDark) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1448,96 +879,80 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                 'Aktif Filtreler ($_activeFilterCount)',
                 style: TextStyle(
                   color: CarSalesColors.textSecondary(isDark),
-                  fontSize: 13,
+                  fontSize: 12,
                   fontWeight: FontWeight.w500,
                 ),
               ),
               TextButton(
                 onPressed: _clearAllFilters,
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(0, 0),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
                 child: const Text(
                   'Temizle',
                   style: TextStyle(
                     color: CarSalesColors.accent,
-                    fontSize: 13,
+                    fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: 6,
+            runSpacing: 6,
             children: [
-              // Gövde tipi chip'leri
               ..._selectedBodyTypeIds.map((id) {
                 final type = _bodyTypesData.firstWhere(
                   (t) => t.id == id,
                   orElse: () => CarBodyTypeData(id: id, name: id),
                 );
-                return _buildFilterChip(
-                  isDark,
-                  type.name,
-                  () {
-                    setState(() {
-                      _selectedBodyTypeIds.remove(id);
-                      _applyFilter();
-                    });
-                  },
-                );
+                return _buildFilterChip(isDark, type.name, () {
+                  setState(() {
+                    _selectedBodyTypeIds.remove(id);
+                    _applyFilter();
+                  });
+                });
               }),
-              // Yakıt tipi chip'leri
               ..._selectedFuelTypeIds.map((id) {
                 final type = _fuelTypesData.firstWhere(
                   (t) => t.id == id,
                   orElse: () => CarFuelTypeData(id: id, name: id),
                 );
-                return _buildFilterChip(
-                  isDark,
-                  type.name,
-                  () {
-                    setState(() {
-                      _selectedFuelTypeIds.remove(id);
-                      _applyFilter();
-                    });
-                  },
-                  color: type.colorValue,
-                );
+                return _buildFilterChip(isDark, type.name, () {
+                  setState(() {
+                    _selectedFuelTypeIds.remove(id);
+                    _applyFilter();
+                  });
+                }, color: type.colorValue);
               }),
-              // Vites tipi chip'leri
               ..._selectedTransmissionIds.map((id) {
                 final type = _transmissionsData.firstWhere(
                   (t) => t.id == id,
                   orElse: () => CarTransmissionData(id: id, name: id),
                 );
-                return _buildFilterChip(
-                  isDark,
-                  type.name,
-                  () {
-                    setState(() {
-                      _selectedTransmissionIds.remove(id);
-                      _applyFilter();
-                    });
-                  },
-                );
+                return _buildFilterChip(isDark, type.name, () {
+                  setState(() {
+                    _selectedTransmissionIds.remove(id);
+                    _applyFilter();
+                  });
+                });
               }),
-              // Marka chip'leri
               ..._selectedBrandIds.map((brandId) {
                 final brand = CarBrand.allBrands.firstWhere(
                   (b) => b.id == brandId,
                   orElse: () => CarBrand.allBrands.first,
                 );
-                return _buildFilterChip(
-                  isDark,
-                  brand.name,
-                  () {
-                    setState(() {
-                      _selectedBrandIds.remove(brandId);
-                      _applyFilter();
-                    });
-                  },
-                );
+                return _buildFilterChip(isDark, brand.name, () {
+                  setState(() {
+                    _selectedBrandIds.remove(brandId);
+                    _applyFilter();
+                  });
+                });
               }),
             ],
           ),
@@ -1548,10 +963,10 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
 
   Widget _buildFilterChip(bool isDark, String label, VoidCallback onRemove, {Color? color}) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: (color ?? CarSalesColors.primary).withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: (color ?? CarSalesColors.primary).withValues(alpha: 0.3),
         ),
@@ -1563,16 +978,16 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
             label,
             style: TextStyle(
               color: color ?? CarSalesColors.primary,
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 4),
           GestureDetector(
             onTap: onRemove,
             child: Icon(
               Icons.close,
-              size: 16,
+              size: 14,
               color: color ?? CarSalesColors.primary,
             ),
           ),
@@ -1581,88 +996,6 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
     );
   }
 
-  /// Genel filtre section builder
-  Widget _buildFilterSection<T>(
-    bool isDark,
-    String title,
-    List<T> items,
-    Set<T> selectedItems,
-    String Function(T) getLabel,
-    IconData Function(T) getIcon,
-    void Function(T) onTap, {
-    bool showColor = false,
-    Color Function(T)? getColor,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-          child: Text(
-            title,
-            style: TextStyle(
-              color: CarSalesColors.textPrimary(isDark),
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        SizedBox(
-          height: 44,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: items.length,
-            itemBuilder: (context, index) {
-              final item = items[index];
-              final isSelected = selectedItems.contains(item);
-              final itemColor = showColor && getColor != null ? getColor(item) : CarSalesColors.primary;
-
-              return GestureDetector(
-                onTap: () => onTap(item),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? itemColor.withValues(alpha: 0.15)
-                        : CarSalesColors.card(isDark),
-                    borderRadius: BorderRadius.circular(22),
-                    border: Border.all(
-                      color: isSelected ? itemColor : CarSalesColors.border(isDark),
-                      width: isSelected ? 2 : 1,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        getIcon(item),
-                        size: 16,
-                        color: isSelected ? itemColor : CarSalesColors.textSecondary(isDark),
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        getLabel(item),
-                        style: TextStyle(
-                          color: isSelected ? itemColor : CarSalesColors.textSecondary(isDark),
-                          fontSize: 13,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// Icon helper for body types
   IconData _getIconDataForBodyType(String? iconName) {
     const iconMap = {
       'directions_car': Icons.directions_car,
@@ -1678,7 +1011,6 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
     return iconMap[iconName] ?? Icons.directions_car;
   }
 
-  /// Icon helper for fuel types
   IconData _getIconDataForFuelType(String? iconName) {
     const iconMap = {
       'local_gas_station': Icons.local_gas_station,
@@ -1690,7 +1022,6 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
     return iconMap[iconName] ?? Icons.local_gas_station;
   }
 
-  /// Icon helper for transmissions
   IconData _getIconDataForTransmission(String? iconName) {
     const iconMap = {
       'settings': Icons.settings,
@@ -1700,104 +1031,6 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
     return iconMap[iconName] ?? Icons.settings;
   }
 
-  /// Data-based filter section builder (for Supabase data)
-  Widget _buildFilterSectionData<T>(
-    bool isDark,
-    String title,
-    List<T> items,
-    Set<String> selectedIds,
-    String Function(T) getLabel,
-    IconData Function(T) getIcon,
-    void Function(T) onTap, {
-    bool showColor = false,
-    Color Function(T)? getColor,
-    String Function(T)? getId,
-  }) {
-    // getId fonksiyonu: CarBodyTypeData, CarFuelTypeData, CarTransmissionData için id döndür
-    String getItemId(T item) {
-      if (item is CarBodyTypeData) return item.id;
-      if (item is CarFuelTypeData) return item.id;
-      if (item is CarTransmissionData) return item.id;
-      return getId?.call(item) ?? item.toString();
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-          child: Text(
-            title,
-            style: TextStyle(
-              color: CarSalesColors.textPrimary(isDark),
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-        SizedBox(
-          height: 44,
-          child: items.isEmpty
-              ? Center(
-                  child: Text(
-                    'Yükleniyor...',
-                    style: TextStyle(color: CarSalesColors.textTertiary(isDark)),
-                  ),
-                )
-              : ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: items.length,
-                  itemBuilder: (context, index) {
-                    final item = items[index];
-                    final itemId = getItemId(item);
-                    final isSelected = selectedIds.contains(itemId);
-                    final itemColor = showColor && getColor != null ? getColor(item) : CarSalesColors.primary;
-
-                    return GestureDetector(
-                      onTap: () => onTap(item),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: isSelected
-                              ? itemColor.withValues(alpha: 0.15)
-                              : CarSalesColors.card(isDark),
-                          borderRadius: BorderRadius.circular(22),
-                          border: Border.all(
-                            color: isSelected ? itemColor : CarSalesColors.border(isDark),
-                            width: isSelected ? 2 : 1,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              getIcon(item),
-                              size: 16,
-                              color: isSelected ? itemColor : CarSalesColors.textSecondary(isDark),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              getLabel(item),
-                              style: TextStyle(
-                                color: isSelected ? itemColor : CarSalesColors.textSecondary(isDark),
-                                fontSize: 13,
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildPopularBrands(bool isDark) {
     final popularBrands = CarBrand.popularBrands.take(10).toList();
 
@@ -1805,7 +1038,7 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -1815,23 +1048,22 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                     'Markalar',
                     style: TextStyle(
                       color: CarSalesColors.textPrimary(isDark),
-                      fontSize: 16,
+                      fontSize: 15,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   const SizedBox(width: 8),
-                  // Arama ikonu
                   GestureDetector(
                     onTap: () => _showBrandSearchSheet(isDark),
                     child: Container(
-                      padding: const EdgeInsets.all(6),
+                      padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
                         color: CarSalesColors.surface(isDark),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(6),
                       ),
                       child: Icon(
                         Icons.search,
-                        size: 16,
+                        size: 14,
                         color: CarSalesColors.textSecondary(isDark),
                       ),
                     ),
@@ -1839,13 +1071,18 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                 ],
               ),
               TextButton(
-                onPressed: () => _showAllBrandsSheet(isDark),
+                onPressed: () => _showBrandSearchSheet(isDark),
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(0, 0),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
                 child: const Text(
                   'Tümünü Gör',
                   style: TextStyle(
                     color: CarSalesColors.primary,
                     fontWeight: FontWeight.w600,
-                    fontSize: 13,
+                    fontSize: 12,
                   ),
                 ),
               ),
@@ -1853,10 +1090,10 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
           ),
         ),
         SizedBox(
-          height: 72,
+          height: 68,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
             itemCount: popularBrands.length,
             itemBuilder: (context, index) {
               final brand = popularBrands[index];
@@ -1875,14 +1112,14 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                 },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  width: 72,
+                  width: 68,
                   margin: const EdgeInsets.symmetric(horizontal: 4),
-                  padding: const EdgeInsets.all(6),
+                  padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
                     color: isSelected
                         ? CarSalesColors.primary.withValues(alpha: 0.1)
                         : CarSalesColors.card(isDark),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(10),
                     border: Border.all(
                       color: isSelected
                           ? CarSalesColors.primary
@@ -1893,18 +1130,17 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Marka logosu
                       Container(
-                        width: 36,
-                        height: 36,
+                        width: 32,
+                        height: 32,
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(6),
                         ),
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(6),
                           child: Padding(
-                            padding: const EdgeInsets.all(4),
+                            padding: const EdgeInsets.all(3),
                             child: CachedNetworkImage(
                               imageUrl: brand.logoUrl,
                               fit: BoxFit.contain,
@@ -1913,7 +1149,7 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                                   brand.name.substring(0, 1),
                                   style: const TextStyle(
                                     color: CarSalesColors.primary,
-                                    fontSize: 16,
+                                    fontSize: 14,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -1923,7 +1159,7 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                                   brand.name.substring(0, 1),
                                   style: const TextStyle(
                                     color: CarSalesColors.primary,
-                                    fontSize: 16,
+                                    fontSize: 14,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -1932,7 +1168,7 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                           ),
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 3),
                       Text(
                         brand.name.length > 9
                             ? '${brand.name.substring(0, 7)}..'
@@ -1941,7 +1177,7 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                           color: isSelected
                               ? CarSalesColors.primary
                               : CarSalesColors.textSecondary(isDark),
-                          fontSize: 10,
+                          fontSize: 9,
                           fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                         ),
                         maxLines: 1,
@@ -1959,7 +1195,6 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
     );
   }
 
-  /// Marka arama sheet'i
   void _showBrandSearchSheet(bool isDark) {
     showModalBottomSheet(
       context: context,
@@ -1982,291 +1217,27 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
     );
   }
 
-  /// Tüm markalar sheet'i
-  void _showAllBrandsSheet(bool isDark) {
-    _showBrandSearchSheet(isDark);
-  }
-
-  Widget _buildSectionHeader(
-    bool isDark,
-    String title,
-    String actionText,
-    VoidCallback onAction,
-  ) {
+  Widget _buildSectionHeader(bool isDark, String title) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              color: CarSalesColors.textPrimary(isDark),
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          TextButton(
-            onPressed: onAction,
-            child: Row(
-              children: [
-                Text(
-                  actionText,
-                  style: const TextStyle(
-                    color: CarSalesColors.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                const Icon(
-                  Icons.arrow_forward_ios,
-                  size: 12,
-                  color: CarSalesColors.primary,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFeaturedListings(bool isDark) {
-    if (_isLoading) {
-      return const SizedBox(
-        height: 280,
-        child: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    // Sadece gerçek verileri kullan - demo veri kullanma
-    // Featured listesi boşsa recent listesinden al
-    final sourceListings = _featuredListings.isNotEmpty
-        ? _featuredListings
-        : _recentListings;
-
-    if (sourceListings.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    final featuredListings = sourceListings.map((e) => _convertToCarListing(e)).toList();
-
-    return SizedBox(
-      height: 280,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: featuredListings.length,
-        itemBuilder: (context, index) {
-          final car = featuredListings[index];
-          return _buildFeaturedListingCard(car, isDark);
-        },
-      ),
-    );
-  }
-
-  Widget _buildFeaturedListingCard(CarListing car, bool isDark) {
-    return GestureDetector(
-      onTap: () => _navigateToDetail(car),
-      child: Container(
-        width: 220,
-        margin: const EdgeInsets.symmetric(horizontal: 8),
-        decoration: BoxDecoration(
-          color: CarSalesColors.card(isDark),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Image with badges
-            Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(20),
-                  ),
-                  child: CachedNetworkImage(
-                    imageUrl: car.images.first,
-                    height: 140,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    memCacheWidth: 600,
-                    memCacheHeight: 280,
-                    placeholder: (_, __) => Container(
-                      height: 140,
-                      color: CarSalesColors.surface(isDark),
-                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                    ),
-                    errorWidget: (_, __, ___) => Container(
-                      height: 140,
-                      color: CarSalesColors.surface(isDark),
-                      child: Icon(
-                        Icons.directions_car,
-                        color: CarSalesColors.textTertiary(isDark),
-                        size: 48,
-                      ),
-                    ),
-                  ),
-                ),
-                // Premium badge
-                if (car.isPremiumListing)
-                  Positioned(
-                    top: 12,
-                    left: 12,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: CarSalesColors.goldGradient,
-                        ),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.star, color: Colors.white, size: 12),
-                          SizedBox(width: 2),
-                          Text(
-                            'Premium',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                // Favorite button
-                Positioned(
-                  top: 12,
-                  right: 12,
-                  child: Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.9),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.favorite_border,
-                      color: CarSalesColors.accent,
-                      size: 18,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-
-            // Content
-            Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    car.fullName,
-                    style: TextStyle(
-                      color: CarSalesColors.textPrimary(isDark),
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.calendar_today,
-                        size: 12,
-                        color: CarSalesColors.textTertiary(isDark),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${car.year}',
-                        style: TextStyle(
-                          color: CarSalesColors.textSecondary(isDark),
-                          fontSize: 12,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Icon(
-                        Icons.speed,
-                        size: 12,
-                        color: CarSalesColors.textTertiary(isDark),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        car.formattedMileage,
-                        style: TextStyle(
-                          color: CarSalesColors.textSecondary(isDark),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        car.formattedPrice,
-                        style: const TextStyle(
-                          color: CarSalesColors.primary,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      if (car.isPriceNegotiable)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: CarSalesColors.success.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: const Text(
-                            'Pazarlık',
-                            style: TextStyle(
-                              color: CarSalesColors.success,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+      child: Text(
+        title,
+        style: TextStyle(
+          color: CarSalesColors.textPrimary(isDark),
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
         ),
       ),
     );
   }
 
   Widget _buildRecentListings(bool isDark) {
-    // Sadece gerçek verileri kullan - demo veri kullanma
     final listings = _filteredListings.isNotEmpty
         ? _filteredListings.map((e) => _convertToCarListing(e)).toList()
         : _recentListings.map((e) => _convertToCarListing(e)).toList();
 
     if (_isLoading) {
-      return SliverToBoxAdapter(
+      return const SliverToBoxAdapter(
         child: SizedBox(
           height: 200,
           child: Center(child: CircularProgressIndicator()),
@@ -2278,26 +1249,26 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
     if (_filteredListings.isEmpty && _activeFilterCount > 0) {
       return SliverToBoxAdapter(
         child: Padding(
-          padding: const EdgeInsets.all(32),
+          padding: const EdgeInsets.all(24),
           child: Center(
             child: Column(
               children: [
-                Icon(Icons.search_off, size: 64, color: Colors.grey[400]),
-                const SizedBox(height: 16),
+                Icon(Icons.search_off, size: 56, color: Colors.grey[400]),
+                const SizedBox(height: 12),
                 Text(
                   'Seçili filtrelere uygun ilan bulunamadı',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 ElevatedButton(
                   onPressed: _clearAllFilters,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: CarSalesColors.primary,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(10),
                     ),
                   ),
                   child: const Text('Filtreleri Temizle'),
@@ -2312,15 +1283,15 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
     if (listings.isEmpty) {
       return SliverToBoxAdapter(
         child: Padding(
-          padding: const EdgeInsets.all(32),
+          padding: const EdgeInsets.all(24),
           child: Center(
             child: Column(
               children: [
-                Icon(Icons.directions_car_outlined, size: 64, color: Colors.grey[400]),
-                const SizedBox(height: 16),
+                Icon(Icons.directions_car_outlined, size: 56, color: Colors.grey[400]),
+                const SizedBox(height: 12),
                 Text(
                   'Henüz ilan bulunamadı',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
                 ),
               ],
             ),
@@ -2329,24 +1300,20 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
       );
     }
 
-    // Grid veya List görünümüne göre
     if (_isGridView) {
-      return SliverPadding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        sliver: SliverGrid(
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            childAspectRatio: 0.72,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-          ),
-          delegate: SliverChildBuilderDelegate(
-            (context, index) {
-              final car = listings[index];
-              return _buildGridCard(car, isDark);
-            },
-            childCount: listings.length,
-          ),
+      return SliverGrid(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          childAspectRatio: 0.72,
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+        ),
+        delegate: SliverChildBuilderDelegate(
+          (context, index) {
+            final car = listings[index];
+            return _buildGridCard(car, isDark);
+          },
+          childCount: listings.length,
         ),
       );
     }
@@ -2368,25 +1335,24 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
       child: Container(
         decoration: BoxDecoration(
           color: CarSalesColors.card(isDark),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image
             Expanded(
               flex: 3,
               child: Stack(
                 children: [
                   ClipRRect(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
                     child: CachedNetworkImage(
                       imageUrl: car.images.first,
                       width: double.infinity,
@@ -2402,17 +1368,17 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                         child: Icon(
                           Icons.directions_car,
                           color: CarSalesColors.textTertiary(isDark),
-                          size: 40,
+                          size: 36,
                         ),
                       ),
                     ),
                   ),
                   if (car.isPremiumListing)
                     Positioned(
-                      top: 8,
-                      left: 8,
+                      top: 6,
+                      left: 6,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(colors: CarSalesColors.goldGradient),
                           borderRadius: BorderRadius.circular(4),
@@ -2426,11 +1392,10 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                 ],
               ),
             ),
-            // Content
             Expanded(
               flex: 2,
               child: Padding(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -2438,18 +1403,18 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                       car.fullName,
                       style: TextStyle(
                         color: CarSalesColors.textPrimary(isDark),
-                        fontSize: 13,
+                        fontSize: 12,
                         fontWeight: FontWeight.bold,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
                       '${car.year} · ${_formatMileage(car.mileage)}',
                       style: TextStyle(
                         color: CarSalesColors.textSecondary(isDark),
-                        fontSize: 11,
+                        fontSize: 10,
                       ),
                     ),
                     const Spacer(),
@@ -2457,7 +1422,7 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                       _formatPrice(car.price),
                       style: const TextStyle(
                         color: CarSalesColors.primary,
-                        fontSize: 14,
+                        fontSize: 13,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -2475,55 +1440,52 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
     return GestureDetector(
       onTap: () => _navigateToDetail(car),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
+        margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
           color: CarSalesColors.card(isDark),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
+              blurRadius: 12,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
         child: Row(
           children: [
-            // Image
             ClipRRect(
               borderRadius: const BorderRadius.horizontal(
-                left: Radius.circular(20),
+                left: Radius.circular(16),
               ),
               child: CachedNetworkImage(
                 imageUrl: car.images.first,
-                width: 140,
-                height: 130,
+                width: 130,
+                height: 120,
                 fit: BoxFit.cover,
-                memCacheWidth: 280,
-                memCacheHeight: 260,
+                memCacheWidth: 260,
+                memCacheHeight: 240,
                 placeholder: (_, __) => Container(
-                  width: 140,
-                  height: 130,
+                  width: 130,
+                  height: 120,
                   color: CarSalesColors.surface(isDark),
                   child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
                 ),
                 errorWidget: (_, __, ___) => Container(
-                  width: 140,
-                  height: 130,
+                  width: 130,
+                  height: 120,
                   color: CarSalesColors.surface(isDark),
                   child: Icon(
                     Icons.directions_car,
                     color: CarSalesColors.textTertiary(isDark),
-                    size: 40,
+                    size: 36,
                   ),
                 ),
               ),
             ),
-
-            // Content
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -2531,9 +1493,9 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                       children: [
                         if (car.isPremiumListing)
                           Container(
-                            margin: const EdgeInsets.only(right: 8),
+                            margin: const EdgeInsets.only(right: 6),
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
+                              horizontal: 5,
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
@@ -2556,7 +1518,7 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                             car.fullName,
                             style: TextStyle(
                               color: CarSalesColors.textPrimary(isDark),
-                              fontSize: 15,
+                              fontSize: 14,
                               fontWeight: FontWeight.bold,
                             ),
                             maxLines: 1,
@@ -2565,12 +1527,10 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
-
-                    // Specs row
+                    const SizedBox(height: 4),
                     Wrap(
-                      spacing: 8,
-                      runSpacing: 4,
+                      spacing: 6,
+                      runSpacing: 3,
                       children: [
                         _buildSpecChip(isDark, '${car.year}'),
                         _buildSpecChip(isDark, car.formattedMileage),
@@ -2578,9 +1538,7 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                         _buildSpecChip(isDark, car.transmission.label),
                       ],
                     ),
-                    const SizedBox(height: 10),
-
-                    // Price and location
+                    const SizedBox(height: 8),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -2591,7 +1549,7 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                               car.formattedPrice,
                               style: const TextStyle(
                                 color: CarSalesColors.primary,
-                                fontSize: 16,
+                                fontSize: 15,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
@@ -2600,7 +1558,7 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                                 children: [
                                   Icon(
                                     Icons.location_on,
-                                    size: 12,
+                                    size: 11,
                                     color: CarSalesColors.textTertiary(isDark),
                                   ),
                                   const SizedBox(width: 2),
@@ -2608,7 +1566,7 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                                     car.location,
                                     style: TextStyle(
                                       color: CarSalesColors.textTertiary(isDark),
-                                      fontSize: 11,
+                                      fontSize: 10,
                                     ),
                                   ),
                                 ],
@@ -2617,7 +1575,7 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                         ),
                         Icon(
                           Icons.arrow_forward_ios,
-                          size: 16,
+                          size: 14,
                           color: CarSalesColors.textTertiary(isDark),
                         ),
                       ],
@@ -2634,16 +1592,16 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
 
   Widget _buildSpecChip(bool isDark, String text) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: CarSalesColors.surface(isDark),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
         text,
         style: TextStyle(
           color: CarSalesColors.textSecondary(isDark),
-          fontSize: 11,
+          fontSize: 10,
         ),
       ),
     );
@@ -2651,42 +1609,34 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
 
   Widget _buildFloatingAddButton(bool isDark) {
     return Positioned(
-      right: 20,
-      bottom: 100,
-      child: AnimatedBuilder(
-        animation: _pulseController,
-        builder: (context, child) {
-          return Transform.scale(
-            scale: _pulseAnimation.value,
-            child: GestureDetector(
-              onTap: _navigateToAddListing,
-              child: Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: CarSalesColors.sportGradient,
-                  ),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: CarSalesColors.accent.withValues(alpha: 0.4),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.add,
-                  color: Colors.white,
-                  size: 32,
-                ),
-              ),
+      right: 16,
+      bottom: 90,
+      child: GestureDetector(
+        onTap: _navigateToAddListing,
+        child: Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: CarSalesColors.sportGradient,
             ),
-          );
-        },
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: CarSalesColors.accent.withValues(alpha: 0.4),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: const Icon(
+            Icons.add,
+            color: Colors.white,
+            size: 28,
+          ),
+        ),
       ),
     );
   }

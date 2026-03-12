@@ -367,6 +367,7 @@ class JobListingData {
   final String userId;
   final String? posterId;
   final String? companyId;
+  final String listingType; // 'hiring' or 'seeking'
 
   // Temel bilgiler
   final String title;
@@ -433,6 +434,7 @@ class JobListingData {
     required this.userId,
     this.posterId,
     this.companyId,
+    this.listingType = 'hiring',
     required this.title,
     required this.description,
     this.categoryId,
@@ -483,6 +485,7 @@ class JobListingData {
       userId: json['user_id'] as String,
       posterId: json['poster_id'] as String?,
       companyId: json['company_id'] as String?,
+      listingType: json['listing_type'] as String? ?? 'hiring',
       title: json['title'] as String,
       description: json['description'] as String,
       categoryId: json['category_id'] as String?,
@@ -553,6 +556,7 @@ class JobListingData {
   }
 
   Map<String, dynamic> toJson() => {
+    'listing_type': listingType,
     'title': title,
     'description': description,
     'category_id': categoryId,

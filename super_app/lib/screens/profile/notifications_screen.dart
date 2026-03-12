@@ -294,6 +294,11 @@ class NotificationsScreen extends ConsumerWidget {
         }
         break;
       case 'car_message':
+        final carConvId = data['conversation_id'] as String?;
+        if (carConvId != null) {
+          context.push('/car-sales/chat/$carConvId');
+        }
+        break;
       case 'car_favorite':
         final listingId = data['listing_id'] as String?;
         if (listingId != null) {

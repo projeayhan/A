@@ -167,7 +167,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             if (value == 'listing') {
               // İlana git
               if (conversation?.listingId != null) {
-                context.push('/listing/${conversation!.listingId}');
+                context.push('/listings/${conversation!.listingId}');
               }
             }
           },
@@ -204,7 +204,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         ],
       ),
       child: InkWell(
-        onTap: () => context.push('/listing/${listing.id}'),
+        onTap: () => context.push('/listings/${listing.id}'),
         child: Row(
           children: [
             // Araç resmi

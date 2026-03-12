@@ -36,6 +36,7 @@ class _JobSearchScreenState extends ConsumerState<JobSearchScreen>
   final Set<WorkArrangement> _selectedWorkArrangements = {};
   final Set<ExperienceLevel> _selectedExperienceLevels = {};
   String? _selectedCity;
+  String? _selectedListingType; // null = Tümü, 'hiring', 'seeking'
 
   @override
   void initState() {
@@ -84,7 +85,9 @@ class _JobSearchScreenState extends ConsumerState<JobSearchScreen>
       _selectedWorkArrangements.clear();
       _selectedExperienceLevels.clear();
       _selectedCity = null;
+      _selectedListingType = null;
     });
+    ref.read(jobListProvider.notifier).setListingType(null);
     _performSearch(_searchQuery);
   }
 
@@ -95,6 +98,7 @@ class _JobSearchScreenState extends ConsumerState<JobSearchScreen>
     if (_selectedWorkArrangements.isNotEmpty) count++;
     if (_selectedExperienceLevels.isNotEmpty) count++;
     if (_selectedCity != null) count++;
+    if (_selectedListingType != null) count++;
     return count;
   }
 
@@ -296,6 +300,72 @@ class _JobSearchScreenState extends ConsumerState<JobSearchScreen>
             ],
           ),
           const SizedBox(height: 12),
+
+          // Listing Type Filter
+          Text(
+            'İlan Türü',
+            style: TextStyle(
+              color: JobsColors.textSecondary(isDark),
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              {'value': null, 'label': 'Tümü', 'icon': Icons.apps, 'color': JobsColors.primary},
+              {'value': 'hiring', 'label': 'Eleman Arıyorum', 'icon': Icons.business_center, 'color': const Color(0xFF3B82F6)},
+              {'value': 'seeking', 'label': 'İş Arıyorum', 'icon': Icons.person_search, 'color': const Color(0xFF10B981)},
+            ].map((tab) {
+              final value = tab['value'] as String?;
+              final label = tab['label'] as String;
+              final icon = tab['icon'] as IconData;
+              final color = tab['color'] as Color;
+              final isSelected = _selectedListingType == value;
+
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() => _selectedListingType = value);
+                    ref.read(jobListProvider.notifier).setListingType(value);
+                    HapticFeedback.selectionClick();
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    margin: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(
+                      color: isSelected ? color : JobsColors.card(isDark),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: isSelected ? color : JobsColors.border(isDark),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(icon, size: 14, color: isSelected ? Colors.white : color),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            label,
+                            style: TextStyle(
+                              color: isSelected ? Colors.white : JobsColors.textPrimary(isDark),
+                              fontSize: 11,
+                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+
+          const SizedBox(height: 16),
 
           // Job Type Filter
           Text(
@@ -867,6 +937,30 @@ class _JobSearchScreenState extends ConsumerState<JobSearchScreen>
                   // Company & Badges
                   Row(
                     children: [
+                      // Listing type badge
+                      Container(
+                        margin: const EdgeInsets.only(right: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: job.listingType.color.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(job.listingType.icon, size: 10, color: job.listingType.color),
+                            const SizedBox(width: 3),
+                            Text(
+                              job.listingType.label,
+                              style: TextStyle(
+                                color: job.listingType.color,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                       Expanded(
                         child: Text(
                           job.companyName,

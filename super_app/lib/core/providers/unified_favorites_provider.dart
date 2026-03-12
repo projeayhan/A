@@ -549,16 +549,99 @@ class JobFavoriteNotifier extends StateNotifier<JobFavoriteState> {
   }
 
   Future<void> _loadFavorites() async {
-    // Job favorites use local state only (no DB table for generic favorites)
+    final user = SupabaseService.currentUser;
+    if (user == null) return;
+
+    try {
+      final response = await SupabaseService.client
+          .from('job_favorites')
+          .select('listing_id')
+          .eq('user_id', user.id);
+
+      final favoriteIds = (response as List)
+          .map((r) => r['listing_id'] as String)
+          .toList();
+
+      if (favoriteIds.isEmpty) return;
+
+      // İlan detaylarını al
+      final listingsResponse = await SupabaseService.client
+          .from('job_listings')
+          .select('id, title, city, salary_min, salary_max, salary_currency, salary_period, job_type, company:company_id(name, logo_url)')
+          .inFilter('id', favoriteIds);
+
+      final List<FavoriteJob> favorites = [];
+      for (final l in (listingsResponse as List)) {
+        final company = l['company'] as Map<String, dynamic>?;
+        favorites.add(FavoriteJob(
+          id: l['id'] as String,
+          title: l['title'] as String? ?? '',
+          companyName: company?['name'] as String? ?? '',
+          companyLogo: company?['logo_url'] as String? ?? '',
+          location: l['city'] as String? ?? '',
+          salary: _formatSalary(l),
+          employmentType: l['job_type'] as String? ?? '',
+          tags: [],
+          addedAt: DateTime.now(),
+        ));
+      }
+
+      state = state.copyWith(jobs: favorites);
+    } catch (e) {
+      debugPrint('Job favorileri yuklenemedi: $e');
+    }
+  }
+
+  String _formatSalary(Map<String, dynamic> l) {
+    final min = (l['salary_min'] as num?)?.toDouble();
+    final max = (l['salary_max'] as num?)?.toDouble();
+    final currency = l['salary_currency'] as String? ?? 'TRY';
+    final symbol = currency == 'TRY' ? '₺' : currency;
+    if (min != null && max != null) {
+      return '$symbol${min.toInt()}-${max.toInt()}';
+    } else if (min != null) {
+      return '$symbol${min.toInt()}+';
+    }
+    return 'Belirtilmemiş';
   }
 
   Future<void> addJob(FavoriteJob job) async {
     if (state.isFavorite(job.id)) return;
+
+    // Optimistic update
     state = state.copyWith(jobs: [...state.jobs, job]);
+
+    // DB'ye kaydet
+    final user = SupabaseService.currentUser;
+    if (user != null) {
+      try {
+        await SupabaseService.client.from('job_favorites').upsert({
+          'listing_id': job.id,
+          'user_id': user.id,
+        });
+      } catch (e) {
+        debugPrint('Job favori eklenemedi: $e');
+      }
+    }
   }
 
   Future<void> removeJob(String id) async {
+    // Optimistic update
     state = state.copyWith(jobs: state.jobs.where((j) => j.id != id).toList());
+
+    // DB'den sil
+    final user = SupabaseService.currentUser;
+    if (user != null) {
+      try {
+        await SupabaseService.client
+            .from('job_favorites')
+            .delete()
+            .eq('listing_id', id)
+            .eq('user_id', user.id);
+      } catch (e) {
+        debugPrint('Job favori kaldirilamadi: $e');
+      }
+    }
   }
 
   void toggleJob(FavoriteJob job) {

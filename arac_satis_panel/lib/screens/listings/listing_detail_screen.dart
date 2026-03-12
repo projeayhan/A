@@ -6,8 +6,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../models/car_models.dart';
 import '../../services/listing_service.dart';
-import '../../services/dealer_service.dart';
-import '../../providers/dealer_provider.dart';
 
 class ListingDetailScreen extends ConsumerStatefulWidget {
   final String listingId;
@@ -23,7 +21,6 @@ class ListingDetailScreen extends ConsumerStatefulWidget {
 
 class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
   CarListing? _listing;
-  List<CarListingPromotion> _promotions = [];
   bool _isLoading = true;
   String? _error;
   int _currentImageIndex = 0;
@@ -48,11 +45,9 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
 
     try {
       final listing = await ListingService.instance.getListingById(widget.listingId);
-      final promotions = await DealerService.instance.getActivePromotions();
 
       setState(() {
         _listing = listing;
-        _promotions = promotions.where((p) => p.listingId == widget.listingId).toList();
         _isLoading = false;
       });
     } catch (e) {
@@ -75,14 +70,14 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
         title: Text(_listing?.title ?? 'İlan Detayı'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/panel'),
+          onPressed: () => context.go('/dashboard'),
         ),
         actions: [
           if (_listing != null) ...[
             IconButton(
               icon: const Icon(Icons.edit),
               tooltip: 'Düzenle',
-              onPressed: () => context.go('/listing/${widget.listingId}/edit'),
+              onPressed: () => context.go('/listings/edit/${widget.listingId}'),
             ),
             PopupMenuButton<String>(
               onSelected: (value) => _handleMenuAction(value),
@@ -105,14 +100,6 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
                       contentPadding: EdgeInsets.zero,
                     ),
                   ),
-                const PopupMenuItem(
-                  value: 'promote',
-                  child: ListTile(
-                    leading: Icon(Icons.star, color: Colors.orange),
-                    title: Text('Öne Çıkar'),
-                    contentPadding: EdgeInsets.zero,
-                  ),
-                ),
                 const PopupMenuItem(
                   value: 'delete',
                   child: ListTile(
@@ -167,7 +154,7 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
           const Text('İlan bulunamadı'),
           const SizedBox(height: 16),
           ElevatedButton.icon(
-            onPressed: () => context.go('/panel'),
+            onPressed: () => context.go('/dashboard'),
             icon: const Icon(Icons.arrow_back),
             label: const Text('Panele Dön'),
           ),
@@ -188,8 +175,6 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
             child: Column(
               children: [
                 _buildImageGallery(theme),
-                const SizedBox(height: 24),
-                _buildPromotionsCard(theme),
               ],
             ),
           ),
@@ -234,8 +219,6 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
           _buildPriceCard(theme),
           const SizedBox(height: 16),
           _buildStatusCard(theme),
-          const SizedBox(height: 16),
-          _buildPromotionsCard(theme),
           const SizedBox(height: 16),
           _buildBasicInfoCard(theme),
           const SizedBox(height: 16),
@@ -519,95 +502,6 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
     );
   }
 
-  Widget _buildPromotionsCard(ThemeData theme) {
-    if (_promotions.isEmpty) {
-      return Card(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            children: [
-              const Icon(Icons.star_border, size: 48, color: Colors.grey),
-              const SizedBox(height: 12),
-              const Text(
-                'Aktif Öne Çıkarma Yok',
-                style: TextStyle(color: Colors.grey),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: () => _showPromotionDialog(),
-                icon: const Icon(Icons.star),
-                label: const Text('Öne Çıkar'),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.star, color: Colors.orange),
-                const SizedBox(width: 8),
-                Text(
-                  'Aktif Öne Çıkarmalar',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            ..._promotions.map((promo) => Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: promo.isFeatured ? Colors.orange.shade50 : Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: promo.isFeatured ? Colors.orange : Colors.blue,
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    promo.isFeatured ? Icons.workspace_premium : Icons.trending_up,
-                    color: promo.isFeatured ? Colors.orange : Colors.blue,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          promo.isFeatured ? 'Premium Öne Çıkarma' : 'Standart Öne Çıkarma',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        Text(
-                          'Bitiş: ${DateFormat('dd.MM.yyyy HH:mm').format(promo.endDate)}',
-                          style: theme.textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () => _cancelPromotion(promo.id),
-                    child: const Text('İptal'),
-                  ),
-                ],
-              ),
-            )),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildBasicInfoCard(ThemeData theme) {
     return Card(
       child: Padding(
@@ -831,9 +725,6 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
       case 'republish':
         _republishListing();
         break;
-      case 'promote':
-        _showPromotionDialog();
-        break;
       case 'delete':
         _deleteListing();
         break;
@@ -916,109 +807,6 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
     }
   }
 
-  Future<void> _showPromotionDialog() async {
-    final promotionPrices = await ref.read(promotionPricesProvider.future);
-
-    if (!mounted) return;
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Öne Çıkarma Seçenekleri'),
-        content: SizedBox(
-          width: 400,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: promotionPrices.map((price) => Card(
-              child: ListTile(
-                leading: Icon(
-                  price.isFeatured ? Icons.workspace_premium : Icons.trending_up,
-                  color: price.isFeatured ? Colors.orange : Colors.blue,
-                ),
-                title: Text('${price.durationDays} Gün'),
-                subtitle: Text(price.isFeatured ? 'Premium' : 'Standart'),
-                trailing: Text(
-                  _currencyFormat.format(price.price),
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  _createPromotion(price);
-                },
-              ),
-            )).toList(),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('İptal'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _createPromotion(PromotionPrice price) async {
-    try {
-      await DealerService.instance.createPromotion(
-        listingId: widget.listingId,
-        priceId: price.id,
-      );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Öne çıkarma oluşturuldu')),
-        );
-        _loadListing();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: $e')),
-        );
-      }
-    }
-  }
-
-  Future<void> _cancelPromotion(String promotionId) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Öne Çıkarmayı İptal Et'),
-        content: const Text('Bu öne çıkarmayı iptal etmek istediğinize emin misiniz? Ücret iadesi yapılmayacaktır.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Vazgeç'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('İptal Et'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      try {
-        await DealerService.instance.cancelPromotion(promotionId);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Öne çıkarma iptal edildi')),
-          );
-          _loadListing();
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Hata: $e')),
-          );
-        }
-      }
-    }
-  }
-
   Future<void> _deleteListing() async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -1046,7 +834,7 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('İlan silindi')),
           );
-          context.go('/panel');
+          context.go('/dashboard');
         }
       } catch (e) {
         if (mounted) {

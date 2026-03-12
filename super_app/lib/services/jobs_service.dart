@@ -273,6 +273,7 @@ class JobsService {
     bool urgentOnly = false,
     bool premiumOnly = false,
     String? searchQuery,
+    String? listingType,
     String sortBy = 'newest',
     int limit = 20,
     int offset = 0,
@@ -319,6 +320,9 @@ class JobsService {
       }
       if (searchQuery != null && searchQuery.isNotEmpty) {
         query = query.textSearch('title', searchQuery);
+      }
+      if (listingType != null) {
+        query = query.eq('listing_type', listingType);
       }
 
       // Sıralama

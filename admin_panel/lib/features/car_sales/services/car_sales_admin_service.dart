@@ -605,12 +605,22 @@ class CarSalesAdminService {
         .eq('id', applicationId)
         .single();
 
-    // Daha önce onaylanmış mı kontrol et
-    final existingDealer = await _client
-        .from('car_dealers')
-        .select('id')
-        .eq('user_id', application['user_id'])
-        .maybeSingle();
+    // Daha önce onaylanmış mı kontrol et (user_id veya phone ile)
+    final userId = application['user_id'];
+    Map<String, dynamic>? existingDealer;
+    if (userId != null) {
+      existingDealer = await _client
+          .from('car_dealers')
+          .select('id')
+          .eq('user_id', userId)
+          .maybeSingle();
+    } else {
+      existingDealer = await _client
+          .from('car_dealers')
+          .select('id')
+          .eq('phone', application['phone'])
+          .maybeSingle();
+    }
 
     if (existingDealer != null) {
       // Zaten kayıtlı, sadece başvuruyu güncelle
@@ -626,7 +636,7 @@ class CarSalesAdminService {
 
     // Satıcı oluştur
     await _client.from('car_dealers').insert({
-      'user_id': application['user_id'],
+      if (application['user_id'] != null) 'user_id': application['user_id'],
       'dealer_type': application['dealer_type'],
       'business_name': application['business_name'],
       'owner_name': application['owner_name'],

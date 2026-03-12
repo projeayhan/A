@@ -160,6 +160,8 @@ class _StoreProductDetailScreenState
                         child: CachedNetworkImage(
                           imageUrl: _images[index],
                           fit: BoxFit.contain,
+                          memCacheWidth: 600,
+                          memCacheHeight: 600,
                           placeholder: (_, __) => Container(
                             color: Colors.grey[200],
                             child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),

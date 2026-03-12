@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'job_models.dart';
 import 'job_data_models.dart';
 
@@ -8,6 +7,7 @@ extension JobListingDataToUI on JobListingData {
   JobListing toUIModel() {
     return JobListing(
       id: id,
+      listingType: ListingType.fromDb(listingType),
       title: title,
       description: description,
       category: _findCategory(categoryId),

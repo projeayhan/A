@@ -362,7 +362,13 @@
       "Bash(mcp__supabase__execute_sql graphql_query=\"{ searchDocs\\(query: \"\"store_messages\"\", limit: 5\\) { nodes { ... on Guide { title href } } } }\")",
       "Bash(Select-String \"error\")",
       "Bash(Select-Object -First 20)",
-      "Bash(Select-String:*)"
+      "Bash(Select-String:*)",
+      "Bash(start cmd /c \"flutter run -d chrome\")",
+      "Bash(start cmd /c \"flutter run -d chrome --web-port=8080\")",
+      "Bash(start cmd /c \"flutter run -d chrome --web-port=8081\")",
+      "Bash(start https://arac.supercyp.com)",
+      "Bash(powershell -c:*)",
+      "Bash(pip show:*)"
     ]
   }
 }

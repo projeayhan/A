@@ -7,10 +7,10 @@ class AppUrls {
   static const String rentACarPanel = 'https://rentacar.supercyp.com';
   static const String email = 'info@supercyp.com';
 
-  // APK download URLs (placeholder - update with real URLs)
-  static const String superAppApk = '#';
-  static const String driverAppApk = '#';
-  static const String courierAppApk = '#';
+  // APK download URLs
+  static const String superAppApk = 'https://supercyp.com/downloads/super_app.apk';
+  static const String driverAppApk = 'https://supercyp.com/downloads/taxi_app.apk';
+  static const String courierAppApk = 'https://supercyp.com/downloads/courier_app.apk';
 }
 
 class AppStrings {

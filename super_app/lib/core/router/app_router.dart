@@ -50,6 +50,8 @@ import '../../screens/car_sales/car_search_screen.dart';
 import '../../screens/car_sales/add_car_listing_screen.dart';
 import '../../screens/car_sales/my_car_listings_screen.dart';
 import '../../screens/car_sales/car_favorites_screen.dart';
+import '../../screens/car_sales/car_conversations_screen.dart';
+import '../../screens/car_sales/car_chat_screen.dart';
 import '../../models/car_sales/car_sales_models.dart';
 import '../../services/car_sales_service.dart';
 import '../../screens/jobs/jobs_home_screen.dart';
@@ -112,6 +114,8 @@ class AppRoutes {
   static const String carAdd = '/car-sales/add';
   static const String carMyListings = '/car-sales/my-listings';
   static const String carFavorites = '/car-sales/favorites';
+  static const String carChats = '/car-sales/chats';
+  static const String carChat = '/car-sales/chat/:conversationId';
 
   // Jobs Routes
   static const String jobs = '/jobs';
@@ -593,6 +597,23 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: AppRoutes.carFavorites,
             name: 'carFavorites',
             builder: (context, state) => const CarFavoritesScreen(),
+          ),
+          GoRoute(
+            path: AppRoutes.carChats,
+            name: 'carChats',
+            builder: (context, state) => const CarConversationsScreen(),
+          ),
+          GoRoute(
+            path: '/car-sales/chat/:conversationId',
+            name: 'carChat',
+            builder: (context, state) {
+              final conversationId = state.pathParameters['conversationId']!;
+              final listing = state.extra as Map<String, dynamic>?;
+              return CarChatScreen(
+                conversationId: conversationId,
+                listing: listing,
+              );
+            },
           ),
 
           // Jobs Routes

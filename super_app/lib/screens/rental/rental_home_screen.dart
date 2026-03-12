@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/app_responsive.dart';
 import '../../core/theme/app_theme.dart';
@@ -114,6 +115,7 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
     );
 
     _scrollController.addListener(() {
+      if (!mounted) return;
       setState(() {
         _scrollOffset = _scrollController.offset;
       });
@@ -341,6 +343,7 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
                       controller: _bannerPageController,
                       itemCount: _heroBanners.length,
                       onPageChanged: (index) {
+                        if (!mounted) return;
                         setState(() => _currentBannerIndex = index);
                       },
                       itemBuilder: (context, index) {
@@ -442,7 +445,7 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
             size: 20,
           ),
         ),
-        onPressed: () => Navigator.pop(context),
+        onPressed: () => context.pop(),
       ),
       actions: [
         IconButton(

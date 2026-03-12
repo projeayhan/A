@@ -28,20 +28,20 @@ class DealerService {
     String? address,
     List<Map<String, dynamic>>? documents,
   }) async {
-    // Mevcut başvuru var mı kontrol et (telefon ile)
-    final existing = await _client
-        .from('car_dealer_applications')
-        .select('id, status')
-        .eq('phone', phone)
-        .order('created_at', ascending: false)
-        .limit(1)
-        .maybeSingle();
-
-    if (existing != null && existing['status'] == 'pending') {
-      throw Exception('Bu telefon numarasıyla zaten bekleyen bir başvurunuz var');
+    // Mevcut başvuru var mı kontrol et (RPC ile - RLS bypass)
+    try {
+      final existing = await _client.rpc('check_dealer_application_exists', params: {
+        'p_phone': phone,
+      });
+      if (existing == true) {
+        throw Exception('Bu telefon numarasıyla zaten bekleyen bir başvurunuz var');
+      }
+    } catch (e) {
+      // RPC yoksa veya hata verirse devam et
+      if (e.toString().contains('bekleyen bir başvurunuz')) rethrow;
     }
 
-    final response = await _client.from('car_dealer_applications').insert({
+    await _client.from('car_dealer_applications').insert({
       if (_userId != null) 'user_id': _userId,
       'dealer_type': dealerType.name,
       'owner_name': ownerName,
@@ -54,9 +54,9 @@ class DealerService {
       'address': address,
       'documents': documents ?? [],
       'status': 'pending',
-    }).select().single();
+    });
 
-    return response;
+    return {'status': 'pending'};
   }
 
   /// Başvuru durumunu kontrol et
@@ -402,62 +402,6 @@ class DealerService {
     }
   }
 
-  // ==================== İLETİŞİM TALEPLERİ ====================
-
-  /// İletişim taleplerini getir
-  Future<List<CarContactRequest>> getContactRequests({
-    String? status,
-    int limit = 50,
-  }) async {
-    if (_userId == null) return [];
-
-    try {
-      // Önce kullanıcının ilanlarını al
-      final listings = await _client
-          .from('car_listings')
-          .select('id')
-          .eq('user_id', _userId!);
-
-      final listingIds = (listings as List).map((e) => e['id'] as String).toList();
-
-      if (listingIds.isEmpty) return [];
-
-      var query = _client
-          .from('car_contact_requests')
-          .select()
-          .inFilter('listing_id', listingIds);
-
-      if (status != null) {
-        query = query.eq('status', status);
-      }
-
-      final response = await query
-          .order('created_at', ascending: false)
-          .limit(limit);
-
-      return (response as List)
-          .map((json) => CarContactRequest.fromJson(json))
-          .toList();
-    } catch (e) {
-      debugPrint('İletişim talepleri alınamadı: $e');
-      return [];
-    }
-  }
-
-  /// İletişim talebini güncelle
-  Future<bool> updateContactRequest(String requestId, Map<String, dynamic> updates) async {
-    try {
-      await _client
-          .from('car_contact_requests')
-          .update(updates)
-          .eq('id', requestId);
-      return true;
-    } catch (e) {
-      debugPrint('İletişim talebi güncellenemedi: $e');
-      return false;
-    }
-  }
-
   // ==================== PERFORMANS İSTATİSTİKLERİ ====================
 
   /// İlan bazlı performans istatistiklerini getir
@@ -644,6 +588,77 @@ class DealerService {
     } catch (e) {
       debugPrint('Performans istatistikleri alınamadı: $e');
       return {'listings': [], 'totals': {}, 'previousTotals': {}};
+    }
+  }
+
+  // ==================== DEĞERLENDİRMELER ====================
+
+  /// Galericinin değerlendirmelerini getir
+  Future<List<CarDealerReview>> getDealerReviews({int limit = 50}) async {
+    if (_userId == null) return [];
+
+    try {
+      final dealer = await _client
+          .from('car_dealers')
+          .select('id')
+          .eq('user_id', _userId!)
+          .maybeSingle();
+
+      if (dealer == null) return [];
+
+      final response = await _client
+          .from('car_dealer_reviews')
+          .select()
+          .eq('dealer_id', dealer['id'] as String)
+          .order('created_at', ascending: false)
+          .limit(limit);
+
+      return (response as List)
+          .map((json) => CarDealerReview.fromJson(json))
+          .toList();
+    } catch (e) {
+      debugPrint('Değerlendirmeler alınamadı: $e');
+      return [];
+    }
+  }
+
+  /// Değerlendirme istatistikleri
+  Future<Map<String, dynamic>> getReviewStats() async {
+    if (_userId == null) {
+      return {'average': 0.0, 'total': 0, 'distribution': <int, int>{}};
+    }
+
+    try {
+      final dealer = await _client
+          .from('car_dealers')
+          .select('id, average_rating, total_reviews')
+          .eq('user_id', _userId!)
+          .maybeSingle();
+
+      if (dealer == null) {
+        return {'average': 0.0, 'total': 0, 'distribution': <int, int>{}};
+      }
+
+      // Rating dağılımı
+      final reviews = await _client
+          .from('car_dealer_reviews')
+          .select('rating')
+          .eq('dealer_id', dealer['id'] as String);
+
+      final distribution = <int, int>{1: 0, 2: 0, 3: 0, 4: 0, 5: 0};
+      for (var review in (reviews as List)) {
+        final r = review['rating'] as int;
+        distribution[r] = (distribution[r] ?? 0) + 1;
+      }
+
+      return {
+        'average': (dealer['average_rating'] as num?)?.toDouble() ?? 0.0,
+        'total': dealer['total_reviews'] as int? ?? 0,
+        'distribution': distribution,
+      };
+    } catch (e) {
+      debugPrint('Değerlendirme istatistikleri alınamadı: $e');
+      return {'average': 0.0, 'total': 0, 'distribution': <int, int>{}};
     }
   }
 

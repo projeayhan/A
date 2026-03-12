@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import 'app_constants.dart';
 
 enum RobotPose { idle, talking, walking, celebrating, pointing, waving, holding }
 
@@ -310,7 +311,7 @@ class ServiceData {
         'Biyometrik giriş',
         'Push bildirimler',
       ],
-      apkUrl: '#',
+      apkUrl: AppUrls.superAppApk,
     ),
     AppInfo(
       id: 'driver_app',
@@ -325,7 +326,7 @@ class ServiceData {
         'Rota navigasyonu',
         'Müşteri değerlendirme',
       ],
-      apkUrl: '#',
+      apkUrl: AppUrls.driverAppApk,
     ),
     AppInfo(
       id: 'courier_app',
@@ -340,7 +341,7 @@ class ServiceData {
         'Kazanç raporu',
         'Anlık bildirimler',
       ],
-      apkUrl: '#',
+      apkUrl: AppUrls.courierAppApk,
     ),
   ];
 }

@@ -60,6 +60,7 @@ class JobListFilter {
   final double? minSalary;
   final double? maxSalary;
   final String? searchQuery;
+  final String? listingType; // 'hiring', 'seeking', or null (all)
   final bool featuredOnly;
   final bool urgentOnly;
   final bool premiumOnly;
@@ -74,6 +75,7 @@ class JobListFilter {
     this.minSalary,
     this.maxSalary,
     this.searchQuery,
+    this.listingType,
     this.featuredOnly = false,
     this.urgentOnly = false,
     this.premiumOnly = false,
@@ -89,6 +91,7 @@ class JobListFilter {
     double? minSalary,
     double? maxSalary,
     String? searchQuery,
+    String? listingType,
     bool? featuredOnly,
     bool? urgentOnly,
     bool? premiumOnly,
@@ -103,10 +106,30 @@ class JobListFilter {
       minSalary: minSalary ?? this.minSalary,
       maxSalary: maxSalary ?? this.maxSalary,
       searchQuery: searchQuery ?? this.searchQuery,
+      listingType: listingType ?? this.listingType,
       featuredOnly: featuredOnly ?? this.featuredOnly,
       urgentOnly: urgentOnly ?? this.urgentOnly,
       premiumOnly: premiumOnly ?? this.premiumOnly,
       sortBy: sortBy ?? this.sortBy,
+    );
+  }
+
+  /// listingType'ı null'a çekmek için özel metod (copyWith null geçiremiyor)
+  JobListFilter clearListingType() {
+    return JobListFilter(
+      categoryId: categoryId,
+      jobType: jobType,
+      workArrangement: workArrangement,
+      experienceLevel: experienceLevel,
+      city: city,
+      minSalary: minSalary,
+      maxSalary: maxSalary,
+      searchQuery: searchQuery,
+      listingType: null,
+      featuredOnly: featuredOnly,
+      urgentOnly: urgentOnly,
+      premiumOnly: premiumOnly,
+      sortBy: sortBy,
     );
   }
 
@@ -118,6 +141,7 @@ class JobListFilter {
     if (experienceLevel != null) count++;
     if (city != null) count++;
     if (minSalary != null || maxSalary != null) count++;
+    if (listingType != null) count++;
     if (urgentOnly) count++;
     return count;
   }
@@ -200,6 +224,7 @@ class JobListNotifier extends StateNotifier<JobListState> {
         minSalary: filter.minSalary,
         maxSalary: filter.maxSalary,
         searchQuery: filter.searchQuery,
+        listingType: filter.listingType,
         featuredOnly: filter.featuredOnly,
         urgentOnly: filter.urgentOnly,
         premiumOnly: filter.premiumOnly,
@@ -246,6 +271,7 @@ class JobListNotifier extends StateNotifier<JobListState> {
     double? minSalary,
     double? maxSalary,
     String? searchQuery,
+    String? listingType,
     bool? featuredOnly,
     bool? urgentOnly,
     bool? premiumOnly,
@@ -260,12 +286,21 @@ class JobListNotifier extends StateNotifier<JobListState> {
       minSalary: minSalary,
       maxSalary: maxSalary,
       searchQuery: searchQuery,
+      listingType: listingType,
       featuredOnly: featuredOnly,
       urgentOnly: urgentOnly,
       premiumOnly: premiumOnly,
       sortBy: sortBy,
     );
     setFilter(newFilter);
+  }
+
+  void setListingType(String? listingType) {
+    if (listingType == null) {
+      setFilter(state.filter.clearListingType());
+    } else {
+      setFilter(state.filter.copyWith(listingType: listingType));
+    }
   }
 
   void setSortBy(String sortBy) {

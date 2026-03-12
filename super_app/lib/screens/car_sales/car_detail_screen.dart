@@ -4,9 +4,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/car_sales/car_sales_models.dart';
 import '../../core/providers/unified_favorites_provider.dart';
 import '../../services/car_sales_service.dart';
+import '../../services/car_sales/car_chat_service.dart';
 
 class CarDetailScreen extends ConsumerStatefulWidget {
   final CarListing car;
@@ -21,7 +24,6 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen>
     with TickerProviderStateMixin {
   late AnimationController _animationController;
   late AnimationController _fabController;
-  late AnimationController _parallaxController;
   late Animation<double> _fadeAnimation;
   late Animation<double> _slideAnimation;
 
@@ -29,7 +31,7 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen>
   final ScrollController _scrollController = ScrollController();
 
   int _currentImageIndex = 0;
-  double _scrollOffset = 0;
+  final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(0);
   bool _showFullDescription = false;
   List<CarListing> _similarCars = [];
 
@@ -44,11 +46,6 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen>
 
     _fabController = AnimationController(
       duration: const Duration(milliseconds: 600),
-      vsync: this,
-    );
-
-    _parallaxController = AnimationController(
-      duration: const Duration(milliseconds: 300),
       vsync: this,
     );
 
@@ -101,16 +98,14 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen>
   }
 
   void _onScroll() {
-    setState(() {
-      _scrollOffset = _scrollController.offset;
-    });
+    _scrollOffsetNotifier.value = _scrollController.offset;
   }
 
   @override
   void dispose() {
     _animationController.dispose();
     _fabController.dispose();
-    _parallaxController.dispose();
+    _scrollOffsetNotifier.dispose();
     _imagePageController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -178,9 +173,9 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen>
                   child: _buildSimilarCars(isDark),
                 ),
 
-                // Bottom spacing for FAB
+                // Bottom spacing for bottom bar
                 const SliverToBoxAdapter(
-                  child: SizedBox(height: 120),
+                  child: SizedBox(height: 100),
                 ),
               ],
             ),
@@ -189,12 +184,13 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen>
             _buildAnimatedAppBar(isDark, car),
           ],
         ),
+        bottomNavigationBar: _buildContactBottomBar(isDark, car),
       ),
     );
   }
 
   Widget _buildImageGallery(bool isDark, Size size, CarListing car) {
-    final imageHeight = size.height * 0.45;
+    final imageHeight = size.height * 0.35;
 
     return SizedBox(
       height: imageHeight,
@@ -202,8 +198,14 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen>
         children: [
           // Parallax Image
           Positioned.fill(
-            child: Transform.translate(
-              offset: Offset(0, _scrollOffset * 0.4),
+            child: ValueListenableBuilder<double>(
+              valueListenable: _scrollOffsetNotifier,
+              builder: (context, scrollOffset, child) {
+                return Transform.translate(
+                  offset: Offset(0, scrollOffset * 0.4),
+                  child: child!,
+                );
+              },
               child: ScrollConfiguration(
                 behavior: ScrollConfiguration.of(context).copyWith(
                   dragDevices: {
@@ -213,33 +215,33 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen>
                   },
                 ),
                 child: PageView.builder(
-                controller: _imagePageController,
-                onPageChanged: (index) {
-                  setState(() => _currentImageIndex = index);
-                },
-                itemCount: car.images.length,
-                itemBuilder: (context, index) {
-                  return Hero(
-                    tag: index == 0 ? 'car_${car.id}' : 'car_${car.id}_$index',
-                    child: CachedNetworkImage(
-                      imageUrl: car.images[index],
-                      fit: BoxFit.cover,
-                      placeholder: (_, __) => Container(
-                        color: Colors.grey[200],
-                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                      ),
-                      errorWidget: (_, __, ___) => Container(
-                        color: CarSalesColors.surface(isDark),
-                        child: Icon(
-                          Icons.directions_car,
-                          size: 80,
-                          color: CarSalesColors.textTertiary(isDark),
+                  controller: _imagePageController,
+                  onPageChanged: (index) {
+                    setState(() => _currentImageIndex = index);
+                  },
+                  itemCount: car.images.length,
+                  itemBuilder: (context, index) {
+                    return Hero(
+                      tag: index == 0 ? 'car_${car.id}' : 'car_${car.id}_$index',
+                      child: CachedNetworkImage(
+                        imageUrl: car.images[index],
+                        fit: BoxFit.cover,
+                        placeholder: (_, __) => Container(
+                          color: Colors.grey[200],
+                          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                        ),
+                        errorWidget: (_, __, ___) => Container(
+                          color: CarSalesColors.surface(isDark),
+                          child: Icon(
+                            Icons.directions_car,
+                            size: 80,
+                            color: CarSalesColors.textTertiary(isDark),
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                },
-              ),
+                    );
+                  },
+                ),
               ),
             ),
           ),
@@ -412,104 +414,108 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen>
   }
 
   Widget _buildAnimatedAppBar(bool isDark, CarListing car) {
-    final showTitle = _scrollOffset > 200;
-
     return Positioned(
       top: 0,
       left: 0,
       right: 0,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
-        decoration: BoxDecoration(
-          color: showTitle
-              ? CarSalesColors.card(isDark)
-              : Colors.transparent,
-          boxShadow: showTitle
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 10,
-                  ),
-                ]
-              : null,
-        ),
-        child: SizedBox(
-          height: 56,
-          child: Row(
-            children: [
-              // Back Button
-              GestureDetector(
-                onTap: () => Navigator.of(context).pop(),
-                child: Container(
-                  margin: const EdgeInsets.only(left: 12),
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: showTitle
-                        ? CarSalesColors.surface(isDark)
-                        : Colors.black.withValues(alpha: 0.3),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.arrow_back,
-                    color: showTitle
-                        ? CarSalesColors.textPrimary(isDark)
-                        : Colors.white,
-                    size: 22,
-                  ),
-                ),
-              ),
-
-              // Title
-              Expanded(
-                child: AnimatedOpacity(
-                  opacity: showTitle ? 1.0 : 0.0,
-                  duration: const Duration(milliseconds: 200),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      car.fullName,
-                      style: TextStyle(
-                        color: CarSalesColors.textPrimary(isDark),
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
+      child: ValueListenableBuilder<double>(
+        valueListenable: _scrollOffsetNotifier,
+        builder: (context, scrollOffset, _) {
+          final showTitle = scrollOffset > 200;
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
+            decoration: BoxDecoration(
+              color: showTitle
+                  ? CarSalesColors.card(isDark)
+                  : Colors.transparent,
+              boxShadow: showTitle
+                  ? [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 10,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    ]
+                  : null,
+            ),
+            child: SizedBox(
+              height: 56,
+              child: Row(
+                children: [
+                  // Back Button
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: Container(
+                      margin: const EdgeInsets.only(left: 12),
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: showTitle
+                            ? CarSalesColors.surface(isDark)
+                            : Colors.black.withValues(alpha: 0.3),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.arrow_back,
+                        color: showTitle
+                            ? CarSalesColors.textPrimary(isDark)
+                            : Colors.white,
+                        size: 22,
+                      ),
                     ),
                   ),
-                ),
-              ),
 
-              // Share Button
-              GestureDetector(
-                onTap: () => _shareCarListing(car),
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: showTitle
-                        ? CarSalesColors.surface(isDark)
-                        : Colors.black.withValues(alpha: 0.3),
-                    shape: BoxShape.circle,
+                  // Title
+                  Expanded(
+                    child: AnimatedOpacity(
+                      opacity: showTitle ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 200),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          car.fullName,
+                          style: TextStyle(
+                            color: CarSalesColors.textPrimary(isDark),
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
                   ),
-                  child: Icon(
-                    Icons.share,
-                    color: showTitle
-                        ? CarSalesColors.textPrimary(isDark)
-                        : Colors.white,
-                    size: 20,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
 
-              // Favorite Button
-              _buildFavoriteButton(isDark, showTitle, car),
-            ],
-          ),
-        ),
+                  // Share Button
+                  GestureDetector(
+                    onTap: () => _shareCarListing(car),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: showTitle
+                            ? CarSalesColors.surface(isDark)
+                            : Colors.black.withValues(alpha: 0.3),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        Icons.share,
+                        color: showTitle
+                            ? CarSalesColors.textPrimary(isDark)
+                            : Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+
+                  // Favorite Button
+                  _buildFavoriteButton(isDark, showTitle, car),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -1450,6 +1456,115 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen>
         ],
       ),
     );
+  }
+
+  Widget _buildContactBottomBar(bool isDark, CarListing car) {
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    final isOwnListing = currentUserId == car.seller.id;
+
+    if (isOwnListing) return const SizedBox.shrink();
+
+    return Container(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 12,
+        bottom: MediaQuery.of(context).padding.bottom + 12,
+      ),
+      decoration: BoxDecoration(
+        color: CarSalesColors.card(isDark),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 12,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Ara butonu
+          if (car.seller.phone.isNotEmpty)
+            GestureDetector(
+              onTap: () => _callSeller(car.seller.phone),
+              child: Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: CarSalesColors.success.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: CarSalesColors.success.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: const Icon(
+                  Icons.phone,
+                  color: CarSalesColors.success,
+                  size: 24,
+                ),
+              ),
+            ),
+          if (car.seller.phone.isNotEmpty) const SizedBox(width: 12),
+          // Mesaj Gönder butonu
+          Expanded(
+            child: GestureDetector(
+              onTap: () => _startChat(car),
+              child: Container(
+                height: 52,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: CarSalesColors.primaryGradient,
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.message_rounded, color: Colors.white, size: 22),
+                    SizedBox(width: 10),
+                    Text(
+                      'Mesaj Gonder',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _startChat(CarListing car) async {
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    if (currentUserId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Mesaj gondermek icin giris yapin')),
+      );
+      return;
+    }
+
+    try {
+      final chatService = CarChatService.instance;
+      final conversation = await chatService.getOrCreateConversation(
+        listingId: car.id,
+      );
+
+      if (conversation != null && mounted) {
+        context.push('/car-sales/chat/${conversation['id']}');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceAll('Exception: ', ''))),
+        );
+      }
+    }
   }
 
   Future<void> _callSeller(String phone) async {

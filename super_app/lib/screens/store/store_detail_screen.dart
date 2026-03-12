@@ -266,6 +266,8 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen>
                                     width: 44,
                                     height: 44,
                                     fit: BoxFit.cover,
+                                    memCacheWidth: 88,
+                                    memCacheHeight: 88,
                                     placeholder: (_, __) => Container(
                                       width: 44,
                                       height: 44,
@@ -390,6 +392,8 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen>
                         width: 32,
                         height: 32,
                         fit: BoxFit.cover,
+                        memCacheWidth: 64,
+                        memCacheHeight: 64,
                         placeholder: (_, __) => Container(
                           width: 32,
                           height: 32,
@@ -431,6 +435,8 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen>
                     CachedNetworkImage(
                       imageUrl: store.coverUrl,
                       fit: BoxFit.cover,
+                      memCacheWidth: 800,
+                      memCacheHeight: 400,
                       placeholder: (_, __) => Container(
                         color: Colors.grey[200],
                         child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
@@ -488,6 +494,8 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen>
                                 width: 60,
                                 height: 60,
                                 fit: BoxFit.cover,
+                                memCacheWidth: 120,
+                                memCacheHeight: 120,
                                 placeholder: (_, __) => Container(
                                   width: 60,
                                   height: 60,
@@ -2357,6 +2365,8 @@ class _StoreChatSheetState extends State<_StoreChatSheet> {
                     width: 44,
                     height: 44,
                     fit: BoxFit.cover,
+                    memCacheWidth: 88,
+                    memCacheHeight: 88,
                     placeholder: (_, __) => Container(
                       width: 44,
                       height: 44,
@@ -2454,6 +2464,8 @@ class _StoreChatSheetState extends State<_StoreChatSheet> {
                                         width: 28,
                                         height: 28,
                                         fit: BoxFit.cover,
+                                        memCacheWidth: 56,
+                                        memCacheHeight: 56,
                                         errorWidget: (_, __, ___) => Container(
                                           width: 28,
                                           height: 28,
@@ -2590,6 +2602,8 @@ class _StoreChatSheetState extends State<_StoreChatSheet> {
                 width: 28,
                 height: 28,
                 fit: BoxFit.cover,
+                memCacheWidth: 56,
+                memCacheHeight: 56,
                 errorWidget: (_, __, ___) => Container(
                   width: 28,
                   height: 28,

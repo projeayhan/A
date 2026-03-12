@@ -2,8 +2,12 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../models/jobs/job_models.dart';
 import '../../core/providers/unified_favorites_provider.dart';
+import '../../core/providers/jobs_provider.dart';
+import 'job_chat_screen.dart';
 
 class JobDetailScreen extends ConsumerStatefulWidget {
   final JobListing job;
@@ -121,9 +125,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
   }
 
   Widget _buildHeroHeader(bool isDark, Size size, JobListing job) {
-    return SizedBox(
-      height: 240,
-      child: Stack(
+    return Stack(
         children: [
           // Background Gradient
           Positioned.fill(
@@ -153,18 +155,44 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Badges Row
-                    const SizedBox(height: 48),
+                    const SizedBox(height: 4),
                     Row(
                       children: [
-                        if (job.isPremiumListing)
+                        // Listing type badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: job.listingType.color.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(job.listingType.icon, color: Colors.white, size: 14),
+                              const SizedBox(width: 4),
+                              Text(
+                                job.listingType.label,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (job.isPremiumListing) ...[
+                          const SizedBox(width: 8),
                           _buildBadge(
                             Icons.star,
                             'PREMIUM',
                             JobsColors.featuredGradient,
                           ),
+                        ],
                         if (job.isUrgent) ...[
                           const SizedBox(width: 8),
                           _buildBadge(
@@ -204,7 +232,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                       ],
                     ),
 
-                    const Spacer(),
+                    const SizedBox(height: 16),
 
                     // Company Logo
                     Row(
@@ -295,23 +323,26 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                       overflow: TextOverflow.ellipsis,
                     ),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
 
                     // Tags
-                    Row(
-                      children: [
-                        _buildHeroTag(job.jobType.label, job.jobType.icon),
-                        const SizedBox(width: 8),
-                        _buildHeroTag(
-                          job.workArrangement.label,
-                          job.workArrangement.icon,
-                        ),
-                        const SizedBox(width: 8),
-                        _buildHeroTag(
-                          job.experienceLevel.label,
-                          Icons.trending_up,
-                        ),
-                      ],
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          _buildHeroTag(job.jobType.label, job.jobType.icon),
+                          const SizedBox(width: 8),
+                          _buildHeroTag(
+                            job.workArrangement.label,
+                            job.workArrangement.icon,
+                          ),
+                          const SizedBox(width: 8),
+                          _buildHeroTag(
+                            job.experienceLevel.label,
+                            Icons.trending_up,
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -319,7 +350,6 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
             ),
           ),
         ],
-      ),
     );
   }
 
@@ -540,11 +570,18 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                         ),
                       ],
                     ),
-                    child: const Row(
+                    child: Row(
                       children: [
-                        Icon(Icons.send, color: Colors.white, size: 16),
-                        SizedBox(width: 6),
-                        Text('Hızlı Başvur', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                        Icon(
+                          job.listingType == ListingType.seeking ? Icons.phone : Icons.send,
+                          color: Colors.white,
+                          size: 16,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          job.listingType == ListingType.seeking ? 'İletişime Geç' : 'Hızlı Başvur',
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
                       ],
                     ),
                   ),
@@ -1653,7 +1690,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
           Row(
             children: [
               Expanded(
-                child: _buildContactButton(isDark, Icons.phone, 'Ara', () {}),
+                child: _buildContactButton(isDark, Icons.phone, 'Ara', () => _callPoster(job)),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1661,7 +1698,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                   isDark,
                   Icons.message,
                   'Mesaj',
-                  () {},
+                  () => _messagePoster(job),
                   isPrimary: true,
                 ),
               ),
@@ -1746,42 +1783,134 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
 
             // Apply Button
             Expanded(
-              child: GestureDetector(
-                onTap: _applyJob,
-                child: Container(
-                  height: 56,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: JobsColors.primaryGradient,
-                    ),
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                        color: JobsColors.primary.withValues(alpha: 0.4),
-                        blurRadius: 16,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.send, color: Colors.white),
-                      SizedBox(width: 10),
-                      Text(
-                        'Şimdi Başvur',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 17,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              child: _buildApplyActionButton(isDark, job),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildApplyActionButton(bool isDark, JobListing job) {
+    final hasApplied = ref.watch(hasAppliedProvider(job.id));
+
+    return hasApplied.when(
+      data: (applied) {
+        if (applied) {
+          return Container(
+            height: 56,
+            decoration: BoxDecoration(
+              color: JobsColors.success.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: JobsColors.success.withValues(alpha: 0.4)),
+            ),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.check_circle, color: JobsColors.success),
+                SizedBox(width: 10),
+                Text(
+                  'Başvuruldu',
+                  style: TextStyle(
+                    color: JobsColors.success,
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+        return GestureDetector(
+          onTap: _applyJob,
+          child: Container(
+            height: 56,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(colors: JobsColors.primaryGradient),
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: JobsColors.primary.withValues(alpha: 0.4),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  job.listingType == ListingType.seeking ? Icons.phone : Icons.send,
+                  color: Colors.white,
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  job.listingType == ListingType.seeking ? 'İletişime Geç' : 'Şimdi Başvur',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+      loading: () => GestureDetector(
+        onTap: _applyJob,
+        child: Container(
+          height: 56,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(colors: JobsColors.primaryGradient),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                job.listingType == ListingType.seeking ? Icons.phone : Icons.send,
+                color: Colors.white,
+              ),
+              const SizedBox(width: 10),
+              Text(
+                job.listingType == ListingType.seeking ? 'İletişime Geç' : 'Şimdi Başvur',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      error: (_, __) => GestureDetector(
+        onTap: _applyJob,
+        child: Container(
+          height: 56,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(colors: JobsColors.primaryGradient),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                job.listingType == ListingType.seeking ? Icons.phone : Icons.send,
+                color: Colors.white,
+              ),
+              const SizedBox(width: 10),
+              Text(
+                job.listingType == ListingType.seeking ? 'İletişime Geç' : 'Şimdi Başvur',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1875,18 +2004,124 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
     );
   }
 
+  Future<void> _callPoster(JobListing job) async {
+    final phone = job.poster.phone;
+    if (phone.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Telefon numarası bulunamadı'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+      return;
+    }
+
+    HapticFeedback.mediumImpact();
+    final uri = Uri(scheme: 'tel', path: phone);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Arama yapılamıyor: $phone'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    }
+  }
+
+  void _messagePoster(JobListing job) {
+    HapticFeedback.mediumImpact();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => JobChatScreen(
+          jobListing: job,
+          otherUserId: job.poster.id,
+          otherUserName: job.poster.name,
+        ),
+      ),
+    );
+  }
+
   void _applyJob() {
     HapticFeedback.mediumImpact();
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => _buildApplyBottomSheet(),
+    // Check if already applied
+    final hasApplied = ref.read(hasAppliedProvider(widget.job.id));
+    hasApplied.whenData((applied) {
+      if (applied) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Bu ilana zaten başvurdunuz'),
+            backgroundColor: JobsColors.secondary,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+        return;
+      }
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => _buildApplyBottomSheet(),
+      );
+    });
+  }
+
+  Future<void> _submitApplication({String? coverLetter}) async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Lütfen giriş yapın'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+      return;
+    }
+
+    final name = user.userMetadata?['full_name'] as String? ?? 'İsimsiz';
+    final email = user.email ?? '';
+    final phone = user.phone;
+
+    final success = await ref.read(applyToJobProvider.notifier).apply(
+      listingId: widget.job.id,
+      name: name,
+      email: email,
+      phone: phone,
+      coverLetter: coverLetter,
     );
+
+    if (!mounted) return;
+
+    if (success) {
+      ref.invalidate(hasAppliedProvider(widget.job.id));
+      _showApplicationSuccessDialog();
+    } else {
+      final error = ref.read(applyToJobProvider).error;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error ?? 'Başvuru yapılamadı'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    }
   }
 
   Widget _buildApplyBottomSheet() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final coverLetterController = TextEditingController();
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.7,
@@ -1906,7 +2141,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
             ),
           ),
           Expanded(
-            child: Padding(
+            child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1961,7 +2196,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                   GestureDetector(
                     onTap: () {
                       Navigator.of(context).pop();
-                      _showApplicationSuccessDialog();
+                      _submitApplication();
                     },
                     child: Container(
                       padding: const EdgeInsets.all(16),
@@ -1997,7 +2232,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                                   ),
                                 ),
                                 Text(
-                                  'Kayıtlı CV\'niz ile hemen başvurun',
+                                  'Profil bilgileriniz ile hemen başvurun',
                                   style: TextStyle(
                                     color: JobsColors.textSecondary(isDark),
                                     fontSize: 13,
@@ -2016,77 +2251,54 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                     ),
                   ),
 
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
 
-                  // Upload CV Option
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.of(context).pop();
-                      _showCVUploadDialog();
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: JobsColors.surface(isDark),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: JobsColors.border(isDark)),
+                  // Cover Letter
+                  Text(
+                    'Ön Yazı (Opsiyonel)',
+                    style: TextStyle(
+                      color: JobsColors.textPrimary(isDark),
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: coverLetterController,
+                    maxLines: 5,
+                    decoration: InputDecoration(
+                      hintText: 'Kendinizi tanıtın, neden bu pozisyona uygun olduğunuzu açıklayın...',
+                      hintStyle: TextStyle(
+                        color: JobsColors.textTertiary(isDark),
+                        fontSize: 14,
                       ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: JobsColors.secondary.withValues(
-                                alpha: 0.1,
-                              ),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(
-                              Icons.upload_file,
-                              color: JobsColors.secondary,
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'CV Yükle',
-                                  style: TextStyle(
-                                    color: JobsColors.textPrimary(isDark),
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                Text(
-                                  'PDF, DOC formatlarında yükleyin',
-                                  style: TextStyle(
-                                    color: JobsColors.textSecondary(isDark),
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Icon(
-                            Icons.arrow_forward_ios,
-                            color: JobsColors.textTertiary(isDark),
-                            size: 18,
-                          ),
-                        ],
+                      filled: true,
+                      fillColor: JobsColors.surface(isDark),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(color: JobsColors.border(isDark)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(color: JobsColors.border(isDark)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(color: JobsColors.primary),
                       ),
                     ),
                   ),
 
                   const SizedBox(height: 32),
 
-                  // Submit Button
+                  // Submit Button with Cover Letter
                   GestureDetector(
                     onTap: () {
+                      final coverLetter = coverLetterController.text.trim();
                       Navigator.of(context).pop();
-                      _showApplicationSuccessDialog();
+                      _submitApplication(
+                        coverLetter: coverLetter.isNotEmpty ? coverLetter : null,
+                      );
                     },
                     child: Container(
                       width: double.infinity,
@@ -2110,7 +2322,7 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                           Icon(Icons.send, color: Colors.white),
                           SizedBox(width: 10),
                           Text(
-                            'Başvuruyu Gönder',
+                            'Ön Yazı ile Başvur',
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 17,
@@ -2195,115 +2407,6 @@ class _JobDetailScreenState extends ConsumerState<JobDetailScreen>
                   ),
                 ),
               ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showCVUploadDialog() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
-        ),
-        decoration: BoxDecoration(
-          color: JobsColors.card(isDark),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: JobsColors.border(isDark),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: JobsColors.secondary.withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.cloud_upload_outlined,
-                  color: JobsColors.secondary,
-                  size: 40,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'CV Yükle',
-                style: TextStyle(
-                  color: JobsColors.textPrimary(isDark),
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'PDF veya DOC formatında CV\'nizi yükleyin',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: JobsColors.textSecondary(isDark),
-                  fontSize: 14,
-                ),
-              ),
-              const SizedBox(height: 24),
-              GestureDetector(
-                onTap: () {
-                  Navigator.of(context).pop();
-                  // Simüle edilen dosya yükleme
-                  Future.delayed(const Duration(milliseconds: 500), () {
-                    _showApplicationSuccessDialog();
-                  });
-                },
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: JobsColors.primary, width: 2),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.attach_file, color: JobsColors.primary),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Dosya Seç',
-                        style: TextStyle(
-                          color: JobsColors.primary,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Maksimum dosya boyutu: 5 MB',
-                style: TextStyle(
-                  color: JobsColors.textTertiary(isDark),
-                  fontSize: 12,
-                ),
-              ),
-              const SizedBox(height: 16),
             ],
           ),
         ),

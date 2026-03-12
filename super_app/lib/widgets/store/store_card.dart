@@ -56,6 +56,8 @@ class StoreCard extends StatelessWidget {
                     height: 64,
                     width: double.infinity,
                     fit: BoxFit.cover,
+                    memCacheWidth: 220,
+                    memCacheHeight: 128,
                     placeholder: (_, __) => Container(
                       height: 64,
                       color: Colors.grey[200],
@@ -189,6 +191,8 @@ class StoreCard extends StatelessWidget {
                     height: 90,
                     width: double.infinity,
                     fit: BoxFit.cover,
+                    memCacheWidth: 600,
+                    memCacheHeight: 180,
                     placeholder: (_, __) => Container(
                       height: 90,
                       color: Colors.grey[200],
@@ -227,6 +231,8 @@ class StoreCard extends StatelessWidget {
                       child: CachedNetworkImage(
                         imageUrl: store.logoUrl,
                         fit: BoxFit.cover,
+                        memCacheWidth: 80,
+                        memCacheHeight: 80,
                         placeholder: (_, __) => Container(
                           color: Colors.grey[200],
                           child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),

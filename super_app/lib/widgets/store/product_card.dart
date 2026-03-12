@@ -53,6 +53,8 @@ class ProductCard extends StatelessWidget {
                     child: CachedNetworkImage(
                       imageUrl: ImageUtils.getProductThumbnail(product.imageUrl),
                       fit: BoxFit.cover,
+                      memCacheWidth: 300,
+                      memCacheHeight: 300,
                       placeholder: (_, __) => Container(
                         color: Colors.grey[200],
                         child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),

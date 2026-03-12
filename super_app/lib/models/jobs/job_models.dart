@@ -3,6 +3,26 @@
 
 import 'package:flutter/material.dart';
 
+/// Listing type - İlan türü (iş arayan mı, işveren mi)
+enum ListingType {
+  hiring('Eleman Arıyorum', Icons.business_center, Color(0xFF3B82F6)),
+  seeking('İş Arıyorum', Icons.person_search, Color(0xFF10B981));
+
+  final String label;
+  final IconData icon;
+  final Color color;
+  const ListingType(this.label, this.icon, this.color);
+
+  String get dbValue => name; // 'hiring' or 'seeking'
+
+  static ListingType fromDb(String value) {
+    return values.firstWhere(
+      (e) => e.name == value,
+      orElse: () => ListingType.hiring,
+    );
+  }
+}
+
 /// Job type enumeration
 enum JobType {
   fullTime('Tam Zamanlı', Icons.work, Color(0xFF3B82F6)),
@@ -470,6 +490,7 @@ enum SalaryPeriod {
 /// Main job listing model
 class JobListing {
   final String id;
+  final ListingType listingType;
   final String title;
   final String description;
   final JobCategory category;
@@ -506,6 +527,7 @@ class JobListing {
 
   const JobListing({
     required this.id,
+    this.listingType = ListingType.hiring,
     required this.title,
     required this.description,
     required this.category,
