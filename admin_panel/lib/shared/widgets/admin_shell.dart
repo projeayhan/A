@@ -29,6 +29,7 @@ class _AdminShellState extends ConsumerState<AdminShell> {
   // Collapsible menü grupları için state
   final Map<String, bool> _expandedGroups = {
     'services': true,
+    'finance': false,
     'management': false,
     'support': false,
     'system': false,
@@ -250,6 +251,26 @@ class _AdminShellState extends ConsumerState<AdminShell> {
 
                 if (_hasGroupAccess(admin, 'management'))
                   _buildNavGroup(
+                    groupKey: 'finance',
+                    icon: Icons.account_balance_wallet_rounded,
+                    label: 'Finans',
+                    currentRoute: currentRoute,
+                    isDark: isDark,
+                    children: [
+                      _NavChild(Icons.dashboard_outlined, 'Dashboard', AppRoutes.finance),
+                      _NavChild(Icons.receipt_long_outlined, 'Faturalar', AppRoutes.financeInvoices),
+                      _NavChild(Icons.playlist_add_check_outlined, 'Toplu Fatura', AppRoutes.financeBatchInvoice),
+                      _NavChild(Icons.swap_horiz_outlined, 'Gelir/Gider', AppRoutes.financeIncomeExpense),
+                      _NavChild(Icons.calculate_outlined, 'Vergi Raporu', AppRoutes.financeTax),
+                      _NavChild(Icons.account_balance_outlined, 'Bilanço', AppRoutes.financeBalanceSheet),
+                      _NavChild(Icons.show_chart_outlined, 'Kar/Zarar', AppRoutes.financeProfitLoss),
+                      _NavChild(Icons.percent_outlined, 'Komisyon', AppRoutes.financeCommission),
+                      _NavChild(Icons.payment_outlined, 'Ödeme Takip', AppRoutes.financePaymentTracking),
+                    ],
+                  ),
+
+                if (_hasGroupAccess(admin, 'management'))
+                  _buildNavGroup(
                     groupKey: 'management',
                     icon: Icons.admin_panel_settings_rounded,
                     label: 'Yönetim',
@@ -257,7 +278,6 @@ class _AdminShellState extends ConsumerState<AdminShell> {
                     badgeCount: pendingCounts.total,
                     isDark: isDark,
                     children: [
-                      _NavChild(Icons.account_balance_wallet_outlined, 'Finans', AppRoutes.finance),
                       _NavChild(Icons.assignment_outlined, 'Başvurular', AppRoutes.applications, badgeCount: pendingCounts.total),
                       _NavChild(Icons.people_outline, 'Kullanıcılar', AppRoutes.users),
                       _NavChild(Icons.delivery_dining_outlined, 'Partnerler', AppRoutes.partners),

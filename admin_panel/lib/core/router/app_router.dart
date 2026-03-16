@@ -13,7 +13,14 @@ import '../../features/users/screens/users_screen.dart';
 import '../../features/merchants/screens/merchants_screen.dart';
 import '../../features/partners/screens/partners_screen.dart';
 import '../../features/orders/screens/orders_screen.dart';
-import '../../features/finance/screens/finance_screen.dart';
+import '../../features/finance/screens/finance_dashboard_screen.dart';
+import '../../features/finance/screens/income_expense_screen.dart';
+import '../../features/finance/screens/tax_report_screen.dart';
+import '../../features/finance/screens/balance_sheet_screen.dart';
+import '../../features/finance/screens/profit_loss_screen.dart';
+import '../../features/finance/screens/commission_management_screen.dart';
+import '../../features/finance/screens/payment_tracking_screen.dart';
+import '../../features/finance/screens/batch_invoice_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
 import '../../features/pricing/screens/pricing_screen.dart';
 import '../../features/banners/screens/banners_screen.dart';
@@ -104,7 +111,15 @@ class AppRoutes {
   static const String merchants = '/merchants';
   static const String partners = '/partners';
   static const String orders = '/orders';
-  static const String finance = '/finance';
+  static const String finance = '/finans';
+  static const String financeInvoices = '/finans/faturalar';
+  static const String financeBatchInvoice = '/finans/toplu-fatura';
+  static const String financeIncomeExpense = '/finans/gelir-gider';
+  static const String financeTax = '/finans/vergi';
+  static const String financeBalanceSheet = '/finans/bilanco';
+  static const String financeProfitLoss = '/finans/kar-zarar';
+  static const String financeCommission = '/finans/komisyon';
+  static const String financePaymentTracking = '/finans/odeme-takip';
   static const String settings = '/settings';
   static const String pricing = '/pricing';
   static const String banners = '/banners';
@@ -249,7 +264,55 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: AppRoutes.finance,
             name: 'finance',
             pageBuilder: (context, state) =>
-                const NoTransitionPage(child: FinanceScreen()),
+                const NoTransitionPage(child: FinanceDashboardScreen()),
+          ),
+          GoRoute(
+            path: AppRoutes.financeInvoices,
+            name: 'finance-invoices',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: InvoicesScreen()),
+          ),
+          GoRoute(
+            path: AppRoutes.financeBatchInvoice,
+            name: 'finance-batch-invoice',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: BatchInvoiceScreen()),
+          ),
+          GoRoute(
+            path: AppRoutes.financeIncomeExpense,
+            name: 'finance-income-expense',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: IncomeExpenseScreen()),
+          ),
+          GoRoute(
+            path: AppRoutes.financeTax,
+            name: 'finance-tax',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: TaxReportScreen()),
+          ),
+          GoRoute(
+            path: AppRoutes.financeBalanceSheet,
+            name: 'finance-balance-sheet',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: BalanceSheetScreen()),
+          ),
+          GoRoute(
+            path: AppRoutes.financeProfitLoss,
+            name: 'finance-profit-loss',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: ProfitLossScreen()),
+          ),
+          GoRoute(
+            path: AppRoutes.financeCommission,
+            name: 'finance-commission',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: CommissionManagementScreen()),
+          ),
+          GoRoute(
+            path: AppRoutes.financePaymentTracking,
+            name: 'finance-payment-tracking',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: PaymentTrackingScreen()),
           ),
           GoRoute(
             path: AppRoutes.earnings,
