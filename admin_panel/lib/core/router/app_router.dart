@@ -79,6 +79,21 @@ import '../../features/merchant_management/screens/admin_reviews_screen.dart';
 import '../../features/merchant_management/screens/admin_couriers_screen.dart';
 import '../../features/merchant_management/screens/admin_messages_screen.dart';
 import '../../features/merchant_management/screens/admin_merchant_settings_screen.dart';
+// Emlak Management (Phase 3)
+import '../../features/emlak_management/screens/admin_property_listings_screen.dart';
+import '../../features/emlak_management/screens/admin_crm_screen.dart';
+import '../../features/emlak_management/screens/admin_appointments_screen.dart';
+import '../../features/emlak_management/screens/admin_emlak_analytics_screen.dart';
+// Car Sales Management (Phase 3)
+import '../../features/car_sales_management/screens/admin_car_listings_screen.dart';
+import '../../features/car_sales_management/screens/admin_car_performance_screen.dart';
+// Rental Management (Phase 3)
+import '../../features/rental_management/screens/admin_rental_cars_screen.dart';
+import '../../features/rental_management/screens/admin_rental_bookings_screen.dart';
+import '../../features/rental_management/screens/admin_rental_calendar_screen.dart';
+import '../../features/rental_management/screens/admin_rental_locations_screen.dart';
+import '../../features/rental_management/screens/admin_rental_packages_screen.dart';
+import '../../features/rental_management/screens/admin_rental_finance_screen.dart';
 import '../../shared/widgets/admin_shell.dart';
 
 class AppRoutes {
@@ -651,6 +666,7 @@ List<RouteBase> _buildSectorRoutes(SectorType sector) {
 /// Route segment'e göre doğru ekranı döndürür
 Widget _buildTabScreen(SectorType sector, SectorTab tab, String id) {
   switch (tab.routeSegment) {
+    // ==================== ORTAK TABLAR ====================
     case 'siparisler':
       return AdminOrdersKanbanScreen(merchantId: id, sectorLabel: sector.label);
     case 'urunler':
@@ -660,15 +676,13 @@ Widget _buildTabScreen(SectorType sector, SectorTab tab, String id) {
       return AdminProductsScreen(merchantId: id);
     case 'stok':
       return AdminInventoryScreen(merchantId: id);
-    case 'finans':
-      return AdminMerchantFinanceScreen(merchantId: id);
+    case 'kuryeler':
+      return AdminCouriersScreen(merchantId: id);
     case 'yorumlar':
       return AdminReviewsScreen(
         entityType: sector.tableName,
         entityId: id,
       );
-    case 'kuryeler':
-      return AdminCouriersScreen(merchantId: id);
     case 'mesajlar':
     case 'sohbet':
       return AdminMessagesScreen(
@@ -677,6 +691,44 @@ Widget _buildTabScreen(SectorType sector, SectorTab tab, String id) {
       );
     case 'ayarlar':
       return AdminMerchantSettingsScreen(merchantId: id);
+
+    // ==================== EMLAK TABLARI ====================
+    case 'ilanlar':
+      if (sector == SectorType.realEstate) {
+        return AdminPropertyListingsScreen(realtorId: id);
+      }
+      if (sector == SectorType.carSales) {
+        return AdminCarListingsScreen(dealerId: id);
+      }
+      return PlaceholderTabScreen(tabName: tab.label, sectorName: sector.label);
+    case 'crm':
+      return AdminCrmScreen(realtorId: id);
+    case 'randevular':
+      return AdminAppointmentsScreen(realtorId: id);
+    case 'analitik':
+      return AdminEmlakAnalyticsScreen(realtorId: id);
+
+    // ==================== GALERİ TABLARI ====================
+    case 'performans':
+      return AdminCarPerformanceScreen(dealerId: id);
+
+    // ==================== ARAÇ KİRALAMA TABLARI ====================
+    case 'araclar':
+      return AdminRentalCarsScreen(companyId: id);
+    case 'rezervasyonlar':
+      return AdminRentalBookingsScreen(companyId: id);
+    case 'takvim':
+      return AdminRentalCalendarScreen(companyId: id);
+    case 'lokasyonlar':
+      return AdminRentalLocationsScreen(companyId: id);
+    case 'paketler':
+      return AdminRentalPackagesScreen(companyId: id);
+    case 'finans':
+      if (sector == SectorType.carRental) {
+        return AdminRentalFinanceScreen(companyId: id);
+      }
+      return AdminMerchantFinanceScreen(merchantId: id);
+
     default:
       return PlaceholderTabScreen(
         tabName: tab.label,
