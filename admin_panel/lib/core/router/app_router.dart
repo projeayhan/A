@@ -70,6 +70,15 @@ import '../../features/business/screens/business_overview_screen.dart';
 import '../../features/business/screens/sector_settings_screen.dart';
 import '../../features/business/screens/placeholder_tab_screen.dart';
 import '../../features/business/widgets/business_detail_shell.dart';
+import '../../features/merchant_management/screens/admin_orders_kanban_screen.dart';
+import '../../features/merchant_management/screens/admin_menu_screen.dart';
+import '../../features/merchant_management/screens/admin_products_screen.dart';
+import '../../features/merchant_management/screens/admin_inventory_screen.dart';
+import '../../features/merchant_management/screens/admin_merchant_finance_screen.dart';
+import '../../features/merchant_management/screens/admin_reviews_screen.dart';
+import '../../features/merchant_management/screens/admin_couriers_screen.dart';
+import '../../features/merchant_management/screens/admin_messages_screen.dart';
+import '../../features/merchant_management/screens/admin_merchant_settings_screen.dart';
 import '../../shared/widgets/admin_shell.dart';
 
 class AppRoutes {
@@ -631,13 +640,47 @@ List<RouteBase> _buildSectorRoutes(SectorType sector) {
           child: BusinessDetailShell(
             sector: sector,
             businessId: id,
-            child: PlaceholderTabScreen(
-              tabName: tab.label,
-              sectorName: sector.label,
-            ),
+            child: _buildTabScreen(sector, tab, id),
           ),
         );
       },
     )),
   ];
+}
+
+/// Route segment'e göre doğru ekranı döndürür
+Widget _buildTabScreen(SectorType sector, SectorTab tab, String id) {
+  switch (tab.routeSegment) {
+    case 'siparisler':
+      return AdminOrdersKanbanScreen(merchantId: id, sectorLabel: sector.label);
+    case 'urunler':
+      if (sector == SectorType.food) {
+        return AdminMenuScreen(merchantId: id);
+      }
+      return AdminProductsScreen(merchantId: id);
+    case 'stok':
+      return AdminInventoryScreen(merchantId: id);
+    case 'finans':
+      return AdminMerchantFinanceScreen(merchantId: id);
+    case 'yorumlar':
+      return AdminReviewsScreen(
+        entityType: sector.tableName,
+        entityId: id,
+      );
+    case 'kuryeler':
+      return AdminCouriersScreen(merchantId: id);
+    case 'mesajlar':
+    case 'sohbet':
+      return AdminMessagesScreen(
+        entityType: sector.tableName,
+        entityId: id,
+      );
+    case 'ayarlar':
+      return AdminMerchantSettingsScreen(merchantId: id);
+    default:
+      return PlaceholderTabScreen(
+        tabName: tab.label,
+        sectorName: sector.label,
+      );
+  }
 }
