@@ -7,6 +7,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/services/admin_auth_service.dart';
 import '../../core/services/admin_log_service.dart';
 import '../../core/services/notification_service.dart';
+import '../../core/models/sector_type.dart';
 import '../../core/services/permission_config.dart';
 import '../../core/providers/theme_provider.dart';
 import '../../core/router/app_router.dart';
@@ -27,14 +28,8 @@ class _AdminShellState extends ConsumerState<AdminShell> {
 
   // Collapsible menü grupları için state
   final Map<String, bool> _expandedGroups = {
-    'users': true,
-    'operations': false,
-    'finance': false,
-    'food': false,
-    'rental': false,
-    'emlak': false,
-    'carSales': false,
-    'jobs': false,
+    'services': true,
+    'management': false,
     'support': false,
     'system': false,
   };
@@ -147,6 +142,8 @@ class _AdminShellState extends ConsumerState<AdminShell> {
     if (admin.isSuperAdmin) return true;
     final module = PermissionConfig.groupPermissions[groupKey];
     if (module == null) return true;
+    // For groups that map to multiple modules, check if admin has access to any
+    if (module == '*') return true;
     return admin.hasPermission(module, 'read');
   }
 
@@ -156,7 +153,6 @@ class _AdminShellState extends ConsumerState<AdminShell> {
     final borderColor = isDark ? AppColors.surfaceLight : const Color(0xFFE2E8F0);
     final textPrimary = isDark ? AppColors.textPrimary : const Color(0xFF0F172A);
     final textMuted = isDark ? AppColors.textMuted : const Color(0xFF94A3B8);
-    final textSecondary = isDark ? AppColors.textSecondary : const Color(0xFF475569);
 
     return Container(
       decoration: BoxDecoration(
@@ -213,150 +209,67 @@ class _AdminShellState extends ConsumerState<AdminShell> {
                   isDark: isDark,
                 ),
 
+                _buildNavItem(
+                  icon: Icons.bar_chart_rounded,
+                  label: 'Raporlar',
+                  route: AppRoutes.reports,
+                  currentRoute: currentRoute,
+                  isDark: isDark,
+                ),
+
                 const SizedBox(height: 8),
 
-                // KULLANICILAR & İŞLETMELER
-                if (_hasGroupAccess(admin, 'users'))
+                // ─── HİZMETLER ───
+                if (!_isCollapsed)
+                  _buildSectionLabel('HİZMETLER', isDark),
+
+                if (_hasGroupAccess(admin, 'services'))
                   _buildNavGroup(
-                    groupKey: 'users',
-                    icon: Icons.people_rounded,
-                    label: 'Kullanıcılar',
+                    groupKey: 'services',
+                    icon: Icons.business_rounded,
+                    label: 'Hizmetler',
+                    currentRoute: currentRoute,
+                    isDark: isDark,
+                    children: [
+                      _NavChild(SectorType.food.icon, SectorType.food.label, SectorType.food.baseRoute),
+                      _NavChild(SectorType.market.icon, SectorType.market.label, SectorType.market.baseRoute),
+                      _NavChild(SectorType.store.icon, SectorType.store.label, SectorType.store.baseRoute),
+                      _NavChild(SectorType.realEstate.icon, SectorType.realEstate.label, SectorType.realEstate.baseRoute),
+                      _NavChild(SectorType.taxi.icon, SectorType.taxi.label, SectorType.taxi.baseRoute),
+                      _NavChild(SectorType.carSales.icon, SectorType.carSales.label, SectorType.carSales.baseRoute),
+                      _NavChild(SectorType.jobs.icon, SectorType.jobs.label, SectorType.jobs.baseRoute),
+                      _NavChild(SectorType.carRental.icon, SectorType.carRental.label, SectorType.carRental.baseRoute),
+                    ],
+                  ),
+
+                const SizedBox(height: 8),
+
+                // ─── YÖNETİM ───
+                if (!_isCollapsed)
+                  _buildSectionLabel('YÖNETİM', isDark),
+
+                if (_hasGroupAccess(admin, 'management'))
+                  _buildNavGroup(
+                    groupKey: 'management',
+                    icon: Icons.admin_panel_settings_rounded,
+                    label: 'Yönetim',
                     currentRoute: currentRoute,
                     badgeCount: pendingCounts.total,
                     isDark: isDark,
                     children: [
-                      _NavChild(Icons.people_outline, 'Kullanıcılar', AppRoutes.users),
-                      _NavChild(Icons.store_outlined, 'İşletmeler', AppRoutes.merchants),
-                      _NavChild(Icons.delivery_dining_outlined, 'Partnerler', AppRoutes.partners),
+                      _NavChild(Icons.account_balance_wallet_outlined, 'Finans', AppRoutes.finance),
                       _NavChild(Icons.assignment_outlined, 'Başvurular', AppRoutes.applications, badgeCount: pendingCounts.total),
+                      _NavChild(Icons.people_outline, 'Kullanıcılar', AppRoutes.users),
+                      _NavChild(Icons.delivery_dining_outlined, 'Partnerler', AppRoutes.partners),
                     ],
                   ),
 
-                // SİPARİŞLER & OPERASYON
-                if (_hasGroupAccess(admin, 'operations'))
-                  _buildNavGroup(
-                    groupKey: 'operations',
-                    icon: Icons.receipt_long_rounded,
-                    label: 'Operasyon',
-                    currentRoute: currentRoute,
-                    isDark: isDark,
-                    children: [
-                      _NavChild(Icons.receipt_long_outlined, 'Siparişler', AppRoutes.orders),
-                      _NavChild(Icons.notifications_outlined, 'Bildirimler', AppRoutes.notifications),
-                      _NavChild(Icons.gavel_outlined, 'Yaptırımlar', AppRoutes.sanctions),
-                    ],
-                  ),
+                const SizedBox(height: 8),
 
-                // FİNANS
-                if (_hasGroupAccess(admin, 'finance'))
-                  _buildNavGroup(
-                    groupKey: 'finance',
-                    icon: Icons.account_balance_wallet_rounded,
-                    label: 'Finans',
-                    currentRoute: currentRoute,
-                    isDark: isDark,
-                    children: [
-                      _NavChild(Icons.account_balance_wallet_outlined, 'Genel Bakış', AppRoutes.finance),
-                      _NavChild(Icons.payments_outlined, 'Kazançlar', AppRoutes.earnings),
-                      _NavChild(Icons.receipt_outlined, 'Faturalar', AppRoutes.invoices),
-                      _NavChild(Icons.attach_money_rounded, 'Fiyatlandırma', AppRoutes.pricing),
-                      _NavChild(Icons.trending_up_outlined, 'Surge Pricing', AppRoutes.surge),
-                    ],
-                  ),
+                // ─── DESTEK ───
+                if (!_isCollapsed)
+                  _buildSectionLabel('DESTEK', isDark),
 
-                // YEMEK & MARKET
-                if (_hasGroupAccess(admin, 'food'))
-                  _buildNavGroup(
-                    groupKey: 'food',
-                    icon: Icons.restaurant_rounded,
-                    label: 'Yemek & Magazalar',
-                    currentRoute: currentRoute,
-                    isDark: isDark,
-                    children: [
-                      _NavChild(Icons.category_outlined, 'Restoran Kategorileri', AppRoutes.restaurantCategories),
-                      _NavChild(Icons.storefront_outlined, 'Magaza Kategorileri', AppRoutes.storeCategories),
-                    ],
-                  ),
-
-                // ARAÇ KİRALAMA
-                if (_hasGroupAccess(admin, 'rental'))
-                  _buildNavGroup(
-                    groupKey: 'rental',
-                    icon: Icons.car_rental_rounded,
-                    label: 'Araç Kiralama',
-                    currentRoute: currentRoute,
-                    isDark: isDark,
-                    children: [
-                      _NavChild(Icons.dashboard_outlined, 'Panel', AppRoutes.rentalDashboard),
-                      _NavChild(Icons.directions_car_outlined, 'Araçlar', AppRoutes.rentalVehicles),
-                      _NavChild(Icons.event_note_outlined, 'Rezervasyonlar', AppRoutes.rentalBookings),
-                      _NavChild(Icons.location_on_outlined, 'Lokasyonlar', AppRoutes.rentalLocations),
-                    ],
-                  ),
-
-                // EMLAK
-                if (_hasGroupAccess(admin, 'emlak'))
-                  _buildNavGroup(
-                    groupKey: 'emlak',
-                    icon: Icons.home_work_rounded,
-                    label: 'Emlak',
-                    currentRoute: currentRoute,
-                    isDark: isDark,
-                    children: [
-                      _NavChild(Icons.dashboard_outlined, 'Panel', AppRoutes.emlakDashboard),
-                      _NavChild(Icons.real_estate_agent_outlined, 'İlanlar', AppRoutes.emlakListings),
-                      _NavChild(Icons.location_city_outlined, 'Şehirler', AppRoutes.emlakCities),
-                      _NavChild(Icons.map_outlined, 'İlçeler', AppRoutes.emlakDistricts),
-                      _NavChild(Icons.category_outlined, 'Emlak Türleri', AppRoutes.emlakPropertyTypes),
-                      _NavChild(Icons.featured_play_list_outlined, 'Özellikler', AppRoutes.emlakAmenities),
-                      _NavChild(Icons.price_change_outlined, 'Fiyatlandırma', AppRoutes.emlakPricing),
-                      _NavChild(Icons.tune_outlined, 'Ayarlar', AppRoutes.emlakSettings),
-                      _NavChild(Icons.assignment_ind_outlined, 'Emlakçı Başvuruları', AppRoutes.emlakRealtorApplications),
-                    ],
-                  ),
-
-                // ARAÇ SATIŞ
-                if (_hasGroupAccess(admin, 'carSales'))
-                  _buildNavGroup(
-                    groupKey: 'carSales',
-                    icon: Icons.directions_car_filled_rounded,
-                    label: 'Araç Satış',
-                    currentRoute: currentRoute,
-                    badgeCount: pendingCounts.pendingCarListings,
-                    isDark: isDark,
-                    children: [
-                      _NavChild(Icons.dashboard_outlined, 'Panel', AppRoutes.carSalesDashboard),
-                      _NavChild(Icons.list_alt_outlined, 'İlanlar', AppRoutes.carSalesListings, badgeCount: pendingCounts.pendingCarListings),
-                      _NavChild(Icons.branding_watermark_outlined, 'Markalar', AppRoutes.carSalesBrands),
-                      _NavChild(Icons.featured_play_list_outlined, 'Özellikler', AppRoutes.carSalesFeatures),
-                      _NavChild(Icons.price_change_outlined, 'Fiyatlandırma', AppRoutes.carSalesPricing),
-                      _NavChild(Icons.directions_car_outlined, 'Gövde Tipleri', AppRoutes.carSalesBodyTypes),
-                      _NavChild(Icons.local_gas_station_outlined, 'Yakıt Tipleri', AppRoutes.carSalesFuelTypes),
-                      _NavChild(Icons.settings_outlined, 'Vites Tipleri', AppRoutes.carSalesTransmissions),
-                    ],
-                  ),
-
-                // İŞ İLANLARI
-                if (_hasGroupAccess(admin, 'jobs'))
-                  _buildNavGroup(
-                    groupKey: 'jobs',
-                    icon: Icons.work_rounded,
-                    label: 'İş İlanları',
-                    currentRoute: currentRoute,
-                    isDark: isDark,
-                    children: [
-                      _NavChild(Icons.dashboard_outlined, 'Panel', AppRoutes.jobListingsDashboard),
-                      _NavChild(Icons.list_alt_outlined, 'İlanlar', AppRoutes.jobListingsList),
-                      _NavChild(Icons.business_outlined, 'Şirketler', AppRoutes.jobCompanies),
-                      _NavChild(Icons.category_outlined, 'Kategoriler', AppRoutes.jobCategories),
-                      _NavChild(Icons.psychology_outlined, 'Yetenekler', AppRoutes.jobSkills),
-                      _NavChild(Icons.card_giftcard_outlined, 'Yan Haklar', AppRoutes.jobBenefits),
-                      _NavChild(Icons.monetization_on_outlined, 'Fiyatlandırma', AppRoutes.jobPricing),
-                      _NavChild(Icons.tune_outlined, 'Ayarlar', AppRoutes.jobSettings),
-                    ],
-                  ),
-
-                // DESTEK YÖNETİMİ
                 if (_hasGroupAccess(admin, 'support'))
                   _buildNavGroup(
                     groupKey: 'support',
@@ -374,7 +287,12 @@ class _AdminShellState extends ConsumerState<AdminShell> {
                     ],
                   ),
 
-                // SİSTEM
+                const SizedBox(height: 8),
+
+                // ─── SİSTEM ───
+                if (!_isCollapsed)
+                  _buildSectionLabel('SİSTEM', isDark),
+
                 if (_hasGroupAccess(admin, 'system'))
                   _buildNavGroup(
                     groupKey: 'system',
@@ -383,12 +301,14 @@ class _AdminShellState extends ConsumerState<AdminShell> {
                     currentRoute: currentRoute,
                     isDark: isDark,
                     children: [
-                      _NavChild(Icons.settings_outlined, 'Genel Ayarlar', AppRoutes.settings),
+                      _NavChild(Icons.settings_outlined, 'Ayarlar', AppRoutes.settings),
+                      _NavChild(Icons.security_outlined, 'Güvenlik', AppRoutes.security),
+                      _NavChild(Icons.history_outlined, 'Loglar', AppRoutes.logs),
+                      _NavChild(Icons.monitor_heart_outlined, 'Sistem Sağlığı', AppRoutes.systemHealth),
+                      _NavChild(Icons.notifications_outlined, 'Bildirimler', AppRoutes.notifications),
+                      _NavChild(Icons.gavel_outlined, 'Yaptırımlar', AppRoutes.sanctions),
                       _NavChild(Icons.two_wheeler_outlined, 'Kurye Araç Tipleri', AppRoutes.courierVehicleTypes),
                       _NavChild(Icons.image_outlined, 'Bannerlar', AppRoutes.banners),
-                      _NavChild(Icons.security_outlined, 'Güvenlik', AppRoutes.security),
-                      _NavChild(Icons.history_outlined, 'Log Kayıtları', AppRoutes.logs),
-                      _NavChild(Icons.monitor_heart_outlined, 'Sistem Sağlığı', AppRoutes.systemHealth),
                     ],
                   ),
               ],
@@ -426,6 +346,22 @@ class _AdminShellState extends ConsumerState<AdminShell> {
         // Sessizce devam et
       }
     }
+  }
+
+  Widget _buildSectionLabel(String label, bool isDark) {
+    final textMuted = isDark ? AppColors.textMuted : const Color(0xFF94A3B8);
+    return Padding(
+      padding: const EdgeInsets.only(left: 16, top: 4, bottom: 4),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: textMuted,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 1.2,
+        ),
+      ),
+    );
   }
 
   Widget _buildNavItem({
@@ -674,7 +610,7 @@ class _AdminShellState extends ConsumerState<AdminShell> {
     int badgeCount = 0,
   }) {
     final isExpanded = _expandedGroups[groupKey] ?? false;
-    final hasActiveChild = children.any((child) => currentRoute == child.route);
+    final hasActiveChild = children.any((child) => currentRoute == child.route || currentRoute.startsWith('${child.route}/'));
     final textSecondary = isDark ? AppColors.textSecondary : const Color(0xFF475569);
     final textMuted = isDark ? AppColors.textMuted : const Color(0xFF94A3B8);
 
@@ -766,7 +702,7 @@ class _AdminShellState extends ConsumerState<AdminShell> {
             duration: const Duration(milliseconds: 200),
             child: Column(
               children: children.map((child) {
-                final isSelected = currentRoute == child.route;
+                final isSelected = currentRoute == child.route || currentRoute.startsWith('${child.route}/');
                 return Padding(
                   padding: const EdgeInsets.only(left: 20),
                   child: Material(

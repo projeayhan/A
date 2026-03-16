@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../models/sector_type.dart';
 import '../services/admin_auth_service.dart';
 import '../services/permission_config.dart';
 import '../../features/auth/screens/login_screen.dart';
@@ -63,6 +64,12 @@ import '../../features/support_monitoring/screens/support_dashboard_screen.dart'
 import '../../features/support_monitoring/screens/ticket_review_screen.dart';
 import '../../features/support_monitoring/screens/agent_performance_screen.dart';
 import '../../features/support_monitoring/screens/support_reports_screen.dart';
+import '../../features/reports/screens/reports_screen.dart';
+import '../../features/business/screens/business_listing_screen.dart';
+import '../../features/business/screens/business_overview_screen.dart';
+import '../../features/business/screens/sector_settings_screen.dart';
+import '../../features/business/screens/placeholder_tab_screen.dart';
+import '../../features/business/widgets/business_detail_shell.dart';
 import '../../shared/widgets/admin_shell.dart';
 
 class AppRoutes {
@@ -91,7 +98,7 @@ class AppRoutes {
   static const String rentalVehicles = '/rental/vehicles';
   static const String rentalBookings = '/rental/bookings';
   static const String rentalLocations = '/rental/locations';
-  // Emlak
+  // Emlak (eski rotalar - hala çalışır)
   static const String emlakDashboard = '/emlak';
   static const String emlakCities = '/emlak/cities';
   static const String emlakDistricts = '/emlak/districts';
@@ -101,7 +108,7 @@ class AppRoutes {
   static const String emlakSettings = '/emlak/settings';
   static const String emlakRealtorApplications = '/emlak/realtor-applications';
   static const String emlakPricing = '/emlak/pricing';
-  // Araç Satış
+  // Araç Satış (eski rotalar - hala çalışır)
   static const String carSalesDashboard = '/car-sales';
   static const String carSalesListings = '/car-sales/listings';
   static const String carSalesBrands = '/car-sales/brands';
@@ -116,7 +123,7 @@ class AppRoutes {
   static const String storeCategories = '/store/categories';
   // Yemek
   static const String restaurantCategories = '/food/categories';
-  // İş İlanları
+  // İş İlanları (eski rotalar - hala çalışır)
   static const String jobListingsDashboard = '/job-listings';
   static const String jobCategories = '/job-listings/categories';
   static const String jobSkills = '/job-listings/skills';
@@ -131,6 +138,8 @@ class AppRoutes {
   static const String ticketReview = '/ticket-review';
   static const String agentPerformance = '/agent-performance';
   static const String supportReports = '/support-reports';
+  // Raporlar
+  static const String reports = '/reports';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -155,12 +164,19 @@ final routerProvider = Provider<GoRouter>((ref) {
       // RBAC: check permissions for authenticated routes
       if (isLoggedIn && !isLoginRoute && !isForgotPasswordRoute) {
         final adminAsync = ref.read(currentAdminProvider);
+        if (adminAsync.isLoading) {
+          return null;
+        }
+        if (adminAsync.hasError) {
+          return AppRoutes.login;
+        }
         final admin = adminAsync.valueOrNull;
-        if (admin != null) {
-          final permission = PermissionConfig.routePermissions[state.matchedLocation];
-          if (permission != null && !admin.hasPermission(permission.$1, permission.$2)) {
-            return AppRoutes.dashboard;
-          }
+        if (admin == null) {
+          return AppRoutes.login;
+        }
+        final permission = PermissionConfig.routePermissions[state.matchedLocation];
+        if (permission != null && !admin.hasPermission(permission.$1, permission.$2)) {
+          return AppRoutes.dashboard;
         }
       }
 
@@ -180,11 +196,66 @@ final routerProvider = Provider<GoRouter>((ref) {
       ShellRoute(
         builder: (context, state, child) => AdminShell(child: child),
         routes: [
+          // ==================== DASHBOARD ====================
           GoRoute(
             path: AppRoutes.dashboard,
             name: 'dashboard',
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: DashboardScreen()),
+          ),
+          GoRoute(
+            path: AppRoutes.reports,
+            name: 'reports',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: ReportsScreen()),
+          ),
+
+          // ==================== YENİ SEKTÖR ROTALARI ====================
+          ..._buildSectorRoutes(SectorType.food),
+          ..._buildSectorRoutes(SectorType.market),
+          ..._buildSectorRoutes(SectorType.store),
+          ..._buildSectorRoutes(SectorType.realEstate),
+          ..._buildSectorRoutes(SectorType.taxi),
+          ..._buildSectorRoutes(SectorType.carSales),
+          ..._buildSectorRoutes(SectorType.jobs),
+          ..._buildSectorRoutes(SectorType.carRental),
+
+          // ==================== YÖNETİM ====================
+          GoRoute(
+            path: AppRoutes.finance,
+            name: 'finance',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: FinanceScreen()),
+          ),
+          GoRoute(
+            path: AppRoutes.earnings,
+            name: 'earnings',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: EarningsScreen()),
+          ),
+          GoRoute(
+            path: AppRoutes.invoices,
+            name: 'invoices',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: InvoicesScreen()),
+          ),
+          GoRoute(
+            path: AppRoutes.pricing,
+            name: 'pricing',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: PricingScreen()),
+          ),
+          GoRoute(
+            path: AppRoutes.surge,
+            name: 'surge',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: SurgeScreen()),
+          ),
+          GoRoute(
+            path: AppRoutes.applications,
+            name: 'applications',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: ApplicationsScreen()),
           ),
           GoRoute(
             path: AppRoutes.users,
@@ -210,53 +281,69 @@ final routerProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: OrdersScreen()),
           ),
+
+          // ==================== DESTEK ====================
           GoRoute(
-            path: AppRoutes.finance,
-            name: 'finance',
+            path: AppRoutes.supportDashboard,
+            name: 'support-dashboard',
             pageBuilder: (context, state) =>
-                const NoTransitionPage(child: FinanceScreen()),
+                const NoTransitionPage(child: SupportDashboardScreen()),
           ),
           GoRoute(
-            path: AppRoutes.pricing,
-            name: 'pricing',
+            path: AppRoutes.ticketReview,
+            name: 'ticket-review',
             pageBuilder: (context, state) =>
-                const NoTransitionPage(child: PricingScreen()),
+                const NoTransitionPage(child: TicketReviewScreen()),
           ),
           GoRoute(
-            path: AppRoutes.banners,
-            name: 'banners',
+            path: AppRoutes.agentPerformance,
+            name: 'agent-performance',
             pageBuilder: (context, state) =>
-                const NoTransitionPage(child: BannersScreen()),
+                const NoTransitionPage(child: AgentPerformanceScreen()),
           ),
           GoRoute(
-            path: AppRoutes.invoices,
-            name: 'invoices',
+            path: AppRoutes.supportReports,
+            name: 'support-reports',
             pageBuilder: (context, state) =>
-                const NoTransitionPage(child: InvoicesScreen()),
+                const NoTransitionPage(child: SupportReportsScreen()),
           ),
           GoRoute(
-            path: AppRoutes.surge,
-            name: 'surge',
+            path: AppRoutes.aiSupport,
+            name: 'ai-support',
             pageBuilder: (context, state) =>
-                const NoTransitionPage(child: SurgeScreen()),
+                const NoTransitionPage(child: AiSupportScreen()),
           ),
           GoRoute(
-            path: AppRoutes.earnings,
-            name: 'earnings',
+            path: AppRoutes.supportAgents,
+            name: 'support-agents',
             pageBuilder: (context, state) =>
-                const NoTransitionPage(child: EarningsScreen()),
+                const NoTransitionPage(child: SupportAgentsScreen()),
           ),
-          GoRoute(
-            path: AppRoutes.applications,
-            name: 'applications',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: ApplicationsScreen()),
-          ),
+
+          // ==================== SİSTEM ====================
           GoRoute(
             path: AppRoutes.settings,
             name: 'settings',
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: SettingsScreen()),
+          ),
+          GoRoute(
+            path: AppRoutes.security,
+            name: 'security',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: SecurityScreen()),
+          ),
+          GoRoute(
+            path: AppRoutes.logs,
+            name: 'logs',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: LogsScreen()),
+          ),
+          GoRoute(
+            path: AppRoutes.systemHealth,
+            name: 'system-health',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: SystemHealthScreen()),
           ),
           GoRoute(
             path: AppRoutes.notifications,
@@ -271,29 +358,19 @@ final routerProvider = Provider<GoRouter>((ref) {
                 const NoTransitionPage(child: SanctionsScreen()),
           ),
           GoRoute(
-            path: AppRoutes.logs,
-            name: 'logs',
+            path: AppRoutes.courierVehicleTypes,
+            name: 'courier-vehicle-types',
             pageBuilder: (context, state) =>
-                const NoTransitionPage(child: LogsScreen()),
+                const NoTransitionPage(child: CourierVehicleTypesScreen()),
           ),
           GoRoute(
-            path: AppRoutes.security,
-            name: 'security',
+            path: AppRoutes.banners,
+            name: 'banners',
             pageBuilder: (context, state) =>
-                const NoTransitionPage(child: SecurityScreen()),
+                const NoTransitionPage(child: BannersScreen()),
           ),
-          GoRoute(
-            path: AppRoutes.systemHealth,
-            name: 'system-health',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: SystemHealthScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.aiSupport,
-            name: 'ai-support',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: AiSupportScreen()),
-          ),
+
+          // ==================== ESKİ ROTALAR (sidebar'dan gizli, hala çalışır) ====================
           GoRoute(
             path: AppRoutes.rentalDashboard,
             name: 'rental-dashboard',
@@ -318,7 +395,6 @@ final routerProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: RentalLocationsScreen()),
           ),
-          // Emlak Routes
           GoRoute(
             path: AppRoutes.emlakDashboard,
             name: 'emlak-dashboard',
@@ -373,7 +449,6 @@ final routerProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: EmlakPricingScreen()),
           ),
-          // Car Sales Routes
           GoRoute(
             path: AppRoutes.carSalesDashboard,
             name: 'car-sales-dashboard',
@@ -422,28 +497,18 @@ final routerProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: CarSalesTransmissionsScreen()),
           ),
-          // Courier Routes
-          GoRoute(
-            path: AppRoutes.courierVehicleTypes,
-            name: 'courier-vehicle-types',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: CourierVehicleTypesScreen()),
-          ),
-          // Store Routes
           GoRoute(
             path: AppRoutes.storeCategories,
             name: 'store-categories',
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: StoreCategoriesScreen()),
           ),
-          // Food Routes
           GoRoute(
             path: AppRoutes.restaurantCategories,
             name: 'restaurant-categories',
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: RestaurantCategoriesScreen()),
           ),
-          // Job Listings Routes
           GoRoute(
             path: AppRoutes.jobListingsDashboard,
             name: 'job-listings-dashboard',
@@ -492,38 +557,6 @@ final routerProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: JobSettingsScreen()),
           ),
-          // Support Agents
-          GoRoute(
-            path: AppRoutes.supportAgents,
-            name: 'support-agents',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: SupportAgentsScreen()),
-          ),
-          // Support Monitoring
-          GoRoute(
-            path: AppRoutes.supportDashboard,
-            name: 'support-dashboard',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: SupportDashboardScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.ticketReview,
-            name: 'ticket-review',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: TicketReviewScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.agentPerformance,
-            name: 'agent-performance',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: AgentPerformanceScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.supportReports,
-            name: 'support-reports',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: SupportReportsScreen()),
-          ),
         ],
       ),
     ],
@@ -551,3 +584,60 @@ final routerProvider = Provider<GoRouter>((ref) {
     ),
   );
 });
+
+/// Her sektör için nested route listesi oluşturur
+List<RouteBase> _buildSectorRoutes(SectorType sector) {
+  final tabs = sector.tabs;
+
+  return [
+    // Sektör ana sayfası - işletme listesi
+    GoRoute(
+      path: sector.baseRoute,
+      name: '${sector.name}-listing',
+      pageBuilder: (context, state) => NoTransitionPage(
+        child: BusinessListingScreen(sector: sector),
+      ),
+    ),
+    // Sektör ayarları
+    GoRoute(
+      path: '${sector.baseRoute}/ayarlar',
+      name: '${sector.name}-settings',
+      pageBuilder: (context, state) => NoTransitionPage(
+        child: SectorSettingsScreen(sector: sector),
+      ),
+    ),
+    // İşletme detay - genel (default tab)
+    GoRoute(
+      path: '${sector.baseRoute}/:id',
+      name: '${sector.name}-detail',
+      pageBuilder: (context, state) {
+        final id = state.pathParameters['id']!;
+        return NoTransitionPage(
+          child: BusinessDetailShell(
+            sector: sector,
+            businessId: id,
+            child: BusinessOverviewScreen(sector: sector, businessId: id),
+          ),
+        );
+      },
+    ),
+    // Her tab için ayrı rota (genel hariç)
+    ...tabs.where((tab) => tab.routeSegment != 'genel').map((tab) => GoRoute(
+      path: '${sector.baseRoute}/:id/${tab.routeSegment}',
+      name: '${sector.name}-${tab.routeSegment}',
+      pageBuilder: (context, state) {
+        final id = state.pathParameters['id']!;
+        return NoTransitionPage(
+          child: BusinessDetailShell(
+            sector: sector,
+            businessId: id,
+            child: PlaceholderTabScreen(
+              tabName: tab.label,
+              sectorName: sector.label,
+            ),
+          ),
+        );
+      },
+    )),
+  ];
+}

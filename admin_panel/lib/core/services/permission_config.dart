@@ -1,3 +1,4 @@
+import '../models/sector_type.dart';
 import '../../core/router/app_router.dart';
 
 /// Route-to-permission mapping for RBAC enforcement
@@ -17,6 +18,19 @@ class PermissionConfig {
   static const String system = 'system';
   static const String notifications = 'notifications';
   static const String support = 'support';
+  static const String taxi = 'taxi';
+
+  /// Sektör → permission modülü eşlemesi
+  static const Map<SectorType, String> sectorPermissions = {
+    SectorType.food: food,
+    SectorType.market: food,
+    SectorType.store: food,
+    SectorType.realEstate: emlak,
+    SectorType.taxi: taxi,
+    SectorType.carSales: carSales,
+    SectorType.jobs: jobs,
+    SectorType.carRental: rental,
+  };
 
   /// Route → required (module, action) mapping
   static const Map<String, (String, String)> routePermissions = {
@@ -37,12 +51,12 @@ class PermissionConfig {
     AppRoutes.surge: (finance, 'write'),
     // Food
     AppRoutes.restaurantCategories: (food, 'read'),
-    // Rental
+    // Rental (eski rotalar)
     AppRoutes.rentalDashboard: (rental, 'read'),
     AppRoutes.rentalVehicles: (rental, 'read'),
     AppRoutes.rentalBookings: (rental, 'read'),
     AppRoutes.rentalLocations: (rental, 'read'),
-    // Emlak
+    // Emlak (eski rotalar)
     AppRoutes.emlakDashboard: (emlak, 'read'),
     AppRoutes.emlakListings: (emlak, 'read'),
     AppRoutes.emlakCities: (emlak, 'read'),
@@ -52,7 +66,7 @@ class PermissionConfig {
     AppRoutes.emlakPricing: (emlak, 'write'),
     AppRoutes.emlakSettings: (emlak, 'write'),
     AppRoutes.emlakRealtorApplications: (emlak, 'read'),
-    // Car Sales
+    // Car Sales (eski rotalar)
     AppRoutes.carSalesDashboard: (carSales, 'read'),
     AppRoutes.carSalesListings: (carSales, 'read'),
     AppRoutes.carSalesBrands: (carSales, 'read'),
@@ -61,7 +75,7 @@ class PermissionConfig {
     AppRoutes.carSalesBodyTypes: (carSales, 'read'),
     AppRoutes.carSalesFuelTypes: (carSales, 'read'),
     AppRoutes.carSalesTransmissions: (carSales, 'read'),
-    // Job Listings
+    // Job Listings (eski rotalar)
     AppRoutes.jobListingsDashboard: (jobs, 'read'),
     AppRoutes.jobListingsList: (jobs, 'read'),
     AppRoutes.jobCompanies: (jobs, 'read'),
@@ -76,6 +90,8 @@ class PermissionConfig {
     AppRoutes.agentPerformance: (system, 'read'),
     AppRoutes.supportReports: (system, 'read'),
     AppRoutes.supportAgents: (system, 'read'),
+    // Reports
+    AppRoutes.reports: (finance, 'read'),
     // System
     AppRoutes.settings: (settings, 'read'),
     AppRoutes.banners: (settings, 'read'),
@@ -83,18 +99,22 @@ class PermissionConfig {
     AppRoutes.logs: (system, 'read'),
     AppRoutes.systemHealth: (system, 'read'),
     AppRoutes.aiSupport: (system, 'read'),
+    // Yeni sektör rotaları
+    '/yemek': (food, 'read'),
+    '/market': (food, 'read'),
+    '/magaza': (food, 'read'),
+    '/emlak-sektor': (emlak, 'read'),
+    '/taksi': (taxi, 'read'),
+    '/galeri': (carSales, 'read'),
+    '/is-ilanlari': (jobs, 'read'),
+    '/arac-kiralama': (rental, 'read'),
   };
 
   /// Sidebar group → module mapping
+  /// '*' means accessible to all authenticated admins
   static const Map<String, String> groupPermissions = {
-    'users': users,
-    'operations': orders,
-    'finance': finance,
-    'food': food,
-    'rental': rental,
-    'emlak': emlak,
-    'carSales': carSales,
-    'jobs': jobs,
+    'services': '*',
+    'management': finance,
     'support': system,
     'system': system,
   };
