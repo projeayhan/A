@@ -1,0 +1,5 @@
+#!/bin/bash
+curl -fsSL https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.41.6-stable.tar.xz | tar xJ -C /tmp
+git config --global --add safe.directory /tmp/flutter
+/tmp/flutter/bin/flutter precache --web
+/tmp/flutter/bin/flutter pub get
