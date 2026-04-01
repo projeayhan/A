@@ -311,58 +311,86 @@ class _JobSearchScreenState extends ConsumerState<JobSearchScreen>
           ),
           const SizedBox(height: 8),
           Row(
-            children: [
-              {'value': null, 'label': 'Tümü', 'icon': Icons.apps, 'color': JobsColors.primary},
-              {'value': 'hiring', 'label': 'Eleman Arıyorum', 'icon': Icons.business_center, 'color': const Color(0xFF3B82F6)},
-              {'value': 'seeking', 'label': 'İş Arıyorum', 'icon': Icons.person_search, 'color': const Color(0xFF10B981)},
-            ].map((tab) {
-              final value = tab['value'] as String?;
-              final label = tab['label'] as String;
-              final icon = tab['icon'] as IconData;
-              final color = tab['color'] as Color;
-              final isSelected = _selectedListingType == value;
-
-              return Expanded(
-                child: GestureDetector(
-                  onTap: () {
-                    setState(() => _selectedListingType = value);
-                    ref.read(jobListProvider.notifier).setListingType(value);
-                    HapticFeedback.selectionClick();
+            children:
+                [
+                  {
+                    'value': null,
+                    'label': 'Tümü',
+                    'icon': Icons.apps,
+                    'color': JobsColors.primary,
                   },
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    margin: const EdgeInsets.only(right: 8),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    decoration: BoxDecoration(
-                      color: isSelected ? color : JobsColors.card(isDark),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: isSelected ? color : JobsColors.border(isDark),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(icon, size: 14, color: isSelected ? Colors.white : color),
-                        const SizedBox(width: 4),
-                        Flexible(
-                          child: Text(
-                            label,
-                            style: TextStyle(
-                              color: isSelected ? Colors.white : JobsColors.textPrimary(isDark),
-                              fontSize: 11,
-                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                  {
+                    'value': 'hiring',
+                    'label': 'Eleman Arıyorum',
+                    'icon': Icons.business_center,
+                    'color': const Color(0xFF3B82F6),
+                  },
+                  {
+                    'value': 'seeking',
+                    'label': 'İş Arıyorum',
+                    'icon': Icons.person_search,
+                    'color': const Color(0xFF10B981),
+                  },
+                ].map((tab) {
+                  final value = tab['value'] as String?;
+                  final label = tab['label'] as String;
+                  final icon = tab['icon'] as IconData;
+                  final color = tab['color'] as Color;
+                  final isSelected = _selectedListingType == value;
+
+                  return Expanded(
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() => _selectedListingType = value);
+                        ref
+                            .read(jobListProvider.notifier)
+                            .setListingType(value);
+                        HapticFeedback.selectionClick();
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        margin: const EdgeInsets.only(right: 8),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: isSelected ? color : JobsColors.card(isDark),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isSelected
+                                ? color
+                                : JobsColors.border(isDark),
                           ),
                         ),
-                      ],
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              icon,
+                              size: 14,
+                              color: isSelected ? Colors.white : color,
+                            ),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                label,
+                                style: TextStyle(
+                                  color: isSelected
+                                      ? Colors.white
+                                      : JobsColors.textPrimary(isDark),
+                                  fontSize: 11,
+                                  fontWeight: isSelected
+                                      ? FontWeight.w600
+                                      : FontWeight.normal,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              );
-            }).toList(),
+                  );
+                }).toList(),
           ),
 
           const SizedBox(height: 16),
@@ -763,7 +791,9 @@ class _JobSearchScreenState extends ConsumerState<JobSearchScreen>
                   _selectedCategories.add(category.id);
                 });
                 _searchController.text = category.name;
-                ref.read(jobListProvider.notifier).updateFilter(categoryId: category.id);
+                ref
+                    .read(jobListProvider.notifier)
+                    .updateFilter(categoryId: category.id);
               },
               child: Container(
                 margin: const EdgeInsets.only(bottom: 10),
@@ -782,7 +812,10 @@ class _JobSearchScreenState extends ConsumerState<JobSearchScreen>
                         color: categoryColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Icon(_getCategoryIcon(category.icon), color: categoryColor),
+                      child: Icon(
+                        _getCategoryIcon(category.icon),
+                        color: categoryColor,
+                      ),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -808,43 +841,69 @@ class _JobSearchScreenState extends ConsumerState<JobSearchScreen>
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
     );
   }
 
   IconData _getCategoryIcon(String? iconName) {
     switch (iconName) {
-      case 'computer': return Icons.computer;
-      case 'medical_services': return Icons.medical_services;
-      case 'school': return Icons.school;
-      case 'restaurant': return Icons.restaurant;
-      case 'business': return Icons.business;
-      case 'build': return Icons.build;
-      case 'local_shipping': return Icons.local_shipping;
-      case 'storefront': return Icons.storefront;
-      case 'account_balance': return Icons.account_balance;
-      case 'home_repair_service': return Icons.home_repair_service;
-      case 'security': return Icons.security;
-      case 'cleaning_services': return Icons.cleaning_services;
-      default: return Icons.work;
+      case 'computer':
+        return Icons.computer;
+      case 'medical_services':
+        return Icons.medical_services;
+      case 'school':
+        return Icons.school;
+      case 'restaurant':
+        return Icons.restaurant;
+      case 'business':
+        return Icons.business;
+      case 'build':
+        return Icons.build;
+      case 'local_shipping':
+        return Icons.local_shipping;
+      case 'storefront':
+        return Icons.storefront;
+      case 'account_balance':
+        return Icons.account_balance;
+      case 'home_repair_service':
+        return Icons.home_repair_service;
+      case 'security':
+        return Icons.security;
+      case 'cleaning_services':
+        return Icons.cleaning_services;
+      default:
+        return Icons.work;
     }
   }
 
   Color _getCategoryColor(String? iconName) {
     switch (iconName) {
-      case 'computer': return const Color(0xFF3B82F6);
-      case 'medical_services': return const Color(0xFFEF4444);
-      case 'school': return const Color(0xFF8B5CF6);
-      case 'restaurant': return const Color(0xFFF59E0B);
-      case 'business': return const Color(0xFF6366F1);
-      case 'build': return const Color(0xFF64748B);
-      case 'local_shipping': return const Color(0xFF0EA5E9);
-      case 'storefront': return const Color(0xFF10B981);
-      case 'account_balance': return const Color(0xFF1E1B4B);
-      case 'home_repair_service': return const Color(0xFF78716C);
-      case 'security': return const Color(0xFF0F172A);
-      case 'cleaning_services': return const Color(0xFF06B6D4);
-      default: return JobsColors.primary;
+      case 'computer':
+        return const Color(0xFF3B82F6);
+      case 'medical_services':
+        return const Color(0xFFEF4444);
+      case 'school':
+        return const Color(0xFF8B5CF6);
+      case 'restaurant':
+        return const Color(0xFFF59E0B);
+      case 'business':
+        return const Color(0xFF6366F1);
+      case 'build':
+        return const Color(0xFF64748B);
+      case 'local_shipping':
+        return const Color(0xFF0EA5E9);
+      case 'storefront':
+        return const Color(0xFF10B981);
+      case 'account_balance':
+        return const Color(0xFF1E1B4B);
+      case 'home_repair_service':
+        return const Color(0xFF78716C);
+      case 'security':
+        return const Color(0xFF0F172A);
+      case 'cleaning_services':
+        return const Color(0xFF06B6D4);
+      default:
+        return JobsColors.primary;
     }
   }
 
@@ -900,11 +959,13 @@ class _JobSearchScreenState extends ConsumerState<JobSearchScreen>
                     ? CachedNetworkImage(
                         imageUrl: job.companyLogo!,
                         fit: BoxFit.cover,
-                        placeholder: (_, __) => Container(
+                        placeholder: (_, _) => Container(
                           color: Colors.grey[200],
-                          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                          child: const Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
                         ),
-                        errorWidget: (_, __, ___) => Center(
+                        errorWidget: (_, _, _) => Center(
                           child: Text(
                             job.companyName.substring(0, 1),
                             style: TextStyle(
@@ -940,7 +1001,10 @@ class _JobSearchScreenState extends ConsumerState<JobSearchScreen>
                       // Listing type badge
                       Container(
                         margin: const EdgeInsets.only(right: 6),
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
                           color: job.listingType.color.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(4),
@@ -948,7 +1012,11 @@ class _JobSearchScreenState extends ConsumerState<JobSearchScreen>
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(job.listingType.icon, size: 10, color: job.listingType.color),
+                            Icon(
+                              job.listingType.icon,
+                              size: 10,
+                              color: job.listingType.color,
+                            ),
                             const SizedBox(width: 3),
                             Text(
                               job.listingType.label,
@@ -1088,8 +1156,8 @@ class _JobSearchScreenState extends ConsumerState<JobSearchScreen>
   void _navigateToDetail(JobListing job) {
     Navigator.of(context).push(
       PageRouteBuilder(
-        pageBuilder: (_, animation, __) => JobDetailScreen(job: job),
-        transitionsBuilder: (_, animation, __, child) {
+        pageBuilder: (_, animation, _) => JobDetailScreen(job: job),
+        transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(
             opacity: animation,
             child: SlideTransition(

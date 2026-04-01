@@ -1,10 +1,10 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:emlakci_panel/core/services/log_service.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
@@ -42,8 +42,8 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
   String _selectedCurrency = 'TL';
   String? _selectedCity;
   String? _selectedDistrict;
-  List<String> _selectedAmenities = [];
-  List<_UploadedImage> _uploadedImages = [];
+  final List<String> _selectedAmenities = [];
+  final List<_UploadedImage> _uploadedImages = [];
 
   // Para birimi seçenekleri
   final List<Map<String, String>> _currencyOptions = [
@@ -142,7 +142,9 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Konum izni kalıcı olarak reddedildi. Ayarlardan izin verin.'),
+              content: Text(
+                'Konum izni kalıcı olarak reddedildi. Ayarlardan izin verin.',
+              ),
             ),
           );
         }
@@ -176,11 +178,12 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
           ),
         );
       }
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to get location', error: e, stackTrace: st, source: 'AddPropertyScreen:_getCurrentLocation');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Konum alınamadı: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Konum alınamadı: $e')));
       }
     } finally {
       if (mounted) {
@@ -194,7 +197,9 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
     // Mevcut değerleri göster
     if (_selectedLocation != null) {
       _latitudeController.text = _selectedLocation!.latitude.toStringAsFixed(6);
-      _longitudeController.text = _selectedLocation!.longitude.toStringAsFixed(6);
+      _longitudeController.text = _selectedLocation!.longitude.toStringAsFixed(
+        6,
+      );
     }
 
     showDialog(
@@ -211,7 +216,10 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
                 hintText: 'Örn: 35.185600',
                 border: OutlineInputBorder(),
               ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+                signed: true,
+              ),
             ),
             const SizedBox(height: 16),
             TextField(
@@ -221,15 +229,15 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
                 hintText: 'Örn: 33.382300',
                 border: OutlineInputBorder(),
               ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+                signed: true,
+              ),
             ),
             const SizedBox(height: 12),
             Text(
               'Google Maps\'ten koordinat alabilirsiniz:\nSağ tık → "Buradaki koordinatları kopyala"',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-              ),
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
             ),
           ],
         ),
@@ -260,16 +268,16 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
     final lng = double.tryParse(_longitudeController.text.replaceAll(',', '.'));
 
     if (lat == null || lng == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Geçerli koordinat girin')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Geçerli koordinat girin')));
       return;
     }
 
     if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Koordinat aralık dışında')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Koordinat aralık dışında')));
       return;
     }
 
@@ -341,8 +349,8 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
                     color: isActive
                         ? const Color(0xFF3B82F6)
                         : isCompleted
-                            ? const Color(0xFF10B981)
-                            : const Color(0xFFE2E8F0),
+                        ? const Color(0xFF10B981)
+                        : const Color(0xFFE2E8F0),
                     shape: BoxShape.circle,
                   ),
                   child: Center(
@@ -351,7 +359,9 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
                         : Text(
                             '${index + 1}',
                             style: TextStyle(
-                              color: isActive ? Colors.white : const Color(0xFF64748B),
+                              color: isActive
+                                  ? Colors.white
+                                  : const Color(0xFF64748B),
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
                             ),
@@ -363,8 +373,12 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
                   child: Text(
                     steps[index],
                     style: TextStyle(
-                      color: isActive ? const Color(0xFF1E293B) : const Color(0xFF64748B),
-                      fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                      color: isActive
+                          ? const Color(0xFF1E293B)
+                          : const Color(0xFF64748B),
+                      fontWeight: isActive
+                          ? FontWeight.w600
+                          : FontWeight.normal,
                       fontSize: 12,
                     ),
                     overflow: TextOverflow.ellipsis,
@@ -374,7 +388,9 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
                   Container(
                     width: 24,
                     height: 2,
-                    color: isCompleted ? const Color(0xFF10B981) : const Color(0xFFE2E8F0),
+                    color: isCompleted
+                        ? const Color(0xFF10B981)
+                        : const Color(0xFFE2E8F0),
                   ),
               ],
             ),
@@ -412,11 +428,19 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
         Row(
           children: [
             Expanded(
-              child: _buildListingTypeCard(ListingType.sale, 'Satılık', Icons.sell),
+              child: _buildListingTypeCard(
+                ListingType.sale,
+                'Satılık',
+                Icons.sell,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: _buildListingTypeCard(ListingType.rent, 'Kiralık', Icons.home),
+              child: _buildListingTypeCard(
+                ListingType.rent,
+                'Kiralık',
+                Icons.home,
+              ),
             ),
           ],
         ),
@@ -441,7 +465,9 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
               backgroundColor: Colors.white,
               selectedColor: const Color(0xFF3B82F6).withValues(alpha: 0.1),
               labelStyle: TextStyle(
-                color: isSelected ? const Color(0xFF3B82F6) : const Color(0xFF64748B),
+                color: isSelected
+                    ? const Color(0xFF3B82F6)
+                    : const Color(0xFF64748B),
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               ),
             );
@@ -525,16 +551,14 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
                 controller: _priceController,
                 decoration: _inputDecoration('Fiyat'),
                 keyboardType: TextInputType.number,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                ],
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Fiyat zorunludur';
                   }
                   final price = double.tryParse(value);
                   if (price == null || price <= 0) {
-                    return 'Geçerli bir fiyat girin';
+                    return 'Fiyat 0\'dan büyük olmalıdır';
                   }
                   return null;
                 },
@@ -565,7 +589,10 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: isSelected ? type.color : const Color(0xFF64748B)),
+            Icon(
+              icon,
+              color: isSelected ? type.color : const Color(0xFF64748B),
+            ),
             const SizedBox(width: 8),
             Text(
               label,
@@ -592,7 +619,7 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
         const SizedBox(height: 12),
         cities.when(
           data: (cityList) => DropdownButtonFormField<String>(
-            value: _selectedCity,
+            initialValue: _selectedCity,
             decoration: _inputDecoration('Şehir seçin'),
             items: cityList.map((city) {
               return DropdownMenuItem(value: city, child: Text(city));
@@ -631,23 +658,28 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
           )
         else
           districts?.when(
-            data: (districtList) => DropdownButtonFormField<String>(
-              value: _selectedDistrict,
-              decoration: _inputDecoration('İlçe seçin'),
-              items: districtList.map((district) {
-                return DropdownMenuItem(value: district, child: Text(district));
-              }).toList(),
-              onChanged: (value) => setState(() => _selectedDistrict = value),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'İlçe seçimi zorunludur';
-                }
-                return null;
-              },
-            ),
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (e, _) => Text('Hata: $e'),
-          ) ?? const SizedBox(),
+                data: (districtList) => DropdownButtonFormField<String>(
+                  initialValue: _selectedDistrict,
+                  decoration: _inputDecoration('İlçe seçin'),
+                  items: districtList.map((district) {
+                    return DropdownMenuItem(
+                      value: district,
+                      child: Text(district),
+                    );
+                  }).toList(),
+                  onChanged: (value) =>
+                      setState(() => _selectedDistrict = value),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'İlçe seçimi zorunludur';
+                    }
+                    return null;
+                  },
+                ),
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Text('Hata: $e'),
+              ) ??
+              const SizedBox(),
 
         const SizedBox(height: 24),
         _buildSectionTitle('Adres (Opsiyonel)'),
@@ -702,10 +734,7 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
         const SizedBox(height: 12),
         Text(
           'veya haritaya tıklayarak konum seçin',
-          style: TextStyle(
-            color: Colors.grey[600],
-            fontSize: 13,
-          ),
+          style: TextStyle(color: Colors.grey[600], fontSize: 13),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 12),
@@ -728,14 +757,18 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
                   onTap: (tapPosition, point) {
                     setState(() {
                       _selectedLocation = point;
-                      _latitudeController.text = point.latitude.toStringAsFixed(6);
-                      _longitudeController.text = point.longitude.toStringAsFixed(6);
+                      _latitudeController.text = point.latitude.toStringAsFixed(
+                        6,
+                      );
+                      _longitudeController.text = point.longitude
+                          .toStringAsFixed(6);
                     });
                   },
                 ),
                 children: [
                   TileLayer(
-                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    urlTemplate:
+                        'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                     userAgentPackageName: 'com.emlakci.panel',
                   ),
                   if (_selectedLocation != null)
@@ -762,7 +795,10 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
                   left: 8,
                   right: 8,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.95),
                       borderRadius: BorderRadius.circular(8),
@@ -775,7 +811,11 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.check_circle, color: Color(0xFF10B981), size: 20),
+                        const Icon(
+                          Icons.check_circle,
+                          color: Color(0xFF10B981),
+                          size: 20,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -819,10 +859,17 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
             Expanded(
               child: TextFormField(
                 controller: _squareMetersController,
-                decoration: _labeledInputDecoration('Brüt m²', Icons.square_foot),
+                decoration: _labeledInputDecoration(
+                  'Brüt m²',
+                  Icons.square_foot,
+                ),
                 keyboardType: TextInputType.number,
                 validator: (value) {
                   if (value == null || value.isEmpty) return 'm² zorunludur';
+                  final sqm = double.tryParse(value);
+                  if (sqm == null || sqm <= 0) {
+                    return 'm² 0\'dan büyük olmalıdır';
+                  }
                   return null;
                 },
               ),
@@ -831,7 +878,10 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
             Expanded(
               child: TextFormField(
                 controller: _netSquareMetersController,
-                decoration: _labeledInputDecoration('Net m²', Icons.crop_square),
+                decoration: _labeledInputDecoration(
+                  'Net m²',
+                  Icons.crop_square,
+                ),
                 keyboardType: TextInputType.number,
               ),
             ),
@@ -846,7 +896,13 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
                 decoration: _labeledInputDecoration('Oda Sayısı', Icons.bed),
                 keyboardType: TextInputType.number,
                 validator: (value) {
-                  if (value == null || value.isEmpty) return 'Oda sayısı zorunludur';
+                  if (value == null || value.isEmpty) {
+                    return 'Oda sayısı zorunludur';
+                  }
+                  final rooms = double.tryParse(value);
+                  if (rooms == null || rooms <= 0) {
+                    return 'Oda sayısı 0\'dan büyük olmalıdır';
+                  }
                   return null;
                 },
               ),
@@ -855,7 +911,10 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
             Expanded(
               child: TextFormField(
                 controller: _bathroomsController,
-                decoration: _labeledInputDecoration('Banyo', Icons.bathtub_outlined),
+                decoration: _labeledInputDecoration(
+                  'Banyo',
+                  Icons.bathtub_outlined,
+                ),
                 keyboardType: TextInputType.number,
               ),
             ),
@@ -867,7 +926,10 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
             Expanded(
               child: TextFormField(
                 controller: _floorController,
-                decoration: _labeledInputDecoration('Bulunduğu Kat', Icons.stairs),
+                decoration: _labeledInputDecoration(
+                  'Bulunduğu Kat',
+                  Icons.stairs,
+                ),
                 keyboardType: TextInputType.number,
               ),
             ),
@@ -875,7 +937,10 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
             Expanded(
               child: TextFormField(
                 controller: _totalFloorsController,
-                decoration: _labeledInputDecoration('Toplam Kat', Icons.apartment),
+                decoration: _labeledInputDecoration(
+                  'Toplam Kat',
+                  Icons.apartment,
+                ),
                 keyboardType: TextInputType.number,
               ),
             ),
@@ -884,7 +949,10 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
         const SizedBox(height: 16),
         TextFormField(
           controller: _buildingAgeController,
-          decoration: _labeledInputDecoration('Bina Yaşı', Icons.calendar_today),
+          decoration: _labeledInputDecoration(
+            'Bina Yaşı',
+            Icons.calendar_today,
+          ),
           keyboardType: TextInputType.number,
         ),
 
@@ -903,7 +971,10 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
             DropdownMenuItem(value: 'dogalgaz', child: Text('Doğalgaz Sobası')),
             DropdownMenuItem(value: 'klima', child: Text('Klima')),
             DropdownMenuItem(value: 'soba', child: Text('Soba')),
-            DropdownMenuItem(value: 'gunes_enerjisi', child: Text('Güneş Enerjisi')),
+            DropdownMenuItem(
+              value: 'gunes_enerjisi',
+              child: Text('Güneş Enerjisi'),
+            ),
             DropdownMenuItem(value: 'yok', child: Text('Yok')),
           ],
           onChanged: (v) => setState(() => _heatingType = v),
@@ -922,10 +993,22 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
                   DropdownMenuItem(value: 'guney', child: Text('Güney')),
                   DropdownMenuItem(value: 'dogu', child: Text('Doğu')),
                   DropdownMenuItem(value: 'bati', child: Text('Batı')),
-                  DropdownMenuItem(value: 'kuzey_dogu', child: Text('Kuzeydoğu')),
-                  DropdownMenuItem(value: 'kuzey_bati', child: Text('Kuzeybatı')),
-                  DropdownMenuItem(value: 'guney_dogu', child: Text('Güneydoğu')),
-                  DropdownMenuItem(value: 'guney_bati', child: Text('Güneybatı')),
+                  DropdownMenuItem(
+                    value: 'kuzey_dogu',
+                    child: Text('Kuzeydoğu'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'kuzey_bati',
+                    child: Text('Kuzeybatı'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'guney_dogu',
+                    child: Text('Güneydoğu'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'guney_bati',
+                    child: Text('Güneybatı'),
+                  ),
                 ],
                 onChanged: (v) => setState(() => _facingDirection = v),
               ),
@@ -958,13 +1041,19 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
             Expanded(
               child: DropdownButtonFormField<String>(
                 initialValue: _interiorStatus,
-                decoration: _labeledInputDecoration('İç Durum', Icons.home_repair_service),
+                decoration: _labeledInputDecoration(
+                  'İç Durum',
+                  Icons.home_repair_service,
+                ),
                 isExpanded: true,
                 items: const [
                   DropdownMenuItem(value: 'sifir', child: Text('Sıfır')),
                   DropdownMenuItem(value: 'iyi', child: Text('İyi')),
                   DropdownMenuItem(value: 'orta', child: Text('Orta')),
-                  DropdownMenuItem(value: 'tadilat_gerekli', child: Text('Tadilatlı')),
+                  DropdownMenuItem(
+                    value: 'tadilat_gerekli',
+                    child: Text('Tadilatlı'),
+                  ),
                   DropdownMenuItem(value: 'ham', child: Text('Ham')),
                 ],
                 onChanged: (v) => setState(() => _interiorStatus = v),
@@ -975,13 +1064,28 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
             Expanded(
               child: DropdownButtonFormField<String>(
                 initialValue: _deedType,
-                decoration: _labeledInputDecoration('Tapu Durumu', Icons.description),
+                decoration: _labeledInputDecoration(
+                  'Tapu Durumu',
+                  Icons.description,
+                ),
                 isExpanded: true,
                 items: const [
-                  DropdownMenuItem(value: 'kat_mulkiyeti', child: Text('Kat Mülkiyeti')),
-                  DropdownMenuItem(value: 'kat_irtifaki', child: Text('Kat İrtifakı')),
-                  DropdownMenuItem(value: 'arsa_tapusu', child: Text('Arsa Tapusu')),
-                  DropdownMenuItem(value: 'hisseli', child: Text('Hisseli Tapu')),
+                  DropdownMenuItem(
+                    value: 'kat_mulkiyeti',
+                    child: Text('Kat Mülkiyeti'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'kat_irtifaki',
+                    child: Text('Kat İrtifakı'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'arsa_tapusu',
+                    child: Text('Arsa Tapusu'),
+                  ),
+                  DropdownMenuItem(
+                    value: 'hisseli',
+                    child: Text('Hisseli Tapu'),
+                  ),
                   DropdownMenuItem(value: 'kocan', child: Text('Koçan')),
                 ],
                 onChanged: (v) => setState(() => _deedType = v),
@@ -998,13 +1102,48 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
           spacing: 8,
           runSpacing: 8,
           children: [
-            _buildFeatureChip('Eşyalı', _hasFurniture, Icons.chair, (v) => setState(() => _hasFurniture = v)),
-            _buildFeatureChip('Ankastre Mutfak', _hasBuiltinKitchen, Icons.countertops, (v) => setState(() => _hasBuiltinKitchen = v)),
-            _buildFeatureChip('Ebeveyn Banyosu', _hasParentBathroom, Icons.shower, (v) => setState(() => _hasParentBathroom = v)),
-            _buildFeatureChip('Jakuzi', _hasJacuzzi, Icons.hot_tub, (v) => setState(() => _hasJacuzzi = v)),
-            _buildFeatureChip('Şömine', _hasFireplace, Icons.fireplace, (v) => setState(() => _hasFireplace = v)),
-            _buildFeatureChip('Kiler/Depo', _hasStorage, Icons.inventory_2, (v) => setState(() => _hasStorage = v)),
-            _buildFeatureChip('Sauna', _hasSauna, Icons.spa, (v) => setState(() => _hasSauna = v)),
+            _buildFeatureChip(
+              'Eşyalı',
+              _hasFurniture,
+              Icons.chair,
+              (v) => setState(() => _hasFurniture = v),
+            ),
+            _buildFeatureChip(
+              'Ankastre Mutfak',
+              _hasBuiltinKitchen,
+              Icons.countertops,
+              (v) => setState(() => _hasBuiltinKitchen = v),
+            ),
+            _buildFeatureChip(
+              'Ebeveyn Banyosu',
+              _hasParentBathroom,
+              Icons.shower,
+              (v) => setState(() => _hasParentBathroom = v),
+            ),
+            _buildFeatureChip(
+              'Jakuzi',
+              _hasJacuzzi,
+              Icons.hot_tub,
+              (v) => setState(() => _hasJacuzzi = v),
+            ),
+            _buildFeatureChip(
+              'Şömine',
+              _hasFireplace,
+              Icons.fireplace,
+              (v) => setState(() => _hasFireplace = v),
+            ),
+            _buildFeatureChip(
+              'Kiler/Depo',
+              _hasStorage,
+              Icons.inventory_2,
+              (v) => setState(() => _hasStorage = v),
+            ),
+            _buildFeatureChip(
+              'Sauna',
+              _hasSauna,
+              Icons.spa,
+              (v) => setState(() => _hasSauna = v),
+            ),
           ],
         ),
 
@@ -1016,12 +1155,42 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
           spacing: 8,
           runSpacing: 8,
           children: [
-            _buildFeatureChip('Balkon', _hasBalcony, Icons.balcony, (v) => setState(() => _hasBalcony = v)),
-            _buildFeatureChip('Bahçe', _hasGarden, Icons.grass, (v) => setState(() => _hasGarden = v)),
-            _buildFeatureChip('Teras', _hasTerrace, Icons.deck, (v) => setState(() => _hasTerrace = v)),
-            _buildFeatureChip('Havuz', _hasPool, Icons.pool, (v) => setState(() => _hasPool = v)),
-            _buildFeatureChip('Otopark', _hasParking, Icons.local_parking, (v) => setState(() => _hasParking = v)),
-            _buildFeatureChip('Barbekü Alanı', _hasBarbeque, Icons.outdoor_grill, (v) => setState(() => _hasBarbeque = v)),
+            _buildFeatureChip(
+              'Balkon',
+              _hasBalcony,
+              Icons.balcony,
+              (v) => setState(() => _hasBalcony = v),
+            ),
+            _buildFeatureChip(
+              'Bahçe',
+              _hasGarden,
+              Icons.grass,
+              (v) => setState(() => _hasGarden = v),
+            ),
+            _buildFeatureChip(
+              'Teras',
+              _hasTerrace,
+              Icons.deck,
+              (v) => setState(() => _hasTerrace = v),
+            ),
+            _buildFeatureChip(
+              'Havuz',
+              _hasPool,
+              Icons.pool,
+              (v) => setState(() => _hasPool = v),
+            ),
+            _buildFeatureChip(
+              'Otopark',
+              _hasParking,
+              Icons.local_parking,
+              (v) => setState(() => _hasParking = v),
+            ),
+            _buildFeatureChip(
+              'Barbekü Alanı',
+              _hasBarbeque,
+              Icons.outdoor_grill,
+              (v) => setState(() => _hasBarbeque = v),
+            ),
           ],
         ),
 
@@ -1033,11 +1202,36 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
           spacing: 8,
           runSpacing: 8,
           children: [
-            _buildFeatureChip('Asansör', _hasElevator, Icons.elevator, (v) => setState(() => _hasElevator = v)),
-            _buildFeatureChip('Site İçi', _isInComplex, Icons.holiday_village, (v) => setState(() => _isInComplex = v)),
-            _buildFeatureChip('Spor Salonu', _hasGym, Icons.fitness_center, (v) => setState(() => _hasGym = v)),
-            _buildFeatureChip('Kapıcı', _hasDoorman, Icons.person_pin, (v) => setState(() => _hasDoorman = v)),
-            _buildFeatureChip('Jeneratör', _hasGenerator, Icons.bolt, (v) => setState(() => _hasGenerator = v)),
+            _buildFeatureChip(
+              'Asansör',
+              _hasElevator,
+              Icons.elevator,
+              (v) => setState(() => _hasElevator = v),
+            ),
+            _buildFeatureChip(
+              'Site İçi',
+              _isInComplex,
+              Icons.holiday_village,
+              (v) => setState(() => _isInComplex = v),
+            ),
+            _buildFeatureChip(
+              'Spor Salonu',
+              _hasGym,
+              Icons.fitness_center,
+              (v) => setState(() => _hasGym = v),
+            ),
+            _buildFeatureChip(
+              'Kapıcı',
+              _hasDoorman,
+              Icons.person_pin,
+              (v) => setState(() => _hasDoorman = v),
+            ),
+            _buildFeatureChip(
+              'Jeneratör',
+              _hasGenerator,
+              Icons.bolt,
+              (v) => setState(() => _hasGenerator = v),
+            ),
           ],
         ),
 
@@ -1049,8 +1243,18 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
           spacing: 8,
           runSpacing: 8,
           children: [
-            _buildFeatureChip('Klima', _hasAirConditioning, Icons.ac_unit, (v) => setState(() => _hasAirConditioning = v)),
-            _buildFeatureChip('Doğalgaz', _hasNaturalGas, Icons.local_fire_department, (v) => setState(() => _hasNaturalGas = v)),
+            _buildFeatureChip(
+              'Klima',
+              _hasAirConditioning,
+              Icons.ac_unit,
+              (v) => setState(() => _hasAirConditioning = v),
+            ),
+            _buildFeatureChip(
+              'Doğalgaz',
+              _hasNaturalGas,
+              Icons.local_fire_department,
+              (v) => setState(() => _hasNaturalGas = v),
+            ),
           ],
         ),
 
@@ -1062,10 +1266,30 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
           spacing: 8,
           runSpacing: 8,
           children: [
-            _buildFeatureChip('Güvenlik', _hasSecurity, Icons.security, (v) => setState(() => _hasSecurity = v)),
-            _buildFeatureChip('Alarm Sistemi', _hasAlarm, Icons.notifications_active, (v) => setState(() => _hasAlarm = v)),
-            _buildFeatureChip('Çelik Kapı', _hasSteelDoor, Icons.door_front_door, (v) => setState(() => _hasSteelDoor = v)),
-            _buildFeatureChip('Görüntülü Diafon', _hasVideoIntercom, Icons.videocam, (v) => setState(() => _hasVideoIntercom = v)),
+            _buildFeatureChip(
+              'Güvenlik',
+              _hasSecurity,
+              Icons.security,
+              (v) => setState(() => _hasSecurity = v),
+            ),
+            _buildFeatureChip(
+              'Alarm Sistemi',
+              _hasAlarm,
+              Icons.notifications_active,
+              (v) => setState(() => _hasAlarm = v),
+            ),
+            _buildFeatureChip(
+              'Çelik Kapı',
+              _hasSteelDoor,
+              Icons.door_front_door,
+              (v) => setState(() => _hasSteelDoor = v),
+            ),
+            _buildFeatureChip(
+              'Görüntülü Diafon',
+              _hasVideoIntercom,
+              Icons.videocam,
+              (v) => setState(() => _hasVideoIntercom = v),
+            ),
           ],
         ),
 
@@ -1077,9 +1301,24 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
           spacing: 8,
           runSpacing: 8,
           children: [
-            _buildFeatureChip('Akıllı Ev', _isSmartHome, Icons.home_max, (v) => setState(() => _isSmartHome = v)),
-            _buildFeatureChip('Fiber İnternet', _hasInternet, Icons.router, (v) => setState(() => _hasInternet = v)),
-            _buildFeatureChip('Uydu/Kablolu TV', _hasSatellite, Icons.satellite_alt, (v) => setState(() => _hasSatellite = v)),
+            _buildFeatureChip(
+              'Akıllı Ev',
+              _isSmartHome,
+              Icons.home_max,
+              (v) => setState(() => _isSmartHome = v),
+            ),
+            _buildFeatureChip(
+              'Fiber İnternet',
+              _hasInternet,
+              Icons.router,
+              (v) => setState(() => _hasInternet = v),
+            ),
+            _buildFeatureChip(
+              'Uydu/Kablolu TV',
+              _hasSatellite,
+              Icons.satellite_alt,
+              (v) => setState(() => _hasSatellite = v),
+            ),
           ],
         ),
         const SizedBox(height: 16),
@@ -1111,7 +1350,12 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
     );
   }
 
-  Widget _buildFeatureChip(String label, bool isSelected, IconData icon, Function(bool) onChanged) {
+  Widget _buildFeatureChip(
+    String label,
+    bool isSelected,
+    IconData icon,
+    Function(bool) onChanged,
+  ) {
     return FilterChip(
       label: Text(label),
       selected: isSelected,
@@ -1177,7 +1421,10 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFF3B82F6), style: BorderStyle.solid),
+              border: Border.all(
+                color: const Color(0xFF3B82F6),
+                style: BorderStyle.solid,
+              ),
             ),
             child: Column(
               children: [
@@ -1187,7 +1434,11 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
                     color: const Color(0xFF3B82F6).withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.cloud_upload, color: Color(0xFF3B82F6), size: 32),
+                  child: const Icon(
+                    Icons.cloud_upload,
+                    color: Color(0xFF3B82F6),
+                    size: 32,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 const Text(
@@ -1212,7 +1463,9 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
 
         // Uploaded Images Grid
         if (_uploadedImages.isNotEmpty) ...[
-          _buildSectionTitle('Yüklenen Fotoğraflar (${_uploadedImages.length}/10)'),
+          _buildSectionTitle(
+            'Yüklenen Fotoğraflar (${_uploadedImages.length}/10)',
+          ),
           const SizedBox(height: 12),
           GridView.builder(
             shrinkWrap: true,
@@ -1249,14 +1502,21 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
                       top: 4,
                       left: 4,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFF3B82F6),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: const Text(
                           'Kapak',
-                          style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
@@ -1275,7 +1535,11 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
                           color: Colors.red,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.close, color: Colors.white, size: 14),
+                        child: const Icon(
+                          Icons.close,
+                          color: Colors.white,
+                          size: 14,
+                        ),
                       ),
                     ),
                   ),
@@ -1303,19 +1567,19 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
         for (final file in filesToAdd) {
           if (file.bytes != null) {
             setState(() {
-              _uploadedImages.add(_UploadedImage(
-                bytes: file.bytes!,
-                name: file.name,
-              ));
+              _uploadedImages.add(
+                _UploadedImage(bytes: file.bytes!, name: file.name),
+              );
             });
           }
         }
       }
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to pick images', error: e, stackTrace: st, source: 'AddPropertyScreen:_pickImages');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Fotoğraf yükleme hatası: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Fotoğraf yükleme hatası: $e')));
       }
     }
   }
@@ -1373,7 +1637,9 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
                 onPressed: () => setState(() => _currentStep--),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
                 child: const Text('Geri'),
               ),
@@ -1386,13 +1652,18 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
                 backgroundColor: const Color(0xFF3B82F6),
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
               child: _isLoading
                   ? const SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
                     )
                   : Text(_currentStep == 3 ? 'İlanı Kaydet' : 'İleri'),
             ),
@@ -1421,7 +1692,8 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
         return;
       }
     } else if (_currentStep == 2) {
-      if (_squareMetersController.text.isEmpty || _roomsController.text.isEmpty) {
+      if (_squareMetersController.text.isEmpty ||
+          _roomsController.text.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Lütfen m² ve oda sayısı girin')),
         );
@@ -1458,15 +1730,20 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
       final List<String> imageUrls = [];
       for (int i = 0; i < _uploadedImages.length; i++) {
         final image = _uploadedImages[i];
-        final fileName = '${userId}_${DateTime.now().millisecondsSinceEpoch}_$i.jpg';
+        final fileName =
+            '${userId}_${DateTime.now().millisecondsSinceEpoch}_$i.jpg';
 
-        await supabase.storage.from('images').uploadBinary(
-          'properties/$fileName',
-          image.bytes,
-          fileOptions: const FileOptions(contentType: 'image/jpeg'),
-        );
+        await supabase.storage
+            .from('images')
+            .uploadBinary(
+              'properties/$fileName',
+              image.bytes,
+              fileOptions: const FileOptions(contentType: 'image/jpeg'),
+            );
 
-        final publicUrl = supabase.storage.from('images').getPublicUrl('properties/$fileName');
+        final publicUrl = supabase.storage
+            .from('images')
+            .getPublicUrl('properties/$fileName');
         imageUrls.add(publicUrl);
       }
 
@@ -1544,7 +1821,8 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen> {
         );
         context.pop();
       }
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to create property', error: e, stackTrace: st, source: 'AddPropertyScreen:_submitProperty');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Hata: $e'), backgroundColor: Colors.red),

@@ -81,8 +81,7 @@ class _ListingTabContent extends ConsumerWidget {
             description: status == CarListingStatus.active
                 ? 'Ilk ilaninizi olusturarak baslayabilirsiniz.'
                 : null,
-            actionLabel:
-                status == CarListingStatus.active ? 'Ilan Ekle' : null,
+            actionLabel: status == CarListingStatus.active ? 'Ilan Ekle' : null,
             onAction: status == CarListingStatus.active
                 ? () => context.push('/listings/add')
                 : null,
@@ -106,7 +105,7 @@ class _ListingTabContent extends ConsumerWidget {
       loading: () => ListView.builder(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         itemCount: 5,
-        itemBuilder: (_, __) => const SkeletonCard(),
+        itemBuilder: (_, _) => const SkeletonCard(),
       ),
       error: (error, _) => Center(
         child: Column(
@@ -124,8 +123,7 @@ class _ListingTabContent extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
             TextButton(
-              onPressed: () =>
-                  ref.invalidate(listingsByStatusProvider(status)),
+              onPressed: () => ref.invalidate(listingsByStatusProvider(status)),
               child: const Text('Tekrar Dene'),
             ),
           ],
@@ -165,8 +163,7 @@ class _ListingCard extends StatelessWidget {
                       width: 100,
                       height: 80,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) =>
-                          _buildImagePlaceholder(),
+                      errorBuilder: (_, _, _) => _buildImagePlaceholder(),
                     )
                   : _buildImagePlaceholder(),
             ),

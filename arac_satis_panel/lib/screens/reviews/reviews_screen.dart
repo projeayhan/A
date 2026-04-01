@@ -26,7 +26,7 @@ class ReviewsScreen extends ConsumerWidget {
               return _buildRatingOverview(isDark, profile);
             },
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (_, __) => const SizedBox.shrink(),
+            error: (_, _) => const SizedBox.shrink(),
           ),
           const SizedBox(height: 32),
 
@@ -95,11 +95,7 @@ class ReviewsScreen extends ConsumerWidget {
               } else {
                 icon = Icons.star_outline;
               }
-              return Icon(
-                icon,
-                color: CarSalesColors.secondary,
-                size: 28,
-              );
+              return Icon(icon, color: CarSalesColors.secondary, size: 28);
             }),
           ),
           const SizedBox(height: 8),

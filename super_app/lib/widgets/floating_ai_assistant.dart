@@ -25,7 +25,13 @@ class _PendingVoiceResults {
   final List<Map<String, dynamic>>? products;
   final List<Map<String, dynamic>>? rentalCars;
   final Map<String, dynamic>? priceComparison;
-  const _PendingVoiceResults({required this.userMessage, required this.aiMessage, this.products, this.rentalCars, this.priceComparison});
+  const _PendingVoiceResults({
+    required this.userMessage,
+    required this.aiMessage,
+    this.products,
+    this.rentalCars,
+    this.priceComparison,
+  });
 }
 
 class FloatingAIAssistant extends ConsumerStatefulWidget {
@@ -38,7 +44,8 @@ class FloatingAIAssistant extends ConsumerStatefulWidget {
   }
 
   @override
-  ConsumerState<FloatingAIAssistant> createState() => _FloatingAIAssistantState();
+  ConsumerState<FloatingAIAssistant> createState() =>
+      _FloatingAIAssistantState();
 }
 
 class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
@@ -126,9 +133,10 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
       vsync: this,
     )..repeat(reverse: true);
 
-    _horizontalAnimation = Tween<double>(begin: 16, end: 120).animate(
-      CurvedAnimation(parent: _moveController, curve: Curves.linear),
-    );
+    _horizontalAnimation = Tween<double>(
+      begin: 16,
+      end: 120,
+    ).animate(CurvedAnimation(parent: _moveController, curve: Curves.linear));
 
     _moveController.addListener(() {
       if (!_isManualPosition && !_isChatOpen) {
@@ -143,9 +151,10 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
       vsync: this,
     );
 
-    _hoverScaleAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
-      CurvedAnimation(parent: _hoverController, curve: Curves.easeOut),
-    );
+    _hoverScaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 1.1,
+    ).animate(CurvedAnimation(parent: _hoverController, curve: Curves.easeOut));
 
     // Shake animation for notifications
     _shakeController = AnimationController(
@@ -284,7 +293,8 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
     if (!initialized) {
       setState(() {
         _isVoicePreparing = false;
-        _voiceResponseText = 'Ses tanıma başlatılamadı. Mikrofon izni verdiğinizden emin olun.';
+        _voiceResponseText =
+            'Ses tanıma başlatılamadı. Mikrofon izni verdiğinizden emin olun.';
         _showVoiceResponse = true;
       });
       _voiceResponseDismissTimer?.cancel();
@@ -317,7 +327,8 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
     if (!started && mounted) {
       setState(() {
         _isVoiceMode = false;
-        _voiceResponseText = 'Ses dinleme başlatılamadı: ${voiceInputService.lastError}';
+        _voiceResponseText =
+            'Ses dinleme başlatılamadı: ${voiceInputService.lastError}';
         _showVoiceResponse = true;
       });
       _voiceResponseDismissTimer?.cancel();
@@ -390,8 +401,11 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
         final rentalResults = (response['rental_results'] as List<dynamic>?)
             ?.map((e) => Map<String, dynamic>.from(e as Map))
             .toList();
-        final priceComparison = response['price_comparison'] as Map<String, dynamic>?;
-        if (searchResults != null && searchResults.isNotEmpty || rentalResults != null && rentalResults.isNotEmpty || priceComparison != null) {
+        final priceComparison =
+            response['price_comparison'] as Map<String, dynamic>?;
+        if (searchResults != null && searchResults.isNotEmpty ||
+            rentalResults != null && rentalResults.isNotEmpty ||
+            priceComparison != null) {
           _pendingVoiceResults = _PendingVoiceResults(
             userMessage: text,
             aiMessage: aiMsg,
@@ -434,6 +448,7 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
               if (mounted) _dismissVoiceResponse();
             });
           }
+
           voiceOutputService.speak(aiMsg, onComplete: onAudioComplete);
         }
 
@@ -467,7 +482,8 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
       } else {
         setState(() {
           _isVoiceProcessing = false;
-          _voiceResponseText = response['error'] as String? ?? 'Üzgünüm, bir hata oluştu.';
+          _voiceResponseText =
+              response['error'] as String? ?? 'Üzgünüm, bir hata oluştu.';
           _showVoiceResponse = true;
         });
         _voiceResponseDismissTimer = Timer(const Duration(seconds: 5), () {
@@ -503,26 +519,34 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
     final merchantType = payload['merchant_type'] as String? ?? 'restaurant';
 
     if (merchantType == 'store' || merchantType == 'market') {
-      ref.read(storeCartProvider.notifier).addItem(StoreCartItem(
-        id: productId,
-        productId: productId,
-        name: name,
-        price: price,
-        quantity: quantity,
-        imageUrl: imageUrl,
-        storeId: merchantId,
-        storeName: merchantName,
-      ));
+      ref
+          .read(storeCartProvider.notifier)
+          .addItem(
+            StoreCartItem(
+              id: productId,
+              productId: productId,
+              name: name,
+              price: price,
+              quantity: quantity,
+              imageUrl: imageUrl,
+              storeId: merchantId,
+              storeName: merchantName,
+            ),
+          );
     } else {
-      ref.read(cartProvider.notifier).addItem(CartItem(
-        id: productId,
-        name: name,
-        price: price,
-        quantity: quantity,
-        imageUrl: imageUrl,
-        merchantId: merchantId,
-        merchantName: merchantName,
-      ));
+      ref
+          .read(cartProvider.notifier)
+          .addItem(
+            CartItem(
+              id: productId,
+              name: name,
+              price: price,
+              quantity: quantity,
+              imageUrl: imageUrl,
+              merchantId: merchantId,
+              merchantName: merchantName,
+            ),
+          );
     }
   }
 
@@ -559,7 +583,8 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
               Center(
                 child: Container(
                   margin: const EdgeInsets.only(top: 10, bottom: 8),
-                  width: 40, height: 4,
+                  width: 40,
+                  height: 4,
                   decoration: BoxDecoration(
                     color: Colors.white.withAlpha(60),
                     borderRadius: BorderRadius.circular(2),
@@ -573,21 +598,39 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
                   const SizedBox(width: 8),
                   Text(
                     hasProducts ? 'Bulunan Urunler' : 'Bulunan Araclar',
-                    style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFF00D4FF).withAlpha(30),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Text('$totalCount', style: const TextStyle(color: Color(0xFF00D4FF), fontSize: 12, fontWeight: FontWeight.bold)),
+                    child: Text(
+                      '$totalCount',
+                      style: const TextStyle(
+                        color: Color(0xFF00D4FF),
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                   const Spacer(),
                   GestureDetector(
                     onTap: () => Navigator.pop(sheetContext),
-                    child: const Icon(Icons.close, color: Colors.white54, size: 22),
+                    child: const Icon(
+                      Icons.close,
+                      color: Colors.white54,
+                      size: 22,
+                    ),
                   ),
                 ],
               ),
@@ -601,20 +644,26 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
                     Navigator.pop(sheetContext);
                     final id = product['id'] as String? ?? '';
                     if (id.isEmpty) return;
-                    final merchantType = product['merchant_type'] as String? ?? 'restaurant';
-                    final isStore = merchantType == 'store' || merchantType == 'market';
+                    final merchantType =
+                        product['merchant_type'] as String? ?? 'restaurant';
+                    final isStore =
+                        merchantType == 'store' || merchantType == 'market';
                     Future.delayed(const Duration(milliseconds: 200), () {
                       final ctx = rootNavigatorKey.currentContext;
                       if (ctx == null) return;
                       if (isStore) {
                         GoRouter.of(ctx).push('/store/product/$id');
                       } else {
-                        GoRouter.of(ctx).push('/food/item/$id', extra: {
-                          'name': product['name'] ?? '',
-                          'price': (product['price'] as num?)?.toDouble() ?? 0.0,
-                          'imageUrl': product['image_url'] ?? '',
-                          'restaurantName': product['merchant_name'] ?? '',
-                        });
+                        GoRouter.of(ctx).push(
+                          '/food/item/$id',
+                          extra: {
+                            'name': product['name'] ?? '',
+                            'price':
+                                (product['price'] as num?)?.toDouble() ?? 0.0,
+                            'imageUrl': product['image_url'] ?? '',
+                            'restaurantName': product['merchant_name'] ?? '',
+                          },
+                        );
                       }
                     });
                   },
@@ -632,10 +681,14 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
                     Future.delayed(const Duration(milliseconds: 200), () {
                       final ctx = rootNavigatorKey.currentContext;
                       if (ctx != null) {
-                        GoRouter.of(ctx).push('/rental/car/$carId', extra: {
-                          if (pickupDate != null) 'pickup_date': pickupDate,
-                          if (dropoffDate != null) 'dropoff_date': dropoffDate,
-                        });
+                        GoRouter.of(ctx).push(
+                          '/rental/car/$carId',
+                          extra: {
+                            if (pickupDate != null) 'pickup_date': pickupDate,
+                            if (dropoffDate != null)
+                              'dropoff_date': dropoffDate,
+                          },
+                        );
                       }
                     });
                   },
@@ -676,7 +729,8 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
               Center(
                 child: Container(
                   margin: const EdgeInsets.only(top: 10, bottom: 8),
-                  width: 40, height: 4,
+                  width: 40,
+                  height: 4,
                   decoration: BoxDecoration(
                     color: Colors.white.withAlpha(60),
                     borderRadius: BorderRadius.circular(2),
@@ -686,25 +740,47 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
               // Header
               Row(
                 children: [
-                  const Icon(Icons.compare_arrows, color: Color(0xFF00D4FF), size: 20),
+                  const Icon(
+                    Icons.compare_arrows,
+                    color: Color(0xFF00D4FF),
+                    size: 20,
+                  ),
                   const SizedBox(width: 8),
                   const Text(
                     'Fiyat Karsilastirmasi',
-                    style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFF00D4FF).withAlpha(30),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Text('${stores.length} market', style: const TextStyle(color: Color(0xFF00D4FF), fontSize: 12, fontWeight: FontWeight.bold)),
+                    child: Text(
+                      '${stores.length} market',
+                      style: const TextStyle(
+                        color: Color(0xFF00D4FF),
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                   const Spacer(),
                   GestureDetector(
                     onTap: () => Navigator.pop(sheetContext),
-                    child: const Icon(Icons.close, color: Colors.white54, size: 22),
+                    child: const Icon(
+                      Icons.close,
+                      color: Colors.white54,
+                      size: 22,
+                    ),
                   ),
                 ],
               ),
@@ -724,7 +800,11 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
     );
   }
 
-  Widget _buildStoreComparisonCard(BuildContext sheetContext, Map<String, dynamic> store, {bool isCheapest = false}) {
+  Widget _buildStoreComparisonCard(
+    BuildContext sheetContext,
+    Map<String, dynamic> store, {
+    bool isCheapest = false,
+  }) {
     final businessName = store['business_name'] as String? ?? '';
     final isOpen = store['is_open'] as bool? ?? false;
     final rating = (store['rating'] as num?)?.toDouble() ?? 0.0;
@@ -733,7 +813,9 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
     final totalRequested = (store['total_requested'] as num?)?.toInt() ?? 0;
     final totalPrice = (store['total_price'] as num?)?.toDouble() ?? 0.0;
     final deliveryFee = (store['delivery_fee'] as num?)?.toDouble() ?? 0.0;
-    final totalWithDelivery = (store['total_with_delivery'] as num?)?.toDouble() ?? totalPrice + deliveryFee;
+    final totalWithDelivery =
+        (store['total_with_delivery'] as num?)?.toDouble() ??
+        totalPrice + deliveryFee;
     final matchedProducts = (store['matched_products'] as List<dynamic>?) ?? [];
     final missingProducts = (store['missing_products'] as List<dynamic>?) ?? [];
     final merchantId = store['merchant_id'] as String? ?? '';
@@ -745,7 +827,9 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
         color: const Color(0xFF16213e),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isCheapest && hasAllProducts ? const Color(0xFFFFD700) : Colors.white.withAlpha(20),
+          color: isCheapest && hasAllProducts
+              ? const Color(0xFFFFD700)
+              : Colors.white.withAlpha(20),
           width: isCheapest && hasAllProducts ? 1.5 : 1,
         ),
       ),
@@ -756,44 +840,74 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: isCheapest && hasAllProducts ? const Color(0xFFFFD700).withAlpha(15) : Colors.transparent,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(13)),
+              color: isCheapest && hasAllProducts
+                  ? const Color(0xFFFFD700).withAlpha(15)
+                  : Colors.transparent,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(13),
+              ),
             ),
             child: Row(
               children: [
                 if (isCheapest && hasAllProducts) ...[
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFFD700),
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: const Text('EN UCUZ', style: TextStyle(color: Colors.black, fontSize: 10, fontWeight: FontWeight.w800)),
+                    child: const Text(
+                      'EN UCUZ',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                   ),
                   const SizedBox(width: 8),
                 ],
                 Expanded(
                   child: Text(
                     businessName,
-                    style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 if (rating > 0) ...[
                   const Icon(Icons.star, color: Color(0xFFFFD700), size: 14),
                   const SizedBox(width: 2),
-                  Text(rating.toStringAsFixed(1), style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                  Text(
+                    rating.toStringAsFixed(1),
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
                   const SizedBox(width: 8),
                 ],
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
-                    color: isOpen ? Colors.green.withAlpha(40) : Colors.red.withAlpha(40),
+                    color: isOpen
+                        ? Colors.green.withAlpha(40)
+                        : Colors.red.withAlpha(40),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
                     isOpen ? 'Acik' : 'Kapali',
-                    style: TextStyle(color: isOpen ? Colors.greenAccent : Colors.redAccent, fontSize: 10, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      color: isOpen ? Colors.greenAccent : Colors.redAccent,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
@@ -803,8 +917,15 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Text(
-              hasAllProducts ? '$matchedCount/$totalRequested urun bulundu' : '$matchedCount/$totalRequested urun bulundu',
-              style: TextStyle(color: hasAllProducts ? Colors.greenAccent : Colors.orangeAccent, fontSize: 11),
+              hasAllProducts
+                  ? '$matchedCount/$totalRequested urun bulundu'
+                  : '$matchedCount/$totalRequested urun bulundu',
+              style: TextStyle(
+                color: hasAllProducts
+                    ? Colors.greenAccent
+                    : Colors.orangeAccent,
+                fontSize: 11,
+              ),
             ),
           ),
           const SizedBox(height: 6),
@@ -814,18 +935,29 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
               child: Row(
                 children: [
-                  const Icon(Icons.check_circle, color: Colors.greenAccent, size: 14),
+                  const Icon(
+                    Icons.check_circle,
+                    color: Colors.greenAccent,
+                    size: 14,
+                  ),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       (product as Map)['product_name'] as String? ?? '',
-                      style: const TextStyle(color: Colors.white70, fontSize: 13),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
+                      ),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   Text(
                     '${(product['price'] as num?)?.toStringAsFixed(2) ?? '0'} TL',
-                    style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),
@@ -840,7 +972,11 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
                   const SizedBox(width: 6),
                   Text(
                     missing as String? ?? '',
-                    style: const TextStyle(color: Colors.redAccent, fontSize: 13, decoration: TextDecoration.lineThrough),
+                    style: const TextStyle(
+                      color: Colors.redAccent,
+                      fontSize: 13,
+                      decoration: TextDecoration.lineThrough,
+                    ),
                   ),
                 ],
               ),
@@ -859,8 +995,17 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Ara Toplam', style: TextStyle(color: Colors.white54, fontSize: 12)),
-                    Text('${totalPrice.toStringAsFixed(2)} TL', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                    const Text(
+                      'Ara Toplam',
+                      style: TextStyle(color: Colors.white54, fontSize: 12),
+                    ),
+                    Text(
+                      '${totalPrice.toStringAsFixed(2)} TL',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 12,
+                      ),
+                    ),
                   ],
                 ),
                 if (deliveryFee > 0) ...[
@@ -868,8 +1013,17 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Teslimat', style: TextStyle(color: Colors.white54, fontSize: 12)),
-                      Text('${deliveryFee.toStringAsFixed(2)} TL', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                      const Text(
+                        'Teslimat',
+                        style: TextStyle(color: Colors.white54, fontSize: 12),
+                      ),
+                      Text(
+                        '${deliveryFee.toStringAsFixed(2)} TL',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                        ),
+                      ),
                     ],
                   ),
                 ],
@@ -877,8 +1031,22 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('TOPLAM', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
-                    Text('${totalWithDelivery.toStringAsFixed(2)} TL', style: const TextStyle(color: Color(0xFF00D4FF), fontSize: 16, fontWeight: FontWeight.bold)),
+                    const Text(
+                      'TOPLAM',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      '${totalWithDelivery.toStringAsFixed(2)} TL',
+                      style: const TextStyle(
+                        color: Color(0xFF00D4FF),
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -891,41 +1059,51 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: isOpen ? () {
-                  for (final product in matchedProducts) {
-                    final p = product as Map;
-                    _addToCart({
-                      'product_id': p['product_id'],
-                      'name': p['product_name'],
-                      'price': p['price'],
-                      'image_url': p['image_url'] ?? '',
-                      'merchant_id': merchantId,
-                      'merchant_name': businessName,
-                      'merchant_type': merchantType,
-                      'quantity': 1,
-                    });
-                  }
-                  Navigator.pop(sheetContext);
-                  final ctx = rootNavigatorKey.currentContext;
-                  if (ctx != null) {
-                    ScaffoldMessenger.of(ctx).showSnackBar(
-                      SnackBar(
-                        content: Text('${matchedProducts.length} urun $businessName sepetine eklendi!'),
-                        backgroundColor: const Color(0xFF00D4FF),
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
-                  }
-                } : null,
+                onPressed: isOpen
+                    ? () {
+                        for (final product in matchedProducts) {
+                          final p = product as Map;
+                          _addToCart({
+                            'product_id': p['product_id'],
+                            'name': p['product_name'],
+                            'price': p['price'],
+                            'image_url': p['image_url'] ?? '',
+                            'merchant_id': merchantId,
+                            'merchant_name': businessName,
+                            'merchant_type': merchantType,
+                            'quantity': 1,
+                          });
+                        }
+                        Navigator.pop(sheetContext);
+                        final ctx = rootNavigatorKey.currentContext;
+                        if (ctx != null) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                '${matchedProducts.length} urun $businessName sepetine eklendi!',
+                              ),
+                              backgroundColor: const Color(0xFF00D4FF),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      }
+                    : null,
                 icon: const Icon(Icons.shopping_cart, size: 18),
                 label: Text('Hepsini Sepete Ekle (${matchedProducts.length})'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: isCheapest && hasAllProducts ? const Color(0xFFFFD700) : const Color(0xFF00D4FF),
-                  foregroundColor: isCheapest && hasAllProducts ? Colors.black : Colors.white,
+                  backgroundColor: isCheapest && hasAllProducts
+                      ? const Color(0xFFFFD700)
+                      : const Color(0xFF00D4FF),
+                  foregroundColor: isCheapest && hasAllProducts
+                      ? Colors.black
+                      : Colors.white,
                   disabledBackgroundColor: Colors.grey.withAlpha(60),
                   disabledForegroundColor: Colors.white38,
                   padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
               ),
             ),
@@ -1087,9 +1265,17 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: Listenable.merge([_horizontalAnimation, _walkController, _glowAnimation, _hoverScaleAnimation, _shakeAnimation]),
+      animation: Listenable.merge([
+        _horizontalAnimation,
+        _walkController,
+        _glowAnimation,
+        _hoverScaleAnimation,
+        _shakeAnimation,
+      ]),
       builder: (context, child) {
-        final xPos = _isManualPosition || _isChatOpen ? _position.dx : _horizontalAnimation.value;
+        final xPos = _isManualPosition || _isChatOpen
+            ? _position.dx
+            : _horizontalAnimation.value;
 
         return Positioned(
           right: xPos,
@@ -1102,24 +1288,30 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
               children: [
                 // Robot with gesture handling
                 GestureDetector(
-                  onPanStart: _isVoiceMode || _isVoicePreparing ? null : (_) {
-                    setState(() => _isManualPosition = true);
-                    _walkController.stop();
-                    _moveController.stop();
-                  },
-                  onPanUpdate: _isVoiceMode || _isVoicePreparing ? null : (details) {
-                    setState(() {
-                      _position = Offset(
-                        _position.dx - details.delta.dx,
-                        _position.dy - details.delta.dy,
-                      );
-                    });
-                  },
-                  onPanEnd: _isVoiceMode || _isVoicePreparing ? null : (_) {
-                    if (!_isChatOpen) {
-                      _walkController.repeat(reverse: true);
-                    }
-                  },
+                  onPanStart: _isVoiceMode || _isVoicePreparing
+                      ? null
+                      : (_) {
+                          setState(() => _isManualPosition = true);
+                          _walkController.stop();
+                          _moveController.stop();
+                        },
+                  onPanUpdate: _isVoiceMode || _isVoicePreparing
+                      ? null
+                      : (details) {
+                          setState(() {
+                            _position = Offset(
+                              _position.dx - details.delta.dx,
+                              _position.dy - details.delta.dy,
+                            );
+                          });
+                        },
+                  onPanEnd: _isVoiceMode || _isVoicePreparing
+                      ? null
+                      : (_) {
+                          if (!_isChatOpen) {
+                            _walkController.repeat(reverse: true);
+                          }
+                        },
                   onTap: _onTap,
                   onLongPressStart: (_) => _onLongPressStart(),
                   onLongPressEnd: (_) => _onLongPressEnd(),
@@ -1131,7 +1323,9 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
                       child: Transform.scale(
                         scale: _hoverScaleAnimation.value,
                         child: Transform.rotate(
-                          angle: _showNotificationBubble ? _shakeAnimation.value : 0,
+                          angle: _showNotificationBubble
+                              ? _shakeAnimation.value
+                              : 0,
                           child: SizedBox(
                             width: 80,
                             height: 175,
@@ -1148,7 +1342,10 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
                                       decoration: BoxDecoration(
                                         gradient: RadialGradient(
                                           colors: [
-                                            const Color(0xFF00D4FF).withAlpha((100 * _glowAnimation.value).toInt()),
+                                            const Color(0xFF00D4FF).withAlpha(
+                                              (100 * _glowAnimation.value)
+                                                  .toInt(),
+                                            ),
                                             Colors.transparent,
                                           ],
                                         ),
@@ -1163,7 +1360,12 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
                                   right: 0,
                                   child: Center(
                                     child: Transform.translate(
-                                      offset: Offset(0, _isChatOpen ? 0 : -_bodyBounceAnimation.value),
+                                      offset: Offset(
+                                        0,
+                                        _isChatOpen
+                                            ? 0
+                                            : -_bodyBounceAnimation.value,
+                                      ),
                                       child: Transform.flip(
                                         flipX: !_movingRight,
                                         child: _buildFuturisticRobot(),
@@ -1180,7 +1382,10 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
                   ),
                 ),
                 // Bubbles - outside GestureDetector for independent tap handling
-                if (_isHovered && !_isChatOpen && !_showProactiveMessage && !_showNotificationBubble)
+                if (_isHovered &&
+                    !_isChatOpen &&
+                    !_showProactiveMessage &&
+                    !_showNotificationBubble)
                   Positioned(
                     top: 0,
                     left: -50,
@@ -1188,7 +1393,9 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
                     child: Center(child: _buildSpeechBubble()),
                   ),
                 // Proactive message bubble
-                if (_showProactiveMessage && !_isChatOpen && !_showNotificationBubble)
+                if (_showProactiveMessage &&
+                    !_isChatOpen &&
+                    !_showNotificationBubble)
                   Positioned(
                     top: -10,
                     left: -100,
@@ -1249,7 +1456,9 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
       height: 115,
       child: CustomPaint(
         painter: _FuturisticRobotPainter(
-          walkAnimation: (_isChatOpen || _isVoiceMode) ? 0 : _legAnimation.value,
+          walkAnimation: (_isChatOpen || _isVoiceMode)
+              ? 0
+              : _legAnimation.value,
           armAnimation: (_isChatOpen || _isVoiceMode) ? 0 : _armAnimation.value,
           glowIntensity: _glowAnimation.value,
           isHovered: _isHovered,
@@ -1284,9 +1493,16 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
                 colors: [Color(0xFF1a1a2e), Color(0xFF16213e)],
               ),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFF00D4FF).withAlpha(150), width: 1.5),
+              border: Border.all(
+                color: const Color(0xFF00D4FF).withAlpha(150),
+                width: 1.5,
+              ),
               boxShadow: [
-                BoxShadow(color: const Color(0xFF00D4FF).withAlpha(60), blurRadius: 12, spreadRadius: 1),
+                BoxShadow(
+                  color: const Color(0xFF00D4FF).withAlpha(60),
+                  blurRadius: 12,
+                  spreadRadius: 1,
+                ),
               ],
             ),
             child: Row(
@@ -1298,14 +1514,20 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
                   decoration: BoxDecoration(
                     color: const Color(0xFF00FF88),
                     shape: BoxShape.circle,
-                    boxShadow: [BoxShadow(color: const Color(0xFF00FF88), blurRadius: 5)],
+                    boxShadow: [
+                      BoxShadow(color: const Color(0xFF00FF88), blurRadius: 5),
+                    ],
                   ),
                 ),
                 const SizedBox(width: 5),
                 const Flexible(
                   child: Text(
                     'Yardim?',
-                    style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w500),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w500,
+                    ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
@@ -1344,7 +1566,10 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
                 },
                 child: Container(
                   constraints: const BoxConstraints(maxWidth: 200),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       begin: Alignment.topLeft,
@@ -1352,10 +1577,21 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
                       colors: [Color(0xFF1a1a2e), Color(0xFF16213e)],
                     ),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFF00FF88).withAlpha(180), width: 2),
+                    border: Border.all(
+                      color: const Color(0xFF00FF88).withAlpha(180),
+                      width: 2,
+                    ),
                     boxShadow: [
-                      BoxShadow(color: const Color(0xFF00FF88).withAlpha(80), blurRadius: 16, spreadRadius: 2),
-                      BoxShadow(color: const Color(0xFF00D4FF).withAlpha(40), blurRadius: 20, spreadRadius: 4),
+                      BoxShadow(
+                        color: const Color(0xFF00FF88).withAlpha(80),
+                        blurRadius: 16,
+                        spreadRadius: 2,
+                      ),
+                      BoxShadow(
+                        color: const Color(0xFF00D4FF).withAlpha(40),
+                        blurRadius: 20,
+                        spreadRadius: 4,
+                      ),
                     ],
                   ),
                   child: Column(
@@ -1365,7 +1601,10 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(_proactiveEmoji, style: const TextStyle(fontSize: 16)),
+                          Text(
+                            _proactiveEmoji,
+                            style: const TextStyle(fontSize: 16),
+                          ),
                           const SizedBox(width: 6),
                           Flexible(
                             child: Text(
@@ -1382,7 +1621,10 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
                       ),
                       const SizedBox(height: 6),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
                         decoration: BoxDecoration(
                           gradient: const LinearGradient(
                             colors: [Color(0xFF00D4FF), Color(0xFF00FF88)],
@@ -1402,10 +1644,10 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
                   ),
                 ),
               ),
-              // Close button - positioned outside main gesture area
+              // Close button - positioned inside stack bounds so hit-test works
               Positioned(
-                top: -6,
-                right: -6,
+                top: 4,
+                right: 4,
                 child: GestureDetector(
                   onTap: _dismissProactiveMessage,
                   behavior: HitTestBehavior.opaque,
@@ -1427,7 +1669,10 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
               ),
             ],
           ),
-          CustomPaint(size: const Size(14, 8), painter: _ProactiveBubbleTailPainter()),
+          CustomPaint(
+            size: const Size(14, 8),
+            painter: _ProactiveBubbleTailPainter(),
+          ),
         ],
       ),
     );
@@ -1459,7 +1704,10 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
                 },
                 child: Container(
                   constraints: const BoxConstraints(maxWidth: 180),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       begin: Alignment.topLeft,
@@ -1467,10 +1715,21 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
                       colors: [Color(0xFF1a1a2e), Color(0xFF16213e)],
                     ),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFFF6B6B).withAlpha(200), width: 2),
+                    border: Border.all(
+                      color: const Color(0xFFFF6B6B).withAlpha(200),
+                      width: 2,
+                    ),
                     boxShadow: [
-                      BoxShadow(color: const Color(0xFFFF6B6B).withAlpha(100), blurRadius: 16, spreadRadius: 2),
-                      BoxShadow(color: const Color(0xFFFF6B6B).withAlpha(50), blurRadius: 24, spreadRadius: 4),
+                      BoxShadow(
+                        color: const Color(0xFFFF6B6B).withAlpha(100),
+                        blurRadius: 16,
+                        spreadRadius: 2,
+                      ),
+                      BoxShadow(
+                        color: const Color(0xFFFF6B6B).withAlpha(50),
+                        blurRadius: 24,
+                        spreadRadius: 4,
+                      ),
                     ],
                   ),
                   child: Column(
@@ -1501,7 +1760,9 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
                                     ),
                                     child: Center(
                                       child: Text(
-                                        _notificationCount > 9 ? '9+' : '$_notificationCount',
+                                        _notificationCount > 9
+                                            ? '9+'
+                                            : '$_notificationCount',
                                         style: const TextStyle(
                                           color: Colors.white,
                                           fontSize: 8,
@@ -1578,7 +1839,10 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
             ],
           ),
           // Tail pointing to robot
-          CustomPaint(size: const Size(14, 8), painter: _NotificationBubbleTailPainter()),
+          CustomPaint(
+            size: const Size(14, 8),
+            painter: _NotificationBubbleTailPainter(),
+          ),
         ],
       ),
     );
@@ -1603,21 +1867,41 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFF1a1a2e), Color(0xFF16213e)]),
+              gradient: const LinearGradient(
+                colors: [Color(0xFF1a1a2e), Color(0xFF16213e)],
+              ),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFFF8800).withAlpha(180), width: 2),
-              boxShadow: [BoxShadow(color: const Color(0xFFFF8800).withAlpha(60), blurRadius: 12)],
+              border: Border.all(
+                color: const Color(0xFFFF8800).withAlpha(180),
+                width: 2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFFF8800).withAlpha(60),
+                  blurRadius: 12,
+                ),
+              ],
             ),
             child: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.mic, color: Color(0xFFFF8800), size: 16),
                 SizedBox(width: 6),
-                Text('Hazırlanıyor...', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w500)),
+                Text(
+                  'Hazırlanıyor...',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ],
             ),
           ),
-          CustomPaint(size: const Size(12, 7), painter: _VoiceBubbleTailPainter(color: const Color(0xFFFF8800))),
+          CustomPaint(
+            size: const Size(12, 7),
+            painter: _VoiceBubbleTailPainter(color: const Color(0xFFFF8800)),
+          ),
         ],
       ),
     );
@@ -1641,10 +1925,21 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
             constraints: const BoxConstraints(maxWidth: 220),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFF1a1a2e), Color(0xFF16213e)]),
+              gradient: const LinearGradient(
+                colors: [Color(0xFF1a1a2e), Color(0xFF16213e)],
+              ),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFFF4444).withAlpha(200), width: 2),
-              boxShadow: [BoxShadow(color: const Color(0xFFFF4444).withAlpha(80), blurRadius: 16, spreadRadius: 2)],
+              border: Border.all(
+                color: const Color(0xFFFF4444).withAlpha(200),
+                width: 2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFFF4444).withAlpha(80),
+                  blurRadius: 16,
+                  spreadRadius: 2,
+                ),
+              ],
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -1653,12 +1948,18 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
                 const SizedBox(width: 6),
                 Flexible(
                   child: Text(
-                    _voicePartialText.isEmpty ? 'Dinleniyor...' : _voicePartialText,
+                    _voicePartialText.isEmpty
+                        ? 'Dinleniyor...'
+                        : _voicePartialText,
                     style: TextStyle(
-                      color: _voicePartialText.isEmpty ? Colors.white70 : Colors.white,
+                      color: _voicePartialText.isEmpty
+                          ? Colors.white70
+                          : Colors.white,
                       fontSize: 11,
                       fontWeight: FontWeight.w500,
-                      fontStyle: _voicePartialText.isEmpty ? FontStyle.italic : FontStyle.normal,
+                      fontStyle: _voicePartialText.isEmpty
+                          ? FontStyle.italic
+                          : FontStyle.normal,
                     ),
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
@@ -1667,7 +1968,10 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
               ],
             ),
           ),
-          CustomPaint(size: const Size(12, 7), painter: _VoiceBubbleTailPainter(color: const Color(0xFFFF4444))),
+          CustomPaint(
+            size: const Size(12, 7),
+            painter: _VoiceBubbleTailPainter(color: const Color(0xFFFF4444)),
+          ),
         ],
       ),
     );
@@ -1680,21 +1984,48 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            gradient: const LinearGradient(colors: [Color(0xFF1a1a2e), Color(0xFF16213e)]),
+            gradient: const LinearGradient(
+              colors: [Color(0xFF1a1a2e), Color(0xFF16213e)],
+            ),
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFF00D4FF).withAlpha(180), width: 2),
-            boxShadow: [BoxShadow(color: const Color(0xFF00D4FF).withAlpha(60), blurRadius: 12)],
+            border: Border.all(
+              color: const Color(0xFF00D4FF).withAlpha(180),
+              width: 2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF00D4FF).withAlpha(60),
+                blurRadius: 12,
+              ),
+            ],
           ),
           child: const Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF00D4FF))),
+              SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Color(0xFF00D4FF),
+                ),
+              ),
               SizedBox(width: 8),
-              Text('Düşünüyor...', style: TextStyle(color: Colors.white70, fontSize: 11, fontStyle: FontStyle.italic)),
+              Text(
+                'Düşünüyor...',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 11,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
             ],
           ),
         ),
-        CustomPaint(size: const Size(12, 7), painter: _VoiceBubbleTailPainter(color: const Color(0xFF00D4FF))),
+        CustomPaint(
+          size: const Size(12, 7),
+          painter: _VoiceBubbleTailPainter(color: const Color(0xFF00D4FF)),
+        ),
       ],
     );
   }
@@ -1724,13 +2055,25 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
                 },
                 child: Container(
                   constraints: const BoxConstraints(maxWidth: 240),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(colors: [Color(0xFF1a1a2e), Color(0xFF16213e)]),
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF1a1a2e), Color(0xFF16213e)],
+                    ),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFF00FF88).withAlpha(200), width: 2),
+                    border: Border.all(
+                      color: const Color(0xFF00FF88).withAlpha(200),
+                      width: 2,
+                    ),
                     boxShadow: [
-                      BoxShadow(color: const Color(0xFF00FF88).withAlpha(80), blurRadius: 16, spreadRadius: 2),
+                      BoxShadow(
+                        color: const Color(0xFF00FF88).withAlpha(80),
+                        blurRadius: 16,
+                        spreadRadius: 2,
+                      ),
                     ],
                   ),
                   child: Column(
@@ -1740,12 +2083,20 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.smart_toy, color: Color(0xFF00FF88), size: 14),
+                          const Icon(
+                            Icons.smart_toy,
+                            color: Color(0xFF00FF88),
+                            size: 14,
+                          ),
                           const SizedBox(width: 6),
                           Flexible(
                             child: Text(
                               _voiceResponseText,
-                              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w500),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                              ),
                               maxLines: 5,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -1770,13 +2121,20 @@ class _FloatingAIAssistantState extends ConsumerState<FloatingAIAssistant>
                       color: Colors.black.withAlpha(100),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.close, size: 10, color: Colors.white70),
+                    child: const Icon(
+                      Icons.close,
+                      size: 10,
+                      color: Colors.white70,
+                    ),
                   ),
                 ),
               ),
             ],
           ),
-          CustomPaint(size: const Size(12, 7), painter: _VoiceBubbleTailPainter(color: const Color(0xFF00FF88))),
+          CustomPaint(
+            size: const Size(12, 7),
+            painter: _VoiceBubbleTailPainter(color: const Color(0xFF00FF88)),
+          ),
         ],
       ),
     );
@@ -1815,7 +2173,8 @@ class _VoiceBubbleTailPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_VoiceBubbleTailPainter oldDelegate) => oldDelegate.color != color;
+  bool shouldRepaint(_VoiceBubbleTailPainter oldDelegate) =>
+      oldDelegate.color != color;
 }
 
 class _NotificationBubbleTailPainter extends CustomPainter {
@@ -1943,107 +2302,419 @@ class _FuturisticRobotPainter extends CustomPainter {
     final metalLight = const Color(0xFFb2bec3);
     final glowColor = isVoiceListening
         ? const Color(0xFFFF4444)
-        : isHovered ? const Color(0xFF00FF88) : const Color(0xFF00D4FF);
+        : isHovered
+        ? const Color(0xFF00FF88)
+        : const Color(0xFF00D4FF);
     final glowColorDim = glowColor.withAlpha((150 * glowIntensity).toInt());
 
-    _drawLeg(canvas, centerX - 10 * scale, size.height - 45 * scale, walkAnimation, metalDark, metalMid, glowColor, scale);
-    _drawLeg(canvas, centerX + 10 * scale, size.height - 45 * scale, -walkAnimation, metalDark, metalMid, glowColor, scale);
+    _drawLeg(
+      canvas,
+      centerX - 10 * scale,
+      size.height - 45 * scale,
+      walkAnimation,
+      metalDark,
+      metalMid,
+      glowColor,
+      scale,
+    );
+    _drawLeg(
+      canvas,
+      centerX + 10 * scale,
+      size.height - 45 * scale,
+      -walkAnimation,
+      metalDark,
+      metalMid,
+      glowColor,
+      scale,
+    );
 
     final bodyRect = RRect.fromRectAndRadius(
-      Rect.fromCenter(center: Offset(centerX, size.height - 65 * scale), width: 32 * scale, height: 36 * scale),
+      Rect.fromCenter(
+        center: Offset(centerX, size.height - 65 * scale),
+        width: 32 * scale,
+        height: 36 * scale,
+      ),
       Radius.circular(6 * scale),
     );
-    canvas.drawRRect(bodyRect, Paint()..shader = LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [metalLight, metalMid, metalDark]).createShader(bodyRect.outerRect));
-    canvas.drawRRect(bodyRect, Paint()..color = glowColorDim..style = PaintingStyle.stroke..strokeWidth = 1.2);
+    canvas.drawRRect(
+      bodyRect,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [metalLight, metalMid, metalDark],
+        ).createShader(bodyRect.outerRect),
+    );
+    canvas.drawRRect(
+      bodyRect,
+      Paint()
+        ..color = glowColorDim
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2,
+    );
 
     final chestCenter = Offset(centerX, size.height - 65 * scale);
-    canvas.drawCircle(chestCenter, 10 * scale, Paint()..shader = RadialGradient(colors: [glowColor, glowColor.withAlpha((100 * glowIntensity).toInt()), Colors.transparent]).createShader(Rect.fromCircle(center: chestCenter, radius: 12 * scale)));
+    canvas.drawCircle(
+      chestCenter,
+      10 * scale,
+      Paint()
+        ..shader =
+            RadialGradient(
+              colors: [
+                glowColor,
+                glowColor.withAlpha((100 * glowIntensity).toInt()),
+                Colors.transparent,
+              ],
+            ).createShader(
+              Rect.fromCircle(center: chestCenter, radius: 12 * scale),
+            ),
+    );
     canvas.drawCircle(chestCenter, 5 * scale, Paint()..color = glowColor);
     canvas.drawCircle(chestCenter, 2 * scale, Paint()..color = Colors.white);
 
-    _drawArm(canvas, centerX - 20 * scale, size.height - 73 * scale, armAnimation, metalDark, metalMid, glowColor, scale);
-    _drawArm(canvas, centerX + 20 * scale, size.height - 73 * scale, -armAnimation, metalDark, metalMid, glowColor, scale);
+    _drawArm(
+      canvas,
+      centerX - 20 * scale,
+      size.height - 73 * scale,
+      armAnimation,
+      metalDark,
+      metalMid,
+      glowColor,
+      scale,
+    );
+    _drawArm(
+      canvas,
+      centerX + 20 * scale,
+      size.height - 73 * scale,
+      -armAnimation,
+      metalDark,
+      metalMid,
+      glowColor,
+      scale,
+    );
 
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(centerX, size.height - 85 * scale), width: 10 * scale, height: 6 * scale), Radius.circular(2 * scale)), Paint()..color = metalDark);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(
+          center: Offset(centerX, size.height - 85 * scale),
+          width: 10 * scale,
+          height: 6 * scale,
+        ),
+        Radius.circular(2 * scale),
+      ),
+      Paint()..color = metalDark,
+    );
 
-    _drawHead(canvas, centerX, size.height - 105 * scale, metalDark, metalMid, metalLight, glowColor, glowIntensity, isHovered, scale);
+    _drawHead(
+      canvas,
+      centerX,
+      size.height - 105 * scale,
+      metalDark,
+      metalMid,
+      metalLight,
+      glowColor,
+      glowIntensity,
+      isHovered,
+      scale,
+    );
   }
 
-  void _drawLeg(Canvas canvas, double x, double y, double angle, Color dark, Color mid, Color glow, double scale) {
+  void _drawLeg(
+    Canvas canvas,
+    double x,
+    double y,
+    double angle,
+    Color dark,
+    Color mid,
+    Color glow,
+    double scale,
+  ) {
     canvas.save();
     canvas.translate(x, y);
     canvas.rotate(angle);
 
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(-4 * scale, 0, 8 * scale, 20 * scale), Radius.circular(2 * scale)), Paint()..shader = LinearGradient(colors: [mid, dark], begin: Alignment.centerLeft, end: Alignment.centerRight).createShader(Rect.fromLTWH(-4 * scale, 0, 8 * scale, 20 * scale)));
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(-4 * scale, 0, 8 * scale, 20 * scale),
+        Radius.circular(2 * scale),
+      ),
+      Paint()
+        ..shader = LinearGradient(
+          colors: [mid, dark],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ).createShader(Rect.fromLTWH(-4 * scale, 0, 8 * scale, 20 * scale)),
+    );
     canvas.drawCircle(Offset(0, 20 * scale), 4 * scale, Paint()..color = dark);
-    canvas.drawCircle(Offset(0, 20 * scale), 2 * scale, Paint()..color = glow.withAlpha(100));
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(-3 * scale, 20 * scale, 6 * scale, 18 * scale), Radius.circular(2 * scale)), Paint()..color = dark);
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(-6 * scale, 36 * scale, 12 * scale, 5 * scale), Radius.circular(2 * scale)), Paint()..color = mid);
-    canvas.drawCircle(Offset(0, 38 * scale), 1.5 * scale, Paint()..color = glow);
+    canvas.drawCircle(
+      Offset(0, 20 * scale),
+      2 * scale,
+      Paint()..color = glow.withAlpha(100),
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(-3 * scale, 20 * scale, 6 * scale, 18 * scale),
+        Radius.circular(2 * scale),
+      ),
+      Paint()..color = dark,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(-6 * scale, 36 * scale, 12 * scale, 5 * scale),
+        Radius.circular(2 * scale),
+      ),
+      Paint()..color = mid,
+    );
+    canvas.drawCircle(
+      Offset(0, 38 * scale),
+      1.5 * scale,
+      Paint()..color = glow,
+    );
 
     canvas.restore();
   }
 
-  void _drawArm(Canvas canvas, double x, double y, double angle, Color dark, Color mid, Color glow, double scale) {
+  void _drawArm(
+    Canvas canvas,
+    double x,
+    double y,
+    double angle,
+    Color dark,
+    Color mid,
+    Color glow,
+    double scale,
+  ) {
     canvas.save();
     canvas.translate(x, y);
     canvas.rotate(angle);
 
     canvas.drawCircle(Offset.zero, 5 * scale, Paint()..color = mid);
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(-3 * scale, 0, 6 * scale, 16 * scale), Radius.circular(2 * scale)), Paint()..color = dark);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(-3 * scale, 0, 6 * scale, 16 * scale),
+        Radius.circular(2 * scale),
+      ),
+      Paint()..color = dark,
+    );
     canvas.drawCircle(Offset(0, 16 * scale), 3 * scale, Paint()..color = mid);
-    canvas.drawCircle(Offset(0, 16 * scale), 1.5 * scale, Paint()..color = glow.withAlpha(80));
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(-2.5 * scale, 16 * scale, 5 * scale, 14 * scale), Radius.circular(2 * scale)), Paint()..color = dark);
+    canvas.drawCircle(
+      Offset(0, 16 * scale),
+      1.5 * scale,
+      Paint()..color = glow.withAlpha(80),
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(-2.5 * scale, 16 * scale, 5 * scale, 14 * scale),
+        Radius.circular(2 * scale),
+      ),
+      Paint()..color = dark,
+    );
     canvas.drawCircle(Offset(0, 32 * scale), 4 * scale, Paint()..color = mid);
-    canvas.drawCircle(Offset(0, 32 * scale), 1.5 * scale, Paint()..color = glow..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2));
+    canvas.drawCircle(
+      Offset(0, 32 * scale),
+      1.5 * scale,
+      Paint()
+        ..color = glow
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
+    );
 
     canvas.restore();
   }
 
-  void _drawHead(Canvas canvas, double x, double y, Color dark, Color mid, Color light, Color glow, double glowIntensity, bool isHovered, double scale) {
+  void _drawHead(
+    Canvas canvas,
+    double x,
+    double y,
+    Color dark,
+    Color mid,
+    Color light,
+    Color glow,
+    double glowIntensity,
+    bool isHovered,
+    double scale,
+  ) {
     final headPath = Path();
     headPath.moveTo(x - 14 * scale, y + 12 * scale);
     headPath.lineTo(x - 18 * scale, y - 4 * scale);
-    headPath.quadraticBezierTo(x - 18 * scale, y - 16 * scale, x - 8 * scale, y - 18 * scale);
+    headPath.quadraticBezierTo(
+      x - 18 * scale,
+      y - 16 * scale,
+      x - 8 * scale,
+      y - 18 * scale,
+    );
     headPath.lineTo(x + 8 * scale, y - 18 * scale);
-    headPath.quadraticBezierTo(x + 18 * scale, y - 16 * scale, x + 18 * scale, y - 4 * scale);
+    headPath.quadraticBezierTo(
+      x + 18 * scale,
+      y - 16 * scale,
+      x + 18 * scale,
+      y - 4 * scale,
+    );
     headPath.lineTo(x + 14 * scale, y + 12 * scale);
     headPath.close();
 
-    canvas.drawPath(headPath, Paint()..shader = LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [light, mid, dark]).createShader(Rect.fromCenter(center: Offset(x, y), width: 36 * scale, height: 32 * scale)));
-    canvas.drawPath(headPath, Paint()..color = glow.withAlpha((100 * glowIntensity).toInt())..style = PaintingStyle.stroke..strokeWidth = 1.2);
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(x, y - 2 * scale), width: 28 * scale, height: 18 * scale), Radius.circular(4 * scale)), Paint()..color = const Color(0xFF0a0a0f));
+    canvas.drawPath(
+      headPath,
+      Paint()
+        ..shader =
+            LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [light, mid, dark],
+            ).createShader(
+              Rect.fromCenter(
+                center: Offset(x, y),
+                width: 36 * scale,
+                height: 32 * scale,
+              ),
+            ),
+    );
+    canvas.drawPath(
+      headPath,
+      Paint()
+        ..color = glow.withAlpha((100 * glowIntensity).toInt())
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(
+          center: Offset(x, y - 2 * scale),
+          width: 28 * scale,
+          height: 18 * scale,
+        ),
+        Radius.circular(4 * scale),
+      ),
+      Paint()..color = const Color(0xFF0a0a0f),
+    );
 
     if (isHovered) {
-      final leftEyePath = Path()..moveTo(x - 10 * scale, y)..quadraticBezierTo(x - 6 * scale, y - 5 * scale, x - 3 * scale, y);
-      canvas.drawPath(leftEyePath, Paint()..color = glow..style = PaintingStyle.stroke..strokeWidth = 2.5..strokeCap = StrokeCap.round);
-      final rightEyePath = Path()..moveTo(x + 3 * scale, y)..quadraticBezierTo(x + 6 * scale, y - 5 * scale, x + 10 * scale, y);
-      canvas.drawPath(rightEyePath, Paint()..color = glow..style = PaintingStyle.stroke..strokeWidth = 2.5..strokeCap = StrokeCap.round);
+      final leftEyePath = Path()
+        ..moveTo(x - 10 * scale, y)
+        ..quadraticBezierTo(x - 6 * scale, y - 5 * scale, x - 3 * scale, y);
+      canvas.drawPath(
+        leftEyePath,
+        Paint()
+          ..color = glow
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.5
+          ..strokeCap = StrokeCap.round,
+      );
+      final rightEyePath = Path()
+        ..moveTo(x + 3 * scale, y)
+        ..quadraticBezierTo(x + 6 * scale, y - 5 * scale, x + 10 * scale, y);
+      canvas.drawPath(
+        rightEyePath,
+        Paint()
+          ..color = glow
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.5
+          ..strokeCap = StrokeCap.round,
+      );
     } else {
-      canvas.drawLine(Offset(x - 10 * scale, y - 2 * scale), Offset(x + 10 * scale, y - 2 * scale), Paint()..color = glow..strokeWidth = 2.5..strokeCap = StrokeCap.round..maskFilter = MaskFilter.blur(BlurStyle.normal, 2 * glowIntensity));
-      canvas.drawCircle(Offset(x - 5 * scale, y - 2 * scale), 1.5 * scale, Paint()..color = Colors.white);
-      canvas.drawCircle(Offset(x + 5 * scale, y - 2 * scale), 1.5 * scale, Paint()..color = Colors.white);
+      canvas.drawLine(
+        Offset(x - 10 * scale, y - 2 * scale),
+        Offset(x + 10 * scale, y - 2 * scale),
+        Paint()
+          ..color = glow
+          ..strokeWidth = 2.5
+          ..strokeCap = StrokeCap.round
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, 2 * glowIntensity),
+      );
+      canvas.drawCircle(
+        Offset(x - 5 * scale, y - 2 * scale),
+        1.5 * scale,
+        Paint()..color = Colors.white,
+      );
+      canvas.drawCircle(
+        Offset(x + 5 * scale, y - 2 * scale),
+        1.5 * scale,
+        Paint()..color = Colors.white,
+      );
     }
 
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(x, y - 23 * scale), width: 3 * scale, height: 10 * scale), Radius.circular(1.5 * scale)), Paint()..color = mid);
-    canvas.drawCircle(Offset(x, y - 28 * scale), 4 * scale, Paint()..color = glow.withAlpha((200 * glowIntensity).toInt())..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4));
-    canvas.drawCircle(Offset(x, y - 28 * scale), 2.5 * scale, Paint()..color = glow);
-    canvas.drawCircle(Offset(x, y - 28 * scale), 1 * scale, Paint()..color = Colors.white);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(
+          center: Offset(x, y - 23 * scale),
+          width: 3 * scale,
+          height: 10 * scale,
+        ),
+        Radius.circular(1.5 * scale),
+      ),
+      Paint()..color = mid,
+    );
+    canvas.drawCircle(
+      Offset(x, y - 28 * scale),
+      4 * scale,
+      Paint()
+        ..color = glow.withAlpha((200 * glowIntensity).toInt())
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
+    );
+    canvas.drawCircle(
+      Offset(x, y - 28 * scale),
+      2.5 * scale,
+      Paint()..color = glow,
+    );
+    canvas.drawCircle(
+      Offset(x, y - 28 * scale),
+      1 * scale,
+      Paint()..color = Colors.white,
+    );
 
-    _drawEarPanel(canvas, x - 20 * scale, y - 4 * scale, glow, glowIntensity, scale);
-    _drawEarPanel(canvas, x + 20 * scale, y - 4 * scale, glow, glowIntensity, scale);
+    _drawEarPanel(
+      canvas,
+      x - 20 * scale,
+      y - 4 * scale,
+      glow,
+      glowIntensity,
+      scale,
+    );
+    _drawEarPanel(
+      canvas,
+      x + 20 * scale,
+      y - 4 * scale,
+      glow,
+      glowIntensity,
+      scale,
+    );
   }
 
-  void _drawEarPanel(Canvas canvas, double x, double y, Color glow, double glowIntensity, double scale) {
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(x, y), width: 5 * scale, height: 14 * scale), Radius.circular(1.5 * scale)), Paint()..color = const Color(0xFF2d3436));
+  void _drawEarPanel(
+    Canvas canvas,
+    double x,
+    double y,
+    Color glow,
+    double glowIntensity,
+    double scale,
+  ) {
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(
+          center: Offset(x, y),
+          width: 5 * scale,
+          height: 14 * scale,
+        ),
+        Radius.circular(1.5 * scale),
+      ),
+      Paint()..color = const Color(0xFF2d3436),
+    );
     for (int i = 0; i < 3; i++) {
-      canvas.drawCircle(Offset(x, y - 4 * scale + (i * 4 * scale)), 1 * scale, Paint()..color = glow.withAlpha((150 * glowIntensity).toInt()));
+      canvas.drawCircle(
+        Offset(x, y - 4 * scale + (i * 4 * scale)),
+        1 * scale,
+        Paint()..color = glow.withAlpha((150 * glowIntensity).toInt()),
+      );
     }
   }
 
   @override
   bool shouldRepaint(_FuturisticRobotPainter oldDelegate) {
-    return oldDelegate.walkAnimation != walkAnimation || oldDelegate.armAnimation != armAnimation || oldDelegate.glowIntensity != glowIntensity || oldDelegate.isHovered != isHovered || oldDelegate.isChatOpen != isChatOpen || oldDelegate.isVoiceListening != isVoiceListening;
+    return oldDelegate.walkAnimation != walkAnimation ||
+        oldDelegate.armAnimation != armAnimation ||
+        oldDelegate.glowIntensity != glowIntensity ||
+        oldDelegate.isHovered != isHovered ||
+        oldDelegate.isChatOpen != isChatOpen ||
+        oldDelegate.isVoiceListening != isVoiceListening;
   }
 }
 
@@ -2053,7 +2724,13 @@ class _AIChatDialog extends StatefulWidget {
   final void Function(Map<String, dynamic> payload)? onAddToCart;
   final _PendingVoiceResults? pendingVoiceResults;
   final VoidCallback? onLiveAgentMessage;
-  const _AIChatDialog({required this.onClose, required this.screenContext, this.onAddToCart, this.pendingVoiceResults, this.onLiveAgentMessage});
+  const _AIChatDialog({
+    required this.onClose,
+    required this.screenContext,
+    this.onAddToCart,
+    this.pendingVoiceResults,
+    this.onLiveAgentMessage,
+  });
 
   @override
   State<_AIChatDialog> createState() => _AIChatDialogState();
@@ -2118,31 +2795,40 @@ class _AIChatDialogState extends State<_AIChatDialog> {
       final history = await AiChatService.getChatHistory(existingSessionId);
       if (!mounted) return;
       setState(() {
-        _messages.addAll(history
-          .where((msg) {
-            // Filter out internal context messages (not meant for display)
-            final content = msg['content'] as String? ?? '';
-            return !_isInternalMessage(content);
-          })
-          .map((msg) {
-            final metadata = msg['metadata'] as Map<String, dynamic>?;
-            final products = (metadata?['search_results'] as List<dynamic>?)
-                ?.map((e) => Map<String, dynamic>.from(e as Map))
-                .toList();
-            final rentalCars = (metadata?['rental_results'] as List<dynamic>?)
-                ?.map((e) => Map<String, dynamic>.from(e as Map))
-                .toList();
-            return _ChatMessage(
-              role: msg['role'],
-              content: _cleanInternalTags(msg['content'] ?? ''),
-              timestamp: DateTime.tryParse(msg['created_at'] ?? ''),
-              products: products,
-              rentalCars: rentalCars,
-            );
-          }));
+        _messages.addAll(
+          history
+              .where((msg) {
+                // Filter out internal context messages (not meant for display)
+                final content = msg['content'] as String? ?? '';
+                return !_isInternalMessage(content);
+              })
+              .map((msg) {
+                final metadata = msg['metadata'] as Map<String, dynamic>?;
+                final products = (metadata?['search_results'] as List<dynamic>?)
+                    ?.map((e) => Map<String, dynamic>.from(e as Map))
+                    .toList();
+                final rentalCars =
+                    (metadata?['rental_results'] as List<dynamic>?)
+                        ?.map((e) => Map<String, dynamic>.from(e as Map))
+                        .toList();
+                return _ChatMessage(
+                  role: msg['role'],
+                  content: _cleanInternalTags(msg['content'] ?? ''),
+                  timestamp: DateTime.tryParse(msg['created_at'] ?? ''),
+                  products: products,
+                  rentalCars: rentalCars,
+                );
+              }),
+        );
       });
     } else {
-      _messages.add(_ChatMessage(role: 'assistant', content: 'Merhaba! Size nasil yardimci olabilirim?', timestamp: DateTime.now()));
+      _messages.add(
+        _ChatMessage(
+          role: 'assistant',
+          content: 'Merhaba! Size nasil yardimci olabilirim?',
+          timestamp: DateTime.now(),
+        ),
+      );
     }
 
     // Append pending voice results (search/rental cards from voice mode)
@@ -2155,7 +2841,8 @@ class _AIChatDialogState extends State<_AIChatDialog> {
         if (_messages[i].role == 'assistant') {
           if (_messages[i].content == cleanedMsg) {
             // Same message in history - attach products if missing
-            if (_messages[i].products == null || _messages[i].products!.isEmpty) {
+            if (_messages[i].products == null ||
+                _messages[i].products!.isEmpty) {
               _messages[i].products = pending.products;
               _messages[i].rentalCars = pending.rentalCars;
             }
@@ -2165,14 +2852,22 @@ class _AIChatDialogState extends State<_AIChatDialog> {
         }
       }
       if (!handled) {
-        _messages.add(_ChatMessage(role: 'user', content: pending.userMessage, timestamp: DateTime.now()));
-        _messages.add(_ChatMessage(
-          role: 'assistant',
-          content: cleanedMsg,
-          timestamp: DateTime.now(),
-          products: pending.products,
-          rentalCars: pending.rentalCars,
-        ));
+        _messages.add(
+          _ChatMessage(
+            role: 'user',
+            content: pending.userMessage,
+            timestamp: DateTime.now(),
+          ),
+        );
+        _messages.add(
+          _ChatMessage(
+            role: 'assistant',
+            content: cleanedMsg,
+            timestamp: DateTime.now(),
+            products: pending.products,
+            rentalCars: pending.rentalCars,
+          ),
+        );
       }
     }
 
@@ -2205,12 +2900,17 @@ class _AIChatDialogState extends State<_AIChatDialog> {
     setState(() {
       _isLiveMode = true;
       _liveTicketId = ticketId;
-      _liveTicketNumber = ticketNumber is int ? ticketNumber : int.tryParse('$ticketNumber');
-      _messages.add(_ChatMessage(
-        role: 'system',
-        content: 'Canli destek moduna gecildi. Bir temsilci en kisa surede baglanacak.',
-        timestamp: DateTime.now(),
-      ));
+      _liveTicketNumber = ticketNumber is int
+          ? ticketNumber
+          : int.tryParse('$ticketNumber');
+      _messages.add(
+        _ChatMessage(
+          role: 'system',
+          content:
+              'Canli destek moduna gecildi. Bir temsilci en kisa surede baglanacak.',
+          timestamp: DateTime.now(),
+        ),
+      );
     });
     _scrollToBottom();
 
@@ -2221,7 +2921,8 @@ class _AIChatDialogState extends State<_AIChatDialog> {
       onMessages: (messages) {
         if (!mounted) return;
 
-        final hasNewAgentMsg = messages.length > lastMsgCount &&
+        final hasNewAgentMsg =
+            messages.length > lastMsgCount &&
             messages.isNotEmpty &&
             messages.last['sender_type'] == 'agent';
 
@@ -2230,13 +2931,15 @@ class _AIChatDialogState extends State<_AIChatDialog> {
           for (final msg in messages) {
             final senderType = msg['sender_type'] as String? ?? '';
             if (senderType == 'system') continue;
-            _messages.add(_ChatMessage(
-              role: senderType == 'customer' ? 'user' : 'live_agent',
-              content: msg['message'] as String? ?? '',
-              timestamp: DateTime.tryParse(msg['created_at'] ?? ''),
-              isLiveMessage: true,
-              senderName: msg['sender_name'] as String?,
-            ));
+            _messages.add(
+              _ChatMessage(
+                role: senderType == 'customer' ? 'user' : 'live_agent',
+                content: msg['message'] as String? ?? '',
+                timestamp: DateTime.tryParse(msg['created_at'] ?? ''),
+                isLiveMessage: true,
+                senderName: msg['sender_name'] as String?,
+              ),
+            );
           }
           lastMsgCount = messages.length;
         });
@@ -2273,11 +2976,13 @@ class _AIChatDialogState extends State<_AIChatDialog> {
       _isLiveMode = false;
       _liveTicketId = null;
       _liveTicketNumber = null;
-      _messages.add(_ChatMessage(
-        role: 'system',
-        content: 'Canli destek sonlandi. AI asistana geri donuldu.',
-        timestamp: DateTime.now(),
-      ));
+      _messages.add(
+        _ChatMessage(
+          role: 'system',
+          content: 'Canli destek sonlandi. AI asistana geri donuldu.',
+          timestamp: DateTime.now(),
+        ),
+      );
     });
     _scrollToBottom();
   }
@@ -2294,7 +2999,14 @@ class _AIChatDialogState extends State<_AIChatDialog> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _messages.add(_ChatMessage(role: 'system', content: 'Mesaj gonderilemedi: $e', timestamp: DateTime.now(), isError: true));
+          _messages.add(
+            _ChatMessage(
+              role: 'system',
+              content: 'Mesaj gonderilemedi: $e',
+              timestamp: DateTime.now(),
+              isError: true,
+            ),
+          );
         });
       }
     }
@@ -2304,23 +3016,30 @@ class _AIChatDialogState extends State<_AIChatDialog> {
   /// Check if a message is internal context (not meant for display)
   bool _isInternalMessage(String content) {
     return content.startsWith('[ARAMA_SONUÇLARI]') ||
-           content.startsWith('[ARAMA_SONUCLARI]') ||
-           content.startsWith('[SEPETE_EKLENDİ]') ||
-           content.startsWith('[SEPETE_EKLENDI]');
+        content.startsWith('[ARAMA_SONUCLARI]') ||
+        content.startsWith('[SEPETE_EKLENDİ]') ||
+        content.startsWith('[SEPETE_EKLENDI]');
   }
 
   /// Strip internal tags from AI response text
   String _cleanInternalTags(String text) {
     // Remove lines starting with internal tags
     final lines = text.split('\n');
-    final cleaned = lines.where((line) => !_isInternalMessage(line.trim())).join('\n').trim();
+    final cleaned = lines
+        .where((line) => !_isInternalMessage(line.trim()))
+        .join('\n')
+        .trim();
     return cleaned.isEmpty ? text : cleaned;
   }
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
-        _scrollController.animateTo(_scrollController.position.maxScrollExtent, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
       }
     });
   }
@@ -2337,7 +3056,9 @@ class _AIChatDialogState extends State<_AIChatDialog> {
 
     _messageController.clear();
     setState(() {
-      _messages.add(_ChatMessage(role: 'user', content: message, timestamp: DateTime.now()));
+      _messages.add(
+        _ChatMessage(role: 'user', content: message, timestamp: DateTime.now()),
+      );
       _isLoading = true;
     });
     _scrollToBottom();
@@ -2407,7 +3128,9 @@ class _AIChatDialogState extends State<_AIChatDialog> {
             setState(() {
               assistantMessage.isStreaming = false;
               if (event.fullMessage != null && event.fullMessage!.isNotEmpty) {
-                assistantMessage.content = _cleanInternalTags(event.fullMessage!);
+                assistantMessage.content = _cleanInternalTags(
+                  event.fullMessage!,
+                );
               }
               _isLoading = false;
             });
@@ -2485,11 +3208,13 @@ class _AIChatDialogState extends State<_AIChatDialog> {
     widget.onAddToCart?.call(payload);
 
     setState(() {
-      _messages.add(_ChatMessage(
-        role: 'assistant',
-        content: '🛒 $name ($quantity adet - $price TL) sepete eklendi!',
-        timestamp: DateTime.now(),
-      ));
+      _messages.add(
+        _ChatMessage(
+          role: 'assistant',
+          content: '🛒 $name ($quantity adet - $price TL) sepete eklendi!',
+          timestamp: DateTime.now(),
+        ),
+      );
     });
     _scrollToBottom();
   }
@@ -2506,12 +3231,15 @@ class _AIChatDialogState extends State<_AIChatDialog> {
       if (isStore) {
         GoRouter.of(navContext).push('/store/product/$id');
       } else {
-        GoRouter.of(navContext).push('/food/item/$id', extra: {
-          'name': product['name'] ?? '',
-          'price': (product['price'] as num?)?.toDouble() ?? 0.0,
-          'imageUrl': product['image_url'] ?? '',
-          'restaurantName': product['merchant_name'] ?? '',
-        });
+        GoRouter.of(navContext).push(
+          '/food/item/$id',
+          extra: {
+            'name': product['name'] ?? '',
+            'price': (product['price'] as num?)?.toDouble() ?? 0.0,
+            'imageUrl': product['image_url'] ?? '',
+            'restaurantName': product['merchant_name'] ?? '',
+          },
+        );
       }
     });
   }
@@ -2536,11 +3264,14 @@ class _AIChatDialogState extends State<_AIChatDialog> {
     if (rideId == null) return;
 
     setState(() {
-      _messages.add(_ChatMessage(
-        role: 'assistant',
-        content: 'Taksiniz çağrıldı! Yolculuk takip ekranına yönlendiriliyorsunuz...',
-        timestamp: DateTime.now(),
-      ));
+      _messages.add(
+        _ChatMessage(
+          role: 'assistant',
+          content:
+              'Taksiniz çağrıldı! Yolculuk takip ekranına yönlendiriliyorsunuz...',
+          timestamp: DateTime.now(),
+        ),
+      );
     });
 
     // Fetch ride data then navigate to ride tracking screen
@@ -2575,7 +3306,13 @@ class _AIChatDialogState extends State<_AIChatDialog> {
     setState(() {
       _sessionId = null;
       _messages.clear();
-      _messages.add(_ChatMessage(role: 'assistant', content: 'Yeni sohbet baslatildi. Size nasil yardimci olabilirim?', timestamp: DateTime.now()));
+      _messages.add(
+        _ChatMessage(
+          role: 'assistant',
+          content: 'Yeni sohbet baslatildi. Size nasil yardimci olabilirim?',
+          timestamp: DateTime.now(),
+        ),
+      );
     });
   }
 
@@ -2593,17 +3330,34 @@ class _AIChatDialogState extends State<_AIChatDialog> {
           width: isMobile ? screenSize.width - 24 : 380,
           height: isMobile ? screenSize.height * 0.75 : 520,
           decoration: BoxDecoration(
-            gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF1a1a2e), Color(0xFF16213e), Color(0xFF0f0f23)]),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF1a1a2e), Color(0xFF16213e), Color(0xFF0f0f23)],
+            ),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: const Color(0xFF00D4FF).withAlpha(100), width: 1.5),
-            boxShadow: [BoxShadow(color: const Color(0xFF00D4FF).withAlpha(30), blurRadius: 25, spreadRadius: 3)],
+            border: Border.all(
+              color: const Color(0xFF00D4FF).withAlpha(100),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF00D4FF).withAlpha(30),
+                blurRadius: 25,
+                spreadRadius: 3,
+              ),
+            ],
           ),
           child: Column(
             children: [
               _buildHeader(),
               Expanded(
                 child: _isInitializing
-                    ? const Center(child: CircularProgressIndicator(color: Color(0xFF00D4FF)))
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF00D4FF),
+                        ),
+                      )
                     : ListView.builder(
                         controller: _scrollController,
                         padding: const EdgeInsets.all(14),
@@ -2625,15 +3379,26 @@ class _AIChatDialogState extends State<_AIChatDialog> {
   Widget _buildHeader() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: const Color(0xFF00D4FF).withAlpha(50)))),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: const Color(0xFF00D4FF).withAlpha(50)),
+        ),
+      ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFF00D4FF), Color(0xFF00FF88)]),
+              gradient: const LinearGradient(
+                colors: [Color(0xFF00D4FF), Color(0xFF00FF88)],
+              ),
               borderRadius: BorderRadius.circular(10),
-              boxShadow: [BoxShadow(color: const Color(0xFF00D4FF).withAlpha(100), blurRadius: 8)],
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF00D4FF).withAlpha(100),
+                  blurRadius: 8,
+                ),
+              ],
             ),
             child: const Icon(Icons.smart_toy, color: Colors.white, size: 20),
           ),
@@ -2642,12 +3407,44 @@ class _AIChatDialogState extends State<_AIChatDialog> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(_isLiveMode ? 'Canli Destek #${_liveTicketNumber ?? ''}' : 'SuperCyp AI', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
+                Text(
+                  _isLiveMode
+                      ? 'Canli Destek #${_liveTicketNumber ?? ''}'
+                      : 'SuperCyp AI',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
                 Row(
                   children: [
-                    Container(width: 6, height: 6, decoration: BoxDecoration(color: _isLiveMode ? const Color(0xFFFF8C00) : const Color(0xFF00FF88), shape: BoxShape.circle, boxShadow: [BoxShadow(color: _isLiveMode ? const Color(0xFFFF8C00) : const Color(0xFF00FF88), blurRadius: 4)])),
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: BoxDecoration(
+                        color: _isLiveMode
+                            ? const Color(0xFFFF8C00)
+                            : const Color(0xFF00FF88),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: _isLiveMode
+                                ? const Color(0xFFFF8C00)
+                                : const Color(0xFF00FF88),
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                    ),
                     const SizedBox(width: 5),
-                    Text(_isLiveMode ? 'Temsilci bekleniyor...' : 'Cevrimici', style: TextStyle(fontSize: 11, color: Colors.white.withAlpha(150))),
+                    Text(
+                      _isLiveMode ? 'Temsilci bekleniyor...' : 'Cevrimici',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.white.withAlpha(150),
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -2657,17 +3454,41 @@ class _AIChatDialogState extends State<_AIChatDialog> {
           IconButton(
             icon: Icon(
               _ttsEnabled ? Icons.volume_up : Icons.volume_off,
-              color: _ttsEnabled ? const Color(0xFF00FF88) : Colors.white.withAlpha(150),
+              color: _ttsEnabled
+                  ? const Color(0xFF00FF88)
+                  : Colors.white.withAlpha(150),
               size: 20,
             ),
             onPressed: _toggleTts,
             tooltip: _ttsEnabled ? 'Sesi kapat' : 'Sesi aç',
           ),
           if (_isLiveMode)
-            IconButton(icon: Icon(Icons.call_end, color: Colors.red.withAlpha(200), size: 20), onPressed: _exitLiveMode, tooltip: 'Canli destegi sonlandir'),
+            IconButton(
+              icon: Icon(
+                Icons.call_end,
+                color: Colors.red.withAlpha(200),
+                size: 20,
+              ),
+              onPressed: _exitLiveMode,
+              tooltip: 'Canli destegi sonlandir',
+            ),
           if (!_isLiveMode)
-            IconButton(icon: Icon(Icons.refresh, color: Colors.white.withAlpha(150), size: 20), onPressed: _startNewChat),
-          IconButton(icon: Icon(Icons.close, color: Colors.white.withAlpha(150), size: 20), onPressed: widget.onClose),
+            IconButton(
+              icon: Icon(
+                Icons.refresh,
+                color: Colors.white.withAlpha(150),
+                size: 20,
+              ),
+              onPressed: _startNewChat,
+            ),
+          IconButton(
+            icon: Icon(
+              Icons.close,
+              color: Colors.white.withAlpha(150),
+              size: 20,
+            ),
+            onPressed: widget.onClose,
+          ),
         ],
       ),
     );
@@ -2680,16 +3501,25 @@ class _AIChatDialogState extends State<_AIChatDialog> {
         child: Container(
           margin: const EdgeInsets.symmetric(vertical: 8),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(color: const Color(0xFF252540).withAlpha(150), borderRadius: BorderRadius.circular(12)),
-          child: Text(message.content, style: TextStyle(color: Colors.white.withAlpha(150), fontSize: 11), textAlign: TextAlign.center),
+          decoration: BoxDecoration(
+            color: const Color(0xFF252540).withAlpha(150),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            message.content,
+            style: TextStyle(color: Colors.white.withAlpha(150), fontSize: 11),
+            textAlign: TextAlign.center,
+          ),
         ),
       );
     }
 
     final isUser = message.role == 'user';
     final isLiveAgent = message.role == 'live_agent';
-    final hasProducts = !isUser && message.products != null && message.products!.isNotEmpty;
-    final hasRentalCars = !isUser && message.rentalCars != null && message.rentalCars!.isNotEmpty;
+    final hasProducts =
+        !isUser && message.products != null && message.products!.isNotEmpty;
+    final hasRentalCars =
+        !isUser && message.rentalCars != null && message.rentalCars!.isNotEmpty;
     final hasPriceComparison = !isUser && message.priceComparison != null;
     return Align(
       alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
@@ -2702,14 +3532,23 @@ class _AIChatDialogState extends State<_AIChatDialog> {
           children: [
             if (!isUser) ...[
               Container(
-                width: 26, height: 26,
+                width: 26,
+                height: 26,
                 decoration: BoxDecoration(
                   gradient: isLiveAgent
-                      ? const LinearGradient(colors: [Color(0xFFFF8C00), Color(0xFFFF6600)])
-                      : const LinearGradient(colors: [Color(0xFF00D4FF), Color(0xFF00FF88)]),
+                      ? const LinearGradient(
+                          colors: [Color(0xFFFF8C00), Color(0xFFFF6600)],
+                        )
+                      : const LinearGradient(
+                          colors: [Color(0xFF00D4FF), Color(0xFF00FF88)],
+                        ),
                   borderRadius: BorderRadius.circular(7),
                 ),
-                child: Icon(isLiveAgent ? Icons.support_agent : Icons.smart_toy, color: Colors.white, size: 16),
+                child: Icon(
+                  isLiveAgent ? Icons.support_agent : Icons.smart_toy,
+                  color: Colors.white,
+                  size: 16,
+                ),
               ),
               const SizedBox(width: 8),
             ],
@@ -2719,20 +3558,54 @@ class _AIChatDialogState extends State<_AIChatDialog> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
-                      gradient: isUser ? const LinearGradient(colors: [Color(0xFF00D4FF), Color(0xFF0099CC)]) : null,
+                      gradient: isUser
+                          ? const LinearGradient(
+                              colors: [Color(0xFF00D4FF), Color(0xFF0099CC)],
+                            )
+                          : null,
                       color: isUser ? null : const Color(0xFF252540),
-                      borderRadius: BorderRadius.only(topLeft: const Radius.circular(16), topRight: const Radius.circular(16), bottomLeft: Radius.circular(isUser ? 16 : 4), bottomRight: Radius.circular(isUser ? 4 : 16)),
-                      border: isUser ? null : Border.all(color: (isLiveAgent ? const Color(0xFFFF8C00) : const Color(0xFF00D4FF)).withAlpha(30)),
+                      borderRadius: BorderRadius.only(
+                        topLeft: const Radius.circular(16),
+                        topRight: const Radius.circular(16),
+                        bottomLeft: Radius.circular(isUser ? 16 : 4),
+                        bottomRight: Radius.circular(isUser ? 4 : 16),
+                      ),
+                      border: isUser
+                          ? null
+                          : Border.all(
+                              color:
+                                  (isLiveAgent
+                                          ? const Color(0xFFFF8C00)
+                                          : const Color(0xFF00D4FF))
+                                      .withAlpha(30),
+                            ),
                     ),
                     child: message.isStreaming && message.content.isEmpty
-                        ? Row(mainAxisSize: MainAxisSize.min, children: List.generate(3, (i) => _TypingDot(delay: i * 150)))
+                        ? Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: List.generate(
+                              3,
+                              (i) => _TypingDot(delay: i * 150),
+                            ),
+                          )
                         : Row(
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              Flexible(child: Text(message.content, style: const TextStyle(color: Colors.white, fontSize: 13))),
+                              Flexible(
+                                child: Text(
+                                  message.content,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
                               if (message.isStreaming) const _StreamingCursor(),
                             ],
                           ),
@@ -2755,10 +3628,15 @@ class _AIChatDialogState extends State<_AIChatDialog> {
                           Future.delayed(const Duration(milliseconds: 300), () {
                             final navContext = rootNavigatorKey.currentContext;
                             if (navContext != null) {
-                              GoRouter.of(navContext).push('/rental/car/$carId', extra: {
-                                if (pickupDate != null) 'pickup_date': pickupDate,
-                                if (dropoffDate != null) 'dropoff_date': dropoffDate,
-                              });
+                              GoRouter.of(navContext).push(
+                                '/rental/car/$carId',
+                                extra: {
+                                  if (pickupDate != null)
+                                    'pickup_date': pickupDate,
+                                  if (dropoffDate != null)
+                                    'dropoff_date': dropoffDate,
+                                },
+                              );
                             }
                           });
                         }
@@ -2768,10 +3646,14 @@ class _AIChatDialogState extends State<_AIChatDialog> {
                     _InlinePriceComparison(
                       data: message.priceComparison!,
                       onAddAllToCart: (store) {
-                        final matchedProducts = (store['matched_products'] as List<dynamic>?) ?? [];
-                        final merchantId = store['merchant_id'] as String? ?? '';
-                        final businessName = store['business_name'] as String? ?? '';
-                        final merchantType = store['merchant_type'] as String? ?? 'store';
+                        final matchedProducts =
+                            (store['matched_products'] as List<dynamic>?) ?? [];
+                        final merchantId =
+                            store['merchant_id'] as String? ?? '';
+                        final businessName =
+                            store['business_name'] as String? ?? '';
+                        final merchantType =
+                            store['merchant_type'] as String? ?? 'store';
                         for (final product in matchedProducts) {
                           final p = product as Map;
                           widget.onAddToCart?.call({
@@ -2786,11 +3668,14 @@ class _AIChatDialogState extends State<_AIChatDialog> {
                           });
                         }
                         setState(() {
-                          _messages.add(_ChatMessage(
-                            role: 'assistant',
-                            content: '${matchedProducts.length} urun $businessName sepetine eklendi!',
-                            timestamp: DateTime.now(),
-                          ));
+                          _messages.add(
+                            _ChatMessage(
+                              role: 'assistant',
+                              content:
+                                  '${matchedProducts.length} urun $businessName sepetine eklendi!',
+                              timestamp: DateTime.now(),
+                            ),
+                          );
                         });
                         _scrollToBottom();
                       },
@@ -2806,7 +3691,11 @@ class _AIChatDialogState extends State<_AIChatDialog> {
   }
 
   Widget _buildQuickActions() {
-    final questions = ['Siparis durumu nedir?', 'Yardim almak istiyorum', 'Odeme nasil yapilir?'];
+    final questions = [
+      'Siparis durumu nedir?',
+      'Yardim almak istiyorum',
+      'Odeme nasil yapilir?',
+    ];
     return SizedBox(
       height: 38,
       child: ListView.builder(
@@ -2816,11 +3705,17 @@ class _AIChatDialogState extends State<_AIChatDialog> {
         itemBuilder: (context, index) => Padding(
           padding: const EdgeInsets.only(right: 6),
           child: ActionChip(
-            label: Text(questions[index], style: const TextStyle(fontSize: 10, color: Colors.white)),
+            label: Text(
+              questions[index],
+              style: const TextStyle(fontSize: 10, color: Colors.white),
+            ),
             backgroundColor: const Color(0xFF252540),
             side: BorderSide(color: const Color(0xFF00D4FF).withAlpha(50)),
             padding: const EdgeInsets.symmetric(horizontal: 4),
-            onPressed: () { _messageController.text = questions[index]; _sendMessage(); },
+            onPressed: () {
+              _messageController.text = questions[index];
+              _sendMessage();
+            },
           ),
         ),
       ),
@@ -2830,7 +3725,11 @@ class _AIChatDialogState extends State<_AIChatDialog> {
   Widget _buildInputArea() {
     return Container(
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(border: Border(top: BorderSide(color: const Color(0xFF00D4FF).withAlpha(50)))),
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(color: const Color(0xFF00D4FF).withAlpha(50)),
+        ),
+      ),
       child: Row(
         children: [
           Expanded(
@@ -2843,16 +3742,32 @@ class _AIChatDialogState extends State<_AIChatDialog> {
                 ),
               ),
               child: Container(
-                decoration: BoxDecoration(color: const Color(0xFF252540), borderRadius: BorderRadius.circular(20), border: Border.all(color: const Color(0xFF00D4FF).withAlpha(30))),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF252540),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: const Color(0xFF00D4FF).withAlpha(30),
+                  ),
+                ),
                 child: TextField(
                   controller: _messageController,
-                  style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
                   cursorColor: const Color(0xFF00D4FF),
                   decoration: InputDecoration(
                     hintText: 'Mesajinizi yazin...',
-                    hintStyle: TextStyle(color: Colors.white.withAlpha(120), fontSize: 13),
+                    hintStyle: TextStyle(
+                      color: Colors.white.withAlpha(120),
+                      fontSize: 13,
+                    ),
                     border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
                   ),
                   onSubmitted: (_) => _sendMessage(),
                 ),
@@ -2861,9 +3776,29 @@ class _AIChatDialogState extends State<_AIChatDialog> {
           ),
           const SizedBox(width: 8),
           Container(
-            decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF00D4FF), Color(0xFF00FF88)]), borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: const Color(0xFF00D4FF).withAlpha(80), blurRadius: 8)]),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF00D4FF), Color(0xFF00FF88)],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF00D4FF).withAlpha(80),
+                  blurRadius: 8,
+                ),
+              ],
+            ),
             child: IconButton(
-              icon: _isLoading ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)) : const Icon(Icons.send, color: Colors.white, size: 18),
+              icon: _isLoading
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.send, color: Colors.white, size: 18),
               onPressed: _isLoading ? null : _sendMessage,
             ),
           ),
@@ -2881,27 +3816,44 @@ class _TypingDot extends StatefulWidget {
   State<_TypingDot> createState() => _TypingDotState();
 }
 
-class _TypingDotState extends State<_TypingDot> with SingleTickerProviderStateMixin {
+class _TypingDotState extends State<_TypingDot>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(duration: const Duration(milliseconds: 600), vsync: this);
-    Future.delayed(Duration(milliseconds: widget.delay), () { if (mounted) _controller.repeat(reverse: true); });
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+    Future.delayed(Duration(milliseconds: widget.delay), () {
+      if (mounted) _controller.repeat(reverse: true);
+    });
   }
 
   @override
-  void dispose() { _controller.dispose(); super.dispose(); }
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, _) => Container(
-        width: 7, height: 7,
+        width: 7,
+        height: 7,
         margin: const EdgeInsets.symmetric(horizontal: 2),
-        decoration: BoxDecoration(color: Color.lerp(const Color(0xFF00D4FF).withAlpha(100), const Color(0xFF00D4FF), _controller.value), shape: BoxShape.circle),
+        decoration: BoxDecoration(
+          color: Color.lerp(
+            const Color(0xFF00D4FF).withAlpha(100),
+            const Color(0xFF00D4FF),
+            _controller.value,
+          ),
+          shape: BoxShape.circle,
+        ),
       ),
     );
   }
@@ -2913,17 +3865,24 @@ class _StreamingCursor extends StatefulWidget {
   State<_StreamingCursor> createState() => _StreamingCursorState();
 }
 
-class _StreamingCursorState extends State<_StreamingCursor> with SingleTickerProviderStateMixin {
+class _StreamingCursorState extends State<_StreamingCursor>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(duration: const Duration(milliseconds: 500), vsync: this)..repeat(reverse: true);
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    )..repeat(reverse: true);
   }
 
   @override
-  void dispose() { _controller.dispose(); super.dispose(); }
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -2932,7 +3891,8 @@ class _StreamingCursorState extends State<_StreamingCursor> with SingleTickerPro
       builder: (context, _) => Opacity(
         opacity: _controller.value,
         child: Container(
-          width: 2, height: 14,
+          width: 2,
+          height: 14,
           margin: const EdgeInsets.only(left: 2),
           color: const Color(0xFF00D4FF),
         ),
@@ -2953,7 +3913,17 @@ class _ChatMessage {
   List<Map<String, dynamic>>? rentalCars;
   Map<String, dynamic>? priceComparison;
 
-  _ChatMessage({required this.role, required this.content, this.timestamp, this.isError = false, this.isStreaming = false, this.isLiveMessage = false, this.senderName, this.products, this.rentalCars, this.priceComparison});
+  _ChatMessage({
+    required this.role,
+    required this.content,
+    this.timestamp,
+    this.isError = false,
+    this.isStreaming = false,
+    this.isLiveMessage = false,
+    this.senderName,
+    this.products,
+    this.rentalCars,
+  }) : priceComparison = null;
 }
 
 class _AiProductCardList extends StatelessWidget {
@@ -2961,11 +3931,17 @@ class _AiProductCardList extends StatelessWidget {
   final void Function(Map<String, dynamic> payload) onAddToCart;
   final void Function(Map<String, dynamic> product)? onProductTap;
 
-  const _AiProductCardList({required this.products, required this.onAddToCart, this.onProductTap});
+  const _AiProductCardList({
+    required this.products,
+    required this.onAddToCart,
+    this.onProductTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final displayProducts = products.length > 8 ? products.sublist(0, 8) : products;
+    final displayProducts = products.length > 8
+        ? products.sublist(0, 8)
+        : products;
     return Container(
       margin: const EdgeInsets.only(top: 6),
       child: Column(
@@ -2998,7 +3974,11 @@ class _AiProductCard extends StatelessWidget {
   final VoidCallback onAddToCart;
   final VoidCallback? onTap;
 
-  const _AiProductCard({required this.product, required this.onAddToCart, this.onTap});
+  const _AiProductCard({
+    required this.product,
+    required this.onAddToCart,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -3013,63 +3993,110 @@ class _AiProductCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-      margin: const EdgeInsets.only(bottom: 5),
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: const Color(0xFF252540),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFF00D4FF).withAlpha(40)),
-      ),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              width: 48, height: 48,
-              color: const Color(0xFF1a1a2e),
-              child: imageUrl.isNotEmpty
-                  ? CachedNetworkImage(imageUrl: imageUrl, fit: BoxFit.cover,
-                      memCacheWidth: 96, memCacheHeight: 96,
-                      errorWidget: (_, __, ___) => const Icon(Icons.fastfood, color: Color(0xFF555577), size: 22))
-                  : const Icon(Icons.fastfood, color: Color(0xFF555577), size: 22),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 2),
-                Text(merchantName, style: TextStyle(color: Colors.white.withAlpha(120), fontSize: 10), maxLines: 1, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 3),
-                Row(
-                  children: [
-                    Text('${price.toStringAsFixed(2)} TL', style: const TextStyle(color: Color(0xFF00FF88), fontSize: 12, fontWeight: FontWeight.bold)),
-                    if (hasDiscount) ...[
-                      const SizedBox(width: 4),
-                      Text('${originalPrice.toStringAsFixed(2)} TL', style: TextStyle(color: Colors.white.withAlpha(80), fontSize: 10, decoration: TextDecoration.lineThrough)),
-                    ],
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 6),
-          if (hasId)
-            GestureDetector(
-              onTap: onAddToCart,
+        margin: const EdgeInsets.only(bottom: 5),
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF252540),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFF00D4FF).withAlpha(40)),
+        ),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
               child: Container(
-                width: 32, height: 32,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [Color(0xFF00D4FF), Color(0xFF00FF88)]),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.add, color: Colors.white, size: 18),
+                width: 48,
+                height: 48,
+                color: const Color(0xFF1a1a2e),
+                child: imageUrl.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: imageUrl,
+                        fit: BoxFit.cover,
+                        memCacheWidth: 96,
+                        memCacheHeight: 96,
+                        errorWidget: (_, _, _) => const Icon(
+                          Icons.fastfood,
+                          color: Color(0xFF555577),
+                          size: 22,
+                        ),
+                      )
+                    : const Icon(
+                        Icons.fastfood,
+                        color: Color(0xFF555577),
+                        size: 22,
+                      ),
               ),
             ),
-        ],
-      ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    merchantName,
+                    style: TextStyle(
+                      color: Colors.white.withAlpha(120),
+                      fontSize: 10,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      Text(
+                        '${price.toStringAsFixed(2)} TL',
+                        style: const TextStyle(
+                          color: Color(0xFF00FF88),
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      if (hasDiscount) ...[
+                        const SizedBox(width: 4),
+                        Text(
+                          '${originalPrice.toStringAsFixed(2)} TL',
+                          style: TextStyle(
+                            color: Colors.white.withAlpha(80),
+                            fontSize: 10,
+                            decoration: TextDecoration.lineThrough,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 6),
+            if (hasId)
+              GestureDetector(
+                onTap: onAddToCart,
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF00D4FF), Color(0xFF00FF88)],
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.add, color: Colors.white, size: 18),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -3115,17 +4142,26 @@ class _AiRentalCard extends StatelessWidget {
     final hasId = (car['car_id'] as String? ?? '').isNotEmpty;
 
     String categoryLabel = category;
-    if (category == 'economy') categoryLabel = 'Ekonomi';
-    else if (category == 'compact') categoryLabel = 'Kompakt';
-    else if (category == 'midsize') categoryLabel = 'Orta';
-    else if (category == 'fullsize') categoryLabel = 'Büyük';
-    else if (category == 'suv') categoryLabel = 'SUV';
-    else if (category == 'luxury') categoryLabel = 'Lüks';
-    else if (category == 'van') categoryLabel = 'Van';
+    if (category == 'economy') {
+      categoryLabel = 'Ekonomi';
+    } else if (category == 'compact')
+      categoryLabel = 'Kompakt';
+    else if (category == 'midsize')
+      categoryLabel = 'Orta';
+    else if (category == 'fullsize')
+      categoryLabel = 'Büyük';
+    else if (category == 'suv')
+      categoryLabel = 'SUV';
+    else if (category == 'luxury')
+      categoryLabel = 'Lüks';
+    else if (category == 'van')
+      categoryLabel = 'Van';
 
     String transLabel = transmission;
-    if (transmission == 'automatic') transLabel = 'Otomatik';
-    else if (transmission == 'manual') transLabel = 'Manuel';
+    if (transmission == 'automatic') {
+      transLabel = 'Otomatik';
+    } else if (transmission == 'manual')
+      transLabel = 'Manuel';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 5),
@@ -3140,13 +4176,26 @@ class _AiRentalCard extends StatelessWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: Container(
-              width: 52, height: 52,
+              width: 52,
+              height: 52,
               color: const Color(0xFF1a1a2e),
               child: imageUrl.isNotEmpty
-                  ? CachedNetworkImage(imageUrl: imageUrl, fit: BoxFit.cover,
-                      memCacheWidth: 104, memCacheHeight: 104,
-                      errorWidget: (_, __, ___) => const Icon(Icons.directions_car, color: Color(0xFF555577), size: 24))
-                  : const Icon(Icons.directions_car, color: Color(0xFF555577), size: 24),
+                  ? CachedNetworkImage(
+                      imageUrl: imageUrl,
+                      fit: BoxFit.cover,
+                      memCacheWidth: 104,
+                      memCacheHeight: 104,
+                      errorWidget: (_, _, _) => const Icon(
+                        Icons.directions_car,
+                        color: Color(0xFF555577),
+                        size: 24,
+                      ),
+                    )
+                  : const Icon(
+                      Icons.directions_car,
+                      color: Color(0xFF555577),
+                      size: 24,
+                    ),
             ),
           ),
           const SizedBox(width: 8),
@@ -3154,23 +4203,66 @@ class _AiRentalCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('$brand $model', style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
+                Text(
+                  '$brand $model',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 const SizedBox(height: 2),
-                Text(companyName, style: TextStyle(color: Colors.white.withAlpha(120), fontSize: 10), maxLines: 1, overflow: TextOverflow.ellipsis),
+                Text(
+                  companyName,
+                  style: TextStyle(
+                    color: Colors.white.withAlpha(120),
+                    fontSize: 10,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 const SizedBox(height: 3),
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                      decoration: BoxDecoration(color: const Color(0xFF7C4DFF).withAlpha(40), borderRadius: BorderRadius.circular(4)),
-                      child: Text(categoryLabel, style: const TextStyle(color: Color(0xFF7C4DFF), fontSize: 9, fontWeight: FontWeight.w500)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 1,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF7C4DFF).withAlpha(40),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        categoryLabel,
+                        style: const TextStyle(
+                          color: Color(0xFF7C4DFF),
+                          fontSize: 9,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ),
                     const SizedBox(width: 4),
-                    Text('$transLabel · $fuelType', style: TextStyle(color: Colors.white.withAlpha(100), fontSize: 9)),
+                    Text(
+                      '$transLabel · $fuelType',
+                      style: TextStyle(
+                        color: Colors.white.withAlpha(100),
+                        fontSize: 9,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 3),
-                Text('${dailyPrice.toStringAsFixed(0)} TL/gün', style: const TextStyle(color: Color(0xFF00FF88), fontSize: 12, fontWeight: FontWeight.bold)),
+                Text(
+                  '${dailyPrice.toStringAsFixed(0)} TL/gün',
+                  style: const TextStyle(
+                    color: Color(0xFF00FF88),
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ],
             ),
           ),
@@ -3181,10 +4273,19 @@ class _AiRentalCard extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: [Color(0xFF7C4DFF), Color(0xFFAB47BC)]),
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF7C4DFF), Color(0xFFAB47BC)],
+                  ),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Text('Kirala', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
+                child: const Text(
+                  'Kirala',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ),
         ],
@@ -3197,7 +4298,10 @@ class _InlinePriceComparison extends StatelessWidget {
   final Map<String, dynamic> data;
   final void Function(Map<String, dynamic> store) onAddAllToCart;
 
-  const _InlinePriceComparison({required this.data, required this.onAddAllToCart});
+  const _InlinePriceComparison({
+    required this.data,
+    required this.onAddAllToCart,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -3210,13 +4314,19 @@ class _InlinePriceComparison extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           for (int i = 0; i < stores.length && i < 5; i++)
-            _buildCompactStoreCard(Map<String, dynamic>.from(stores[i] as Map), isCheapest: i == 0),
+            _buildCompactStoreCard(
+              Map<String, dynamic>.from(stores[i] as Map),
+              isCheapest: i == 0,
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildCompactStoreCard(Map<String, dynamic> store, {bool isCheapest = false}) {
+  Widget _buildCompactStoreCard(
+    Map<String, dynamic> store, {
+    bool isCheapest = false,
+  }) {
     final businessName = store['business_name'] as String? ?? '';
     final isOpen = store['is_open'] as bool? ?? false;
     final hasAllProducts = store['has_all_products'] as bool? ?? false;
@@ -3224,7 +4334,9 @@ class _InlinePriceComparison extends StatelessWidget {
     final totalRequested = (store['total_requested'] as num?)?.toInt() ?? 0;
     final totalPrice = (store['total_price'] as num?)?.toDouble() ?? 0.0;
     final deliveryFee = (store['delivery_fee'] as num?)?.toDouble() ?? 0.0;
-    final totalWithDelivery = (store['total_with_delivery'] as num?)?.toDouble() ?? totalPrice + deliveryFee;
+    final totalWithDelivery =
+        (store['total_with_delivery'] as num?)?.toDouble() ??
+        totalPrice + deliveryFee;
     final matchedProducts = (store['matched_products'] as List<dynamic>?) ?? [];
     final missingProducts = (store['missing_products'] as List<dynamic>?) ?? [];
 
@@ -3235,7 +4347,9 @@ class _InlinePriceComparison extends StatelessWidget {
         color: const Color(0xFF1a1a2e),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: isCheapest && hasAllProducts ? const Color(0xFFFFD700).withAlpha(150) : Colors.white.withAlpha(20),
+          color: isCheapest && hasAllProducts
+              ? const Color(0xFFFFD700).withAlpha(150)
+              : Colors.white.withAlpha(20),
           width: isCheapest && hasAllProducts ? 1.5 : 1,
         ),
       ),
@@ -3248,27 +4362,63 @@ class _InlinePriceComparison extends StatelessWidget {
             children: [
               if (isCheapest && hasAllProducts) ...[
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                  decoration: BoxDecoration(color: const Color(0xFFFFD700), borderRadius: BorderRadius.circular(4)),
-                  child: const Text('EN UCUZ', style: TextStyle(color: Colors.black, fontSize: 8, fontWeight: FontWeight.w800)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 1,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFD700),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'EN UCUZ',
+                    style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 8,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 4),
               ],
               Expanded(
-                child: Text(businessName, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis),
+                child: Text(
+                  businessName,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                 decoration: BoxDecoration(
-                  color: isOpen ? Colors.green.withAlpha(40) : Colors.red.withAlpha(40),
+                  color: isOpen
+                      ? Colors.green.withAlpha(40)
+                      : Colors.red.withAlpha(40),
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: Text(isOpen ? 'Acik' : 'Kapali', style: TextStyle(color: isOpen ? Colors.greenAccent : Colors.redAccent, fontSize: 8, fontWeight: FontWeight.w600)),
+                child: Text(
+                  isOpen ? 'Acik' : 'Kapali',
+                  style: TextStyle(
+                    color: isOpen ? Colors.greenAccent : Colors.redAccent,
+                    fontSize: 8,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 4),
-          Text('$matchedCount/$totalRequested urun', style: TextStyle(color: hasAllProducts ? Colors.greenAccent : Colors.orangeAccent, fontSize: 10)),
+          Text(
+            '$matchedCount/$totalRequested urun',
+            style: TextStyle(
+              color: hasAllProducts ? Colors.greenAccent : Colors.orangeAccent,
+              fontSize: 10,
+            ),
+          ),
           const SizedBox(height: 4),
           // Products
           for (final product in matchedProducts)
@@ -3278,8 +4428,24 @@ class _InlinePriceComparison extends StatelessWidget {
                 children: [
                   Icon(Icons.check_circle, color: Colors.greenAccent, size: 10),
                   const SizedBox(width: 4),
-                  Expanded(child: Text((product as Map)['product_name'] as String? ?? '', style: const TextStyle(color: Colors.white60, fontSize: 10), overflow: TextOverflow.ellipsis)),
-                  Text('${(product['price'] as num?)?.toStringAsFixed(0) ?? '0'} TL', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
+                  Expanded(
+                    child: Text(
+                      (product as Map)['product_name'] as String? ?? '',
+                      style: const TextStyle(
+                        color: Colors.white60,
+                        fontSize: 10,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  Text(
+                    '${(product['price'] as num?)?.toStringAsFixed(0) ?? '0'} TL',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -3290,7 +4456,14 @@ class _InlinePriceComparison extends StatelessWidget {
                 children: [
                   Icon(Icons.cancel, color: Colors.redAccent, size: 10),
                   const SizedBox(width: 4),
-                  Text(missing as String? ?? '', style: const TextStyle(color: Colors.redAccent, fontSize: 10, decoration: TextDecoration.lineThrough)),
+                  Text(
+                    missing as String? ?? '',
+                    style: const TextStyle(
+                      color: Colors.redAccent,
+                      fontSize: 10,
+                      decoration: TextDecoration.lineThrough,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -3302,27 +4475,49 @@ class _InlinePriceComparison extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('${totalPrice.toStringAsFixed(0)} TL${deliveryFee > 0 ? ' + ${deliveryFee.toStringAsFixed(0)} teslimat' : ''}',
-                        style: const TextStyle(color: Colors.white54, fontSize: 9)),
-                    Text('${totalWithDelivery.toStringAsFixed(0)} TL', style: const TextStyle(color: Color(0xFF00D4FF), fontSize: 13, fontWeight: FontWeight.bold)),
+                    Text(
+                      '${totalPrice.toStringAsFixed(0)} TL${deliveryFee > 0 ? ' + ${deliveryFee.toStringAsFixed(0)} teslimat' : ''}',
+                      style: const TextStyle(
+                        color: Colors.white54,
+                        fontSize: 9,
+                      ),
+                    ),
+                    Text(
+                      '${totalWithDelivery.toStringAsFixed(0)} TL',
+                      style: const TextStyle(
+                        color: Color(0xFF00D4FF),
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ],
                 ),
               ),
               GestureDetector(
                 onTap: isOpen ? () => onAddAllToCart(store) : null,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: isOpen
-                        ? (isCheapest && hasAllProducts ? const Color(0xFFFFD700) : const Color(0xFF00D4FF))
+                        ? (isCheapest && hasAllProducts
+                              ? const Color(0xFFFFD700)
+                              : const Color(0xFF00D4FF))
                         : Colors.grey.withAlpha(60),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     'Sepete Ekle',
                     style: TextStyle(
-                      color: isOpen ? (isCheapest && hasAllProducts ? Colors.black : Colors.white) : Colors.white38,
-                      fontSize: 10, fontWeight: FontWeight.w600,
+                      color: isOpen
+                          ? (isCheapest && hasAllProducts
+                                ? Colors.black
+                                : Colors.white)
+                          : Colors.white38,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),

@@ -53,7 +53,7 @@ class _AdminMessagesScreenState extends ConsumerState<AdminMessagesScreen> {
               const Icon(Icons.error_outline, color: AppColors.error, size: 48),
               const SizedBox(height: 12),
               Text(
-                'Mesajlar yuklenemedi',
+                'Mesajlar yüklenemedi',
                 style: const TextStyle(color: AppColors.textSecondary),
               ),
               const SizedBox(height: 8),
@@ -86,7 +86,7 @@ class _AdminMessagesScreenState extends ConsumerState<AdminMessagesScreen> {
                   ),
                   SizedBox(height: 8),
                   Text(
-                    'Henuz bir konusma baslatilmamis.',
+                    'Henüz bir konuşma başlatılmamış.',
                     style: TextStyle(color: AppColors.textMuted, fontSize: 14),
                   ),
                 ],
@@ -118,7 +118,7 @@ class _AdminMessagesScreenState extends ConsumerState<AdminMessagesScreen> {
                                 color: AppColors.textMuted, size: 56),
                             SizedBox(height: 16),
                             Text(
-                              'Bir konusma secin',
+                              'Bir konuşma seçin',
                               style: TextStyle(
                                 color: AppColors.textSecondary,
                                 fontSize: 16,
@@ -144,7 +144,7 @@ class _AdminMessagesScreenState extends ConsumerState<AdminMessagesScreen> {
           Padding(
             padding: const EdgeInsets.all(16),
             child: Text(
-              'Konusmalar',
+              'Konuşmalar',
               style: const TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 16,
@@ -193,9 +193,9 @@ class _AdminMessagesScreenState extends ConsumerState<AdminMessagesScreen> {
     required List<Map<String, dynamic>> messages,
   }) {
     final customerName =
-        conversation['customer_name'] as String? ?? 'Musteri';
+        'Konuşma #${(conversation['id'] as String?)?.substring(0, 8) ?? ''}';
     final lastText =
-        lastMessage?['message'] as String? ?? 'Mesaj yok';
+        lastMessage?['content'] as String? ?? 'Mesaj yok';
     final lastTime = lastMessage?['created_at'] as String?;
 
     return InkWell(
@@ -320,7 +320,7 @@ class _AdminMessagesScreenState extends ConsumerState<AdminMessagesScreen> {
     if (_selectedMessages.isEmpty) {
       return const Center(
         child: Text(
-          'Bu konusmada mesaj yok',
+          'Bu konuşmada mesaj yok',
           style: TextStyle(color: AppColors.textMuted, fontSize: 14),
         ),
       );
@@ -345,7 +345,7 @@ class _AdminMessagesScreenState extends ConsumerState<AdminMessagesScreen> {
                     color: AppColors.textMuted, size: 18),
                 const SizedBox(width: 8),
                 const Text(
-                  'Salt okunur gorunum',
+                  'Salt okunur görünüm',
                   style: TextStyle(
                     color: AppColors.textMuted,
                     fontSize: 13,
@@ -390,7 +390,7 @@ class _AdminMessagesScreenState extends ConsumerState<AdminMessagesScreen> {
                     color: AppColors.textMuted, size: 16),
                 const SizedBox(width: 8),
                 const Text(
-                  'Admin gorunumu - mesaj gonderilemez',
+                  'Admin görünümü - mesaj gönderilemez',
                   style: TextStyle(
                     color: AppColors.textMuted,
                     fontSize: 13,
@@ -405,9 +405,10 @@ class _AdminMessagesScreenState extends ConsumerState<AdminMessagesScreen> {
   }
 
   Widget _buildMessageBubble(Map<String, dynamic> message) {
-    final senderType = message['sender_type'] as String? ?? 'customer';
-    final senderName = message['sender_name'] as String? ?? '';
-    final text = message['message'] as String? ?? '';
+    final senderId = message['sender_id'] as String? ?? '';
+    final senderType = senderId == widget.entityId ? 'merchant' : 'customer';
+    final senderName = senderId == widget.entityId ? 'İşletme' : 'Müşteri';
+    final text = message['content'] as String? ?? '';
     final createdAt = message['created_at'] as String?;
     final isRead = message['is_read'] as bool? ?? false;
 
@@ -526,7 +527,7 @@ class _AdminMessagesScreenState extends ConsumerState<AdminMessagesScreen> {
       final now = DateTime.now();
       final diff = now.difference(dateTime);
 
-      if (diff.inMinutes < 1) return 'Simdi';
+      if (diff.inMinutes < 1) return 'Şimdi';
       if (diff.inMinutes < 60) return '${diff.inMinutes}dk';
       if (diff.inHours < 24) return '${diff.inHours}sa';
       if (diff.inDays < 7) return '${diff.inDays}g';

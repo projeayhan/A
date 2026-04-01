@@ -1,5 +1,12 @@
 {
   "mcpServers": {
+    "TestSprite": {
+      "command": "npx",
+      "args": ["@testsprite/testsprite-mcp@latest"],
+      "env": {
+        "API_KEY": "sk-user-LzBlm2lw3ABQFcKF3v9ucsXxYvt-MNXQ4j05ht_EcdSFkhp6-b6kzvr8zFY_6pLH_RvYr1NAGqXeGuOSLiiOz4GW3q26Us_9vN8hKuZSfVwVSPIqoHz7XyM1sT88eCIHa4c"
+      }
+    },
     "supabase": {
       "type": "http",
       "url": "https://mcp.supabase.com/mcp?project_ref=mzgtvdgwxrlhgjboolys&features=docs%2Caccount%2Cdatabase%2Cdebugging%2Cdevelopment%2Cfunctions%2Cbranching%2Cstorage",

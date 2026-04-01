@@ -29,17 +29,56 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   String? _errorMessage;
 
   static const List<String> _cities = [
-    'Lefkoşa', 'Gazimağusa', 'Girne', 'Güzelyurt', 'İskele', 'Lefke',
-    'Akıncılar', 'Alayköy', 'Değirmenlik', 'Demirhan', 'Gönyeli',
-    'Hamitköy', 'Haspolat', 'Minareliköy', 'Yeniceköy', 'Yılmazköy',
-    'Akdoğan', 'Beyarmudu', 'Geçitkale', 'Mutluyaka', 'Pile',
-    'Serdarlı', 'Tatlısu', 'Yeniboğaziçi',
-    'Alsancak', 'Çatalköy', 'Esentepe', 'Karşıyaka', 'Lapta',
-    'Ozanköy', 'Çamlıbel', 'Karaman', 'Kayalar',
-    'Aydınköy', 'Kalkanlı', 'Serhatköy', 'Yayla', 'Zümrütköy',
-    'Bafra', 'Boğaziçi', 'Büyükkonuk', 'Dipkarpaz', 'Kaplıca',
-    'Mehmetçik', 'Yeni Erenköy', 'Ziyamet',
-    'Gaziveren', 'Yeşilırmak', 'Yeşilyurt', 'Cengizköy',
+    'Lefkoşa',
+    'Gazimağusa',
+    'Girne',
+    'Güzelyurt',
+    'İskele',
+    'Lefke',
+    'Akıncılar',
+    'Alayköy',
+    'Değirmenlik',
+    'Demirhan',
+    'Gönyeli',
+    'Hamitköy',
+    'Haspolat',
+    'Minareliköy',
+    'Yeniceköy',
+    'Yılmazköy',
+    'Akdoğan',
+    'Beyarmudu',
+    'Geçitkale',
+    'Mutluyaka',
+    'Pile',
+    'Serdarlı',
+    'Tatlısu',
+    'Yeniboğaziçi',
+    'Alsancak',
+    'Çatalköy',
+    'Esentepe',
+    'Karşıyaka',
+    'Lapta',
+    'Ozanköy',
+    'Çamlıbel',
+    'Karaman',
+    'Kayalar',
+    'Aydınköy',
+    'Kalkanlı',
+    'Serhatköy',
+    'Yayla',
+    'Zümrütköy',
+    'Bafra',
+    'Boğaziçi',
+    'Büyükkonuk',
+    'Dipkarpaz',
+    'Kaplıca',
+    'Mehmetçik',
+    'Yeni Erenköy',
+    'Ziyamet',
+    'Gaziveren',
+    'Yeşilırmak',
+    'Yeşilyurt',
+    'Cengizköy',
   ];
 
   @override
@@ -107,7 +146,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       });
     } catch (e) {
       setState(() {
-        _errorMessage = 'Kayıt olurken bir hata oluştu: ${e.toString().replaceAll('Exception: ', '')}';
+        _errorMessage =
+            'Kayıt olurken bir hata oluştu: ${e.toString().replaceAll('Exception: ', '')}';
       });
     } finally {
       if (mounted) {
@@ -199,7 +239,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       ),
                     ],
                   ),
-                  child: const Icon(Icons.directions_car, color: Colors.white, size: 40),
+                  child: const Icon(
+                    Icons.directions_car,
+                    color: Colors.white,
+                    size: 40,
+                  ),
                 ),
                 const SizedBox(height: 24),
 
@@ -227,11 +271,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // === SATICI BİLGİLERİ ===
-                      const Text('Satıcı Bilgileri', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      const Text(
+                        'Satıcı Bilgileri',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       const SizedBox(height: 16),
 
                       // Satıcı Tipi
-                      const Text('Satıcı Tipi', style: TextStyle(fontWeight: FontWeight.w600)),
+                      const Text(
+                        'Satıcı Tipi',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
                       const SizedBox(height: 8),
                       Wrap(
                         spacing: 8,
@@ -239,31 +292,45 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         children: DealerType.values.map((type) {
                           final isSelected = _selectedDealerType == type;
                           return GestureDetector(
-                            onTap: () => setState(() => _selectedDealerType = type),
+                            onTap: () =>
+                                setState(() => _selectedDealerType = type),
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 10,
+                              ),
                               decoration: BoxDecoration(
-                                color: isSelected ? CarSalesColors.primary : Colors.white,
+                                color: isSelected
+                                    ? CarSalesColors.primary
+                                    : Colors.white,
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
-                                  color: isSelected ? CarSalesColors.primary : CarSalesColors.borderLight,
+                                  color: isSelected
+                                      ? CarSalesColors.primary
+                                      : CarSalesColors.borderLight,
                                 ),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(
-                                    type == DealerType.individual ? Icons.person
-                                        : type == DealerType.dealer ? Icons.store
+                                    type == DealerType.individual
+                                        ? Icons.person
+                                        : type == DealerType.dealer
+                                        ? Icons.store
                                         : Icons.verified,
-                                    color: isSelected ? Colors.white : CarSalesColors.textSecondaryLight,
+                                    color: isSelected
+                                        ? Colors.white
+                                        : CarSalesColors.textSecondaryLight,
                                     size: 18,
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
                                     type.label,
                                     style: TextStyle(
-                                      color: isSelected ? Colors.white : CarSalesColors.textPrimaryLight,
+                                      color: isSelected
+                                          ? Colors.white
+                                          : CarSalesColors.textPrimaryLight,
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
@@ -283,7 +350,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           prefixIcon: Icon(Icons.person_outline),
                         ),
                         validator: (value) {
-                          if (value == null || value.isEmpty) return 'Ad soyad gerekli';
+                          if (value == null || value.isEmpty) {
+                            return 'Ad soyad gerekli';
+                          }
                           return null;
                         },
                       ),
@@ -315,8 +384,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           hintText: '05XX XXX XX XX',
                         ),
                         validator: (value) {
-                          if (value == null || value.isEmpty) return 'Telefon gerekli';
-                          if (value.length < 7) return 'Geçerli bir telefon numarası girin';
+                          if (value == null || value.isEmpty) {
+                            return 'Telefon gerekli';
+                          }
+                          if (value.length < 7) {
+                            return 'Geçerli bir telefon numarası girin';
+                          }
                           return null;
                         },
                       ),
@@ -324,25 +397,39 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
                       // Şehir
                       DropdownButtonFormField<String>(
-                        value: _selectedCity,
+                        initialValue: _selectedCity,
                         menuMaxHeight: 300,
                         decoration: const InputDecoration(
                           labelText: 'Şehir *',
                           prefixIcon: Icon(Icons.location_city_outlined),
                         ),
                         items: _cities
-                            .map((city) => DropdownMenuItem(value: city, child: Text(city)))
+                            .map(
+                              (city) => DropdownMenuItem(
+                                value: city,
+                                child: Text(city),
+                              ),
+                            )
                             .toList(),
-                        onChanged: (value) => setState(() => _selectedCity = value),
+                        onChanged: (value) =>
+                            setState(() => _selectedCity = value),
                         validator: (value) {
-                          if (value == null || value.isEmpty) return 'Lütfen şehir seçin';
+                          if (value == null || value.isEmpty) {
+                            return 'Lütfen şehir seçin';
+                          }
                           return null;
                         },
                       ),
                       const SizedBox(height: 24),
 
                       // === HESAP BİLGİLERİ ===
-                      const Text('Hesap Bilgileri', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      const Text(
+                        'Hesap Bilgileri',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       const SizedBox(height: 16),
 
                       // E-posta
@@ -354,8 +441,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           prefixIcon: Icon(Icons.email_outlined),
                         ),
                         validator: (value) {
-                          if (value == null || value.isEmpty) return 'E-posta gerekli';
-                          if (!value.contains('@')) return 'Geçerli bir e-posta girin';
+                          if (value == null || value.isEmpty) {
+                            return 'E-posta gerekli';
+                          }
+                          if (!value.contains('@')) {
+                            return 'Geçerli bir e-posta girin';
+                          }
                           return null;
                         },
                       ),
@@ -369,13 +460,23 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           labelText: 'Şifre *',
                           prefixIcon: const Icon(Icons.lock_outlined),
                           suffixIcon: IconButton(
-                            icon: Icon(_obscurePassword ? Icons.visibility : Icons.visibility_off),
-                            onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                            icon: Icon(
+                              _obscurePassword
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                            ),
+                            onPressed: () => setState(
+                              () => _obscurePassword = !_obscurePassword,
+                            ),
                           ),
                         ),
                         validator: (value) {
-                          if (value == null || value.isEmpty) return 'Şifre gerekli';
-                          if (value.length < 6) return 'Şifre en az 6 karakter olmalı';
+                          if (value == null || value.isEmpty) {
+                            return 'Şifre gerekli';
+                          }
+                          if (value.length < 6) {
+                            return 'Şifre en az 6 karakter olmalı';
+                          }
                           return null;
                         },
                       ),
@@ -389,13 +490,24 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           labelText: 'Şifre Tekrar *',
                           prefixIcon: const Icon(Icons.lock_outlined),
                           suffixIcon: IconButton(
-                            icon: Icon(_obscureConfirmPassword ? Icons.visibility : Icons.visibility_off),
-                            onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                            icon: Icon(
+                              _obscureConfirmPassword
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                            ),
+                            onPressed: () => setState(
+                              () => _obscureConfirmPassword =
+                                  !_obscureConfirmPassword,
+                            ),
                           ),
                         ),
                         validator: (value) {
-                          if (value == null || value.isEmpty) return 'Şifre tekrarı gerekli';
-                          if (value != _passwordController.text) return 'Şifreler eşleşmiyor';
+                          if (value == null || value.isEmpty) {
+                            return 'Şifre tekrarı gerekli';
+                          }
+                          if (value != _passwordController.text) {
+                            return 'Şifreler eşleşmiyor';
+                          }
                           return null;
                         },
                       ),
@@ -412,12 +524,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.error_outline, color: CarSalesColors.accent),
+                              const Icon(
+                                Icons.error_outline,
+                                color: CarSalesColors.accent,
+                              ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
                                   _errorMessage!,
-                                  style: const TextStyle(color: CarSalesColors.accent),
+                                  style: const TextStyle(
+                                    color: CarSalesColors.accent,
+                                  ),
                                 ),
                               ),
                             ],
@@ -436,7 +553,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                   height: 24,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
                                   ),
                                 )
                               : const Text('Başvuruyu Gönder'),
@@ -450,7 +569,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         children: [
                           Text(
                             'Zaten hesabınız var mı?',
-                            style: TextStyle(color: CarSalesColors.textSecondaryLight),
+                            style: TextStyle(
+                              color: CarSalesColors.textSecondaryLight,
+                            ),
                           ),
                           TextButton(
                             onPressed: () => context.go('/login'),

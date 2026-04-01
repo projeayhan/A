@@ -1,5 +1,5 @@
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:arac_satis_panel/core/services/log_service.dart';
 import '../models/chat_models.dart';
 
 /// Araç Satış Mesajlaşma Servisi
@@ -109,8 +109,8 @@ class ChatService {
       }
 
       return conversations;
-    } catch (e) {
-      debugPrint('Konuşmalar alınamadı: $e');
+    } catch (e, st) {
+      LogService.error('Konuşmalar alınamadı', error: e, stackTrace: st, source: 'ChatService:getConversations');
       return [];
     }
   }
@@ -131,9 +131,16 @@ class ChatService {
           .eq('id', conversationId)
           .single();
 
-      return CarConversation.fromJson(response);
-    } catch (e) {
-      debugPrint('Konuşma alınamadı: $e');
+      final conversation = CarConversation.fromJson(response);
+
+      // Kullanıcının bu konuşmaya katılımcı olup olmadığını doğrula
+      if (conversation.buyerId != _userId && conversation.sellerId != _userId) {
+        throw Exception('Bu konuşmaya erişim yetkiniz yok');
+      }
+
+      return conversation;
+    } catch (e, st) {
+      LogService.error('Konuşma alınamadı', error: e, stackTrace: st, source: 'ChatService:getConversation');
       return null;
     }
   }
@@ -186,8 +193,8 @@ class ChatService {
           .single();
 
       return CarConversation.fromJson(response);
-    } catch (e) {
-      debugPrint('Konuşma oluşturulamadı: $e');
+    } catch (e, st) {
+      LogService.error('Konuşma oluşturulamadı', error: e, stackTrace: st, source: 'ChatService:getOrCreateConversation');
       return null;
     }
   }
@@ -215,8 +222,8 @@ class ChatService {
           .toList()
           .reversed
           .toList();
-    } catch (e) {
-      debugPrint('Mesajlar alınamadı: $e');
+    } catch (e, st) {
+      LogService.error('Mesajlar alınamadı', error: e, stackTrace: st, source: 'ChatService:getMessages');
       return [];
     }
   }
@@ -231,6 +238,18 @@ class ChatService {
     if (_userId == null) return null;
 
     try {
+      // Kullanıcının bu konuşmaya katılımcı olup olmadığını doğrula
+      final conversation = await _client
+          .from('car_conversations')
+          .select('buyer_id, seller_id')
+          .eq('id', conversationId)
+          .single();
+
+      if (conversation['buyer_id'] != _userId &&
+          conversation['seller_id'] != _userId) {
+        throw Exception('Bu konuşmaya mesaj gönderme yetkiniz yok');
+      }
+
       final response = await _client
           .from('car_messages')
           .insert({
@@ -244,8 +263,8 @@ class ChatService {
           .single();
 
       return ChatMessage.fromJson(response);
-    } catch (e) {
-      debugPrint('Mesaj gönderilemedi: $e');
+    } catch (e, st) {
+      LogService.error('Mesaj gönderilemedi', error: e, stackTrace: st, source: 'ChatService:sendMessage');
       return null;
     }
   }
@@ -281,8 +300,8 @@ class ChatService {
           .from('car_conversations')
           .update({updateField: 0})
           .eq('id', conversationId);
-    } catch (e) {
-      debugPrint('Mesajlar okundu olarak işaretlenemedi: $e');
+    } catch (e, st) {
+      LogService.error('Mesajlar okundu olarak işaretlenemedi', error: e, stackTrace: st, source: 'ChatService:markMessagesAsRead');
     }
   }
 
@@ -306,8 +325,8 @@ class ChatService {
         }
       }
       return total;
-    } catch (e) {
-      debugPrint('Okunmamış mesaj sayısı alınamadı: $e');
+    } catch (e, st) {
+      LogService.error('Okunmamış mesaj sayısı alınamadı', error: e, stackTrace: st, source: 'ChatService:getTotalUnreadCount');
       return 0;
     }
   }
@@ -372,8 +391,8 @@ class ChatService {
           .update({'status': 'archived'})
           .eq('id', conversationId);
       return true;
-    } catch (e) {
-      debugPrint('Konuşma arşivlenemedi: $e');
+    } catch (e, st) {
+      LogService.error('Konuşma arşivlenemedi', error: e, stackTrace: st, source: 'ChatService:archiveConversation');
       return false;
     }
   }

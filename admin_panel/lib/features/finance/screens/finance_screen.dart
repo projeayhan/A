@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../core/router/app_router.dart';
 import 'dart:typed_data';
 import '../../../core/services/invoice_service.dart';
 import '../../invoices/screens/web_download_helper.dart' if (dart.library.io) '../../invoices/screens/io_download_helper.dart';
@@ -15,41 +17,54 @@ final financeStatsProvider = FutureProvider.family<FinanceStats, int>((ref, days
   return FinanceStats.fromJson(result as Map<String, dynamic>);
 });
 
-// Recent transactions provider
-final recentTransactionsProvider = FutureProvider<List<Transaction>>((ref) async {
+// Recent transactions provider (family: String? = source filter, null = all)
+final recentTransactionsProvider = FutureProvider.family<List<Transaction>, String?>((ref, source) async {
   final supabase = ref.watch(supabaseProvider);
-  final result = await supabase.rpc('get_recent_transactions', params: {'p_limit': 10});
+  final params = <String, dynamic>{'p_limit': 10};
+  if (source != null) params['p_source'] = source;
+  final result = await supabase.rpc('get_recent_transactions', params: params);
   if (result == null) return [];
   return (result as List).map((e) => Transaction.fromJson(e as Map<String, dynamic>)).toList();
 });
 
 class FinanceStats {
-  final double totalRevenue;
-  final double prevTotalRevenue;
-  final double commissionRevenue;
-  final double prevCommissionRevenue;
-  final double partnerPayments;
-  final double prevPartnerPayments;
-  final double pendingPayments;
+  final double totalCommission; // Komisyon hizmet bedeli (KDV hariç)
+  final double prevTotalCommission;
+  final double totalKdv; // Platform KDV'si (gerçek, DB'den)
+  final double prevTotalKdv;
+  final double paidCommission; // Tahsil edilen komisyon (online ödemelerden)
+  final double pendingCommission; // Bekleyen komisyon (işletmelerden alınacak)
+  final double totalOrderVolume; // Toplam sipariş cirosu
   final double foodRevenue;
   final double storeRevenue;
   final double taxiRevenue;
   final double rentalRevenue;
+  final double promotionRevenue;
   final List<MonthlyRevenue> monthlyRevenue;
   final List<DailyRevenue> dailyRevenue;
 
+  // Backward compat aliases
+  double get totalRevenue => totalCommission;
+  double get prevTotalRevenue => prevTotalCommission;
+  double get commissionRevenue => totalCommission;
+  double get prevCommissionRevenue => prevTotalCommission;
+  double get partnerPayments => 0;
+  double get prevPartnerPayments => 0;
+  double get pendingPayments => pendingCommission;
+
   FinanceStats({
-    required this.totalRevenue,
-    required this.prevTotalRevenue,
-    required this.commissionRevenue,
-    required this.prevCommissionRevenue,
-    required this.partnerPayments,
-    required this.prevPartnerPayments,
-    required this.pendingPayments,
+    required this.totalCommission,
+    required this.prevTotalCommission,
+    required this.totalKdv,
+    required this.prevTotalKdv,
+    required this.paidCommission,
+    required this.pendingCommission,
+    required this.totalOrderVolume,
     required this.foodRevenue,
     required this.storeRevenue,
     required this.taxiRevenue,
     required this.rentalRevenue,
+    required this.promotionRevenue,
     required this.monthlyRevenue,
     required this.dailyRevenue,
   });
@@ -61,49 +76,55 @@ class FinanceStats {
     final daily = json['daily_revenue'] as List? ?? [];
 
     return FinanceStats(
-      totalRevenue: (summary['total_revenue'] as num?)?.toDouble() ?? 0,
-      prevTotalRevenue: (summary['prev_total_revenue'] as num?)?.toDouble() ?? 0,
-      commissionRevenue: (summary['commission_revenue'] as num?)?.toDouble() ?? 0,
-      prevCommissionRevenue: (summary['prev_commission_revenue'] as num?)?.toDouble() ?? 0,
-      partnerPayments: (summary['partner_payments'] as num?)?.toDouble() ?? 0,
-      prevPartnerPayments: (summary['prev_partner_payments'] as num?)?.toDouble() ?? 0,
-      pendingPayments: (summary['pending_payments'] as num?)?.toDouble() ?? 0,
+      totalCommission: (summary['total_commission'] as num?)?.toDouble() ??
+          (summary['total_revenue'] as num?)?.toDouble() ?? 0,
+      prevTotalCommission: (summary['prev_total_commission'] as num?)?.toDouble() ??
+          (summary['prev_total_revenue'] as num?)?.toDouble() ?? 0,
+      totalKdv: (summary['total_kdv'] as num?)?.toDouble() ?? 0,
+      prevTotalKdv: (summary['prev_total_kdv'] as num?)?.toDouble() ?? 0,
+      paidCommission: (summary['paid_commission'] as num?)?.toDouble() ?? 0,
+      pendingCommission: (summary['pending_commission'] as num?)?.toDouble() ??
+          (summary['pending_payments'] as num?)?.toDouble() ?? 0,
+      totalOrderVolume: (summary['total_order_volume'] as num?)?.toDouble() ?? 0,
       foodRevenue: (distribution['food_revenue'] as num?)?.toDouble() ?? 0,
       storeRevenue: (distribution['store_revenue'] as num?)?.toDouble() ?? 0,
       taxiRevenue: (distribution['taxi_revenue'] as num?)?.toDouble() ?? 0,
       rentalRevenue: (distribution['rental_revenue'] as num?)?.toDouble() ?? 0,
+      promotionRevenue: (distribution['promotion_revenue'] as num?)?.toDouble() ?? 0,
       monthlyRevenue: monthly.map((e) => MonthlyRevenue.fromJson(e as Map<String, dynamic>)).toList(),
       dailyRevenue: daily.map((e) => DailyRevenue.fromJson(e as Map<String, dynamic>)).toList(),
     );
   }
 
-  double get totalRevenueTrend {
-    if (prevTotalRevenue == 0) return 0;
-    return ((totalRevenue - prevTotalRevenue) / prevTotalRevenue) * 100;
-  }
-
   double get commissionTrend {
-    if (prevCommissionRevenue == 0) return 0;
-    return ((commissionRevenue - prevCommissionRevenue) / prevCommissionRevenue) * 100;
+    if (prevTotalCommission == 0) return 0;
+    return ((totalCommission - prevTotalCommission) / prevTotalCommission) * 100;
   }
 
-  double get partnerPaymentsTrend {
-    if (prevPartnerPayments == 0) return 0;
-    return ((partnerPayments - prevPartnerPayments) / prevPartnerPayments) * 100;
+  double get totalRevenueTrend => commissionTrend;
+
+  double get kdvTrend {
+    if (prevTotalKdv == 0) return 0;
+    return ((totalKdv - prevTotalKdv) / prevTotalKdv) * 100;
   }
+
+  double get partnerPaymentsTrend => 0;
+
+  double get netRevenue => totalCommission;
+  double get totalWithKdv => totalCommission + totalKdv;
 }
 
 class MonthlyRevenue {
   final int monthNum;
   final String monthName;
-  final double revenue;
-  final double commission;
+  final double revenue; // Komisyon hizmet bedeli
+  final double kdv; // Platform KDV'si
 
   MonthlyRevenue({
     required this.monthNum,
     required this.monthName,
     required this.revenue,
-    required this.commission,
+    required this.kdv,
   });
 
   factory MonthlyRevenue.fromJson(Map<String, dynamic> json) {
@@ -111,7 +132,8 @@ class MonthlyRevenue {
       monthNum: json['month_num'] as int? ?? 0,
       monthName: json['month_name'] as String? ?? '',
       revenue: (json['revenue'] as num?)?.toDouble() ?? 0,
-      commission: (json['commission'] as num?)?.toDouble() ?? 0,
+      kdv: (json['kdv'] as num?)?.toDouble() ??
+          (json['commission'] as num?)?.toDouble() ?? 0,
     );
   }
 }
@@ -174,12 +196,13 @@ class FinanceScreen extends ConsumerStatefulWidget {
 
 class _FinanceScreenState extends ConsumerState<FinanceScreen> {
   int _selectedDays = 30;
+  String? _selectedSource;
   final _currencyFormat = NumberFormat.currency(locale: 'tr_TR', symbol: '₺', decimalDigits: 2);
 
   @override
   Widget build(BuildContext context) {
     final statsAsync = ref.watch(financeStatsProvider(_selectedDays));
-    final transactionsAsync = ref.watch(recentTransactionsProvider);
+    final transactionsAsync = ref.watch(recentTransactionsProvider(_selectedSource));
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -319,38 +342,64 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
   }
 
   Widget _buildStatsCards(FinanceStats stats) {
-    return Row(
+    return Column(
       children: [
-        _buildFinanceCard(
-          'Toplam Gelir',
-          _currencyFormat.format(stats.totalRevenue),
-          stats.totalRevenueTrend,
-          Icons.trending_up,
-          AppColors.success,
+        Row(
+          children: [
+            _buildFinanceCard(
+              'Komisyon Geliri',
+              _currencyFormat.format(stats.totalCommission),
+              stats.commissionTrend,
+              Icons.trending_up,
+              AppColors.success,
+            ),
+            const SizedBox(width: 24),
+            _buildFinanceCard(
+              'Platform KDV',
+              _currencyFormat.format(stats.totalKdv),
+              stats.kdvTrend,
+              Icons.receipt_long,
+              AppColors.primary,
+            ),
+            const SizedBox(width: 24),
+            _buildFinanceCard(
+              'Toplam (KDV Dahil)',
+              _currencyFormat.format(stats.totalWithKdv),
+              0,
+              Icons.account_balance,
+              AppColors.info,
+            ),
+            const SizedBox(width: 24),
+            _buildFinanceCard(
+              'Bekleyen Komisyon',
+              _currencyFormat.format(stats.pendingCommission),
+              0,
+              Icons.pending_actions,
+              AppColors.warning,
+            ),
+          ],
         ),
-        const SizedBox(width: 24),
-        _buildFinanceCard(
-          'Komisyon Geliri',
-          _currencyFormat.format(stats.commissionRevenue),
-          stats.commissionTrend,
-          Icons.account_balance,
-          AppColors.primary,
-        ),
-        const SizedBox(width: 24),
-        _buildFinanceCard(
-          'Partner Ödemeleri',
-          _currencyFormat.format(stats.partnerPayments),
-          stats.partnerPaymentsTrend,
-          Icons.payments,
-          AppColors.warning,
-        ),
-        const SizedBox(width: 24),
-        _buildFinanceCard(
-          'Bekleyen Ödeme',
-          _currencyFormat.format(stats.pendingPayments),
-          0, // Bekleyen ödeme için trend yok
-          Icons.pending_actions,
-          AppColors.info,
+        const SizedBox(height: 24),
+        Row(
+          children: [
+            _buildFinanceCard(
+              'Öne Çıkarma Geliri',
+              _currencyFormat.format(stats.promotionRevenue),
+              0,
+              Icons.star,
+              const Color(0xFFAB47BC),
+            ),
+            const SizedBox(width: 24),
+            _buildFinanceCard(
+              'Toplam Sipariş Cirosu',
+              _currencyFormat.format(stats.totalOrderVolume),
+              0,
+              Icons.shopping_bag,
+              AppColors.success,
+            ),
+            const Expanded(child: SizedBox()),
+            const Expanded(child: SizedBox()),
+          ],
         ),
       ],
     );
@@ -487,9 +536,18 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                   ),
                 ],
               ),
-              IconButton(
-                onPressed: () {},
+              PopupMenuButton<String>(
                 icon: const Icon(Icons.more_vert, color: AppColors.textMuted),
+                onSelected: (value) {
+                  if (value == 'export') {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Dışa aktarma özelliği yakında eklenecek')),
+                    );
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(value: 'export', child: Text('Dışa Aktar')),
+                ],
               ),
             ],
           ),
@@ -530,9 +588,12 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
         : 0.0;
     final chartMax = maxRevenue > 0 ? (maxRevenue * 1.2).ceilToDouble() : 1000.0;
 
-    return SizedBox(
-      height: 300,
-      child: BarChart(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          height: 300,
+          child: BarChart(
         BarChartData(
           alignment: BarChartAlignment.spaceAround,
           maxY: chartMax > 0 ? chartMax : 1000,
@@ -542,7 +603,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
               getTooltipItem: (group, groupIndex, rod, rodIndex) {
                 final month = stats.monthlyRevenue[groupIndex];
                 return BarTooltipItem(
-                  '${rodIndex == 0 ? 'Gelir' : 'Komisyon'}\n${_currencyFormat.format(rod.toY)}',
+                  '${month.monthName}\n${rodIndex == 0 ? 'Komisyon' : 'KDV'}: ${_currencyFormat.format(rod.toY)}',
                   const TextStyle(color: Colors.white, fontSize: 12),
                 );
               },
@@ -600,7 +661,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                   ),
                 ),
                 BarChartRodData(
-                  toY: entry.value.commission,
+                  toY: entry.value.kdv,
                   color: AppColors.success,
                   width: 16,
                   borderRadius: const BorderRadius.only(
@@ -613,11 +674,21 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
           }).toList(),
         ),
       ),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            _buildBarLegendItem('Komisyon Geliri', AppColors.primary),
+            const SizedBox(width: 16),
+            _buildBarLegendItem('KDV', AppColors.success),
+          ],
+        ),
+      ],
     );
   }
 
   Widget _buildPieChart(FinanceStats stats) {
-    final total = stats.foodRevenue + stats.storeRevenue + stats.taxiRevenue + stats.rentalRevenue;
+    final total = stats.foodRevenue + stats.storeRevenue + stats.taxiRevenue + stats.rentalRevenue + stats.promotionRevenue;
 
     if (total == 0) {
       return SizedBox(
@@ -635,6 +706,7 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
     final storePercent = (stats.storeRevenue / total * 100).round();
     final taxiPercent = (stats.taxiRevenue / total * 100).round();
     final rentalPercent = (stats.rentalRevenue / total * 100).round();
+    final promotionPercent = (stats.promotionRevenue / total * 100).round();
 
     return SizedBox(
       height: 300,
@@ -678,6 +750,14 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                       radius: 50,
                       titleStyle: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
                     ),
+                  if (stats.promotionRevenue > 0)
+                    PieChartSectionData(
+                      value: stats.promotionRevenue,
+                      title: '$promotionPercent%',
+                      color: const Color(0xFFAB47BC),
+                      radius: 50,
+                      titleStyle: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
                 ],
               ),
             ),
@@ -691,10 +771,26 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
               _buildLegendItem('Market', AppColors.success, _currencyFormat.format(stats.storeRevenue)),
               _buildLegendItem('Taksi', AppColors.warning, _currencyFormat.format(stats.taxiRevenue)),
               _buildLegendItem('Kiralama', AppColors.info, _currencyFormat.format(stats.rentalRevenue)),
+              _buildLegendItem('Öne Çıkarma', const Color(0xFFAB47BC), _currencyFormat.format(stats.promotionRevenue)),
             ],
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildBarLegendItem(String label, Color color) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 12,
+          height: 12,
+          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(3)),
+        ),
+        const SizedBox(width: 6),
+        Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+      ],
     );
   }
 
@@ -746,12 +842,44 @@ class _FinanceScreenState extends ConsumerState<FinanceScreen> {
                 ],
               ),
               TextButton(
-                onPressed: () {},
+                onPressed: () => context.go(AppRoutes.financeInvoices),
                 child: const Text('Tümünü Gör'),
               ),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
+          // Source filter chips
+          Wrap(
+            spacing: 8,
+            children: [
+              FilterChip(
+                label: const Text('Tümü'),
+                selected: _selectedSource == null,
+                onSelected: (_) => setState(() => _selectedSource = null),
+              ),
+              FilterChip(
+                label: const Text('Taksi'),
+                selected: _selectedSource == 'taxi',
+                onSelected: (_) => setState(() => _selectedSource = _selectedSource == 'taxi' ? null : 'taxi'),
+              ),
+              FilterChip(
+                label: const Text('Yemek'),
+                selected: _selectedSource == 'food',
+                onSelected: (_) => setState(() => _selectedSource = _selectedSource == 'food' ? null : 'food'),
+              ),
+              FilterChip(
+                label: const Text('Market'),
+                selected: _selectedSource == 'store',
+                onSelected: (_) => setState(() => _selectedSource = _selectedSource == 'store' ? null : 'store'),
+              ),
+              FilterChip(
+                label: const Text('Kiralama'),
+                selected: _selectedSource == 'rental',
+                onSelected: (_) => setState(() => _selectedSource = _selectedSource == 'rental' ? null : 'rental'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
           // Table Header
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

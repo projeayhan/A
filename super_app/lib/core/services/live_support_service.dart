@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:super_app/core/services/log_service.dart';
 
 class LiveSupportService {
   static SupabaseClient get _client => Supabase.instance.client;
@@ -35,7 +36,13 @@ class LiveSupportService {
       )
       .subscribe();
 
+    // Close controller when the stream subscription is cancelled
+    controller.onCancel = () {
+      if (!controller.isClosed) controller.close();
+    };
+
     final sub = controller.stream.listen(onMessages);
+    sub.onDone(() { if (!controller.isClosed) controller.close(); });
 
     return (subscription: sub, channel: channel);
   }
@@ -81,7 +88,9 @@ class LiveSupportService {
       if (userData != null && userData['full_name'] != null) {
         senderName = userData['full_name'] as String;
       }
-    } catch (_) {}
+    } catch (e, st) {
+      LogService.error('Error fetching user name', error: e, stackTrace: st, source: 'LiveSupportService:sendMessage');
+    }
 
     await _client.from('ticket_messages').insert({
       'ticket_id': ticketId,

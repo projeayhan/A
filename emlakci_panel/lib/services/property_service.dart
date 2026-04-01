@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/emlak_models.dart';
+import 'package:emlakci_panel/core/services/log_service.dart';
 
 /// Emlak ilanları için Supabase servis sınıfı
 class PropertyService {
@@ -291,7 +292,8 @@ class PropertyService {
           .eq('id', propertyId)
           .eq('user_id', _userId!);
       return true;
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to update property status', error: e, stackTrace: st, source: 'PropertyService:updatePropertyStatus');
       return false;
     }
   }
@@ -307,7 +309,8 @@ class PropertyService {
           .eq('id', propertyId)
           .eq('user_id', _userId!);
       return true;
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to delete property', error: e, stackTrace: st, source: 'PropertyService:deleteProperty');
       return false;
     }
   }
@@ -322,8 +325,8 @@ class PropertyService {
         'user_id': _userId,
         'device_info': 'mobile',
       });
-    } catch (e) {
-      // Görüntüleme hatası önemsiz, sessizce geç
+    } catch (e, st) {
+      LogService.error('Failed to track property view', error: e, stackTrace: st, source: 'PropertyService:trackPropertyView');
     }
   }
 

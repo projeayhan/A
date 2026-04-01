@@ -14,9 +14,147 @@ class AdminRentalPackagesScreen extends ConsumerStatefulWidget {
 }
 
 class _AdminRentalPackagesScreenState extends ConsumerState<AdminRentalPackagesScreen> {
-  final _currencyFormat = NumberFormat.currency(locale: 'tr_TR', symbol: '₺', decimalDigits: 0);
+  final _currencyFormat = NumberFormat.currency(locale: 'tr_TR', symbol: '\u20BA', decimalDigits: 0);
 
-  // ==================== PACKAGE OPERATIONS ====================
+  // Inline editing state
+  final Map<String, TextEditingController> _priceControllers = {};
+  final Map<String, TextEditingController> _descControllers = {};
+  final Map<String, TextEditingController> _newServiceControllers = {};
+  final Map<String, bool> _activeStates = {};
+  final Map<String, List<String>> _includedServices = {};
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    for (final c in _priceControllers.values) {
+      c.dispose();
+    }
+    for (final c in _descControllers.values) {
+      c.dispose();
+    }
+    for (final c in _newServiceControllers.values) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  void _initControllers(List<Map<String, dynamic>> packages) {
+    for (final pkg in packages) {
+      final id = pkg['id'] as String;
+      if (!_priceControllers.containsKey(id)) {
+        _priceControllers[id] = TextEditingController(
+          text: (pkg['daily_price'] as num?)?.toStringAsFixed(0) ?? '0',
+        );
+        _descControllers[id] = TextEditingController(
+          text: pkg['description'] as String? ?? '',
+        );
+        _newServiceControllers[id] = TextEditingController();
+        _activeStates[id] = pkg['is_active'] as bool? ?? true;
+        final services = pkg['included_services'];
+        if (services is List) {
+          _includedServices[id] = services.map((e) => e.toString()).toList();
+        } else {
+          _includedServices[id] = [];
+        }
+      }
+    }
+  }
+
+  IconData _getTierIcon(String tier) {
+    switch (tier) {
+      case 'basic':
+        return Icons.shield;
+      case 'comfort':
+        return Icons.star;
+      case 'premium':
+        return Icons.diamond;
+      default:
+        return Icons.inventory_2;
+    }
+  }
+
+  Color _getTierColor(String tier) {
+    switch (tier) {
+      case 'basic':
+        return AppColors.info;
+      case 'comfort':
+        return AppColors.warning;
+      case 'premium':
+        return AppColors.primary;
+      default:
+        return AppColors.textSecondary;
+    }
+  }
+
+  String _getTierLabel(String tier) {
+    switch (tier) {
+      case 'basic':
+        return 'BASIC';
+      case 'comfort':
+        return 'COMFORT';
+      case 'premium':
+        return 'PREMIUM';
+      default:
+        return tier.toUpperCase();
+    }
+  }
+
+  Future<void> _savePackage(String packageId, Map<String, dynamic> pkg) async {
+    // Auto-add any text left in the new service field
+    final pendingText = _newServiceControllers[packageId]?.text.trim() ?? '';
+    if (pendingText.isNotEmpty) {
+      _includedServices[packageId]?.add(pendingText);
+      _newServiceControllers[packageId]!.clear();
+    }
+
+    setState(() {
+      _saving = true;
+    });
+    try {
+      final supabase = ref.read(supabaseProvider);
+      final price = double.tryParse(_priceControllers[packageId]!.text) ?? 0;
+      if (price <= 0) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Fiyat 0\'dan büyük olmalıdır')),
+          );
+        }
+        return;
+      }
+      final desc = _descControllers[packageId]!.text;
+      final isActive = _activeStates[packageId] ?? true;
+      final services = _includedServices[packageId] ?? [];
+
+      await supabase
+          .from('rental_packages')
+          .update({
+            'daily_price': price,
+            'description': desc,
+            'is_active': isActive,
+            'included_services': services,
+          })
+          .eq('id', packageId);
+
+      ref.invalidate(rentalCompanyPackagesProvider(widget.companyId));
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${pkg['name']} paketi güncellendi'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
+        );
+      }
+    } finally {
+      setState(() => _saving = false);
+    }
+  }
 
   Future<void> _togglePackageActive(String packageId, bool isActive) async {
     try {
@@ -41,7 +179,6 @@ class _AdminRentalPackagesScreenState extends ConsumerState<AdminRentalPackagesS
       text: (package?['included_services'] as List<dynamic>?)?.join(', ') ?? '',
     );
     String selectedTier = package?['tier'] as String? ?? 'basic';
-    bool isPopular = package?['is_popular'] as bool? ?? false;
 
     showDialog(
       context: context,
@@ -58,15 +195,14 @@ class _AdminRentalPackagesScreenState extends ConsumerState<AdminRentalPackagesS
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _buildDialogField('Paket Adı', nameController),
+                  _buildDialogField('Paket Adi', nameController),
                   const SizedBox(height: 12),
                   _buildDialogField('Açıklama', descriptionController, maxLines: 2),
                   const SizedBox(height: 12),
-                  _buildDialogField('Günlük Fiyat (₺)', priceController),
+                  _buildDialogField('Günlük Fiyat (TL)', priceController),
                   const SizedBox(height: 12),
-                  _buildDialogField('Dahil Hizmetler (virgülle ayırın)', servicesController, maxLines: 2),
+                  _buildDialogField('Dahil Hizmetler (virgul ile ayirin)', servicesController, maxLines: 2),
                   const SizedBox(height: 12),
-                  // Tier Selection
                   Row(
                     children: [
                       const Text('Seviye: ', style: TextStyle(color: AppColors.textSecondary)),
@@ -79,18 +215,13 @@ class _AdminRentalPackagesScreenState extends ConsumerState<AdminRentalPackagesS
                           DropdownMenuItem(value: 'comfort', child: Text('Comfort')),
                           DropdownMenuItem(value: 'premium', child: Text('Premium')),
                         ],
-                        onChanged: (val) => setDialogState(() => selectedTier = val!),
+                        onChanged: (val) {
+                          if (val != null) {
+                            setDialogState(() => selectedTier = val);
+                          }
+                        },
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 8),
-                  CheckboxListTile(
-                    value: isPopular,
-                    onChanged: (val) => setDialogState(() => isPopular = val ?? false),
-                    title: const Text('Popüler', style: TextStyle(color: AppColors.textPrimary, fontSize: 14)),
-                    activeColor: AppColors.primary,
-                    contentPadding: EdgeInsets.zero,
-                    controlAffinity: ListTileControlAffinity.leading,
                   ),
                 ],
               ),
@@ -107,7 +238,6 @@ class _AdminRentalPackagesScreenState extends ConsumerState<AdminRentalPackagesS
                   'daily_price': double.tryParse(priceController.text.trim()) ?? 0,
                   'tier': selectedTier,
                   'included_services': services,
-                  'is_popular': isPopular,
                   'company_id': widget.companyId,
                 };
 
@@ -119,7 +249,9 @@ class _AdminRentalPackagesScreenState extends ConsumerState<AdminRentalPackagesS
                     await supabase.from('rental_packages').insert(data);
                   }
                   ref.invalidate(rentalCompanyPackagesProvider(widget.companyId));
-                  if (ctx.mounted) Navigator.pop(ctx);
+                  if (ctx.mounted) {
+                    Navigator.pop(ctx);
+                  }
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -183,11 +315,11 @@ class _AdminRentalPackagesScreenState extends ConsumerState<AdminRentalPackagesS
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _buildDialogField('Hizmet Adı', nameController),
+                  _buildDialogField('Hizmet Adi', nameController),
                   const SizedBox(height: 12),
                   _buildDialogField('Açıklama', descriptionController, maxLines: 2),
                   const SizedBox(height: 12),
-                  _buildDialogField('Fiyat (₺)', priceController),
+                  _buildDialogField('Fiyat (TL)', priceController),
                   const SizedBox(height: 12),
                   Row(
                     children: [
@@ -198,10 +330,14 @@ class _AdminRentalPackagesScreenState extends ConsumerState<AdminRentalPackagesS
                         dropdownColor: AppColors.surface,
                         items: const [
                           DropdownMenuItem(value: 'per_day', child: Text('Günlük')),
-                          DropdownMenuItem(value: 'per_rental', child: Text('Kiralama Başı')),
-                          DropdownMenuItem(value: 'per_km', child: Text('Km Başı')),
+                          DropdownMenuItem(value: 'per_rental', child: Text('Kiralama Basi')),
+                          DropdownMenuItem(value: 'per_km', child: Text('Km Basi')),
                         ],
-                        onChanged: (val) => setDialogState(() => selectedPriceType = val!),
+                        onChanged: (val) {
+                          if (val != null) {
+                            setDialogState(() => selectedPriceType = val);
+                          }
+                        },
                       ),
                     ],
                   ),
@@ -229,7 +365,9 @@ class _AdminRentalPackagesScreenState extends ConsumerState<AdminRentalPackagesS
                     await supabase.from('rental_services').insert(data);
                   }
                   ref.invalidate(rentalCompanyServicesProvider(widget.companyId));
-                  if (ctx.mounted) Navigator.pop(ctx);
+                  if (ctx.mounted) {
+                    Navigator.pop(ctx);
+                  }
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
@@ -293,17 +431,23 @@ class _AdminRentalPackagesScreenState extends ConsumerState<AdminRentalPackagesS
                 const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Paketler ve Hizmetler',
-                      style: TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    Row(
+                      children: [
+                        Icon(Icons.inventory_2, size: 32, color: AppColors.primary),
+                        SizedBox(width: 12),
+                        Text(
+                          'Paketler ve Hizmetler',
+                          style: TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                     SizedBox(height: 4),
                     Text(
-                      'Kiralama paketlerini ve ek hizmetleri yönetin',
+                      'Kiralama paketlerini ve ek hizmetleri yonetin',
                       style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
                     ),
                   ],
@@ -318,6 +462,13 @@ class _AdminRentalPackagesScreenState extends ConsumerState<AdminRentalPackagesS
                       icon: const Icon(Icons.refresh, size: 18),
                       label: const Text('Yenile'),
                     ),
+                    const SizedBox(width: 12),
+                    ElevatedButton.icon(
+                      onPressed: () => _showPackageDialog(),
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('Paket Ekle'),
+                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+                    ),
                   ],
                 ),
               ],
@@ -325,25 +476,7 @@ class _AdminRentalPackagesScreenState extends ConsumerState<AdminRentalPackagesS
 
             const SizedBox(height: 32),
 
-            // ==================== PACKAGES SECTION ====================
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Paketler',
-                  style: TextStyle(color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.w600),
-                ),
-                ElevatedButton.icon(
-                  onPressed: () => _showPackageDialog(),
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Paket Ekle'),
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 16),
-
+            // ==================== PACKAGES ====================
             packagesAsync.when(
               data: (packages) {
                 if (packages.isEmpty) {
@@ -359,14 +492,9 @@ class _AdminRentalPackagesScreenState extends ConsumerState<AdminRentalPackagesS
                     ),
                   );
                 }
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: packages.map((pkg) => Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 16),
-                      child: _buildPackageCard(pkg),
-                    ),
-                  )).toList(),
+                _initControllers(packages);
+                return Column(
+                  children: packages.map((pkg) => _buildPackageCard(pkg)).toList(),
                 );
               },
               loading: () => const Center(child: CircularProgressIndicator()),
@@ -421,144 +549,224 @@ class _AdminRentalPackagesScreenState extends ConsumerState<AdminRentalPackagesS
   }
 
   Widget _buildPackageCard(Map<String, dynamic> pkg) {
-    final name = pkg['name'] as String? ?? '';
+    final id = pkg['id'] as String;
     final tier = pkg['tier'] as String? ?? 'basic';
-    final dailyPrice = (pkg['daily_price'] as num?)?.toDouble() ?? 0;
-    final description = pkg['description'] as String? ?? '';
-    final includedServices = List<String>.from(pkg['included_services'] as List<dynamic>? ?? []);
-    final isPopular = pkg['is_popular'] as bool? ?? false;
-    final isActive = pkg['is_active'] as bool? ?? true;
-
-    Color tierColor;
-    String tierLabel;
-    switch (tier) {
-      case 'basic':
-        tierColor = AppColors.textMuted;
-        tierLabel = 'Basic';
-        break;
-      case 'comfort':
-        tierColor = AppColors.info;
-        tierLabel = 'Comfort';
-        break;
-      case 'premium':
-        tierColor = AppColors.warning;
-        tierLabel = 'Premium';
-        break;
-      default:
-        tierColor = AppColors.textMuted;
-        tierLabel = tier;
-    }
+    final name = pkg['name'] as String? ?? '';
+    final isActive = _activeStates[id] ?? true;
+    final services = _includedServices[id] ?? [];
+    final color = _getTierColor(tier);
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: tierColor.withValues(alpha: 0.4), width: 1.5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isActive
+              ? color.withValues(alpha: 0.3)
+              : AppColors.surfaceLight,
+          width: isActive ? 2 : 1,
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Tier badge + popular
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Opacity(
+        opacity: isActive ? 1.0 : 0.5,
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: tierColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(tierLabel, style: TextStyle(color: tierColor, fontSize: 12, fontWeight: FontWeight.w600)),
-              ),
+              // Header row
               Row(
                 children: [
-                  if (isPopular)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      margin: const EdgeInsets.only(right: 8),
-                      decoration: BoxDecoration(
-                        color: AppColors.warning.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.star, size: 12, color: AppColors.warning),
-                          SizedBox(width: 4),
-                          Text('Popüler', style: TextStyle(color: AppColors.warning, fontSize: 11, fontWeight: FontWeight.w600)),
-                        ],
-                      ),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
                     ),
+                    child: Icon(_getTierIcon(tier), color: color, size: 28),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name,
+                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                        ),
+                        Text(
+                          _getTierLabel(tier),
+                          style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Edit button
                   IconButton(
                     onPressed: () => _showPackageDialog(package: pkg),
                     icon: const Icon(Icons.edit, size: 18, color: AppColors.textMuted),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
+                    tooltip: 'Düzenle',
+                  ),
+                  const SizedBox(width: 8),
+                  // Active toggle
+                  Column(
+                    children: [
+                      Switch(
+                        value: isActive,
+                        onChanged: (val) {
+                          setState(() => _activeStates[id] = val);
+                          _togglePackageActive(id, val);
+                        },
+                        activeThumbColor: AppColors.success,
+                      ),
+                      Text(
+                        isActive ? 'Aktif' : 'Pasif',
+                        style: TextStyle(
+                          color: isActive ? AppColors.success : AppColors.textMuted,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
-          ),
+              const SizedBox(height: 20),
 
-          const SizedBox(height: 16),
+              // Price + Description row
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Daily price
+                  SizedBox(
+                    width: 200,
+                    child: TextField(
+                      controller: _priceControllers[id],
+                      keyboardType: TextInputType.number,
+                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                      decoration: InputDecoration(
+                        labelText: 'Günlük Fiyat (TL)',
+                        prefixText: '\u20BA ',
+                        suffixText: '/gun',
+                        filled: true,
+                        fillColor: AppColors.background,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  // Description
+                  Expanded(
+                    child: TextField(
+                      controller: _descControllers[id],
+                      maxLines: 2,
+                      style: const TextStyle(color: AppColors.textPrimary),
+                      decoration: InputDecoration(
+                        labelText: 'Açıklama',
+                        filled: true,
+                        fillColor: AppColors.background,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
 
-          // Name
-          Text(name, style: const TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w600)),
+              // Included services
+              const Text(
+                'Dahil Hizmetler',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  ...services.map(
+                    (service) => Chip(
+                      label: Text(service, style: const TextStyle(fontSize: 12)),
+                      deleteIcon: const Icon(Icons.close, size: 16),
+                      onDeleted: () {
+                        setState(() {
+                          _includedServices[id]?.remove(service);
+                        });
+                      },
+                      backgroundColor: color.withValues(alpha: 0.1),
+                      side: BorderSide(color: color.withValues(alpha: 0.3)),
+                    ),
+                  ),
+                  // Add new service inline
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 180,
+                        height: 36,
+                        child: TextField(
+                          controller: _newServiceControllers[id],
+                          style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
+                          decoration: InputDecoration(
+                            hintText: 'Yeni hizmet ekle...',
+                            hintStyle: const TextStyle(fontSize: 12),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            isDense: true,
+                            filled: true,
+                            fillColor: AppColors.background,
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
+                          ),
+                          onSubmitted: (text) {
+                            if (text.trim().isNotEmpty) {
+                              setState(() {
+                                _includedServices[id]?.add(text.trim());
+                                _newServiceControllers[id]!.clear();
+                              });
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      InkWell(
+                        onTap: () {
+                          final text = _newServiceControllers[id]!.text.trim();
+                          if (text.isNotEmpty) {
+                            setState(() {
+                              _includedServices[id]?.add(text);
+                              _newServiceControllers[id]!.clear();
+                            });
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(20),
+                        child: const Padding(
+                          padding: EdgeInsets.all(4),
+                          child: Icon(Icons.add_circle, size: 28, color: AppColors.primary),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
 
-          const SizedBox(height: 4),
-
-          // Price
-          Text(
-            '${_currencyFormat.format(dailyPrice)} / gün',
-            style: TextStyle(color: tierColor, fontSize: 22, fontWeight: FontWeight.bold),
-          ),
-
-          const SizedBox(height: 8),
-
-          // Description
-          if (description.isNotEmpty)
-            Text(description, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13), maxLines: 2, overflow: TextOverflow.ellipsis),
-
-          const SizedBox(height: 12),
-
-          // Included services
-          if (includedServices.isNotEmpty)
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: includedServices.map((s) => Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.background,
-                  borderRadius: BorderRadius.circular(6),
+              // Save button
+              Align(
+                alignment: Alignment.centerRight,
+                child: ElevatedButton.icon(
+                  onPressed: _saving ? null : () => _savePackage(id, pkg),
+                  icon: _saving
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(Icons.save),
+                  label: const Text('Kaydet'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: color,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  ),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.check, size: 12, color: AppColors.success),
-                    const SizedBox(width: 4),
-                    Text(s, style: const TextStyle(color: AppColors.textSecondary, fontSize: 11)),
-                  ],
-                ),
-              )).toList(),
-            ),
-
-          const SizedBox(height: 12),
-
-          // Active toggle
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              const Text('Aktif', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
-              Switch(
-                value: isActive,
-                onChanged: (val) => _togglePackageActive(pkg['id'], val),
-                activeThumbColor: AppColors.success,
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -619,10 +827,10 @@ class _AdminRentalPackagesScreenState extends ConsumerState<AdminRentalPackagesS
         label = 'Günlük';
         break;
       case 'per_rental':
-        label = 'Kiralama Başı';
+        label = 'Kiralama Basi';
         break;
       case 'per_km':
-        label = 'Km Başı';
+        label = 'Km Basi';
         break;
       default:
         label = priceType;

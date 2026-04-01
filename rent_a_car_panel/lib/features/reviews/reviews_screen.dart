@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/utils/name_masking.dart';
+import 'package:rent_a_car_panel/core/services/log_service.dart';
 
 class ReviewsScreen extends StatefulWidget {
   const ReviewsScreen({super.key});
@@ -92,7 +93,8 @@ class _ReviewsScreenState extends State<ReviewsScreen> with SingleTickerProvider
           _isLoading = false;
         });
       }
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to load reviews', error: e, stackTrace: st, source: 'ReviewsScreen:_loadReviews');
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -678,7 +680,8 @@ class _ReviewsScreenState extends State<ReviewsScreen> with SingleTickerProvider
         );
         _loadReviews();
       }
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to reply to review', error: e, stackTrace: st, source: 'ReviewsScreen:_replyToReview');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -708,7 +711,8 @@ class _ReviewsScreenState extends State<ReviewsScreen> with SingleTickerProvider
         );
         _loadReviews();
       }
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to toggle review visibility', error: e, stackTrace: st, source: 'ReviewsScreen:_toggleHideReview');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

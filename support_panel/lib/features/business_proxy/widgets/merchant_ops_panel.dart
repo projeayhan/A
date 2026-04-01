@@ -6,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/services/business_proxy_service.dart';
 import '../../../core/services/storage_service.dart';
 import '../../../shared/widgets/status_badge.dart';
+import 'package:support_panel/core/services/log_service.dart';
 
 class MerchantOpsPanel extends ConsumerStatefulWidget {
   final String businessId;
@@ -83,7 +84,8 @@ class _MerchantOpsPanelState extends ConsumerState<MerchantOpsPanel> with Single
         _isLoading = false;
       });
       _loadFinance();
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to load merchant data', error: e, stackTrace: st, source: 'MerchantOpsPanel:_loadData');
       setState(() => _isLoading = false);
     }
   }
@@ -111,7 +113,8 @@ class _MerchantOpsPanelState extends ConsumerState<MerchantOpsPanel> with Single
         _financeData = data;
         _financeLoading = false;
       });
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to load merchant finance', error: e, stackTrace: st, source: 'MerchantOpsPanel:_loadFinance');
       setState(() => _financeLoading = false);
     }
   }
@@ -775,7 +778,8 @@ class _MerchantOpsPanelState extends ConsumerState<MerchantOpsPanel> with Single
                   }
                   if (ctx.mounted) Navigator.pop(ctx);
                   _loadData();
-                } catch (e) {
+                } catch (e, st) {
+                  LogService.error('Failed to save menu item', error: e, stackTrace: st, source: 'MerchantOpsPanel:saveMenuItem');
                   setDialogState(() => isSaving = false);
                   if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error));
                 }
@@ -1136,7 +1140,8 @@ class _MerchantOpsPanelState extends ConsumerState<MerchantOpsPanel> with Single
                   }
                   if (ctx.mounted) Navigator.pop(ctx);
                   _loadData();
-                } catch (e) {
+                } catch (e, st) {
+                  LogService.error('Failed to save product', error: e, stackTrace: st, source: 'MerchantOpsPanel:saveProduct');
                   setDialogState(() => isSaving = false);
                   if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error));
                 }
@@ -1725,7 +1730,8 @@ class _MerchantOpsPanelState extends ConsumerState<MerchantOpsPanel> with Single
                     widget.data['description'] = data['description'];
                   });
                   if (ctx.mounted) Navigator.pop(ctx);
-                } catch (e) {
+                } catch (e, st) {
+                  LogService.error('Failed to update merchant info', error: e, stackTrace: st, source: 'MerchantOpsPanel:_showEditInfoDialog');
                   setDialogState(() => isSaving = false);
                   if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error));
                 }
@@ -1844,7 +1850,8 @@ class _MerchantOpsPanelState extends ConsumerState<MerchantOpsPanel> with Single
                   await ref.read(businessProxyServiceProvider).updateMerchantSettings(widget.businessId, data);
                   setState(() => _merchantSettings = {...?_merchantSettings, ...data});
                   if (ctx.mounted) Navigator.pop(ctx);
-                } catch (e) {
+                } catch (e, st) {
+                  LogService.error('Failed to update merchant settings', error: e, stackTrace: st, source: 'MerchantOpsPanel:_showSettingsDialog');
                   setDialogState(() => isSaving = false);
                   if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error));
                 }

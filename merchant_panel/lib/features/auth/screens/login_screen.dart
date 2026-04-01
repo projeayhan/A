@@ -43,10 +43,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     _slideUp = Tween<Offset>(
       begin: const Offset(0, 0.06),
       end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _entranceController,
-      curve: Curves.easeOutCubic,
-    ));
+    ).animate(
+      CurvedAnimation(parent: _entranceController, curve: Curves.easeOutCubic),
+    );
 
     Future.delayed(const Duration(milliseconds: 200), () {
       if (mounted) _entranceController.forward();
@@ -100,8 +99,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       );
 
       if (response.user != null) {
-        final roleCheck =
-            await _checkUserRole(supabase, response.user!.id);
+        final roleCheck = await _checkUserRole(supabase, response.user!.id);
         final roles = List<String>.from(roleCheck['roles'] ?? []);
 
         if (roles.isNotEmpty &&
@@ -109,8 +107,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
             !roles.contains('admin')) {
           await supabase.auth.signOut();
           setState(() {
-            _errorMessage =
-                'Bu hesapla işletme paneline giriş yapamazsınız.';
+            _errorMessage = 'Bu hesapla işletme paneline giriş yapamazsınız.';
             _isLoading = false;
           });
           return;
@@ -118,11 +115,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
         // Check if merchant is approved
         if (roles.contains('merchant')) {
-          final merchant = await supabase
-              .from('merchants')
-              .select('is_approved')
-              .eq('user_id', response.user!.id)
-              .maybeSingle();
+          final merchant =
+              await supabase
+                  .from('merchants')
+                  .select('is_approved')
+                  .eq('user_id', response.user!.id)
+                  .maybeSingle();
           if (merchant != null && merchant['is_approved'] != true) {
             await supabase.auth.signOut();
             if (mounted) _showPendingApprovalDialog();
@@ -135,11 +133,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       }
     } on AuthException catch (e) {
       await SecurityService.trackFailedLogin(
-          email: email, errorMessage: _getAuthErrorMessage(e.message));
+        email: email,
+        errorMessage: _getAuthErrorMessage(e.message),
+      );
       setState(() => _errorMessage = _getAuthErrorMessage(e.message));
     } catch (e) {
       await SecurityService.trackFailedLogin(
-          email: email, errorMessage: 'Bir hata oluştu');
+        email: email,
+        errorMessage: 'Bir hata oluştu',
+      );
       setState(() => _errorMessage = 'Bir hata olustu. Lutfen tekrar deneyin.');
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -147,7 +149,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   }
 
   Future<Map<String, dynamic>> _checkUserRole(
-      SupabaseClient supabase, String userId) async {
+    SupabaseClient supabase,
+    String userId,
+  ) async {
     try {
       final response = await supabase.rpc(
         'get_user_role',
@@ -165,40 +169,52 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF111827),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        icon: Container(
-          width: 64,
-          height: 64,
-          decoration: BoxDecoration(
-            color: Colors.orange.withValues(alpha: 0.1),
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(Icons.hourglass_top_rounded, color: Colors.orange, size: 32),
-        ),
-        title: const Text('Hesabınız İnceleniyor', style: TextStyle(color: Color(0xFFF9FAFB))),
-        content: const Text(
-          'Hesabınız henüz admin tarafından onaylanmadı.\n\n'
-          'Onay işlemi tamamlandığında e-posta ile bilgilendirileceksiniz.',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: Color(0xFF9CA3AF)),
-        ),
-        actions: [
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => Navigator.pop(ctx),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _accent,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              child: const Text('Tamam'),
+      builder:
+          (ctx) => AlertDialog(
+            backgroundColor: const Color(0xFF111827),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
             ),
+            icon: Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.hourglass_top_rounded,
+                color: Colors.orange,
+                size: 32,
+              ),
+            ),
+            title: const Text(
+              'Hesabınız İnceleniyor',
+              style: TextStyle(color: Color(0xFFF9FAFB)),
+            ),
+            content: const Text(
+              'Hesabınız henüz admin tarafından onaylanmadı.\n\n'
+              'Onay işlemi tamamlandığında e-posta ile bilgilendirileceksiniz.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Color(0xFF9CA3AF)),
+            ),
+            actions: [
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _accent,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text('Tamam'),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
@@ -273,10 +289,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
-                  colors: [
-                    _accent.withValues(alpha: 0.06),
-                    Colors.transparent,
-                  ],
+                  colors: [_accent.withValues(alpha: 0.06), Colors.transparent],
                 ),
               ),
             ),
@@ -315,11 +328,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                         AnimatedBuilder(
                           animation: _entranceController,
                           builder: (context, child) {
-                            final scale = Curves.elasticOut.transform(_entranceController.value.clamp(0.0, 1.0));
-                            return Transform.scale(
-                              scale: scale,
-                              child: child,
+                            final scale = Curves.elasticOut.transform(
+                              _entranceController.value.clamp(0.0, 1.0),
                             );
+                            return Transform.scale(scale: scale, child: child);
                           },
                           child: Image.asset(
                             'assets/images/supercyp_logo.png',
@@ -329,9 +341,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                         const SizedBox(height: 16),
                         // Title
                         ShaderMask(
-                          shaderCallback: (bounds) => const LinearGradient(
-                            colors: [Color(0xFFF9FAFB), _accentLight],
-                          ).createShader(bounds),
+                          shaderCallback:
+                              (bounds) => const LinearGradient(
+                                colors: [Color(0xFFF9FAFB), _accentLight],
+                              ).createShader(bounds),
                           child: const Text(
                             'İşletme Paneli',
                             style: TextStyle(
@@ -377,19 +390,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                   Container(
                                     padding: const EdgeInsets.all(12),
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFFEF4444)
-                                          .withValues(alpha: 0.08),
+                                      color: const Color(
+                                        0xFFEF4444,
+                                      ).withValues(alpha: 0.08),
                                       borderRadius: BorderRadius.circular(10),
                                       border: Border.all(
-                                        color: const Color(0xFFEF4444)
-                                            .withValues(alpha: 0.2),
+                                        color: const Color(
+                                          0xFFEF4444,
+                                        ).withValues(alpha: 0.2),
                                       ),
                                     ),
                                     child: Row(
                                       children: [
-                                        const Icon(Icons.error_outline,
-                                            color: Color(0xFFEF4444),
-                                            size: 16),
+                                        const Icon(
+                                          Icons.error_outline,
+                                          color: Color(0xFFEF4444),
+                                          size: 16,
+                                        ),
                                         const SizedBox(width: 8),
                                         Expanded(
                                           child: Text(
@@ -409,17 +426,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                   controller: _emailController,
                                   keyboardType: TextInputType.emailAddress,
                                   style: const TextStyle(
-                                      color: Color(0xFFF9FAFB), fontSize: 14),
+                                    color: Color(0xFFF9FAFB),
+                                    fontSize: 14,
+                                  ),
                                   decoration: _inputDeco(
                                     label: 'E-posta',
                                     hint: 'ornek@email.com',
                                     icon: Icons.email_outlined,
                                   ),
                                   validator: (v) {
-                                    if (v == null || v.isEmpty)
+                                    if (v == null || v.isEmpty) {
                                       return 'E-posta giriniz';
-                                    if (!v.contains('@'))
+                                    }
+                                    if (!v.contains('@')) {
                                       return 'Geçerli bir e-posta giriniz';
+                                    }
                                     return null;
                                   },
                                 ),
@@ -428,7 +449,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                   controller: _passwordController,
                                   obscureText: _obscurePassword,
                                   style: const TextStyle(
-                                      color: Color(0xFFF9FAFB), fontSize: 14),
+                                    color: Color(0xFFF9FAFB),
+                                    fontSize: 14,
+                                  ),
                                   decoration: _inputDeco(
                                     label: 'Şifre',
                                     hint: '••••••••',
@@ -441,16 +464,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                         color: const Color(0xFF6B7280),
                                         size: 20,
                                       ),
-                                      onPressed: () => setState(
-                                          () => _obscurePassword =
-                                              !_obscurePassword),
+                                      onPressed:
+                                          () => setState(
+                                            () =>
+                                                _obscurePassword =
+                                                    !_obscurePassword,
+                                          ),
                                     ),
                                   ),
                                   validator: (v) {
-                                    if (v == null || v.isEmpty)
+                                    if (v == null || v.isEmpty) {
                                       return 'Şifre giriniz';
-                                    if (v.length < 6)
+                                    }
+                                    if (v.length < 6) {
                                       return 'Şifre en az 6 karakter olmalı';
+                                    }
                                     return null;
                                   },
                                 ),
@@ -458,14 +486,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                 Align(
                                   alignment: Alignment.centerRight,
                                   child: TextButton(
-                                    onPressed: () =>
-                                        context.push('/auth/forgot-password'),
+                                    onPressed:
+                                        () => context.push(
+                                          '/auth/forgot-password',
+                                        ),
                                     style: TextButton.styleFrom(
                                       foregroundColor: _accent,
                                       padding: EdgeInsets.zero,
                                       minimumSize: const Size(0, 32),
-                                      textStyle:
-                                          const TextStyle(fontSize: 13),
+                                      textStyle: const TextStyle(fontSize: 13),
                                     ),
                                     child: const Text('Şifremi Unuttum'),
                                   ),
@@ -481,8 +510,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                     borderRadius: BorderRadius.circular(12),
                                     boxShadow: [
                                       BoxShadow(
-                                        color:
-                                            _accent.withValues(alpha: 0.3),
+                                        color: _accent.withValues(alpha: 0.3),
                                         blurRadius: 12,
                                         offset: const Offset(0, 4),
                                       ),
@@ -495,33 +523,31 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                       shadowColor: Colors.transparent,
                                       foregroundColor: Colors.white,
                                       shape: RoundedRectangleBorder(
-                                        borderRadius:
-                                            BorderRadius.circular(12),
+                                        borderRadius: BorderRadius.circular(12),
                                       ),
                                     ),
-                                    child: _isLoading
-                                        ? const SizedBox(
-                                            width: 22,
-                                            height: 22,
-                                            child:
-                                                CircularProgressIndicator(
-                                              strokeWidth: 2.5,
-                                              color: Colors.white,
+                                    child:
+                                        _isLoading
+                                            ? const SizedBox(
+                                              width: 22,
+                                              height: 22,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2.5,
+                                                color: Colors.white,
+                                              ),
+                                            )
+                                            : const Text(
+                                              'Giriş Yap',
+                                              style: TextStyle(
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w600,
+                                              ),
                                             ),
-                                          )
-                                        : const Text(
-                                            'Giriş Yap',
-                                            style: TextStyle(
-                                              fontSize: 15,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
                                   ),
                                 ),
                                 const SizedBox(height: 20),
                                 Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.center,
+                                  mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     const Text(
                                       'Hesabınız yok mu?',
@@ -531,12 +557,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                       ),
                                     ),
                                     TextButton(
-                                      onPressed: () =>
-                                          context.push('/auth/register'),
+                                      onPressed:
+                                          () => context.push('/auth/register'),
                                       style: TextButton.styleFrom(
                                         foregroundColor: _accent,
-                                        padding:
-                                            const EdgeInsets.only(left: 4),
+                                        padding: const EdgeInsets.only(left: 4),
                                       ),
                                       child: const Text(
                                         'Kayıt Olun',
@@ -557,10 +582,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                         Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.shield_outlined,
-                                color: const Color(0xFF22C55E)
-                                    .withValues(alpha: 0.6),
-                                size: 14),
+                            Icon(
+                              Icons.shield_outlined,
+                              color: const Color(
+                                0xFF22C55E,
+                              ).withValues(alpha: 0.6),
+                              size: 14,
+                            ),
                             const SizedBox(width: 6),
                             const Text(
                               'Güvenli bağlantı ile korunuyor',

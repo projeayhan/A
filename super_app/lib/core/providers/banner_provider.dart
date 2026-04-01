@@ -67,7 +67,7 @@ class AppBanner {
 /// Kategoriye göre banner getiren family provider
 /// Sadece aktif ve tarih aralığı geçerli olan banner'ları getirir
 final bannersByCategoryProvider =
-    FutureProvider.family<List<AppBanner>, String>((ref, category) async {
+    FutureProvider.autoDispose.family<List<AppBanner>, String>((ref, category) async {
   final response = await SupabaseService.client
       .from('banners')
       .select()

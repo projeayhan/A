@@ -9,11 +9,7 @@ class CarChatScreen extends StatefulWidget {
   final String conversationId;
   final Map<String, dynamic>? listing;
 
-  const CarChatScreen({
-    super.key,
-    required this.conversationId,
-    this.listing,
-  });
+  const CarChatScreen({super.key, required this.conversationId, this.listing});
 
   @override
   State<CarChatScreen> createState() => _CarChatScreenState();
@@ -46,19 +42,18 @@ class _CarChatScreenState extends State<CarChatScreen> {
   }
 
   void _setupRealtimeSubscription() {
-    _channel = _chatService.subscribeToMessages(
-      widget.conversationId,
-      (message) {
-        if (mounted && _messages != null) {
-          setState(() {
-            if (!_messages!.any((m) => m['id'] == message['id'])) {
-              _messages!.add(message);
-            }
-          });
-          _scrollToBottom();
-        }
-      },
-    );
+    _channel = _chatService.subscribeToMessages(widget.conversationId, (
+      message,
+    ) {
+      if (mounted && _messages != null) {
+        setState(() {
+          if (!_messages!.any((m) => m['id'] == message['id'])) {
+            _messages!.add(message);
+          }
+        });
+        _scrollToBottom();
+      }
+    });
   }
 
   Future<void> _loadMessages() async {
@@ -136,7 +131,9 @@ class _CarChatScreenState extends State<CarChatScreen> {
         title: Row(
           children: [
             // Araç resmi
-            if (listing != null && listing['images'] != null && (listing['images'] as List).isNotEmpty)
+            if (listing != null &&
+                listing['images'] != null &&
+                (listing['images'] as List).isNotEmpty)
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: CachedNetworkImage(
@@ -144,13 +141,15 @@ class _CarChatScreenState extends State<CarChatScreen> {
                   width: 40,
                   height: 40,
                   fit: BoxFit.cover,
-                  placeholder: (_, __) => Container(
+                  placeholder: (_, _) => Container(
                     width: 40,
                     height: 40,
                     color: Colors.grey[200],
-                    child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    child: const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
                   ),
-                  errorWidget: (_, __, ___) => Container(
+                  errorWidget: (_, _, _) => Container(
                     width: 40,
                     height: 40,
                     color: Colors.grey[300],
@@ -203,8 +202,8 @@ class _CarChatScreenState extends State<CarChatScreen> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _messages!.isEmpty
-                    ? _buildEmptyState(isDark)
-                    : _buildMessageList(isDark),
+                ? _buildEmptyState(isDark)
+                : _buildMessageList(isDark),
           ),
 
           // Mesaj gönderme alanı
@@ -315,7 +314,11 @@ class _CarChatScreenState extends State<CarChatScreen> {
     );
   }
 
-  Widget _buildMessageBubble(Map<String, dynamic> message, bool isMe, bool isDark) {
+  Widget _buildMessageBubble(
+    Map<String, dynamic> message,
+    bool isMe,
+    bool isDark,
+  ) {
     final createdAt = DateTime.parse(message['created_at']);
     final isRead = message['is_read'] as bool? ?? false;
 
@@ -415,9 +418,7 @@ class _CarChatScreenState extends State<CarChatScreen> {
               textCapitalization: TextCapitalization.sentences,
               maxLines: 4,
               minLines: 1,
-              style: TextStyle(
-                color: isDark ? Colors.white : Colors.black87,
-              ),
+              style: TextStyle(color: isDark ? Colors.white : Colors.black87),
               decoration: InputDecoration(
                 hintText: 'Mesajınızı yazın...',
                 hintStyle: TextStyle(
@@ -467,14 +468,12 @@ class _CarChatScreenState extends State<CarChatScreen> {
                         height: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
                         ),
                       )
-                    : const Icon(
-                        Icons.send,
-                        color: Colors.white,
-                        size: 20,
-                      ),
+                    : const Icon(Icons.send, color: Colors.white, size: 20),
               ),
             ),
           ),

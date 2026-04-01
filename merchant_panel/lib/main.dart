@@ -1,30 +1,53 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'core/services/supabase_service.dart';
 import 'core/services/notification_sound_service.dart';
+import 'core/services/log_service.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+void main() {
+  runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    await dotenv.load(fileName: '.env');
+    await SupabaseService.initialize();
+    await notificationSoundService.initialize();
+    await initializeDateFormatting('tr', null);
 
-  // Initialize Supabase
-  await SupabaseService.initialize();
+    // Stripe initialization
+    if (!kIsWeb) {
+      try {
+        final stripeKey = dotenv.env['STRIPE_PUBLISHABLE_KEY'] ?? '';
+        if (stripeKey.isNotEmpty) {
+          Stripe.publishableKey = stripeKey;
+          await Stripe.instance.applySettings();
+        }
+      } catch (e) {
+        LogService.warn('Stripe init error: $e', source: 'main');
+      }
+    }
 
-  // Initialize notification sound service
-  await notificationSoundService.initialize();
+    FlutterError.onError = (details) {
+      FlutterError.presentError(details);
+      LogService.error(details.exceptionAsString(),
+          error: details.exception,
+          stackTrace: details.stack,
+          source: 'FlutterError');
+    };
 
-  // Initialize date formatting for Turkish
-  await initializeDateFormatting('tr', null);
-
-  runApp(
-    const ProviderScope(
-      child: MerchantPanelApp(),
-    ),
-  );
+    LogService.info('Merchant panel started', source: 'main');
+    runApp(const ProviderScope(child: MerchantPanelApp()));
+  }, (error, stackTrace) {
+    LogService.error(error.toString(),
+        error: error, stackTrace: stackTrace, source: 'ZoneError');
+  });
 }
 
 class MerchantPanelApp extends ConsumerWidget {

@@ -25,16 +25,18 @@ String _getOptimizedImageUrl(String? url) {
     if (path.contains('/object/public/')) {
       path = path.replaceFirst('/object/public/', '/render/image/public/');
     }
-    return uri.replace(
-      path: path,
-      queryParameters: {
-        ...uri.queryParameters,
-        'width': _bannerWidth.toString(),
-        'height': _bannerHeight.toString(),
-        'resize': 'cover',
-        'quality': '80',
-      },
-    ).toString();
+    return uri
+        .replace(
+          path: path,
+          queryParameters: {
+            ...uri.queryParameters,
+            'width': _bannerWidth.toString(),
+            'height': _bannerHeight.toString(),
+            'resize': 'cover',
+            'quality': '80',
+          },
+        )
+        .toString();
   }
 
   return url;
@@ -97,7 +99,7 @@ class _PromoBannerState extends ConsumerState<PromoBanner> {
 
     return bannersAsync.when(
       loading: () => _buildPlaceholder(),
-      error: (_, __) => _buildDefaultAppBanner(),
+      error: (_, _) => _buildDefaultAppBanner(),
       data: (banners) {
         if (banners.isEmpty) {
           return _buildDefaultAppBanner();
@@ -117,15 +119,14 @@ class _PromoBannerState extends ConsumerState<PromoBanner> {
         borderRadius: BorderRadius.circular(24),
         color: Colors.grey[300],
       ),
-      child: const Center(
-        child: CircularProgressIndicator(),
-      ),
+      child: const Center(child: CircularProgressIndicator()),
     );
   }
 
   Widget _buildDefaultAppBanner() {
     return _buildAppBannerContent(
-      imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=$_bannerWidth',
+      imageUrl:
+          'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=$_bannerWidth',
       title: 'İlk siparişe özel ',
       highlight: '%50 indirim',
       subtitle: 'Hemen Keşfet',
@@ -242,11 +243,13 @@ class _PromoBannerState extends ConsumerState<PromoBanner> {
                 fit: BoxFit.cover,
                 memCacheWidth: _bannerWidth,
                 memCacheHeight: _bannerHeight,
-                placeholder: (_, __) => Container(
+                placeholder: (_, _) => Container(
                   color: Colors.grey[200],
-                  child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                  child: const Center(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
                 ),
-                errorWidget: (_, __, ___) => Container(
+                errorWidget: (_, _, _) => Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
@@ -261,20 +264,7 @@ class _PromoBannerState extends ConsumerState<PromoBanner> {
               ),
             ),
 
-            // Gradient overlays
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
-                gradient: LinearGradient(
-                  colors: [
-                    const Color(0xFF1E3A5F).withValues(alpha: 0.8),
-                    AppColors.primary.withValues(alpha: 0.4),
-                  ],
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                ),
-              ),
-            ),
+            // Gradient overlay
             Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(24),
@@ -295,7 +285,10 @@ class _PromoBannerState extends ConsumerState<PromoBanner> {
               top: 16,
               left: 16,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(20),

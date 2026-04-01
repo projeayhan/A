@@ -1,6 +1,6 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:support_panel/core/services/log_service.dart';
 import 'supabase_service.dart';
 import '../models/customer_360_model.dart';
 
@@ -29,8 +29,8 @@ class CustomerService {
           .limit(limit);
 
       return List<Map<String, dynamic>>.from(results);
-    } catch (e) {
-      if (kDebugMode) print('Error searching customers: $e');
+    } catch (e, st) {
+      LogService.error('Error searching customers', error: e, stackTrace: st, source: 'CustomerService:searchCustomers');
       return [];
     }
   }
@@ -44,8 +44,8 @@ class CustomerService {
         return Customer360.fromJson(result);
       }
       return null;
-    } catch (e) {
-      if (kDebugMode) print('Error fetching customer 360: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching customer 360', error: e, stackTrace: st, source: 'CustomerService:getCustomer360');
       return null;
     }
   }
@@ -57,7 +57,8 @@ class CustomerService {
           .select()
           .eq('id', userId)
           .maybeSingle();
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to get user by ID', error: e, stackTrace: st, source: 'CustomerService:getUserById');
       return null;
     }
   }

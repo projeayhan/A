@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/utils/cache_helper.dart';
 import '../../models/emlak/emlak_models.dart';
+import 'package:super_app/core/services/log_service.dart';
 
 /// AI Moderasyon sonucu
 class PropertyModerationResult {
@@ -67,8 +68,8 @@ class PropertyService {
         _ratesLastFetched = DateTime.now();
       }
       return rates;
-    } catch (e) {
-      debugPrint('Kur çekme hatası: $e');
+    } catch (e, st) {
+      LogService.error('Kur çekme hatası', error: e, stackTrace: st, source: 'PropertyService:getExchangeRates');
       return _exchangeRates ?? {'TL': 0.023, 'USD': 1.0, 'EUR': 1.18, 'GBP': 1.35};
     }
   }
@@ -584,8 +585,8 @@ class PropertyService {
         return result;
       }
       return null;
-    } catch (e) {
-      debugPrint('Property moderation error: $e');
+    } catch (e, st) {
+      LogService.error('Property moderation error', error: e, stackTrace: st, source: 'PropertyService:moderateProperty');
       return null;
     }
   }
@@ -613,8 +614,8 @@ class PropertyService {
         reason: response['ai_reason'],
         autoApproved: response['moderation_status'] == 'approved',
       );
-    } catch (e) {
-      debugPrint('Get moderation result error: $e');
+    } catch (e, st) {
+      LogService.error('Get moderation result error', error: e, stackTrace: st, source: 'PropertyService:getModerationResult');
       return null;
     }
   }
@@ -647,7 +648,8 @@ class PropertyService {
           .eq('id', propertyId)
           .eq('user_id', _userId!);
       return true;
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Error updating property status', error: e, stackTrace: st, source: 'PropertyService:updatePropertyStatus');
       return false;
     }
   }
@@ -663,7 +665,8 @@ class PropertyService {
           .eq('id', propertyId)
           .eq('user_id', _userId!);
       return true;
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Error deleting property', error: e, stackTrace: st, source: 'PropertyService:deleteProperty');
       return false;
     }
   }
@@ -678,8 +681,8 @@ class PropertyService {
         'user_id': _userId,
         'device_info': 'mobile',
       });
-    } catch (e) {
-      // Görüntüleme hatası önemsiz, sessizce geç
+    } catch (e, st) {
+      LogService.error('Error tracking property view', error: e, stackTrace: st, source: 'PropertyService:trackPropertyView');
     }
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:emlakci_panel/core/services/log_service.dart';
 import '../../models/emlak_models.dart';
 import '../../services/realtor_service.dart';
 import '../../services/property_service.dart';
@@ -11,7 +12,8 @@ class RealtorApplicationScreen extends StatefulWidget {
   const RealtorApplicationScreen({super.key});
 
   @override
-  State<RealtorApplicationScreen> createState() => _RealtorApplicationScreenState();
+  State<RealtorApplicationScreen> createState() =>
+      _RealtorApplicationScreenState();
 }
 
 class _RealtorApplicationScreenState extends State<RealtorApplicationScreen> {
@@ -36,8 +38,8 @@ class _RealtorApplicationScreenState extends State<RealtorApplicationScreen> {
   Map<String, dynamic>? _existingApplication;
 
   // Seçimler
-  List<String> _selectedSpecializations = [];
-  List<String> _selectedCities = [];
+  final List<String> _selectedSpecializations = [];
+  final List<String> _selectedCities = [];
 
   int _currentStep = 0;
 
@@ -72,8 +74,8 @@ class _RealtorApplicationScreenState extends State<RealtorApplicationScreen> {
           _isLoadingCities = false;
         });
       }
-    } catch (e) {
-      debugPrint('Şehirler yüklenemedi: $e');
+    } catch (e, st) {
+      LogService.error('Şehirler yüklenemedi', error: e, stackTrace: st, source: 'RealtorApplicationScreen:_loadCities');
       if (mounted) {
         setState(() => _isLoadingCities = false);
       }
@@ -112,8 +114,8 @@ class _RealtorApplicationScreenState extends State<RealtorApplicationScreen> {
             _phoneController.text = profile['phone'] ?? '';
           });
         }
-      } catch (e) {
-        debugPrint('Profil yüklenemedi: $e');
+      } catch (e, st) {
+        LogService.error('Profil yüklenemedi', error: e, stackTrace: st, source: 'RealtorApplicationScreen:_loadUserData');
       }
     }
   }
@@ -127,7 +129,8 @@ class _RealtorApplicationScreenState extends State<RealtorApplicationScreen> {
           _isCheckingStatus = false;
         });
       }
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to check application status', error: e, stackTrace: st, source: 'RealtorApplicationScreen:_checkExistingApplication');
       if (mounted) {
         setState(() => _isCheckingStatus = false);
       }
@@ -144,9 +147,7 @@ class _RealtorApplicationScreenState extends State<RealtorApplicationScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) context.go('/login');
       });
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     if (_isCheckingStatus) {
@@ -200,7 +201,10 @@ class _RealtorApplicationScreenState extends State<RealtorApplicationScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: EmlakColors.primary,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 32,
+                          vertical: 12,
+                        ),
                       ),
                       child: const Text('Devam'),
                     )
@@ -210,13 +214,19 @@ class _RealtorApplicationScreenState extends State<RealtorApplicationScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: EmlakColors.success,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 32,
+                          vertical: 12,
+                        ),
                       ),
                       child: _isLoading
                           ? const SizedBox(
                               width: 20,
                               height: 20,
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
                             )
                           : const Text('Başvuruyu Gönder'),
                     ),
@@ -269,7 +279,11 @@ class _RealtorApplicationScreenState extends State<RealtorApplicationScreen> {
         TextFormField(
           controller: _fullNameController,
           style: TextStyle(color: EmlakColors.textPrimary(isDark)),
-          decoration: _inputDecoration('Ad Soyad', Icons.person_outline, isDark),
+          decoration: _inputDecoration(
+            'Ad Soyad',
+            Icons.person_outline,
+            isDark,
+          ),
           validator: (value) {
             if (value == null || value.isEmpty) return 'Ad soyad gerekli';
             if (value.length < 3) return 'En az 3 karakter girin';
@@ -316,14 +330,22 @@ class _RealtorApplicationScreenState extends State<RealtorApplicationScreen> {
         TextFormField(
           controller: _companyNameController,
           style: TextStyle(color: EmlakColors.textPrimary(isDark)),
-          decoration: _inputDecoration('Şirket Adı (Opsiyonel)', Icons.business_outlined, isDark),
+          decoration: _inputDecoration(
+            'Şirket Adı (Opsiyonel)',
+            Icons.business_outlined,
+            isDark,
+          ),
         ),
         const SizedBox(height: 16),
         // Lisans Numarası (Opsiyonel)
         TextFormField(
           controller: _licenseNumberController,
           style: TextStyle(color: EmlakColors.textPrimary(isDark)),
-          decoration: _inputDecoration('Lisans Numarası (Opsiyonel)', Icons.badge_outlined, isDark),
+          decoration: _inputDecoration(
+            'Lisans Numarası (Opsiyonel)',
+            Icons.badge_outlined,
+            isDark,
+          ),
         ),
         const SizedBox(height: 16),
         // Vergi Numarası (Opsiyonel)
@@ -331,7 +353,11 @@ class _RealtorApplicationScreenState extends State<RealtorApplicationScreen> {
           controller: _taxNumberController,
           keyboardType: TextInputType.number,
           style: TextStyle(color: EmlakColors.textPrimary(isDark)),
-          decoration: _inputDecoration('Vergi Numarası (Opsiyonel)', Icons.receipt_long_outlined, isDark),
+          decoration: _inputDecoration(
+            'Vergi Numarası (Opsiyonel)',
+            Icons.receipt_long_outlined,
+            isDark,
+          ),
         ),
         const SizedBox(height: 16),
         // Deneyim Yılı
@@ -339,7 +365,11 @@ class _RealtorApplicationScreenState extends State<RealtorApplicationScreen> {
           controller: _experienceYearsController,
           keyboardType: TextInputType.number,
           style: TextStyle(color: EmlakColors.textPrimary(isDark)),
-          decoration: _inputDecoration('Deneyim (Yıl)', Icons.timeline_outlined, isDark),
+          decoration: _inputDecoration(
+            'Deneyim (Yıl)',
+            Icons.timeline_outlined,
+            isDark,
+          ),
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         ),
         const SizedBox(height: 8),
@@ -435,7 +465,11 @@ class _RealtorApplicationScreenState extends State<RealtorApplicationScreen> {
           controller: _messageController,
           maxLines: 3,
           style: TextStyle(color: EmlakColors.textPrimary(isDark)),
-          decoration: _inputDecoration('Eklemek istediğiniz not (Opsiyonel)', Icons.message_outlined, isDark),
+          decoration: _inputDecoration(
+            'Eklemek istediğiniz not (Opsiyonel)',
+            Icons.message_outlined,
+            isDark,
+          ),
         ),
         const SizedBox(height: 8),
       ],
@@ -444,7 +478,9 @@ class _RealtorApplicationScreenState extends State<RealtorApplicationScreen> {
 
   Widget _buildApplicationStatusScreen(bool isDark) {
     final status = _existingApplication!['status'] as String;
-    final createdAt = DateTime.parse(_existingApplication!['created_at'] as String);
+    final createdAt = DateTime.parse(
+      _existingApplication!['created_at'] as String,
+    );
 
     IconData statusIcon;
     Color statusColor;
@@ -456,25 +492,29 @@ class _RealtorApplicationScreenState extends State<RealtorApplicationScreen> {
         statusIcon = Icons.hourglass_empty;
         statusColor = EmlakColors.accent;
         statusText = 'Başvuru Beklemede';
-        statusDescription = 'Başvurunuz inceleme için sıraya alındı. En kısa sürede değerlendirilecektir.';
+        statusDescription =
+            'Başvurunuz inceleme için sıraya alındı. En kısa sürede değerlendirilecektir.';
         break;
       case 'under_review':
         statusIcon = Icons.search;
         statusColor = EmlakColors.primary;
         statusText = 'İnceleniyor';
-        statusDescription = 'Başvurunuz şu anda incelenmektedir. Sonuç için lütfen bekleyin.';
+        statusDescription =
+            'Başvurunuz şu anda incelenmektedir. Sonuç için lütfen bekleyin.';
         break;
       case 'approved':
         statusIcon = Icons.check_circle;
         statusColor = EmlakColors.success;
         statusText = 'Onaylandı';
-        statusDescription = 'Tebrikler! Başvurunuz onaylandı. Panele giriş yapabilirsiniz.';
+        statusDescription =
+            'Tebrikler! Başvurunuz onaylandı. Panele giriş yapabilirsiniz.';
         break;
       case 'rejected':
         statusIcon = Icons.cancel;
         statusColor = EmlakColors.error;
         statusText = 'Reddedildi';
-        statusDescription = _existingApplication!['rejection_reason'] as String? ??
+        statusDescription =
+            _existingApplication!['rejection_reason'] as String? ??
             'Başvurunuz reddedildi. Yeni bir başvuru yapabilirsiniz.';
         break;
       default:
@@ -549,7 +589,10 @@ class _RealtorApplicationScreenState extends State<RealtorApplicationScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.calendar_today, color: EmlakColors.textSecondary(isDark)),
+                    Icon(
+                      Icons.calendar_today,
+                      color: EmlakColors.textSecondary(isDark),
+                    ),
                     const SizedBox(width: 12),
                     Text(
                       'Başvuru Tarihi: ${createdAt.day}.${createdAt.month}.${createdAt.year}',
@@ -569,7 +612,10 @@ class _RealtorApplicationScreenState extends State<RealtorApplicationScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: EmlakColors.success,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 16,
+                    ),
                   ),
                 ),
               ] else if (status == 'rejected') ...[
@@ -584,7 +630,10 @@ class _RealtorApplicationScreenState extends State<RealtorApplicationScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: EmlakColors.primary,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 16,
+                    ),
                   ),
                 ),
               ] else ...[
@@ -595,7 +644,10 @@ class _RealtorApplicationScreenState extends State<RealtorApplicationScreen> {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: EmlakColors.primary,
                     side: BorderSide(color: EmlakColors.primary),
-                    padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 16,
+                    ),
                   ),
                 ),
               ],
@@ -674,16 +726,22 @@ class _RealtorApplicationScreenState extends State<RealtorApplicationScreen> {
         phone: _phoneController.text.trim(),
         email: _emailController.text.trim(),
         companyName: _companyNameController.text.trim().isEmpty
-            ? null : _companyNameController.text.trim(),
+            ? null
+            : _companyNameController.text.trim(),
         licenseNumber: _licenseNumberController.text.trim().isEmpty
-            ? null : _licenseNumberController.text.trim(),
+            ? null
+            : _licenseNumberController.text.trim(),
         taxNumber: _taxNumberController.text.trim().isEmpty
-            ? null : _taxNumberController.text.trim(),
+            ? null
+            : _taxNumberController.text.trim(),
         experienceYears: int.tryParse(_experienceYearsController.text) ?? 0,
-        specialization: _selectedSpecializations.isEmpty ? null : _selectedSpecializations,
+        specialization: _selectedSpecializations.isEmpty
+            ? null
+            : _selectedSpecializations,
         workingCities: _selectedCities.isEmpty ? null : _selectedCities,
         applicantMessage: _messageController.text.trim().isEmpty
-            ? null : _messageController.text.trim(),
+            ? null
+            : _messageController.text.trim(),
       );
 
       if (!mounted) return;
@@ -699,14 +757,11 @@ class _RealtorApplicationScreenState extends State<RealtorApplicationScreen> {
 
       // Durumu yeniden kontrol et
       await _checkExistingApplication();
-
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to submit application', error: e, stackTrace: st, source: 'RealtorApplicationScreen:_submitApplication');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Hata: $e'),
-          backgroundColor: EmlakColors.error,
-        ),
+        SnackBar(content: Text('Hata: $e'), backgroundColor: EmlakColors.error),
       );
     } finally {
       if (mounted) {

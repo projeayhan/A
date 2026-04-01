@@ -31,7 +31,8 @@ class _StoreProductDetailScreenState
   // Animation keys
   final GlobalKey _addButtonKey = GlobalKey();
   final GlobalKey _cartTargetKey = GlobalKey();
-  final GlobalKey<CartIconBounceState> _cartBounceKey = GlobalKey<CartIconBounceState>();
+  final GlobalKey<CartIconBounceState> _cartBounceKey =
+      GlobalKey<CartIconBounceState>();
   bool _isAnimating = false;
 
   @override
@@ -42,9 +43,10 @@ class _StoreProductDetailScreenState
 
   List<String> get _images {
     if (widget.product.images.isNotEmpty) {
-      return [widget.product.imageUrl, ...widget.product.images]
-          .map((url) => ImageUtils.getProductDetail(url))
-          .toList();
+      return [
+        widget.product.imageUrl,
+        ...widget.product.images,
+      ].map((url) => ImageUtils.getProductDetail(url)).toList();
     }
     return [ImageUtils.getProductDetail(widget.product.imageUrl)];
   }
@@ -56,7 +58,9 @@ class _StoreProductDetailScreenState
     final cartState = ref.watch(storeCartProvider);
 
     return Scaffold(
-      backgroundColor: isDark ? StoreColors.backgroundDark : StoreColors.backgroundLight,
+      backgroundColor: isDark
+          ? StoreColors.backgroundDark
+          : StoreColors.backgroundLight,
       body: CustomScrollView(
         slivers: [
           // App Bar
@@ -162,11 +166,13 @@ class _StoreProductDetailScreenState
                           fit: BoxFit.contain,
                           memCacheWidth: 600,
                           memCacheHeight: 600,
-                          placeholder: (_, __) => Container(
+                          placeholder: (_, _) => Container(
                             color: Colors.grey[200],
-                            child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                            child: const Center(
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
                           ),
-                          errorWidget: (_, __, ___) => Container(
+                          errorWidget: (_, _, _) => Container(
                             color: isDark ? Colors.grey[800] : Colors.grey[200],
                             child: Icon(
                               Icons.image_outlined,
@@ -208,10 +214,14 @@ class _StoreProductDetailScreenState
                     right: 16,
                     child: Builder(
                       builder: (context) {
-                        final isFavorite = ref.watch(isProductFavoriteProvider(product.id));
+                        final isFavorite = ref.watch(
+                          isProductFavoriteProvider(product.id),
+                        );
                         return GestureDetector(
                           onTap: () {
-                            ref.read(productFavoriteProvider.notifier).toggleFavorite(product);
+                            ref
+                                .read(productFavoriteProvider.notifier)
+                                .toggleFavorite(product);
 
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
@@ -220,7 +230,9 @@ class _StoreProductDetailScreenState
                                       ? '${product.name} favorilerden kaldırıldı'
                                       : '${product.name} favorilere eklendi',
                                 ),
-                                backgroundColor: isFavorite ? Colors.red : StoreColors.primary,
+                                backgroundColor: isFavorite
+                                    ? Colors.red
+                                    : StoreColors.primary,
                                 behavior: SnackBarBehavior.floating,
                                 duration: const Duration(seconds: 2),
                               ),
@@ -303,7 +315,9 @@ class _StoreProductDetailScreenState
                                   vertical: 4,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: StoreColors.primary.withValues(alpha: 0.1),
+                                  color: StoreColors.primary.withValues(
+                                    alpha: 0.1,
+                                  ),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Row(
@@ -452,7 +466,8 @@ class _StoreProductDetailScreenState
                                 StoreColors.primary,
                                 isDark,
                               ),
-                            if (product.promotionLabel != null && product.promotionLabel!.isNotEmpty)
+                            if (product.promotionLabel != null &&
+                                product.promotionLabel!.isNotEmpty)
                               _buildBadge(
                                 Icons.local_offer_outlined,
                                 product.promotionLabel!,
@@ -492,10 +507,17 @@ class _StoreProductDetailScreenState
                               spacing: 10,
                               runSpacing: 10,
                               children: entry.value.map((option) {
-                                final isSelected = _getSelectedValue(entry.key) == option.value;
+                                final isSelected =
+                                    _getSelectedValue(entry.key) ==
+                                    option.value;
                                 return GestureDetector(
                                   onTap: () {
-                                    setState(() => _setSelectedValue(entry.key, option.value));
+                                    setState(
+                                      () => _setSelectedValue(
+                                        entry.key,
+                                        option.value,
+                                      ),
+                                    );
                                   },
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(
@@ -505,12 +527,16 @@ class _StoreProductDetailScreenState
                                     decoration: BoxDecoration(
                                       color: isSelected
                                           ? StoreColors.primary
-                                          : (isDark ? Colors.grey[800] : Colors.grey[100]),
+                                          : (isDark
+                                                ? Colors.grey[800]
+                                                : Colors.grey[100]),
                                       borderRadius: BorderRadius.circular(8),
                                       border: Border.all(
                                         color: isSelected
                                             ? StoreColors.primary
-                                            : (isDark ? Colors.grey[700]! : Colors.grey[300]!),
+                                            : (isDark
+                                                  ? Colors.grey[700]!
+                                                  : Colors.grey[300]!),
                                       ),
                                     ),
                                     child: Text(
@@ -520,7 +546,9 @@ class _StoreProductDetailScreenState
                                       style: TextStyle(
                                         color: isSelected
                                             ? Colors.white
-                                            : (isDark ? Colors.white : Colors.black87),
+                                            : (isDark
+                                                  ? Colors.white
+                                                  : Colors.black87),
                                         fontWeight: isSelected
                                             ? FontWeight.w600
                                             : FontWeight.normal,
@@ -663,10 +691,9 @@ class _StoreProductDetailScreenState
                     imageUrl: product.imageUrl,
                     onComplete: () {
                       // Add item to cart after animation
-                      ref.read(storeCartProvider.notifier).addProduct(
-                        product,
-                        quantity: _quantity,
-                      );
+                      ref
+                          .read(storeCartProvider.notifier)
+                          .addProduct(product, quantity: _quantity);
 
                       setState(() => _isAnimating = false);
                       _cartBounceKey.currentState?.bounce();
@@ -675,9 +702,14 @@ class _StoreProductDetailScreenState
                         SnackBar(
                           content: Row(
                             children: [
-                              const Icon(Icons.check_circle, color: Colors.white),
+                              const Icon(
+                                Icons.check_circle,
+                                color: Colors.white,
+                              ),
                               const SizedBox(width: 12),
-                              Expanded(child: Text('${product.name} sepete eklendi!')),
+                              Expanded(
+                                child: Text('${product.name} sepete eklendi!'),
+                              ),
                               TextButton(
                                 onPressed: () => context.push('/store/cart'),
                                 child: const Text(
@@ -716,7 +748,10 @@ class _StoreProductDetailScreenState
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.shopping_bag_outlined, color: Colors.white),
+                      const Icon(
+                        Icons.shopping_bag_outlined,
+                        color: Colors.white,
+                      ),
                       const SizedBox(width: 8),
                       Text(
                         _isAnimating
@@ -777,7 +812,9 @@ class _StoreProductDetailScreenState
       for (final entry in product.variants!.entries) {
         final selected = _selectedVariants[entry.key];
         if (selected != null) {
-          final option = entry.value.where((o) => o.value == selected).firstOrNull;
+          final option = entry.value
+              .where((o) => o.value == selected)
+              .firstOrNull;
           if (option != null) {
             price += option.priceModifier;
           }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:super_app/core/services/log_service.dart';
 
 // Promosyon Tipi
 enum PromotionType {
@@ -198,7 +199,8 @@ class TaxiPromotionNotifier extends StateNotifier<TaxiPromotionState> {
       );
       selectPromotion(promotion);
       return true;
-    } catch (_) {
+    } catch (e, st) {
+      LogService.error('Error applying promotion', error: e, stackTrace: st, source: 'TaxiPromotionProvider:applyPromoCode');
       return false;
     }
   }
@@ -209,7 +211,8 @@ class TaxiPromotionNotifier extends StateNotifier<TaxiPromotionState> {
       return state.promotions.firstWhere(
         (p) => p.code.toUpperCase() == upperCode,
       );
-    } catch (_) {
+    } catch (e, st) {
+      LogService.error('Error calculating discount', error: e, stackTrace: st, source: 'TaxiPromotionProvider:calculateDiscount');
       return null;
     }
   }

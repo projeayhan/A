@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/business_proxy_service.dart';
 import '../../../shared/widgets/status_badge.dart';
+import 'package:support_panel/core/services/log_service.dart';
 
 class TaxiCourierOpsPanel extends ConsumerStatefulWidget {
   final String businessId;
@@ -38,7 +39,8 @@ class _TaxiCourierOpsPanelState extends ConsumerState<TaxiCourierOpsPanel> {
         final profile = await service.getCourierById(widget.businessId);
         setState(() { _items = deliveries; _profile = profile; _isLoading = false; });
       }
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to load taxi/courier data', error: e, stackTrace: st, source: 'TaxiCourierOpsPanel:_loadData');
       setState(() => _isLoading = false);
     }
   }

@@ -3,154 +3,6 @@ import '../../../core/services/supabase_service.dart';
 
 // ==================== MODELS ====================
 
-class BalanceSheetData {
-  final double totalAssets;
-  final double totalLiabilities;
-  final double equity;
-  final List<BalanceSheetItem> assets;
-  final List<BalanceSheetItem> liabilities;
-
-  BalanceSheetData({
-    required this.totalAssets,
-    required this.totalLiabilities,
-    required this.equity,
-    required this.assets,
-    required this.liabilities,
-  });
-
-  factory BalanceSheetData.fromJson(Map<String, dynamic> json) {
-    return BalanceSheetData(
-      totalAssets: (json['total_assets'] as num?)?.toDouble() ?? 0,
-      totalLiabilities: (json['total_liabilities'] as num?)?.toDouble() ?? 0,
-      equity: (json['equity'] as num?)?.toDouble() ?? 0,
-      assets: (json['assets'] as List?)
-              ?.map((e) => BalanceSheetItem.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [],
-      liabilities: (json['liabilities'] as List?)
-              ?.map((e) => BalanceSheetItem.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [],
-    );
-  }
-}
-
-class BalanceSheetItem {
-  final String category;
-  final double amount;
-  final double? prevAmount;
-
-  BalanceSheetItem({
-    required this.category,
-    required this.amount,
-    this.prevAmount,
-  });
-
-  factory BalanceSheetItem.fromJson(Map<String, dynamic> json) {
-    return BalanceSheetItem(
-      category: json['category'] as String? ?? '',
-      amount: (json['amount'] as num?)?.toDouble() ?? 0,
-      prevAmount: (json['prev_amount'] as num?)?.toDouble(),
-    );
-  }
-}
-
-class ProfitLossData {
-  final double totalRevenue;
-  final double totalExpenses;
-  final double netProfit;
-  final List<SectorRevenue> sectorRevenues;
-  final List<ExpenseCategory> expenseCategories;
-  final List<MonthlyProfit> monthlyProfits;
-
-  ProfitLossData({
-    required this.totalRevenue,
-    required this.totalExpenses,
-    required this.netProfit,
-    required this.sectorRevenues,
-    required this.expenseCategories,
-    required this.monthlyProfits,
-  });
-
-  factory ProfitLossData.fromJson(Map<String, dynamic> json) {
-    return ProfitLossData(
-      totalRevenue: (json['total_revenue'] as num?)?.toDouble() ?? 0,
-      totalExpenses: (json['total_expenses'] as num?)?.toDouble() ?? 0,
-      netProfit: (json['net_profit'] as num?)?.toDouble() ?? 0,
-      sectorRevenues: (json['sector_revenues'] as List?)
-              ?.map((e) => SectorRevenue.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [],
-      expenseCategories: (json['expense_categories'] as List?)
-              ?.map(
-                  (e) => ExpenseCategory.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [],
-      monthlyProfits: (json['monthly_profits'] as List?)
-              ?.map((e) => MonthlyProfit.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [],
-    );
-  }
-}
-
-class SectorRevenue {
-  final String sector;
-  final double revenue;
-  final double commission;
-
-  SectorRevenue({
-    required this.sector,
-    required this.revenue,
-    required this.commission,
-  });
-
-  factory SectorRevenue.fromJson(Map<String, dynamic> json) {
-    return SectorRevenue(
-      sector: json['sector'] as String? ?? '',
-      revenue: (json['revenue'] as num?)?.toDouble() ?? 0,
-      commission: (json['commission'] as num?)?.toDouble() ?? 0,
-    );
-  }
-}
-
-class ExpenseCategory {
-  final String category;
-  final double amount;
-
-  ExpenseCategory({required this.category, required this.amount});
-
-  factory ExpenseCategory.fromJson(Map<String, dynamic> json) {
-    return ExpenseCategory(
-      category: json['category'] as String? ?? '',
-      amount: (json['amount'] as num?)?.toDouble() ?? 0,
-    );
-  }
-}
-
-class MonthlyProfit {
-  final String month;
-  final double revenue;
-  final double expenses;
-  final double profit;
-
-  MonthlyProfit({
-    required this.month,
-    required this.revenue,
-    required this.expenses,
-    required this.profit,
-  });
-
-  factory MonthlyProfit.fromJson(Map<String, dynamic> json) {
-    return MonthlyProfit(
-      month: json['month'] as String? ?? '',
-      revenue: (json['revenue'] as num?)?.toDouble() ?? 0,
-      expenses: (json['expenses'] as num?)?.toDouble() ?? 0,
-      profit: (json['profit'] as num?)?.toDouble() ?? 0,
-    );
-  }
-}
-
 class KdvSummary {
   final double totalKdvCollected;
   final double totalKdvPaid;
@@ -200,69 +52,6 @@ class SectorKdv {
   }
 }
 
-class AgingReport {
-  final double current;
-  final double days30;
-  final double days60;
-  final double days90;
-  final double days90Plus;
-  final List<AgingItem> items;
-
-  AgingReport({
-    required this.current,
-    required this.days30,
-    required this.days60,
-    required this.days90,
-    required this.days90Plus,
-    required this.items,
-  });
-
-  factory AgingReport.fromJson(Map<String, dynamic> json) {
-    return AgingReport(
-      current: (json['current'] as num?)?.toDouble() ?? 0,
-      days30: (json['days_30'] as num?)?.toDouble() ?? 0,
-      days60: (json['days_60'] as num?)?.toDouble() ?? 0,
-      days90: (json['days_90'] as num?)?.toDouble() ?? 0,
-      days90Plus: (json['days_90_plus'] as num?)?.toDouble() ?? 0,
-      items: (json['items'] as List?)
-              ?.map((e) => AgingItem.fromJson(e as Map<String, dynamic>))
-              .toList() ??
-          [],
-    );
-  }
-
-  double get total => current + days30 + days60 + days90 + days90Plus;
-}
-
-class AgingItem {
-  final String id;
-  final String entityName;
-  final double amount;
-  final String status;
-  final DateTime dueDate;
-  final int daysOverdue;
-
-  AgingItem({
-    required this.id,
-    required this.entityName,
-    required this.amount,
-    required this.status,
-    required this.dueDate,
-    required this.daysOverdue,
-  });
-
-  factory AgingItem.fromJson(Map<String, dynamic> json) {
-    return AgingItem(
-      id: json['id'] as String? ?? '',
-      entityName: json['entity_name'] as String? ?? '',
-      amount: (json['amount'] as num?)?.toDouble() ?? 0,
-      status: json['status'] as String? ?? 'pending',
-      dueDate: DateTime.tryParse(json['due_date'] as String? ?? '') ?? DateTime.now(),
-      daysOverdue: json['days_overdue'] as int? ?? 0,
-    );
-  }
-}
-
 class FinanceEntry {
   final String id;
   final String type; // income, expense
@@ -272,6 +61,23 @@ class FinanceEntry {
   final String source;
   final DateTime date;
   final String? referenceId;
+  final String? subcategory;
+  final double? kdvRate;
+  final double? kdvAmount;
+  final double? totalAmount;
+  final String? currency;
+  final String? merchantId;
+  final String? invoiceId;
+  final String? paymentStatus;
+  final String? paymentMethod;
+  final DateTime? dueDate;
+  final DateTime? paidAt;
+  final bool taxDeductible;
+  final String? notes;
+  final String? createdBy;
+  final List<String> tags;
+  final String? recurringEntryId;
+  final DateTime? updatedAt;
 
   FinanceEntry({
     required this.id,
@@ -282,20 +88,266 @@ class FinanceEntry {
     required this.source,
     required this.date,
     this.referenceId,
+    this.subcategory,
+    this.kdvRate,
+    this.kdvAmount,
+    this.totalAmount,
+    this.currency,
+    this.merchantId,
+    this.invoiceId,
+    this.paymentStatus,
+    this.paymentMethod,
+    this.dueDate,
+    this.paidAt,
+    this.taxDeductible = false,
+    this.notes,
+    this.createdBy,
+    this.tags = const [],
+    this.recurringEntryId,
+    this.updatedAt,
   });
 
   factory FinanceEntry.fromJson(Map<String, dynamic> json) {
     return FinanceEntry(
       id: json['id'] as String? ?? '',
-      type: json['type'] as String? ?? 'income',
+      type: json['entry_type'] as String? ?? 'income',
       category: json['category'] as String? ?? '',
       description: json['description'] as String? ?? '',
       amount: (json['amount'] as num?)?.toDouble() ?? 0,
-      source: json['source'] as String? ?? '',
+      source: json['source_type'] as String? ?? '',
       date: DateTime.tryParse(json['created_at'] as String? ?? json['date'] as String? ?? '') ?? DateTime.now(),
-      referenceId: json['reference_id'] as String?,
+      referenceId: json['source_id'] as String?,
+      subcategory: json['subcategory'] as String?,
+      kdvRate: (json['kdv_rate'] as num?)?.toDouble(),
+      kdvAmount: (json['kdv_amount'] as num?)?.toDouble(),
+      totalAmount: (json['total_amount'] as num?)?.toDouble(),
+      currency: json['currency'] as String?,
+      merchantId: json['merchant_id'] as String?,
+      invoiceId: json['invoice_id'] as String?,
+      paymentStatus: json['payment_status'] as String?,
+      paymentMethod: json['payment_method'] as String?,
+      dueDate: json['due_date'] != null ? DateTime.tryParse(json['due_date'] as String) : null,
+      paidAt: json['paid_at'] != null ? DateTime.tryParse(json['paid_at'] as String) : null,
+      taxDeductible: json['tax_deductible'] as bool? ?? false,
+      notes: json['notes'] as String?,
+      createdBy: json['created_by'] as String?,
+      tags: (json['tags'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      recurringEntryId: json['recurring_entry_id'] as String?,
+      updatedAt: json['updated_at'] != null ? DateTime.tryParse(json['updated_at'] as String) : null,
     );
   }
+}
+
+// ==================== INCOME/EXPENSE MODELS ====================
+
+class TimeSeriesPoint {
+  final DateTime date;
+  final double income;
+  final double expense;
+
+  TimeSeriesPoint({required this.date, required this.income, required this.expense});
+
+  factory TimeSeriesPoint.fromJson(Map<String, dynamic> json) {
+    return TimeSeriesPoint(
+      date: DateTime.tryParse(json['date'] as String? ?? '') ?? DateTime.now(),
+      income: (json['income'] as num?)?.toDouble() ?? 0,
+      expense: (json['expense'] as num?)?.toDouble() ?? 0,
+    );
+  }
+}
+
+class CategoryBreakdown {
+  final String category;
+  final double total;
+  final int count;
+
+  CategoryBreakdown({required this.category, required this.total, required this.count});
+
+  factory CategoryBreakdown.fromJson(Map<String, dynamic> json) {
+    return CategoryBreakdown(
+      category: json['category'] as String? ?? '',
+      total: (json['total'] as num?)?.toDouble() ?? 0,
+      count: json['count'] as int? ?? 0,
+    );
+  }
+}
+
+class SourceBreakdown {
+  final String sourceType;
+  final double total;
+  final int count;
+
+  SourceBreakdown({required this.sourceType, required this.total, required this.count});
+
+  factory SourceBreakdown.fromJson(Map<String, dynamic> json) {
+    return SourceBreakdown(
+      sourceType: json['source_type'] as String? ?? '',
+      total: (json['total'] as num?)?.toDouble() ?? 0,
+      count: json['count'] as int? ?? 0,
+    );
+  }
+}
+
+class BudgetAlert {
+  final String category;
+  final double target;
+  final double actual;
+  final double percentage;
+
+  BudgetAlert({required this.category, required this.target, required this.actual, required this.percentage});
+
+  factory BudgetAlert.fromJson(Map<String, dynamic> json) {
+    return BudgetAlert(
+      category: json['category'] as String? ?? '',
+      target: (json['target'] as num?)?.toDouble() ?? 0,
+      actual: (json['actual'] as num?)?.toDouble() ?? 0,
+      percentage: (json['percentage'] as num?)?.toDouble() ?? 0,
+    );
+  }
+}
+
+class IncomeExpenseSummary {
+  final double totalIncome;
+  final double totalExpense;
+  final double netBalance;
+  final double totalKdv;
+  final int pendingCount;
+  final double pendingAmount;
+  final int entryCount;
+  final double incomeTrend;
+  final double expenseTrend;
+  final List<TimeSeriesPoint> timeSeries;
+  final List<CategoryBreakdown> categoryBreakdown;
+  final List<SourceBreakdown> sourceBreakdown;
+  final List<BudgetAlert> budgetAlerts;
+
+  IncomeExpenseSummary({
+    required this.totalIncome,
+    required this.totalExpense,
+    required this.netBalance,
+    required this.totalKdv,
+    required this.pendingCount,
+    required this.pendingAmount,
+    required this.entryCount,
+    required this.incomeTrend,
+    required this.expenseTrend,
+    required this.timeSeries,
+    required this.categoryBreakdown,
+    required this.sourceBreakdown,
+    required this.budgetAlerts,
+  });
+
+  factory IncomeExpenseSummary.fromJson(Map<String, dynamic> json) {
+    final currentIncome = (json['total_income'] as num?)?.toDouble() ?? 0;
+    final currentExpense = (json['total_expense'] as num?)?.toDouble() ?? 0;
+    final prevIncome = (json['prev_income'] as num?)?.toDouble() ?? 0;
+    final prevExpense = (json['prev_expense'] as num?)?.toDouble() ?? 0;
+
+    double calcTrend(double current, double prev) {
+      if (prev == 0) return current > 0 ? 100 : 0;
+      return (current - prev) / prev * 100;
+    }
+
+    return IncomeExpenseSummary(
+      totalIncome: currentIncome,
+      totalExpense: currentExpense,
+      netBalance: (json['net_balance'] as num?)?.toDouble() ?? (currentIncome - currentExpense),
+      totalKdv: (json['total_kdv'] as num?)?.toDouble() ?? 0,
+      pendingCount: json['pending_count'] as int? ?? 0,
+      pendingAmount: (json['pending_amount'] as num?)?.toDouble() ?? 0,
+      entryCount: json['entry_count'] as int? ?? 0,
+      incomeTrend: (json['income_trend'] as num?)?.toDouble() ?? calcTrend(currentIncome, prevIncome),
+      expenseTrend: (json['expense_trend'] as num?)?.toDouble() ?? calcTrend(currentExpense, prevExpense),
+      timeSeries: (json['time_series'] as List?)
+              ?.map((e) => TimeSeriesPoint.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      categoryBreakdown: (json['category_breakdown'] as List?)
+              ?.map((e) => CategoryBreakdown.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      sourceBreakdown: (json['source_breakdown'] as List?)
+              ?.map((e) => SourceBreakdown.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      budgetAlerts: (json['budget_alerts'] as List?)
+              ?.map((e) => BudgetAlert.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+    );
+  }
+}
+
+class IncomeExpenseFilterParams {
+  final DateTime startDate;
+  final DateTime endDate;
+  final String? type;
+  final String? source;
+  final String? category;
+  final String? paymentStatus;
+  final String? searchQuery;
+  final double? minAmount;
+  final double? maxAmount;
+  final List<String>? tags;
+  final int page;
+  final int pageSize;
+  final String sortColumn;
+  final bool sortAscending;
+  final String aggregation;
+
+  IncomeExpenseFilterParams({
+    required this.startDate,
+    required this.endDate,
+    this.type,
+    this.source,
+    this.category,
+    this.paymentStatus,
+    this.searchQuery,
+    this.minAmount,
+    this.maxAmount,
+    this.tags,
+    this.page = 0,
+    this.pageSize = 25,
+    this.sortColumn = 'created_at',
+    this.sortAscending = false,
+    this.aggregation = 'daily',
+  });
+
+  @override
+  bool operator ==(Object other) =>
+      other is IncomeExpenseFilterParams &&
+      other.startDate == startDate &&
+      other.endDate == endDate &&
+      other.type == type &&
+      other.source == source &&
+      other.category == category &&
+      other.paymentStatus == paymentStatus &&
+      other.searchQuery == searchQuery &&
+      other.minAmount == minAmount &&
+      other.maxAmount == maxAmount &&
+      other.page == page &&
+      other.pageSize == pageSize &&
+      other.sortColumn == sortColumn &&
+      other.sortAscending == sortAscending &&
+      other.aggregation == aggregation;
+
+  @override
+  int get hashCode => Object.hash(
+        startDate,
+        endDate,
+        type,
+        source,
+        category,
+        paymentStatus,
+        searchQuery,
+        minAmount,
+        maxAmount,
+        page,
+        pageSize,
+        sortColumn,
+        sortAscending,
+        aggregation,
+      );
 }
 
 // ==================== PROVIDERS ====================
@@ -313,78 +365,13 @@ class BalanceSheetParams {
   int get hashCode => Object.hash(month, year);
 }
 
-final balanceSheetProvider = FutureProvider.family<BalanceSheetData, BalanceSheetParams>((ref, params) async {
-  final supabase = ref.watch(supabaseProvider);
-  try {
-    final result = await supabase.rpc('get_balance_sheet', params: {
-      'p_month': params.month,
-      'p_year': params.year,
-    });
-    return BalanceSheetData.fromJson(result as Map<String, dynamic>);
-  } catch (_) {
-    return BalanceSheetData(
-      totalAssets: 0,
-      totalLiabilities: 0,
-      equity: 0,
-      assets: [],
-      liabilities: [],
-    );
-  }
-});
-
-final profitLossProvider = FutureProvider.family<ProfitLossData, BalanceSheetParams>((ref, params) async {
-  final supabase = ref.watch(supabaseProvider);
-  try {
-    final result = await supabase.rpc('get_profit_loss', params: {
-      'p_month': params.month,
-      'p_year': params.year,
-    });
-    return ProfitLossData.fromJson(result as Map<String, dynamic>);
-  } catch (_) {
-    return ProfitLossData(
-      totalRevenue: 0,
-      totalExpenses: 0,
-      netProfit: 0,
-      sectorRevenues: [],
-      expenseCategories: [],
-      monthlyProfits: [],
-    );
-  }
-});
-
 final kdvSummaryProvider = FutureProvider.family<KdvSummary, BalanceSheetParams>((ref, params) async {
   final supabase = ref.watch(supabaseProvider);
-  try {
-    final result = await supabase.rpc('get_kdv_summary', params: {
-      'p_month': params.month,
-      'p_year': params.year,
-    });
-    return KdvSummary.fromJson(result as Map<String, dynamic>);
-  } catch (_) {
-    return KdvSummary(
-      totalKdvCollected: 0,
-      totalKdvPaid: 0,
-      netKdv: 0,
-      sectorKdv: [],
-    );
-  }
-});
-
-final agingReportProvider = FutureProvider<AgingReport>((ref) async {
-  final supabase = ref.watch(supabaseProvider);
-  try {
-    final result = await supabase.rpc('get_aging_report');
-    return AgingReport.fromJson(result as Map<String, dynamic>);
-  } catch (_) {
-    return AgingReport(
-      current: 0,
-      days30: 0,
-      days60: 0,
-      days90: 0,
-      days90Plus: 0,
-      items: [],
-    );
-  }
+  final result = await supabase.rpc('get_kdv_summary', params: {
+    'p_month': params.month,
+    'p_year': params.year,
+  });
+  return KdvSummary.fromJson(result as Map<String, dynamic>);
 });
 
 class FinanceEntryParams {
@@ -410,21 +397,71 @@ class FinanceEntryParams {
 final financeEntriesProvider =
     FutureProvider.family<List<FinanceEntry>, FinanceEntryParams>((ref, params) async {
   final supabase = ref.watch(supabaseProvider);
-  try {
-    var query = supabase.from('finance_entries').select();
-    if (params.type != null) {
-      query = query.eq('type', params.type!);
-    }
-    if (params.source != null) {
-      query = query.eq('source', params.source!);
-    }
-    final result = await query
-        .order('created_at', ascending: false)
-        .range(params.page * params.pageSize, (params.page + 1) * params.pageSize - 1);
-    return (result as List).map((e) => FinanceEntry.fromJson(e as Map<String, dynamic>)).toList();
-  } catch (_) {
-    return [];
+  var query = supabase.from('finance_entries').select();
+  if (params.type != null) {
+    query = query.eq('entry_type', params.type!);
   }
+  if (params.source != null) {
+    query = query.eq('source_type', params.source!);
+  }
+  final result = await query
+      .order('created_at', ascending: false)
+      .range(params.page * params.pageSize, (params.page + 1) * params.pageSize - 1);
+  return (result as List).map((e) => FinanceEntry.fromJson(e as Map<String, dynamic>)).toList();
+});
+
+// ==================== INCOME/EXPENSE PROVIDERS ====================
+
+final incomeExpenseSummaryProvider =
+    FutureProvider.family<IncomeExpenseSummary, IncomeExpenseFilterParams>((ref, params) async {
+  final supabase = ref.watch(supabaseProvider);
+  final result = await supabase.rpc('get_income_expense_summary', params: {
+    'p_start_date': params.startDate.toIso8601String(),
+    'p_end_date': params.endDate.toIso8601String(),
+    'p_type': params.type,
+    'p_source': params.source,
+    'p_category': params.category,
+    'p_aggregation': params.aggregation,
+  });
+  return IncomeExpenseSummary.fromJson(result as Map<String, dynamic>);
+});
+
+final incomeExpenseEntriesProvider =
+    FutureProvider.family<List<FinanceEntry>, IncomeExpenseFilterParams>((ref, params) async {
+  final supabase = ref.watch(supabaseProvider);
+  var query = supabase.from('finance_entries').select();
+
+  query = query.gte('created_at', params.startDate.toIso8601String());
+  query = query.lte('created_at', params.endDate.toIso8601String());
+
+  if (params.type != null) {
+    query = query.eq('entry_type', params.type!);
+  }
+  if (params.source != null) {
+    query = query.eq('source_type', params.source!);
+  }
+  if (params.category != null) {
+    query = query.eq('category', params.category!);
+  }
+  if (params.paymentStatus != null) {
+    query = query.eq('payment_status', params.paymentStatus!);
+  }
+  if (params.searchQuery != null && params.searchQuery!.isNotEmpty) {
+    final q = params.searchQuery!;
+    query = query.or('description.ilike.%$q%,category.ilike.%$q%,notes.ilike.%$q%');
+  }
+  if (params.minAmount != null) {
+    query = query.gte('amount', params.minAmount!);
+  }
+  if (params.maxAmount != null) {
+    query = query.lte('amount', params.maxAmount!);
+  }
+
+  final result = await query
+      .order(params.sortColumn, ascending: params.sortAscending)
+      .range(params.page * params.pageSize, (params.page + 1) * params.pageSize - 1);
+
+  return (result as List).map((e) => FinanceEntry.fromJson(e as Map<String, dynamic>)).toList();
 });
 
 // ==================== SERVICE ====================
@@ -439,12 +476,12 @@ class AccountingService {
     String? referenceId,
   }) async {
     await SupabaseService.client.from('finance_entries').insert({
-      'type': type,
+      'entry_type': type,
       'category': category,
       'description': description,
       'amount': amount,
-      'source': source,
-      'reference_id': referenceId,
+      'source_type': source,
+      'source_id': referenceId,
     });
   }
 
@@ -452,18 +489,50 @@ class AccountingService {
     await SupabaseService.client.from('finance_entries').delete().eq('id', id);
   }
 
-  static Future<void> markPaymentPaid(String invoiceId) async {
-    await SupabaseService.client
-        .from('invoices')
-        .update({'status': 'paid', 'paid_at': DateTime.now().toIso8601String()})
-        .eq('id', invoiceId);
+  // ==================== ENHANCED CRUD ====================
+
+  static Future<void> createFinanceEntryFull({
+    required String type,
+    required String category,
+    String? subcategory,
+    required String description,
+    required double amount,
+    required double kdvRate,
+    required String source,
+    String? paymentMethod,
+    String paymentStatus = 'pending',
+    DateTime? dueDate,
+    bool taxDeductible = false,
+    String? notes,
+    List<String>? tags,
+  }) async {
+    final kdvAmount = amount * kdvRate / 100;
+    final totalAmount = amount + kdvAmount;
+    await SupabaseService.client.from('finance_entries').insert({
+      'entry_type': type,
+      'category': category,
+      'subcategory': subcategory,
+      'description': description,
+      'amount': amount,
+      'kdv_rate': kdvRate,
+      'kdv_amount': kdvAmount,
+      'total_amount': totalAmount,
+      'source_type': source,
+      'payment_method': paymentMethod,
+      'payment_status': paymentStatus,
+      'due_date': dueDate?.toIso8601String(),
+      'tax_deductible': taxDeductible,
+      'notes': notes,
+      'tags': tags,
+    });
   }
 
-  static Future<void> markPaymentsPaidBulk(List<String> invoiceIds) async {
-    await SupabaseService.client
-        .from('invoices')
-        .update({'status': 'paid', 'paid_at': DateTime.now().toIso8601String()})
-        .inFilter('id', invoiceIds);
+  static Future<void> updateFinanceEntry(String id, Map<String, dynamic> updates) async {
+    updates['updated_at'] = DateTime.now().toIso8601String();
+    await SupabaseService.client.from('finance_entries').update(updates).eq('id', id);
+  }
+
+  static Future<void> bulkDeleteFinanceEntries(List<String> ids) async {
+    await SupabaseService.client.from('finance_entries').delete().inFilter('id', ids);
   }
 }
-

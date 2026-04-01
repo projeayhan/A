@@ -8,6 +8,8 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/services/log_service.dart';
+
 import '../../core/theme/app_theme.dart';
 import '../../core/models/merchant_models.dart';
 import '../../core/providers/merchant_provider.dart';
@@ -94,8 +96,8 @@ class _OrderCardState extends ConsumerState<OrderCard>
           _unreadMessageCount = (response as List).length;
         });
       }
-    } catch (e) {
-      debugPrint('Error loading unread messages: $e');
+    } catch (e, st) {
+      LogService.error('Error loading unread messages', error: e, stackTrace: st, source: 'OrderCard:_loadUnreadMessageCount');
     }
   }
 
@@ -105,21 +107,29 @@ class _OrderCardState extends ConsumerState<OrderCard>
         .stream(primaryKey: ['id'])
         .eq('order_id', widget.order.id)
         .listen((data) {
-      if (mounted) {
-        final previousUnread = _unreadMessageCount;
-        final unread = data.where((m) =>
-            m['sender_type'] == 'customer' && m['is_read'] != true).length;
+          if (mounted) {
+            final previousUnread = _unreadMessageCount;
+            final unread =
+                data
+                    .where(
+                      (m) =>
+                          m['sender_type'] == 'customer' &&
+                          m['is_read'] != true,
+                    )
+                    .length;
 
-        // Yeni okunmamış mesaj geldiyse ses çal
-        if (unread > previousUnread) {
-          NotificationSoundService.playSound(type: NotificationSoundType.message);
-        }
+            // Yeni okunmamış mesaj geldiyse ses çal
+            if (unread > previousUnread) {
+              NotificationSoundService.playSound(
+                type: NotificationSoundType.message,
+              );
+            }
 
-        setState(() {
-          _unreadMessageCount = unread;
+            setState(() {
+              _unreadMessageCount = unread;
+            });
+          }
         });
-      }
-    });
   }
 
   @override
@@ -160,11 +170,11 @@ class _OrderCardState extends ConsumerState<OrderCard>
                 border: Border.all(
                   color:
                       _isNew
-                          ? widget.order.status.color.withValues(alpha:
-                            _glowAnimation.value.clamp(0.0, 1.0) * 0.8,
+                          ? widget.order.status.color.withValues(
+                            alpha: _glowAnimation.value.clamp(0.0, 1.0) * 0.8,
                           )
                           : (_isHovered
-                              ? widget.order.status.color.withValues(alpha:0.3)
+                              ? widget.order.status.color.withValues(alpha: 0.3)
                               : AppColors.border),
                   width: _isNew ? 2 : 1,
                 ),
@@ -172,13 +182,15 @@ class _OrderCardState extends ConsumerState<OrderCard>
                   BoxShadow(
                     color:
                         widget.isDragging
-                            ? widget.order.status.color.withValues(alpha:0.3)
+                            ? widget.order.status.color.withValues(alpha: 0.3)
                             : (_isNew
-                                ? widget.order.status.color.withValues(alpha:
-                                  _glowAnimation.value.clamp(0.0, 1.0) * 0.2,
+                                ? widget.order.status.color.withValues(
+                                  alpha:
+                                      _glowAnimation.value.clamp(0.0, 1.0) *
+                                      0.2,
                                 )
-                                : Colors.black.withValues(alpha:
-                                  _isHovered ? 0.15 : 0.08,
+                                : Colors.black.withValues(
+                                  alpha: _isHovered ? 0.15 : 0.08,
                                 )),
                     blurRadius: widget.isDragging ? 20 : (_isHovered ? 15 : 8),
                     offset: Offset(0, widget.isDragging ? 8 : 4),
@@ -216,7 +228,10 @@ class _OrderCardState extends ConsumerState<OrderCard>
               if (_unreadMessageCount > 0)
                 Container(
                   margin: const EdgeInsets.only(right: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.error,
                     borderRadius: BorderRadius.circular(10),
@@ -224,7 +239,11 @@ class _OrderCardState extends ConsumerState<OrderCard>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.chat_bubble, color: Colors.white, size: 10),
+                      const Icon(
+                        Icons.chat_bubble,
+                        color: Colors.white,
+                        size: 10,
+                      ),
                       const SizedBox(width: 3),
                       Text(
                         '$_unreadMessageCount',
@@ -307,7 +326,7 @@ class _OrderCardState extends ConsumerState<OrderCard>
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: widget.order.status.color.withValues(alpha:0.05),
+            color: widget.order.status.color.withValues(alpha: 0.05),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
           ),
           child: Row(
@@ -513,7 +532,7 @@ class _OrderCardState extends ConsumerState<OrderCard>
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha:0.1),
+                  color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(
@@ -537,10 +556,10 @@ class _OrderCardState extends ConsumerState<OrderCard>
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: AppColors.warning.withValues(alpha:0.1),
+                          color: AppColors.warning.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
-                            color: AppColors.warning.withValues(alpha:0.3),
+                            color: AppColors.warning.withValues(alpha: 0.3),
                           ),
                         ),
                         child: Row(
@@ -618,7 +637,7 @@ class _OrderCardState extends ConsumerState<OrderCard>
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border.withValues(alpha:0.5)),
+        border: Border.all(color: AppColors.border.withValues(alpha: 0.5)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -635,7 +654,7 @@ class _OrderCardState extends ConsumerState<OrderCard>
                   gradient: LinearGradient(
                     colors: [
                       AppColors.primary,
-                      AppColors.primary.withValues(alpha:0.8),
+                      AppColors.primary.withValues(alpha: 0.8),
                     ],
                   ),
                   borderRadius: BorderRadius.circular(8),
@@ -681,7 +700,9 @@ class _OrderCardState extends ConsumerState<OrderCard>
                                       vertical: 2,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: AppColors.primary.withValues(alpha:0.1),
+                                      color: AppColors.primary.withValues(
+                                        alpha: 0.1,
+                                      ),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(
@@ -704,7 +725,7 @@ class _OrderCardState extends ConsumerState<OrderCard>
                       Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: AppColors.warning.withValues(alpha:0.1),
+                          color: AppColors.warning.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Row(
@@ -761,9 +782,9 @@ class _OrderCardState extends ConsumerState<OrderCard>
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.warning.withValues(alpha:0.1),
+        color: AppColors.warning.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.warning.withValues(alpha:0.3)),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -797,7 +818,7 @@ class _OrderCardState extends ConsumerState<OrderCard>
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: _getPaymentMethodColor().withValues(alpha:0.1),
+                  color: _getPaymentMethodColor().withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -824,8 +845,8 @@ class _OrderCardState extends ConsumerState<OrderCard>
                 decoration: BoxDecoration(
                   color:
                       widget.order.paymentStatus == 'paid'
-                          ? AppColors.success.withValues(alpha:0.1)
-                          : AppColors.warning.withValues(alpha:0.1),
+                          ? AppColors.success.withValues(alpha: 0.1)
+                          : AppColors.warning.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
@@ -907,16 +928,16 @@ class _OrderCardState extends ConsumerState<OrderCard>
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.info.withValues(alpha:0.05),
+        color: AppColors.info.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.info.withValues(alpha:0.2)),
+        border: Border.all(color: AppColors.info.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           merchantCouriers.when(
             loading: () => const Center(child: CircularProgressIndicator()),
-            error: (_, __) => const Text('Kuryeler yuklenemedi'),
+            error: (_, _) => const Text('Kuryeler yuklenemedi'),
             data: (couriers) {
               final onlineCouriers =
                   couriers
@@ -977,16 +998,16 @@ class _OrderCardState extends ConsumerState<OrderCard>
         child: Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: color.withValues(alpha:0.1),
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: color.withValues(alpha:0.3)),
+            border: Border.all(color: color.withValues(alpha: 0.3)),
           ),
           child: Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha:0.2),
+                  color: color.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(icon, color: color, size: 20),
@@ -1007,7 +1028,7 @@ class _OrderCardState extends ConsumerState<OrderCard>
                     Text(
                       subtitle,
                       style: TextStyle(
-                        color: color.withValues(alpha:0.8),
+                        color: color.withValues(alpha: 0.8),
                         fontSize: 11,
                       ),
                     ),
@@ -1060,7 +1081,7 @@ class _OrderCardState extends ConsumerState<OrderCard>
                 ...couriers.map(
                   (courier) => ListTile(
                     leading: CircleAvatar(
-                      backgroundColor: AppColors.success.withValues(alpha:0.1),
+                      backgroundColor: AppColors.success.withValues(alpha: 0.1),
                       child: Text(
                         (courier['full_name'] as String?)
                                 ?.substring(0, 1)
@@ -1223,9 +1244,11 @@ class _OrderCardState extends ConsumerState<OrderCard>
       duration: const Duration(milliseconds: 300),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: widget.order.status.color.withValues(alpha:0.15),
+        color: widget.order.status.color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: widget.order.status.color.withValues(alpha:0.3)),
+        border: Border.all(
+          color: widget.order.status.color.withValues(alpha: 0.3),
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1314,14 +1337,14 @@ class _OrderCardState extends ConsumerState<OrderCard>
       height: size,
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppColors.primary, AppColors.primary.withValues(alpha:0.7)],
+          colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.7)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(size / 3),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha:0.3),
+            color: AppColors.primary.withValues(alpha: 0.3),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -1358,8 +1381,8 @@ class _OrderCardState extends ConsumerState<OrderCard>
             decoration: BoxDecoration(
               color:
                   widget.order.waitingTime.inMinutes > 5
-                      ? AppColors.error.withValues(alpha:0.1)
-                      : AppColors.warning.withValues(alpha:0.1),
+                      ? AppColors.error.withValues(alpha: 0.1)
+                      : AppColors.warning.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Row(
@@ -1423,9 +1446,9 @@ class _OrderCardState extends ConsumerState<OrderCard>
       child: Container(
         padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
-          color: color.withValues(alpha:0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: color.withValues(alpha:0.3)),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         child: Icon(icon, size: 14, color: color),
       ),
@@ -1444,7 +1467,7 @@ class _OrderCardState extends ConsumerState<OrderCard>
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: AppColors.info.withValues(alpha:0.1),
+          color: AppColors.info.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
@@ -1528,11 +1551,13 @@ class _OrderCardState extends ConsumerState<OrderCard>
   String _getPaymentMethodText() {
     switch (widget.order.paymentMethod) {
       case 'cash':
-        return 'Kapida Nakit';
+        return 'Kapıda Nakit';
       case 'card':
-        return 'Kredi Karti';
+        return 'Kredi Kartı';
+      case 'credit_card_on_delivery':
+        return 'Kapıda Kart';
       case 'online':
-        return 'Online Odeme';
+        return '✅ Online Ödendi';
       default:
         return widget.order.paymentMethod;
     }
@@ -1626,7 +1651,13 @@ class _OrderCardState extends ConsumerState<OrderCard>
     final fontBold = await PdfGoogleFonts.notoSansBold();
     final fontItalic = await PdfGoogleFonts.notoSansItalic();
 
-    final pdf = pw.Document(theme: pw.ThemeData.withFont(base: font, bold: fontBold, italic: fontItalic));
+    final pdf = pw.Document(
+      theme: pw.ThemeData.withFont(
+        base: font,
+        bold: fontBold,
+        italic: fontItalic,
+      ),
+    );
 
     // 80mm thermal paper width = ~72mm printable = ~204 points
     const receiptWidth = 204.0;
@@ -1680,7 +1711,7 @@ class _OrderCardState extends ConsumerState<OrderCard>
                 child: pw.Column(
                   children: [
                     pw.Text(
-                      'SIPARIS FISI',
+                      'SİPARİŞ FİŞİ',
                       style: pw.TextStyle(
                         fontSize: 14,
                         fontWeight: pw.FontWeight.bold,
@@ -1723,7 +1754,7 @@ class _OrderCardState extends ConsumerState<OrderCard>
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
                     pw.Text(
-                      'MUSTERI',
+                      'MÜŞTERİ',
                       style: pw.TextStyle(
                         fontSize: 8,
                         fontWeight: pw.FontWeight.bold,
@@ -1795,7 +1826,7 @@ class _OrderCardState extends ConsumerState<OrderCard>
                         pw.Expanded(
                           flex: 4,
                           child: pw.Text(
-                            'URUN',
+                            'ÜRÜN',
                             style: pw.TextStyle(
                               fontSize: 8,
                               fontWeight: pw.FontWeight.bold,
@@ -1893,7 +1924,7 @@ class _OrderCardState extends ConsumerState<OrderCard>
                     if (widget.order.serviceFee > 0)
                       _buildTotalRow('Hizmet Bedeli', widget.order.serviceFee),
                     if (widget.order.discount > 0)
-                      _buildTotalRow('Indirim', -widget.order.discount),
+                      _buildTotalRow('İndirim', -widget.order.discount),
                     pw.SizedBox(height: 4),
                     pw.Row(
                       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
@@ -1927,7 +1958,7 @@ class _OrderCardState extends ConsumerState<OrderCard>
                   mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                   children: [
                     pw.Text(
-                      'ODEME',
+                      'ÖDEME',
                       style: pw.TextStyle(
                         fontSize: 9,
                         fontWeight: pw.FontWeight.bold,
@@ -1935,8 +1966,12 @@ class _OrderCardState extends ConsumerState<OrderCard>
                     ),
                     pw.Text(
                       widget.order.paymentMethod == 'cash'
-                          ? 'NAKIT'
-                          : 'KREDI KARTI',
+                          ? 'NAKİT'
+                          : widget.order.paymentMethod == 'online'
+                              ? 'ONLİNE ÖDENDİ ✓'
+                              : widget.order.paymentMethod == 'credit_card_on_delivery'
+                                  ? 'KAPIDA KREDİ KARTI'
+                                  : 'KREDİ KARTI',
                       style: pw.TextStyle(
                         fontSize: 9,
                         fontWeight: pw.FontWeight.bold,
@@ -1954,12 +1989,12 @@ class _OrderCardState extends ConsumerState<OrderCard>
                 child: pw.Column(
                   children: [
                     pw.Text(
-                      'Bizi tercih ettiginiz icin',
+                      'Bizi tercih ettiğiniz için',
                       style: const pw.TextStyle(fontSize: 9),
                       textAlign: pw.TextAlign.center,
                     ),
                     pw.Text(
-                      'TESEKKUR EDERIZ',
+                      'TEŞEKKÜR EDERİZ',
                       style: pw.TextStyle(
                         fontSize: 10,
                         fontWeight: pw.FontWeight.bold,
@@ -2021,7 +2056,13 @@ class _OrderCardState extends ConsumerState<OrderCard>
     final fontBold = await PdfGoogleFonts.notoSansBold();
     final fontItalic = await PdfGoogleFonts.notoSansItalic();
 
-    final pdf = pw.Document(theme: pw.ThemeData.withFont(base: font, bold: fontBold, italic: fontItalic));
+    final pdf = pw.Document(
+      theme: pw.ThemeData.withFont(
+        base: font,
+        bold: fontBold,
+        italic: fontItalic,
+      ),
+    );
 
     pdf.addPage(
       pw.Page(
@@ -2067,7 +2108,7 @@ class _OrderCardState extends ConsumerState<OrderCard>
                       crossAxisAlignment: pw.CrossAxisAlignment.end,
                       children: [
                         pw.Text(
-                          'SIPARIS FISI',
+                          'SİPARİŞ FİŞİ',
                           style: pw.TextStyle(
                             fontSize: 18,
                             fontWeight: pw.FontWeight.bold,
@@ -2109,7 +2150,7 @@ class _OrderCardState extends ConsumerState<OrderCard>
                         crossAxisAlignment: pw.CrossAxisAlignment.start,
                         children: [
                           pw.Text(
-                            'MUSTERI BILGILERI',
+                            'MÜŞTERİ BİLGİLERİ',
                             style: pw.TextStyle(
                               fontSize: 10,
                               fontWeight: pw.FontWeight.bold,
@@ -2145,7 +2186,7 @@ class _OrderCardState extends ConsumerState<OrderCard>
                         crossAxisAlignment: pw.CrossAxisAlignment.start,
                         children: [
                           pw.Text(
-                            'TESLIMAT ADRESI',
+                            'TESLİMAT ADRESİ',
                             style: pw.TextStyle(
                               fontSize: 10,
                               fontWeight: pw.FontWeight.bold,
@@ -2188,7 +2229,7 @@ class _OrderCardState extends ConsumerState<OrderCard>
 
               // Order Items Table
               pw.Text(
-                'SIPARIS DETAYI',
+                'SİPARİŞ DETAYI',
                 style: pw.TextStyle(
                   fontSize: 12,
                   fontWeight: pw.FontWeight.bold,
@@ -2216,7 +2257,7 @@ class _OrderCardState extends ConsumerState<OrderCard>
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(8),
                         child: pw.Text(
-                          'Urun',
+                          'Ürün',
                           style: pw.TextStyle(
                             fontWeight: pw.FontWeight.bold,
                             fontSize: 10,
@@ -2361,7 +2402,7 @@ class _OrderCardState extends ConsumerState<OrderCard>
                           mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                           children: [
                             pw.Text(
-                              'Indirim:',
+                              'İndirim:',
                               style: const pw.TextStyle(fontSize: 10),
                             ),
                             pw.Text(
@@ -2407,14 +2448,14 @@ class _OrderCardState extends ConsumerState<OrderCard>
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
                       pw.Text(
-                        'Odeme: ${widget.order.paymentMethod == 'cash' ? 'Kapida Nakit' : 'Kredi Karti'}',
+                        'Ödeme: ${widget.order.paymentMethod == 'cash' ? 'Nakit' : widget.order.paymentMethod == 'online' ? 'Online Ödendi ✓' : widget.order.paymentMethod == 'credit_card_on_delivery' ? 'Kapıda Kart' : 'Kredi Kartı'}',
                         style: pw.TextStyle(
                           fontSize: 11,
                           fontWeight: pw.FontWeight.bold,
                         ),
                       ),
                       pw.Text(
-                        'Durum: ${widget.order.paymentStatus == 'paid' ? 'Odendi' : 'Odeme Bekliyor'}',
+                        'Durum: ${(widget.order.paymentStatus == 'paid' || widget.order.paymentMethod == 'online') ? 'Ödendi ✓' : 'Ödeme Bekliyor'}',
                         style: const pw.TextStyle(fontSize: 11),
                       ),
                     ],

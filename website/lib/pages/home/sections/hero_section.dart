@@ -6,7 +6,6 @@ import '../../../core/router/app_router.dart';
 import '../../../widgets/robot/robot_mascot.dart';
 import '../../../widgets/robot/robot_painter.dart';
 import '../../../widgets/buttons/glow_button.dart';
-import '../../../widgets/effects/gradient_text.dart';
 import '../../../widgets/effects/animated_gradient_bg.dart';
 
 class HeroSection extends StatelessWidget {
@@ -91,44 +90,17 @@ class _HeroContent extends StatelessWidget {
           isMobile ? CrossAxisAlignment.center : CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Badge
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(Icons.auto_awesome, color: AppColors.primaryLight, size: 14),
-              const SizedBox(width: 6),
-              Text(
-                'Kuzey Kıbrıs\'ın Süper Uygulaması',
-                style: AppTypography.label.copyWith(
-                  color: AppColors.primaryLight,
-                  fontSize: 12,
-                ),
-              ),
-            ],
-          ),
+        // Logo with slogan
+        Image.asset(
+          'assets/images/supercyp_logo.png',
+          height: isMobile ? 120 : 160,
+          fit: BoxFit.contain,
         ),
-        const SizedBox(height: 20),
-        // Title
-        GradientText(
-          text: 'Tek Uygulama,\nSınırsız Hizmet',
-          style: AppTypography.responsiveDisplay(isMobile).copyWith(
-            color: Colors.white,
-          ),
-          colors: const [Colors.white, AppColors.primaryLight],
-          textAlign: isMobile ? TextAlign.center : TextAlign.start,
-        ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 24),
         // Description
         Text(
-          'Yemekten emlağa, taksiden iş ilanlarına — 8 farklı hizmet, '
-          'yapay zeka destekli asistan ve sesli komut desteğiyle tek platformda.',
+          'Yemek, market, taksi, emlak, araç kiralama ve daha fazlası — '
+          'yapay zeka destekli asistan ile tek platformda.',
           style: AppTypography.responsiveBody(isMobile).copyWith(
             color: AppColors.textOnDarkSecondary,
           ),

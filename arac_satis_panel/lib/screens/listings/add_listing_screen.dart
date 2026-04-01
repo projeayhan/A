@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:arac_satis_panel/core/services/log_service.dart';
 import '../../models/car_models.dart';
 import '../../providers/dealer_provider.dart';
 import '../../services/listing_service.dart';
@@ -49,7 +50,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
   final _damageReportController = TextEditingController();
 
   // Step 4: Özellikler
-  Set<String> _selectedFeatures = {};
+  final Set<String> _selectedFeatures = {};
 
   // Step 5: Fiyat & Açıklama
   final _titleController = TextEditingController();
@@ -57,7 +58,7 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
   final _descriptionController = TextEditingController();
   bool _isPriceNegotiable = false;
   bool _isExchangeAccepted = false;
-  List<String> _images = [];
+  final List<String> _images = [];
   String _selectedCurrency = 'TRY';
 
   // Para birimleri
@@ -70,19 +71,60 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
 
   // Dış Renkler
   final List<String> _exteriorColors = [
-    'Beyaz', 'Siyah', 'Gümüş', 'Gri', 'Antrasit', 'Kırmızı', 'Mavi',
-    'Lacivert', 'Yeşil', 'Sarı', 'Turuncu', 'Kahverengi', 'Bej',
-    'Bordo', 'Şampanya', 'Altın', 'Bronz', 'Mor', 'Pembe', 'Turkuaz',
-    'Koyu Mavi', 'Koyu Yeşil', 'Koyu Gri', 'Açık Mavi', 'Açık Gri',
-    'Metalik Gri', 'Metalik Mavi', 'Metalik Kırmızı', 'Sedef Beyaz',
-    'GT Gümüş', 'Karbon Siyah', 'Alpin Beyaz', 'Estoril Mavi'
+    'Beyaz',
+    'Siyah',
+    'Gümüş',
+    'Gri',
+    'Antrasit',
+    'Kırmızı',
+    'Mavi',
+    'Lacivert',
+    'Yeşil',
+    'Sarı',
+    'Turuncu',
+    'Kahverengi',
+    'Bej',
+    'Bordo',
+    'Şampanya',
+    'Altın',
+    'Bronz',
+    'Mor',
+    'Pembe',
+    'Turkuaz',
+    'Koyu Mavi',
+    'Koyu Yeşil',
+    'Koyu Gri',
+    'Açık Mavi',
+    'Açık Gri',
+    'Metalik Gri',
+    'Metalik Mavi',
+    'Metalik Kırmızı',
+    'Sedef Beyaz',
+    'GT Gümüş',
+    'Karbon Siyah',
+    'Alpin Beyaz',
+    'Estoril Mavi',
   ];
 
   // İç Renkler
   final List<String> _interiorColors = [
-    'Siyah', 'Bej', 'Krem', 'Kahverengi', 'Gri', 'Bordo', 'Beyaz',
-    'Fildişi', 'Taba', 'Açık Gri', 'Koyu Gri', 'Kırmızı', 'Mavi',
-    'Siyah/Kırmızı', 'Siyah/Beyaz', 'Siyah/Turuncu', 'Bej/Kahverengi'
+    'Siyah',
+    'Bej',
+    'Krem',
+    'Kahverengi',
+    'Gri',
+    'Bordo',
+    'Beyaz',
+    'Fildişi',
+    'Taba',
+    'Açık Gri',
+    'Koyu Gri',
+    'Kırmızı',
+    'Mavi',
+    'Siyah/Kırmızı',
+    'Siyah/Beyaz',
+    'Siyah/Turuncu',
+    'Bej/Kahverengi',
   ];
 
   bool get isEditing => widget.listingId != null;
@@ -169,8 +211,8 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                     color: isCompleted
                         ? CarSalesColors.success
                         : isCurrent
-                            ? CarSalesColors.primary
-                            : Colors.grey[300],
+                        ? CarSalesColors.primary
+                        : Colors.grey[300],
                     shape: BoxShape.circle,
                   ),
                   child: Center(
@@ -179,7 +221,9 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                         : Text(
                             '${index + 1}',
                             style: TextStyle(
-                              color: isCurrent ? Colors.white : Colors.grey[600],
+                              color: isCurrent
+                                  ? Colors.white
+                                  : Colors.grey[600],
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -189,7 +233,9 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                   Expanded(
                     child: Container(
                       height: 2,
-                      color: isCompleted ? CarSalesColors.success : Colors.grey[300],
+                      color: isCompleted
+                          ? CarSalesColors.success
+                          : Colors.grey[300],
                     ),
                   ),
               ],
@@ -247,19 +293,28 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
               return GestureDetector(
                 onTap: () => setState(() => _selectedBrand = brand),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: isSelected ? CarSalesColors.primary : Colors.white,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: isSelected ? CarSalesColors.primary : const Color(0xFFE2E8F0),
+                      color: isSelected
+                          ? CarSalesColors.primary
+                          : const Color(0xFFE2E8F0),
                     ),
                   ),
                   child: Text(
                     brand.name,
                     style: TextStyle(
-                      color: isSelected ? Colors.white : const Color(0xFF1E293B),
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                      color: isSelected
+                          ? Colors.white
+                          : const Color(0xFF1E293B),
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.normal,
                     ),
                   ),
                 ),
@@ -297,19 +352,26 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
             return GestureDetector(
               onTap: () => setState(() => _selectedYear = year),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: isSelected ? CarSalesColors.primary : Colors.white,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: isSelected ? CarSalesColors.primary : const Color(0xFFE2E8F0),
+                    color: isSelected
+                        ? CarSalesColors.primary
+                        : const Color(0xFFE2E8F0),
                   ),
                 ),
                 child: Text(
                   '$year',
                   style: TextStyle(
                     color: isSelected ? Colors.white : const Color(0xFF1E293B),
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                    fontWeight: isSelected
+                        ? FontWeight.w600
+                        : FontWeight.normal,
                   ),
                 ),
               ),
@@ -319,7 +381,10 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
         const SizedBox(height: 24),
 
         // Kasa Tipi
-        const Text('Kasa Tipi *', style: TextStyle(fontWeight: FontWeight.w600)),
+        const Text(
+          'Kasa Tipi *',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
@@ -329,19 +394,26 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
             return GestureDetector(
               onTap: () => setState(() => _selectedBodyType = type),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: isSelected ? CarSalesColors.primary : Colors.white,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: isSelected ? CarSalesColors.primary : const Color(0xFFE2E8F0),
+                    color: isSelected
+                        ? CarSalesColors.primary
+                        : const Color(0xFFE2E8F0),
                   ),
                 ),
                 child: Text(
                   type.label,
                   style: TextStyle(
                     color: isSelected ? Colors.white : const Color(0xFF1E293B),
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                    fontWeight: isSelected
+                        ? FontWeight.w600
+                        : FontWeight.normal,
                   ),
                 ),
               ),
@@ -357,13 +429,19 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Dış Renk', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const Text(
+                    'Dış Renk',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
-                    value: _selectedExteriorColor,
+                    initialValue: _selectedExteriorColor,
                     decoration: const InputDecoration(hintText: 'Renk seçin'),
-                    items: _exteriorColors.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-                    onChanged: (v) => setState(() => _selectedExteriorColor = v),
+                    items: _exteriorColors
+                        .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                        .toList(),
+                    onChanged: (v) =>
+                        setState(() => _selectedExteriorColor = v),
                   ),
                 ],
               ),
@@ -373,13 +451,19 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('İç Renk', style: TextStyle(fontWeight: FontWeight.w600)),
+                  const Text(
+                    'İç Renk',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
-                    value: _selectedInteriorColor,
+                    initialValue: _selectedInteriorColor,
                     decoration: const InputDecoration(hintText: 'Renk seçin'),
-                    items: _interiorColors.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-                    onChanged: (v) => setState(() => _selectedInteriorColor = v),
+                    items: _interiorColors
+                        .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                        .toList(),
+                    onChanged: (v) =>
+                        setState(() => _selectedInteriorColor = v),
                   ),
                 ],
               ),
@@ -407,7 +491,10 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
         const SizedBox(height: 24),
 
         // Yakıt Tipi
-        const Text('Yakıt Tipi *', style: TextStyle(fontWeight: FontWeight.w600)),
+        const Text(
+          'Yakıt Tipi *',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
@@ -417,7 +504,10 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
             return GestureDetector(
               onTap: () => setState(() => _selectedFuelType = type),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: isSelected ? type.color : Colors.white,
                   borderRadius: BorderRadius.circular(8),
@@ -429,7 +519,9 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                   type.label,
                   style: TextStyle(
                     color: isSelected ? Colors.white : const Color(0xFF1E293B),
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                    fontWeight: isSelected
+                        ? FontWeight.w600
+                        : FontWeight.normal,
                   ),
                 ),
               ),
@@ -439,7 +531,10 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
         const SizedBox(height: 24),
 
         // Vites Tipi
-        const Text('Vites Tipi *', style: TextStyle(fontWeight: FontWeight.w600)),
+        const Text(
+          'Vites Tipi *',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
@@ -449,19 +544,26 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
             return GestureDetector(
               onTap: () => setState(() => _selectedTransmission = type),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: isSelected ? CarSalesColors.primary : Colors.white,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: isSelected ? CarSalesColors.primary : const Color(0xFFE2E8F0),
+                    color: isSelected
+                        ? CarSalesColors.primary
+                        : const Color(0xFFE2E8F0),
                   ),
                 ),
                 child: Text(
                   type.label,
                   style: TextStyle(
                     color: isSelected ? Colors.white : const Color(0xFF1E293B),
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                    fontWeight: isSelected
+                        ? FontWeight.w600
+                        : FontWeight.normal,
                   ),
                 ),
               ),
@@ -481,19 +583,26 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
             return GestureDetector(
               onTap: () => setState(() => _selectedTraction = type),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: isSelected ? CarSalesColors.primary : Colors.white,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: isSelected ? CarSalesColors.primary : const Color(0xFFE2E8F0),
+                    color: isSelected
+                        ? CarSalesColors.primary
+                        : const Color(0xFFE2E8F0),
                   ),
                 ),
                 child: Text(
                   type.label,
                   style: TextStyle(
                     color: isSelected ? Colors.white : const Color(0xFF1E293B),
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                    fontWeight: isSelected
+                        ? FontWeight.w600
+                        : FontWeight.normal,
                   ),
                 ),
               ),
@@ -568,7 +677,10 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
         const SizedBox(height: 24),
 
         // Araç Durumu
-        const Text('Araç Durumu *', style: TextStyle(fontWeight: FontWeight.w600)),
+        const Text(
+          'Araç Durumu *',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
@@ -578,19 +690,26 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
             return GestureDetector(
               onTap: () => setState(() => _selectedCondition = condition),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: isSelected ? condition.color : Colors.white,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: isSelected ? condition.color : const Color(0xFFE2E8F0),
+                    color: isSelected
+                        ? condition.color
+                        : const Color(0xFFE2E8F0),
                   ),
                 ),
                 child: Text(
                   condition.label,
                   style: TextStyle(
                     color: isSelected ? Colors.white : const Color(0xFF1E293B),
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                    fontWeight: isSelected
+                        ? FontWeight.w600
+                        : FontWeight.normal,
                   ),
                 ),
               ),
@@ -600,7 +719,10 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
         const SizedBox(height: 24),
 
         // Sahip Sayısı
-        const Text('Kaçıncı Sahibi', style: TextStyle(fontWeight: FontWeight.w600)),
+        const Text(
+          'Kaçıncı Sahibi',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
         const SizedBox(height: 8),
         Row(
           children: [
@@ -620,7 +742,10 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
               ),
               child: Text(
                 '$_previousOwners',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
             IconButton(
@@ -681,7 +806,12 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
     );
   }
 
-  Widget _buildToggleOption(String title, String subtitle, bool value, Function(bool) onChanged) {
+  Widget _buildToggleOption(
+    String title,
+    String subtitle,
+    bool value,
+    Function(bool) onChanged,
+  ) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -696,9 +826,18 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                Text(
+                  title,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
                 const SizedBox(height: 4),
-                Text(subtitle, style: const TextStyle(color: Color(0xFF64748B), fontSize: 13)),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: Color(0xFF64748B),
+                    fontSize: 13,
+                  ),
+                ),
               ],
             ),
           ),
@@ -742,7 +881,9 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
 
             return Column(
               children: categories.map((category) {
-                final categoryFeatures = features.where((f) => f.category == category).toList();
+                final categoryFeatures = features
+                    .where((f) => f.category == category)
+                    .toList();
                 return _buildFeatureCategory(category, categoryFeatures);
               }).toList(),
             );
@@ -787,25 +928,40 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                 });
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
-                  color: isSelected ? CarSalesColors.success.withValues(alpha: 0.1) : Colors.white,
+                  color: isSelected
+                      ? CarSalesColors.success.withValues(alpha: 0.1)
+                      : Colors.white,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: isSelected ? CarSalesColors.success : const Color(0xFFE2E8F0),
+                    color: isSelected
+                        ? CarSalesColors.success
+                        : const Color(0xFFE2E8F0),
                   ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (isSelected)
-                      const Icon(Icons.check, color: CarSalesColors.success, size: 16),
+                      const Icon(
+                        Icons.check,
+                        color: CarSalesColors.success,
+                        size: 16,
+                      ),
                     if (isSelected) const SizedBox(width: 4),
                     Text(
                       feature.name,
                       style: TextStyle(
-                        color: isSelected ? CarSalesColors.success : const Color(0xFF1E293B),
-                        fontWeight: isSelected ? FontWeight.w500 : FontWeight.normal,
+                        color: isSelected
+                            ? CarSalesColors.success
+                            : const Color(0xFF1E293B),
+                        fontWeight: isSelected
+                            ? FontWeight.w500
+                            : FontWeight.normal,
                         fontSize: 13,
                       ),
                     ),
@@ -866,6 +1022,10 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                 ),
                 validator: (value) {
                   if (value == null || value.isEmpty) return 'Fiyat gerekli';
+                  final price = double.tryParse(value);
+                  if (price == null || price <= 0) {
+                    return 'Fiyat 0\'dan büyük olmalıdır';
+                  }
                   return null;
                 },
               ),
@@ -873,13 +1033,18 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
             const SizedBox(width: 16),
             Expanded(
               child: DropdownButtonFormField<String>(
-                value: _selectedCurrency,
+                initialValue: _selectedCurrency,
                 decoration: const InputDecoration(labelText: 'Para Birimi'),
-                items: _currencies.map((c) => DropdownMenuItem(
-                  value: c['code'],
-                  child: Text('${c['symbol']} ${c['code']}'),
-                )).toList(),
-                onChanged: (v) => setState(() => _selectedCurrency = v ?? 'TRY'),
+                items: _currencies
+                    .map(
+                      (c) => DropdownMenuItem(
+                        value: c['code'],
+                        child: Text('${c['symbol']} ${c['code']}'),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (v) =>
+                    setState(() => _selectedCurrency = v ?? 'TRY'),
               ),
             ),
           ],
@@ -892,8 +1057,12 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
             Expanded(
               child: CheckboxListTile(
                 value: _isPriceNegotiable,
-                onChanged: (v) => setState(() => _isPriceNegotiable = v ?? false),
-                title: const Text('Pazarlık Payı Var', style: TextStyle(fontSize: 14)),
+                onChanged: (v) =>
+                    setState(() => _isPriceNegotiable = v ?? false),
+                title: const Text(
+                  'Pazarlık Payı Var',
+                  style: TextStyle(fontSize: 14),
+                ),
                 controlAffinity: ListTileControlAffinity.leading,
                 contentPadding: EdgeInsets.zero,
               ),
@@ -901,7 +1070,8 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
             Expanded(
               child: CheckboxListTile(
                 value: _isExchangeAccepted,
-                onChanged: (v) => setState(() => _isExchangeAccepted = v ?? false),
+                onChanged: (v) =>
+                    setState(() => _isExchangeAccepted = v ?? false),
                 title: const Text('Takas Olur', style: TextStyle(fontSize: 14)),
                 controlAffinity: ListTileControlAffinity.leading,
                 contentPadding: EdgeInsets.zero,
@@ -927,8 +1097,14 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('Fotoğraflar', style: TextStyle(fontWeight: FontWeight.w600)),
-            Text('${_images.length}/10', style: const TextStyle(color: Color(0xFF64748B))),
+            const Text(
+              'Fotoğraflar',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            Text(
+              '${_images.length}/10',
+              style: const TextStyle(color: Color(0xFF64748B)),
+            ),
           ],
         ),
         const SizedBox(height: 8),
@@ -953,8 +1129,18 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(11),
                         child: _images[index].startsWith('http')
-                            ? Image.network(_images[index], fit: BoxFit.cover, width: 120, height: 120)
-                            : Image.file(File(_images[index]), fit: BoxFit.cover, width: 120, height: 120),
+                            ? Image.network(
+                                _images[index],
+                                fit: BoxFit.cover,
+                                width: 120,
+                                height: 120,
+                              )
+                            : Image.file(
+                                File(_images[index]),
+                                fit: BoxFit.cover,
+                                width: 120,
+                                height: 120,
+                              ),
                       ),
                       Positioned(
                         top: 4,
@@ -967,7 +1153,11 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                               color: Colors.red,
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.close, color: Colors.white, size: 16),
+                            child: const Icon(
+                              Icons.close,
+                              color: Colors.white,
+                              size: 16,
+                            ),
                           ),
                         ),
                       ),
@@ -976,12 +1166,21 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                           bottom: 4,
                           left: 4,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: CarSalesColors.primary,
                               borderRadius: BorderRadius.circular(4),
                             ),
-                            child: const Text('Kapak', style: TextStyle(color: Colors.white, fontSize: 10)),
+                            child: const Text(
+                              'Kapak',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                              ),
+                            ),
                           ),
                         ),
                     ],
@@ -999,11 +1198,18 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFE2E8F0), style: BorderStyle.solid),
+            border: Border.all(
+              color: const Color(0xFFE2E8F0),
+              style: BorderStyle.solid,
+            ),
           ),
           child: Column(
             children: [
-              Icon(Icons.cloud_upload_outlined, size: 48, color: Colors.grey[400]),
+              Icon(
+                Icons.cloud_upload_outlined,
+                size: 48,
+                color: Colors.grey[400],
+              ),
               const SizedBox(height: 12),
               const Text(
                 'Fotoğraf yüklemek için tıklayın',
@@ -1018,13 +1224,17 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   ElevatedButton.icon(
-                    onPressed: _images.length < 10 ? _pickImagesFromGallery : null,
+                    onPressed: _images.length < 10
+                        ? _pickImagesFromGallery
+                        : null,
                     icon: const Icon(Icons.photo_library),
                     label: const Text('Galeriden'),
                   ),
                   const SizedBox(width: 12),
                   OutlinedButton.icon(
-                    onPressed: _images.length < 10 ? _pickImageFromCamera : null,
+                    onPressed: _images.length < 10
+                        ? _pickImageFromCamera
+                        : null,
                     icon: const Icon(Icons.camera_alt),
                     label: const Text('Kamera'),
                   ),
@@ -1064,7 +1274,10 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                   ? const SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
                   : Text(isEditing ? 'Güncelle' : 'İlanı Yayınla'),
             ),
@@ -1078,13 +1291,15 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
 
     switch (_currentStep) {
       case 0:
-        isValid = _selectedBrand != null &&
+        isValid =
+            _selectedBrand != null &&
             _modelController.text.isNotEmpty &&
             _selectedYear != null &&
             _selectedBodyType != null;
         break;
       case 1:
-        isValid = _selectedFuelType != null &&
+        isValid =
+            _selectedFuelType != null &&
             _selectedTransmission != null &&
             _mileageController.text.isNotEmpty;
         break;
@@ -1135,7 +1350,10 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Fotoğraf seçilemedi: $e'), backgroundColor: CarSalesColors.accent),
+          SnackBar(
+            content: Text('Fotoğraf seçilemedi: $e'),
+            backgroundColor: CarSalesColors.accent,
+          ),
         );
       }
     }
@@ -1165,7 +1383,10 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Fotoğraf çekilemedi: $e'), backgroundColor: CarSalesColors.accent),
+          SnackBar(
+            content: Text('Fotoğraf çekilemedi: $e'),
+            backgroundColor: CarSalesColors.accent,
+          ),
         );
       }
     }
@@ -1197,19 +1418,22 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
         contentType = 'image/$fileExt';
       }
 
-      final fileName = '${DateTime.now().millisecondsSinceEpoch}_${_images.length}.$fileExt';
+      final fileName =
+          '${DateTime.now().millisecondsSinceEpoch}_${_images.length}.$fileExt';
       final filePath = 'car-listings/$userId/$fileName';
 
-      await supabase.storage.from('images').uploadBinary(
-        filePath,
-        bytes,
-        fileOptions: FileOptions(contentType: contentType),
-      );
+      await supabase.storage
+          .from('images')
+          .uploadBinary(
+            filePath,
+            bytes,
+            fileOptions: FileOptions(contentType: contentType),
+          );
 
       final url = supabase.storage.from('images').getPublicUrl(filePath);
       return url;
-    } catch (e) {
-      debugPrint('Fotoğraf yüklenemedi: $e');
+    } catch (e, st) {
+      LogService.error('Fotoğraf yüklenemedi', error: e, stackTrace: st, source: 'AddListingScreen:_uploadImage');
       return null;
     }
   }
@@ -1236,7 +1460,10 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
     if (bytes.length < 4) return 'jpg';
 
     // PNG: 89 50 4E 47
-    if (bytes[0] == 0x89 && bytes[1] == 0x50 && bytes[2] == 0x4E && bytes[3] == 0x47) {
+    if (bytes[0] == 0x89 &&
+        bytes[1] == 0x50 &&
+        bytes[2] == 0x4E &&
+        bytes[3] == 0x47) {
       return 'png';
     }
     // JPEG: FF D8 FF
@@ -1244,11 +1471,17 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
       return 'jpg';
     }
     // GIF: 47 49 46 38
-    if (bytes[0] == 0x47 && bytes[1] == 0x49 && bytes[2] == 0x46 && bytes[3] == 0x38) {
+    if (bytes[0] == 0x47 &&
+        bytes[1] == 0x49 &&
+        bytes[2] == 0x46 &&
+        bytes[3] == 0x38) {
       return 'gif';
     }
     // WebP: 52 49 46 46 ... 57 45 42 50
-    if (bytes[0] == 0x52 && bytes[1] == 0x49 && bytes[2] == 0x46 && bytes[3] == 0x46) {
+    if (bytes[0] == 0x52 &&
+        bytes[1] == 0x49 &&
+        bytes[2] == 0x46 &&
+        bytes[3] == 0x46) {
       return 'webp';
     }
 
@@ -1286,8 +1519,12 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
         hasOriginalPaint: _hasOriginalPaint,
         hasAccidentHistory: _hasAccidentHistory,
         hasWarranty: _hasWarranty,
-        warrantyDetails: _warrantyDetailsController.text.isEmpty ? null : _warrantyDetailsController.text,
-        damageReport: _damageReportController.text.isEmpty ? null : _damageReportController.text,
+        warrantyDetails: _warrantyDetailsController.text.isEmpty
+            ? null
+            : _warrantyDetailsController.text,
+        damageReport: _damageReportController.text.isEmpty
+            ? null
+            : _damageReportController.text,
         price: double.parse(_priceController.text),
         currency: _selectedCurrency,
         isPriceNegotiable: _isPriceNegotiable,
@@ -1333,7 +1570,10 @@ class _AddListingScreenState extends ConsumerState<AddListingScreen> {
                 color: CarSalesColors.success.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(Icons.check_circle, color: CarSalesColors.success),
+              child: const Icon(
+                Icons.check_circle,
+                color: CarSalesColors.success,
+              ),
             ),
             const SizedBox(width: 12),
             Text(isEditing ? 'İlan Güncellendi' : 'İlan Oluşturuldu'),

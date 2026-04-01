@@ -1,9 +1,16 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// Supabase URL ve Key
-const String supabaseUrl = 'https://mzgtvdgwxrlhgjboolys.supabase.co';
-const String supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im16Z3R2ZGd3eHJsaGdqYm9vbHlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgwNTUyODUsImV4cCI6MjA4MzYzMTI4NX0.B8xL9pKDX76eVnu-s2K-TjvRyPUDx4kus85qDFWO8SY';
+/// Supabase connection configuration.
+///
+/// Values are loaded from the .env file at runtime via flutter_dotenv.
+/// Create a .env file in the project root with:
+///   SUPABASE_URL=https://your-project.supabase.co
+///   SUPABASE_ANON_KEY=your-anon-key
+String get supabaseUrl => dotenv.env['SUPABASE_URL'] ?? '';
+
+String get supabaseAnonKey => dotenv.env['SUPABASE_ANON_KEY'] ?? '';
 
 /// Initialize Supabase
 Future<void> initSupabase() async {

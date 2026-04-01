@@ -138,11 +138,16 @@ class _CarFavoritesScreenState extends ConsumerState<CarFavoritesScreen>
           backgroundColor: CarSalesColors.background(isDark),
           elevation: 0,
           leading: IconButton(
-            icon: Icon(Icons.arrow_back_ios, color: CarSalesColors.textPrimary(isDark)),
+            icon: Icon(
+              Icons.arrow_back_ios,
+              color: CarSalesColors.textPrimary(isDark),
+            ),
             onPressed: () => Navigator.of(context).pop(),
           ),
           title: Text(
-            _isSelectionMode ? '${_selectedIds.length} seçildi' : 'Favori Araçlarım',
+            _isSelectionMode
+                ? '${_selectedIds.length} seçildi'
+                : 'Favori Araçlarım',
             style: TextStyle(
               color: CarSalesColors.textPrimary(isDark),
               fontSize: 20,
@@ -154,7 +159,9 @@ class _CarFavoritesScreenState extends ConsumerState<CarFavoritesScreen>
               if (_isSelectionMode) ...[
                 IconButton(
                   icon: Icon(
-                    _selectedIds.length == favorites.length ? Icons.deselect : Icons.select_all,
+                    _selectedIds.length == favorites.length
+                        ? Icons.deselect
+                        : Icons.select_all,
                     color: CarSalesColors.primary,
                   ),
                   onPressed: () => _selectAll(favorites),
@@ -228,9 +235,14 @@ class _CarFavoritesScreenState extends ConsumerState<CarFavoritesScreen>
             GestureDetector(
               onTap: () => context.pop(),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 28,
+                  vertical: 14,
+                ),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: CarSalesColors.primaryGradient),
+                  gradient: const LinearGradient(
+                    colors: CarSalesColors.primaryGradient,
+                  ),
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
@@ -275,17 +287,20 @@ class _CarFavoritesScreenState extends ConsumerState<CarFavoritesScreen>
           animation: _animationController,
           builder: (context, child) {
             return SlideTransition(
-              position: Tween<Offset>(
-                begin: Offset(0, 0.1 * (index + 1)),
-                end: Offset.zero,
-              ).animate(CurvedAnimation(
-                parent: _animationController,
-                curve: Interval(
-                  (0.1 * index).clamp(0.0, 0.5),
-                  (0.1 * index + 0.5).clamp(0.0, 1.0),
-                  curve: Curves.easeOut,
-                ),
-              )),
+              position:
+                  Tween<Offset>(
+                    begin: Offset(0, 0.1 * (index + 1)),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(
+                      parent: _animationController,
+                      curve: Interval(
+                        (0.1 * index).clamp(0.0, 0.5),
+                        (0.1 * index + 0.5).clamp(0.0, 1.0),
+                        curve: Curves.easeOut,
+                      ),
+                    ),
+                  ),
               child: FadeTransition(
                 opacity: _animationController,
                 child: child,
@@ -340,18 +355,22 @@ class _CarFavoritesScreenState extends ConsumerState<CarFavoritesScreen>
             Stack(
               children: [
                 ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(12),
+                  ),
                   child: CachedNetworkImage(
                     imageUrl: car.imageUrl,
                     height: 180,
                     width: double.infinity,
                     fit: BoxFit.cover,
-                    placeholder: (_, __) => Container(
+                    placeholder: (_, _) => Container(
                       height: 180,
                       color: Colors.grey[200],
-                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                      child: const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
                     ),
-                    errorWidget: (_, __, ___) => Container(
+                    errorWidget: (_, _, _) => Container(
                       height: 180,
                       color: CarSalesColors.surface(isDark),
                       child: Icon(
@@ -383,7 +402,11 @@ class _CarFavoritesScreenState extends ConsumerState<CarFavoritesScreen>
                         ),
                       ),
                       child: isSelected
-                          ? const Icon(Icons.check, color: Colors.white, size: 16)
+                          ? const Icon(
+                              Icons.check,
+                              color: Colors.white,
+                              size: 16,
+                            )
                           : null,
                     ),
                   ),
@@ -392,7 +415,10 @@ class _CarFavoritesScreenState extends ConsumerState<CarFavoritesScreen>
                   top: 10,
                   right: 10,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: CarSalesColors.primary,
                       borderRadius: BorderRadius.circular(6),
@@ -451,7 +477,11 @@ class _CarFavoritesScreenState extends ConsumerState<CarFavoritesScreen>
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(Icons.location_on, size: 13, color: CarSalesColors.textSecondary(isDark)),
+                      Icon(
+                        Icons.location_on,
+                        size: 13,
+                        color: CarSalesColors.textSecondary(isDark),
+                      ),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
@@ -471,9 +501,17 @@ class _CarFavoritesScreenState extends ConsumerState<CarFavoritesScreen>
                     children: [
                       _buildFeatureChip(car.formattedKm, Icons.speed, isDark),
                       const SizedBox(width: 8),
-                      _buildFeatureChip(car.fuelType, Icons.local_gas_station, isDark),
+                      _buildFeatureChip(
+                        car.fuelType,
+                        Icons.local_gas_station,
+                        isDark,
+                      ),
                       const SizedBox(width: 8),
-                      _buildFeatureChip(car.transmission, Icons.settings, isDark),
+                      _buildFeatureChip(
+                        car.transmission,
+                        Icons.settings,
+                        isDark,
+                      ),
                       const Spacer(),
                       Text(
                         car.formattedPrice,

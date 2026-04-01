@@ -6,25 +6,29 @@ import 'package:intl/intl.dart';
 
 import '../../core/theme.dart';
 import '../../core/supabase_config.dart';
+import 'package:rent_a_car_panel/core/services/log_service.dart';
 
 // Booking detail provider
-final bookingDetailProvider = FutureProvider.autoDispose.family<Map<String, dynamic>?, String>((ref, bookingId) async {
-  final client = ref.watch(supabaseClientProvider);
+final bookingDetailProvider = FutureProvider.autoDispose
+    .family<Map<String, dynamic>?, String>((ref, bookingId) async {
+      final client = ref.watch(supabaseClientProvider);
+      final companyId = await ref.watch(companyIdProvider.future);
 
-  final response = await client
-      .from('rental_bookings')
-      .select('''
+      final response = await client
+          .from('rental_bookings')
+          .select('''
         *,
         rental_cars(*),
         rental_companies(company_name, phone, email),
         pickup_location:rental_locations!pickup_location_id(*),
         dropoff_location:rental_locations!dropoff_location_id(*)
       ''')
-      .eq('id', bookingId)
-      .maybeSingle();
+          .eq('id', bookingId)
+          .eq('company_id', companyId ?? '')
+          .maybeSingle();
 
-  return response;
-});
+      return response;
+    });
 
 class BookingDetailScreen extends ConsumerWidget {
   final String bookingId;
@@ -47,8 +51,10 @@ class BookingDetailScreen extends ConsumerWidget {
           }
 
           final car = booking['rental_cars'] as Map<String, dynamic>?;
-          final pickupLocation = booking['pickup_location'] as Map<String, dynamic>?;
-          final dropoffLocation = booking['dropoff_location'] as Map<String, dynamic>?;
+          final pickupLocation =
+              booking['pickup_location'] as Map<String, dynamic>?;
+          final dropoffLocation =
+              booking['dropoff_location'] as Map<String, dynamic>?;
           final pickupDate = DateTime.tryParse(booking['pickup_date'] ?? '');
           final dropoffDate = DateTime.tryParse(booking['dropoff_date'] ?? '');
           final status = booking['status'] as String? ?? '';
@@ -79,7 +85,9 @@ class BookingDetailScreen extends ConsumerWidget {
                           ),
                           Text(
                             'Oluşturulma: ${DateTime.tryParse(booking['created_at'] ?? '') != null ? dateFormat.format(DateTime.parse(booking['created_at'])) : '-'}',
-                            style: const TextStyle(color: AppColors.textSecondary),
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                            ),
                           ),
                         ],
                       ),
@@ -120,15 +128,18 @@ class BookingDetailScreen extends ConsumerWidget {
                                     ),
                                     child: car?['image_url'] != null
                                         ? ClipRRect(
-                                            borderRadius: BorderRadius.circular(12),
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
                                             child: Image.network(
                                               car!['image_url'],
                                               fit: BoxFit.cover,
-                                              errorBuilder: (_, __, ___) => const Icon(
-                                                Icons.directions_car,
-                                                size: 48,
-                                                color: AppColors.textMuted,
-                                              ),
+                                              errorBuilder: (_, _, _) =>
+                                                  const Icon(
+                                                    Icons.directions_car,
+                                                    size: 48,
+                                                    color: AppColors.textMuted,
+                                                  ),
                                             ),
                                           )
                                         : const Icon(
@@ -141,7 +152,8 @@ class BookingDetailScreen extends ConsumerWidget {
                                   // Car details
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           car != null
@@ -155,24 +167,43 @@ class BookingDetailScreen extends ConsumerWidget {
                                         const SizedBox(height: 8),
                                         Row(
                                           children: [
-                                            _buildCarSpec(Icons.calendar_today, '${car?['year'] ?? '-'}'),
+                                            _buildCarSpec(
+                                              Icons.calendar_today,
+                                              '${car?['year'] ?? '-'}',
+                                            ),
                                             const SizedBox(width: 16),
-                                            _buildCarSpec(Icons.settings, car?['transmission'] == 'automatic' ? 'Otomatik' : 'Manuel'),
+                                            _buildCarSpec(
+                                              Icons.settings,
+                                              car?['transmission'] ==
+                                                      'automatic'
+                                                  ? 'Otomatik'
+                                                  : 'Manuel',
+                                            ),
                                             const SizedBox(width: 16),
-                                            _buildCarSpec(Icons.local_gas_station, _getFuelLabel(car?['fuel_type'])),
+                                            _buildCarSpec(
+                                              Icons.local_gas_station,
+                                              _getFuelLabel(car?['fuel_type']),
+                                            ),
                                           ],
                                         ),
                                         const SizedBox(height: 8),
                                         Row(
                                           children: [
                                             Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 8,
+                                                    vertical: 3,
+                                                  ),
                                               decoration: BoxDecoration(
                                                 color: AppColors.surfaceLight,
-                                                borderRadius: BorderRadius.circular(4),
+                                                borderRadius:
+                                                    BorderRadius.circular(4),
                                               ),
                                               child: Text(
-                                                car?['plate'] ?? car?['plate_number'] ?? '-',
+                                                car?['plate'] ??
+                                                    car?['plate_number'] ??
+                                                    '-',
                                                 style: const TextStyle(
                                                   fontWeight: FontWeight.w700,
                                                   fontSize: 14,
@@ -183,11 +214,24 @@ class BookingDetailScreen extends ConsumerWidget {
                                             if (car?['id'] != null) ...[
                                               const SizedBox(width: 12),
                                               TextButton.icon(
-                                                onPressed: () => context.go('/cars/${car!['id']}'),
-                                                icon: const Icon(Icons.open_in_new, size: 14),
-                                                label: const Text('Araç Detayı', style: TextStyle(fontSize: 12)),
+                                                onPressed: () => context.go(
+                                                  '/cars/${car!['id']}',
+                                                ),
+                                                icon: const Icon(
+                                                  Icons.open_in_new,
+                                                  size: 14,
+                                                ),
+                                                label: const Text(
+                                                  'Araç Detayı',
+                                                  style: TextStyle(
+                                                    fontSize: 12,
+                                                  ),
+                                                ),
                                                 style: TextButton.styleFrom(
-                                                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 8,
+                                                      ),
                                                   minimumSize: Size.zero,
                                                 ),
                                               ),
@@ -226,8 +270,12 @@ class BookingDetailScreen extends ConsumerWidget {
                                           'Alış',
                                           pickupLocation?['name'] ?? '-',
                                           pickupLocation?['city'] ?? '',
-                                          pickupDate != null ? dateFormat.format(pickupDate) : '-',
-                                          pickupDate != null ? timeFormat.format(pickupDate) : '-',
+                                          pickupDate != null
+                                              ? dateFormat.format(pickupDate)
+                                              : '-',
+                                          pickupDate != null
+                                              ? timeFormat.format(pickupDate)
+                                              : '-',
                                           AppColors.success,
                                         ),
                                       ),
@@ -237,7 +285,9 @@ class BookingDetailScreen extends ConsumerWidget {
                                         padding: const EdgeInsets.all(12),
                                         decoration: BoxDecoration(
                                           color: AppColors.surfaceLight,
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
                                         ),
                                         child: const Icon(
                                           Icons.arrow_forward,
@@ -251,8 +301,12 @@ class BookingDetailScreen extends ConsumerWidget {
                                           'İade',
                                           dropoffLocation?['name'] ?? '-',
                                           dropoffLocation?['city'] ?? '',
-                                          dropoffDate != null ? dateFormat.format(dropoffDate) : '-',
-                                          dropoffDate != null ? timeFormat.format(dropoffDate) : '-',
+                                          dropoffDate != null
+                                              ? dateFormat.format(dropoffDate)
+                                              : '-',
+                                          dropoffDate != null
+                                              ? timeFormat.format(dropoffDate)
+                                              : '-',
                                           AppColors.error,
                                         ),
                                       ),
@@ -260,7 +314,11 @@ class BookingDetailScreen extends ConsumerWidget {
                                   ),
                                   const SizedBox(height: 16),
                                   // Duration & overdue warning
-                                  _buildDurationBar(booking, pickupDate, dropoffDate),
+                                  _buildDurationBar(
+                                    booking,
+                                    pickupDate,
+                                    dropoffDate,
+                                  ),
                                 ],
                               ),
                             ),
@@ -286,28 +344,78 @@ class BookingDetailScreen extends ConsumerWidget {
                                     children: [
                                       Expanded(
                                         child: _buildDeliveryDetailCard(
-                                          title: booking['is_pickup_custom_address'] == true
+                                          title:
+                                              booking['is_pickup_custom_address'] ==
+                                                  true
                                               ? 'Araç Alış (Adrese Teslim)'
                                               : 'Araç Alış',
-                                          icon: booking['is_pickup_custom_address'] == true
+                                          icon:
+                                              booking['is_pickup_custom_address'] ==
+                                                  true
                                               ? Icons.home
                                               : Icons.login,
                                           color: AppColors.success,
                                           items: [
-                                            _buildDetailItem('Tarih', pickupDate != null ? dateFormat.format(pickupDate) : '-'),
-                                            _buildDetailItem('Saat', pickupDate != null ? timeFormat.format(pickupDate) : '-'),
-                                            if (booking['actual_pickup_date'] != null)
-                                              _buildDetailItem('Gerçek Alış', DateFormat('dd MMM HH:mm', 'tr_TR').format(DateTime.parse(booking['actual_pickup_date']))),
-                                            if (booking['is_pickup_custom_address'] == true) ...[
-                                              _buildDetailItem('Adres', booking['pickup_custom_address'] ?? '-'),
-                                              if (booking['pickup_custom_address_notes'] != null &&
-                                                  booking['pickup_custom_address_notes'].toString().isNotEmpty)
-                                                _buildDetailItem('Not', booking['pickup_custom_address_notes']),
+                                            _buildDetailItem(
+                                              'Tarih',
+                                              pickupDate != null
+                                                  ? dateFormat.format(
+                                                      pickupDate,
+                                                    )
+                                                  : '-',
+                                            ),
+                                            _buildDetailItem(
+                                              'Saat',
+                                              pickupDate != null
+                                                  ? timeFormat.format(
+                                                      pickupDate,
+                                                    )
+                                                  : '-',
+                                            ),
+                                            if (booking['actual_pickup_date'] !=
+                                                null)
+                                              _buildDetailItem(
+                                                'Gerçek Alış',
+                                                DateFormat(
+                                                  'dd MMM HH:mm',
+                                                  'tr_TR',
+                                                ).format(
+                                                  DateTime.parse(
+                                                    booking['actual_pickup_date'],
+                                                  ),
+                                                ),
+                                              ),
+                                            if (booking['is_pickup_custom_address'] ==
+                                                true) ...[
+                                              _buildDetailItem(
+                                                'Adres',
+                                                booking['pickup_custom_address'] ??
+                                                    '-',
+                                              ),
+                                              if (booking['pickup_custom_address_notes'] !=
+                                                      null &&
+                                                  booking['pickup_custom_address_notes']
+                                                      .toString()
+                                                      .isNotEmpty)
+                                                _buildDetailItem(
+                                                  'Not',
+                                                  booking['pickup_custom_address_notes'],
+                                                ),
                                             ] else ...[
-                                              _buildDetailItem('Lokasyon', pickupLocation?['name'] ?? '-'),
-                                              _buildDetailItem('Şehir', pickupLocation?['city'] ?? '-'),
-                                              if (pickupLocation?['address'] != null)
-                                                _buildDetailItem('Adres', pickupLocation!['address']),
+                                              _buildDetailItem(
+                                                'Lokasyon',
+                                                pickupLocation?['name'] ?? '-',
+                                              ),
+                                              _buildDetailItem(
+                                                'Şehir',
+                                                pickupLocation?['city'] ?? '-',
+                                              ),
+                                              if (pickupLocation?['address'] !=
+                                                  null)
+                                                _buildDetailItem(
+                                                  'Adres',
+                                                  pickupLocation!['address'],
+                                                ),
                                             ],
                                           ],
                                         ),
@@ -315,28 +423,78 @@ class BookingDetailScreen extends ConsumerWidget {
                                       const SizedBox(width: 16),
                                       Expanded(
                                         child: _buildDeliveryDetailCard(
-                                          title: booking['is_dropoff_custom_address'] == true
+                                          title:
+                                              booking['is_dropoff_custom_address'] ==
+                                                  true
                                               ? 'Araç İade (Adrese Teslim)'
                                               : 'Araç İade',
-                                          icon: booking['is_dropoff_custom_address'] == true
+                                          icon:
+                                              booking['is_dropoff_custom_address'] ==
+                                                  true
                                               ? Icons.home
                                               : Icons.logout,
                                           color: AppColors.error,
                                           items: [
-                                            _buildDetailItem('Tarih', dropoffDate != null ? dateFormat.format(dropoffDate) : '-'),
-                                            _buildDetailItem('Saat', dropoffDate != null ? timeFormat.format(dropoffDate) : '-'),
-                                            if (booking['actual_dropoff_date'] != null)
-                                              _buildDetailItem('Gerçek İade', DateFormat('dd MMM HH:mm', 'tr_TR').format(DateTime.parse(booking['actual_dropoff_date']))),
-                                            if (booking['is_dropoff_custom_address'] == true) ...[
-                                              _buildDetailItem('Adres', booking['dropoff_custom_address'] ?? '-'),
-                                              if (booking['dropoff_custom_address_notes'] != null &&
-                                                  booking['dropoff_custom_address_notes'].toString().isNotEmpty)
-                                                _buildDetailItem('Not', booking['dropoff_custom_address_notes']),
+                                            _buildDetailItem(
+                                              'Tarih',
+                                              dropoffDate != null
+                                                  ? dateFormat.format(
+                                                      dropoffDate,
+                                                    )
+                                                  : '-',
+                                            ),
+                                            _buildDetailItem(
+                                              'Saat',
+                                              dropoffDate != null
+                                                  ? timeFormat.format(
+                                                      dropoffDate,
+                                                    )
+                                                  : '-',
+                                            ),
+                                            if (booking['actual_dropoff_date'] !=
+                                                null)
+                                              _buildDetailItem(
+                                                'Gerçek İade',
+                                                DateFormat(
+                                                  'dd MMM HH:mm',
+                                                  'tr_TR',
+                                                ).format(
+                                                  DateTime.parse(
+                                                    booking['actual_dropoff_date'],
+                                                  ),
+                                                ),
+                                              ),
+                                            if (booking['is_dropoff_custom_address'] ==
+                                                true) ...[
+                                              _buildDetailItem(
+                                                'Adres',
+                                                booking['dropoff_custom_address'] ??
+                                                    '-',
+                                              ),
+                                              if (booking['dropoff_custom_address_notes'] !=
+                                                      null &&
+                                                  booking['dropoff_custom_address_notes']
+                                                      .toString()
+                                                      .isNotEmpty)
+                                                _buildDetailItem(
+                                                  'Not',
+                                                  booking['dropoff_custom_address_notes'],
+                                                ),
                                             ] else ...[
-                                              _buildDetailItem('Lokasyon', dropoffLocation?['name'] ?? '-'),
-                                              _buildDetailItem('Şehir', dropoffLocation?['city'] ?? '-'),
-                                              if (dropoffLocation?['address'] != null)
-                                                _buildDetailItem('Adres', dropoffLocation!['address']),
+                                              _buildDetailItem(
+                                                'Lokasyon',
+                                                dropoffLocation?['name'] ?? '-',
+                                              ),
+                                              _buildDetailItem(
+                                                'Şehir',
+                                                dropoffLocation?['city'] ?? '-',
+                                              ),
+                                              if (dropoffLocation?['address'] !=
+                                                  null)
+                                                _buildDetailItem(
+                                                  'Adres',
+                                                  dropoffLocation!['address'],
+                                                ),
                                             ],
                                           ],
                                         ),
@@ -350,7 +508,10 @@ class BookingDetailScreen extends ConsumerWidget {
                           const SizedBox(height: 16),
 
                           // Package & Services card
-                          if (booking['package_name'] != null || (booking['selected_services'] is List && (booking['selected_services'] as List).isNotEmpty))
+                          if (booking['package_name'] != null ||
+                              (booking['selected_services'] is List &&
+                                  (booking['selected_services'] as List)
+                                      .isNotEmpty))
                             Card(
                               child: Padding(
                                 padding: const EdgeInsets.all(20),
@@ -369,54 +530,78 @@ class BookingDetailScreen extends ConsumerWidget {
                                       Container(
                                         padding: const EdgeInsets.all(16),
                                         decoration: BoxDecoration(
-                                          color: _getPackageColor(booking['package_tier']).withValues(alpha: 0.1),
-                                          borderRadius: BorderRadius.circular(12),
+                                          color: _getPackageColor(
+                                            booking['package_tier'],
+                                          ).withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
                                           border: Border.all(
-                                            color: _getPackageColor(booking['package_tier']).withValues(alpha: 0.3),
+                                            color: _getPackageColor(
+                                              booking['package_tier'],
+                                            ).withValues(alpha: 0.3),
                                           ),
                                         ),
                                         child: Row(
                                           children: [
                                             Icon(
-                                              _getPackageIcon(booking['package_tier']),
-                                              color: _getPackageColor(booking['package_tier']),
+                                              _getPackageIcon(
+                                                booking['package_tier'],
+                                              ),
+                                              color: _getPackageColor(
+                                                booking['package_tier'],
+                                              ),
                                               size: 28,
                                             ),
                                             const SizedBox(width: 12),
                                             Expanded(
                                               child: Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
                                                 children: [
                                                   Text(
                                                     '${booking['package_name']} Paket',
                                                     style: const TextStyle(
-                                                      fontWeight: FontWeight.bold,
+                                                      fontWeight:
+                                                          FontWeight.bold,
                                                       fontSize: 16,
                                                     ),
                                                   ),
                                                   Text(
-                                                    (booking['package_tier'] ?? '').toString().toUpperCase(),
+                                                    (booking['package_tier'] ??
+                                                            '')
+                                                        .toString()
+                                                        .toUpperCase(),
                                                     style: TextStyle(
-                                                      color: _getPackageColor(booking['package_tier']),
+                                                      color: _getPackageColor(
+                                                        booking['package_tier'],
+                                                      ),
                                                       fontSize: 12,
-                                                      fontWeight: FontWeight.w600,
+                                                      fontWeight:
+                                                          FontWeight.w600,
                                                     ),
                                                   ),
                                                 ],
                                               ),
                                             ),
-                                            if ((booking['package_daily_price'] ?? 0) > 0)
+                                            if ((booking['package_daily_price'] ??
+                                                    0) >
+                                                0)
                                               Text(
                                                 '${formatter.format(booking['package_daily_price'])}/gün',
                                                 style: TextStyle(
                                                   fontWeight: FontWeight.bold,
-                                                  color: _getPackageColor(booking['package_tier']),
+                                                  color: _getPackageColor(
+                                                    booking['package_tier'],
+                                                  ),
                                                 ),
                                               ),
                                           ],
                                         ),
                                       ),
-                                    if (booking['selected_services'] is List && (booking['selected_services'] as List).isNotEmpty) ...[
+                                    if (booking['selected_services'] is List &&
+                                        (booking['selected_services'] as List)
+                                            .isNotEmpty) ...[
                                       const SizedBox(height: 16),
                                       const Text(
                                         'Seçilen Ek Hizmetler',
@@ -427,34 +612,48 @@ class BookingDetailScreen extends ConsumerWidget {
                                         ),
                                       ),
                                       const SizedBox(height: 8),
-                                      ...(booking['selected_services'] as List).map((service) {
-                                        final s = service as Map<String, dynamic>;
-                                        return Padding(
-                                          padding: const EdgeInsets.only(bottom: 8),
-                                          child: Row(
-                                            children: [
-                                              const Icon(Icons.check_circle, size: 18, color: AppColors.success),
-                                              const SizedBox(width: 8),
-                                              Expanded(
-                                                child: Text(
-                                                  s['name'] ?? '',
-                                                  style: const TextStyle(fontSize: 14),
-                                                ),
+                                      ...(booking['selected_services'] as List)
+                                          .map((service) {
+                                            final s =
+                                                service as Map<String, dynamic>;
+                                            return Padding(
+                                              padding: const EdgeInsets.only(
+                                                bottom: 8,
                                               ),
-                                              Text(
-                                                formatter.format(s['total_price'] ?? 0),
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.w600,
-                                                  fontSize: 14,
-                                                ),
+                                              child: Row(
+                                                children: [
+                                                  const Icon(
+                                                    Icons.check_circle,
+                                                    size: 18,
+                                                    color: AppColors.success,
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Expanded(
+                                                    child: Text(
+                                                      s['name'] ?? '',
+                                                      style: const TextStyle(
+                                                        fontSize: 14,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  Text(
+                                                    formatter.format(
+                                                      s['total_price'] ?? 0,
+                                                    ),
+                                                    style: const TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      fontSize: 14,
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
-                                            ],
-                                          ),
-                                        );
-                                      }),
+                                            );
+                                          }),
                                       const Divider(height: 16),
                                       Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
                                         children: [
                                           const Text(
                                             'Ek Hizmetler Toplamı',
@@ -464,7 +663,9 @@ class BookingDetailScreen extends ConsumerWidget {
                                             ),
                                           ),
                                           Text(
-                                            formatter.format(booking['services_total'] ?? 0),
+                                            formatter.format(
+                                              booking['services_total'] ?? 0,
+                                            ),
                                             style: const TextStyle(
                                               fontWeight: FontWeight.bold,
                                               color: AppColors.primary,
@@ -477,11 +678,15 @@ class BookingDetailScreen extends ConsumerWidget {
                                 ),
                               ),
                             ),
-                          if (booking['package_name'] != null || (booking['selected_services'] is List && (booking['selected_services'] as List).isNotEmpty))
+                          if (booking['package_name'] != null ||
+                              (booking['selected_services'] is List &&
+                                  (booking['selected_services'] as List)
+                                      .isNotEmpty))
                             const SizedBox(height: 16),
 
                           // Customer notes
-                          if (booking['customer_notes'] != null && booking['customer_notes'].toString().isNotEmpty)
+                          if (booking['customer_notes'] != null &&
+                              booking['customer_notes'].toString().isNotEmpty)
                             Card(
                               child: Padding(
                                 padding: const EdgeInsets.all(20),
@@ -505,7 +710,9 @@ class BookingDetailScreen extends ConsumerWidget {
                                       ),
                                       child: Text(
                                         booking['customer_notes'].toString(),
-                                        style: const TextStyle(color: AppColors.textSecondary),
+                                        style: const TextStyle(
+                                          color: AppColors.textSecondary,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -514,7 +721,10 @@ class BookingDetailScreen extends ConsumerWidget {
                             ),
 
                           // Company notes
-                          if (booking['company_notes'] != null && booking['company_notes'].toString().isNotEmpty) ...[
+                          if (booking['company_notes'] != null &&
+                              booking['company_notes']
+                                  .toString()
+                                  .isNotEmpty) ...[
                             const SizedBox(height: 16),
                             Card(
                               child: Padding(
@@ -522,11 +732,15 @@ class BookingDetailScreen extends ConsumerWidget {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Row(
+                                    const Row(
                                       children: [
-                                        const Icon(Icons.note_alt, size: 20, color: AppColors.warning),
-                                        const SizedBox(width: 8),
-                                        const Text(
+                                        Icon(
+                                          Icons.note_alt,
+                                          size: 20,
+                                          color: AppColors.warning,
+                                        ),
+                                        SizedBox(width: 8),
+                                        Text(
                                           'Şirket Notları',
                                           style: TextStyle(
                                             fontSize: 18,
@@ -540,13 +754,21 @@ class BookingDetailScreen extends ConsumerWidget {
                                       width: double.infinity,
                                       padding: const EdgeInsets.all(12),
                                       decoration: BoxDecoration(
-                                        color: AppColors.warning.withValues(alpha: 0.1),
+                                        color: AppColors.warning.withValues(
+                                          alpha: 0.1,
+                                        ),
                                         borderRadius: BorderRadius.circular(8),
-                                        border: Border.all(color: AppColors.warning.withValues(alpha: 0.2)),
+                                        border: Border.all(
+                                          color: AppColors.warning.withValues(
+                                            alpha: 0.2,
+                                          ),
+                                        ),
                                       ),
                                       child: Text(
                                         booking['company_notes'].toString(),
-                                        style: const TextStyle(color: AppColors.textSecondary),
+                                        style: const TextStyle(
+                                          color: AppColors.textSecondary,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -578,7 +800,11 @@ class BookingDetailScreen extends ConsumerWidget {
                                     ),
                                   ),
                                   const SizedBox(height: 16),
-                                  _buildInfoRow(Icons.person, 'Ad Soyad', booking['customer_name'] ?? '-'),
+                                  _buildInfoRow(
+                                    Icons.person,
+                                    'Ad Soyad',
+                                    booking['customer_name'] ?? '-',
+                                  ),
                                   const Divider(height: 24),
                                   _buildCopyableInfoRow(
                                     context,
@@ -595,7 +821,11 @@ class BookingDetailScreen extends ConsumerWidget {
                                   ),
                                   if (booking['driver_license_no'] != null) ...[
                                     const Divider(height: 24),
-                                    _buildInfoRow(Icons.badge, 'Ehliyet No', booking['driver_license_no']),
+                                    _buildInfoRow(
+                                      Icons.badge,
+                                      'Ehliyet No',
+                                      booking['driver_license_no'],
+                                    ),
                                   ],
                                 ],
                               ),
@@ -611,7 +841,8 @@ class BookingDetailScreen extends ConsumerWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       const Text(
                                         'Ödeme Detayları',
@@ -620,23 +851,31 @@ class BookingDetailScreen extends ConsumerWidget {
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
-                                      _buildPaymentStatusBadge(booking['payment_status'] ?? ''),
+                                      _buildPaymentStatusBadge(
+                                        booking['payment_status'] ?? '',
+                                      ),
                                     ],
                                   ),
                                   const SizedBox(height: 16),
                                   if (booking['payment_method'] != null)
                                     Padding(
-                                      padding: const EdgeInsets.only(bottom: 12),
+                                      padding: const EdgeInsets.only(
+                                        bottom: 12,
+                                      ),
                                       child: Row(
                                         children: [
                                           Icon(
-                                            _getPaymentMethodIcon(booking['payment_method']),
+                                            _getPaymentMethodIcon(
+                                              booking['payment_method'],
+                                            ),
                                             size: 18,
                                             color: AppColors.textMuted,
                                           ),
                                           const SizedBox(width: 8),
                                           Text(
-                                            _getPaymentMethodLabel(booking['payment_method']),
+                                            _getPaymentMethodLabel(
+                                              booking['payment_method'],
+                                            ),
                                             style: const TextStyle(
                                               color: AppColors.textSecondary,
                                               fontSize: 13,
@@ -652,25 +891,34 @@ class BookingDetailScreen extends ConsumerWidget {
                                   const SizedBox(height: 8),
                                   _buildPriceRow(
                                     'Kiralama Tutarı',
-                                    formatter.format((booking['daily_rate'] ?? 0) * (booking['rental_days'] ?? 0)),
+                                    formatter.format(
+                                      (booking['daily_rate'] ?? 0) *
+                                          (booking['rental_days'] ?? 0),
+                                    ),
                                   ),
                                   if ((booking['services_total'] ?? 0) > 0) ...[
                                     const SizedBox(height: 8),
                                     _buildPriceRow(
                                       'Ek Hizmetler',
-                                      formatter.format(booking['services_total']),
+                                      formatter.format(
+                                        booking['services_total'],
+                                      ),
                                     ),
                                   ],
-                                  if ((booking['insurance_total'] ?? 0) > 0) ...[
+                                  if ((booking['insurance_total'] ?? 0) >
+                                      0) ...[
                                     const SizedBox(height: 8),
                                     _buildPriceRow(
                                       'Sigorta',
-                                      formatter.format(booking['insurance_total']),
+                                      formatter.format(
+                                        booking['insurance_total'],
+                                      ),
                                     ),
                                   ],
                                   const Divider(height: 24),
                                   Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       const Text(
                                         'Toplam',
@@ -680,7 +928,9 @@ class BookingDetailScreen extends ConsumerWidget {
                                         ),
                                       ),
                                       Text(
-                                        formatter.format(booking['total_amount'] ?? 0),
+                                        formatter.format(
+                                          booking['total_amount'] ?? 0,
+                                        ),
                                         style: const TextStyle(
                                           fontSize: 24,
                                           fontWeight: FontWeight.bold,
@@ -719,7 +969,10 @@ class BookingDetailScreen extends ConsumerWidget {
   }
 
   // Status Timeline Widget
-  Widget _buildStatusTimeline(String currentStatus, Map<String, dynamic> booking) {
+  Widget _buildStatusTimeline(
+    String currentStatus,
+    Map<String, dynamic> booking,
+  ) {
     final steps = [
       {'key': 'pending', 'label': 'Oluşturuldu', 'icon': Icons.fiber_new},
       {'key': 'confirmed', 'label': 'Onaylandı', 'icon': Icons.check_circle},
@@ -735,12 +988,12 @@ class BookingDetailScreen extends ConsumerWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         child: isCancelled
-            ? Row(
+            ? const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.cancel, color: AppColors.error, size: 24),
-                  const SizedBox(width: 12),
-                  const Text(
+                  SizedBox(width: 12),
+                  Text(
                     'Bu rezervasyon iptal edildi',
                     style: TextStyle(
                       color: AppColors.error,
@@ -781,17 +1034,15 @@ class BookingDetailScreen extends ConsumerWidget {
                           color: isCompleted
                               ? AppColors.success
                               : isCurrent
-                                  ? AppColors.primary
-                                  : AppColors.surfaceLight,
+                              ? AppColors.primary
+                              : AppColors.surfaceLight,
                           shape: BoxShape.circle,
                           border: isCurrent
                               ? Border.all(color: AppColors.primary, width: 3)
                               : null,
                         ),
                         child: Icon(
-                          isCompleted
-                              ? Icons.check
-                              : step['icon'] as IconData,
+                          isCompleted ? Icons.check : step['icon'] as IconData,
                           color: isCompleted || isCurrent
                               ? Colors.white
                               : AppColors.textMuted,
@@ -803,12 +1054,14 @@ class BookingDetailScreen extends ConsumerWidget {
                         step['label'] as String,
                         style: TextStyle(
                           fontSize: 11,
-                          fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                          fontWeight: isCurrent
+                              ? FontWeight.bold
+                              : FontWeight.normal,
                           color: isCurrent
                               ? AppColors.primary
                               : isCompleted
-                                  ? AppColors.success
-                                  : AppColors.textMuted,
+                              ? AppColors.success
+                              : AppColors.textMuted,
                         ),
                       ),
                     ],
@@ -820,12 +1073,17 @@ class BookingDetailScreen extends ConsumerWidget {
   }
 
   // Duration bar with overdue warning
-  Widget _buildDurationBar(Map<String, dynamic> booking, DateTime? pickupDate, DateTime? dropoffDate) {
+  Widget _buildDurationBar(
+    Map<String, dynamic> booking,
+    DateTime? pickupDate,
+    DateTime? dropoffDate,
+  ) {
     final now = DateTime.now();
     final status = booking['status'] as String? ?? '';
     final isActive = status == 'active';
-    final isOverdue = isActive && dropoffDate != null && now.isAfter(dropoffDate);
-    final overdueDays = isOverdue ? now.difference(dropoffDate!).inDays : 0;
+    final isOverdue =
+        isActive && dropoffDate != null && now.isAfter(dropoffDate);
+    final overdueDays = isOverdue ? now.difference(dropoffDate).inDays : 0;
 
     return Container(
       padding: const EdgeInsets.all(12),
@@ -877,7 +1135,11 @@ class BookingDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildActionButtons(BuildContext context, WidgetRef ref, Map<String, dynamic> booking) {
+  Widget _buildActionButtons(
+    BuildContext context,
+    WidgetRef ref,
+    Map<String, dynamic> booking,
+  ) {
     final status = booking['status'] as String?;
 
     List<Widget> buttons = [];
@@ -901,7 +1163,10 @@ class BookingDetailScreen extends ConsumerWidget {
         OutlinedButton.icon(
           onPressed: () => _updateStatus(context, ref, 'cancelled'),
           icon: const Icon(Icons.close, size: 18, color: AppColors.error),
-          label: const Text('İptal', style: TextStyle(color: AppColors.error, fontSize: 13)),
+          label: const Text(
+            'İptal',
+            style: TextStyle(color: AppColors.error, fontSize: 13),
+          ),
         ),
         const SizedBox(width: 8),
         ElevatedButton.icon(
@@ -924,10 +1189,40 @@ class BookingDetailScreen extends ConsumerWidget {
     return Row(children: buttons);
   }
 
-  Future<void> _updateStatus(BuildContext context, WidgetRef ref, String newStatus) async {
+  Future<void> _updateStatus(
+    BuildContext context,
+    WidgetRef ref,
+    String newStatus,
+  ) async {
     try {
       final client = ref.read(supabaseClientProvider);
       final booking = await ref.read(bookingDetailProvider(bookingId).future);
+
+      // Validate status transition against the allowed state machine
+      const validTransitions = {
+        'pending': ['confirmed', 'cancelled', 'rejected'],
+        'confirmed': ['active', 'cancelled'],
+        'active': ['completed'],
+        'completed': <String>[],
+        'cancelled': <String>[],
+        'rejected': <String>[],
+      };
+
+      final currentStatus = booking?['status'] as String? ?? '';
+      final allowed = validTransitions[currentStatus] ?? <String>[];
+      if (!allowed.contains(newStatus)) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Geçersiz durum geçişi: $currentStatus → $newStatus',
+              ),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+        return;
+      }
 
       final updateData = <String, dynamic>{'status': newStatus};
       if (newStatus == 'active') {
@@ -966,7 +1261,8 @@ class BookingDetailScreen extends ConsumerWidget {
           ),
         );
       }
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to update booking status', error: e, stackTrace: st, source: 'BookingDetailScreen:_updateStatus');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
@@ -977,12 +1273,18 @@ class BookingDetailScreen extends ConsumerWidget {
 
   String _getStatusLabel(String status) {
     switch (status) {
-      case 'pending': return 'Beklemede';
-      case 'confirmed': return 'Onaylandı';
-      case 'active': return 'Aktif';
-      case 'completed': return 'Tamamlandı';
-      case 'cancelled': return 'İptal Edildi';
-      default: return status;
+      case 'pending':
+        return 'Beklemede';
+      case 'confirmed':
+        return 'Onaylandı';
+      case 'active':
+        return 'Aktif';
+      case 'completed':
+        return 'Tamamlandı';
+      case 'cancelled':
+        return 'İptal Edildi';
+      default:
+        return status;
     }
   }
 
@@ -1091,7 +1393,14 @@ class BookingDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildLocationCard(String title, String name, String city, String date, String time, Color color) {
+  Widget _buildLocationCard(
+    String title,
+    String name,
+    String city,
+    String date,
+    String time,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1104,27 +1413,18 @@ class BookingDetailScreen extends ConsumerWidget {
         children: [
           Text(
             title,
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(color: color, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
             name,
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 15,
-            ),
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
           ),
           if (city.isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(
               city,
-              style: const TextStyle(
-                color: AppColors.textMuted,
-                fontSize: 13,
-              ),
+              style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
             ),
           ],
           const SizedBox(height: 12),
@@ -1174,16 +1474,10 @@ class BookingDetailScreen extends ConsumerWidget {
           children: [
             Text(
               label,
-              style: const TextStyle(
-                color: AppColors.textMuted,
-                fontSize: 12,
-              ),
+              style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
             ),
             const SizedBox(height: 2),
-            Text(
-              value,
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
+            Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
           ],
         ),
       ],
@@ -1191,7 +1485,12 @@ class BookingDetailScreen extends ConsumerWidget {
   }
 
   // Copyable info row (for phone/email)
-  Widget _buildCopyableInfoRow(BuildContext context, IconData icon, String label, String value) {
+  Widget _buildCopyableInfoRow(
+    BuildContext context,
+    IconData icon,
+    String label,
+    String value,
+  ) {
     return Row(
       children: [
         Icon(icon, size: 20, color: AppColors.textMuted),
@@ -1208,10 +1507,7 @@ class BookingDetailScreen extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 2),
-              Text(
-                value,
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
+              Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
             ],
           ),
         ),
@@ -1239,62 +1535,78 @@ class BookingDetailScreen extends ConsumerWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: const TextStyle(color: AppColors.textSecondary),
-        ),
-        Text(
-          value,
-          style: const TextStyle(fontWeight: FontWeight.w500),
-        ),
+        Text(label, style: const TextStyle(color: AppColors.textSecondary)),
+        Text(value, style: const TextStyle(fontWeight: FontWeight.w500)),
       ],
     );
   }
 
   Color _getPackageColor(String? tier) {
     switch (tier) {
-      case 'basic': return AppColors.info;
-      case 'comfort': return AppColors.warning;
-      case 'premium': return AppColors.primary;
-      default: return AppColors.textSecondary;
+      case 'basic':
+        return AppColors.info;
+      case 'comfort':
+        return AppColors.warning;
+      case 'premium':
+        return AppColors.primary;
+      default:
+        return AppColors.textSecondary;
     }
   }
 
   IconData _getPackageIcon(String? tier) {
     switch (tier) {
-      case 'basic': return Icons.directions_car;
-      case 'comfort': return Icons.star;
-      case 'premium': return Icons.workspace_premium;
-      default: return Icons.inventory_2;
+      case 'basic':
+        return Icons.directions_car;
+      case 'comfort':
+        return Icons.star;
+      case 'premium':
+        return Icons.workspace_premium;
+      default:
+        return Icons.inventory_2;
     }
   }
 
   String _getFuelLabel(String? fuel) {
     switch (fuel) {
-      case 'gasoline': return 'Benzin';
-      case 'diesel': return 'Dizel';
-      case 'hybrid': return 'Hibrit';
-      case 'electric': return 'Elektrik';
-      case 'lpg': return 'LPG';
-      default: return fuel ?? '-';
+      case 'gasoline':
+        return 'Benzin';
+      case 'diesel':
+        return 'Dizel';
+      case 'hybrid':
+        return 'Hibrit';
+      case 'electric':
+        return 'Elektrik';
+      case 'lpg':
+        return 'LPG';
+      default:
+        return fuel ?? '-';
     }
   }
 
   IconData _getPaymentMethodIcon(String? method) {
     switch (method) {
-      case 'cash': return Icons.payments;
-      case 'credit_card': return Icons.credit_card;
-      case 'bank_transfer': return Icons.account_balance;
-      default: return Icons.payment;
+      case 'cash':
+        return Icons.payments;
+      case 'credit_card':
+        return Icons.credit_card;
+      case 'bank_transfer':
+        return Icons.account_balance;
+      default:
+        return Icons.payment;
     }
   }
 
   String _getPaymentMethodLabel(String? method) {
     switch (method) {
-      case 'cash': return 'Nakit';
-      case 'credit_card': return 'Kredi Kartı';
-      case 'bank_transfer': return 'Havale/EFT';
-      default: return method ?? '-';
+      case 'cash':
+        return 'Nakit';
+      case 'credit_card':
+        return 'Kredi Kartı';
+      case 'bank_transfer':
+        return 'Havale/EFT';
+      default:
+        return method ?? '-';
     }
   }
 
@@ -1352,19 +1664,13 @@ class BookingDetailScreen extends ConsumerWidget {
             width: 80,
             child: Text(
               label,
-              style: const TextStyle(
-                color: AppColors.textMuted,
-                fontSize: 12,
-              ),
+              style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
-                fontWeight: FontWeight.w500,
-                fontSize: 13,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
             ),
           ),
         ],

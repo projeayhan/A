@@ -41,7 +41,7 @@ class _AdminCouriersScreenState extends ConsumerState<AdminCouriersScreen> {
                     ),
                     SizedBox(height: 4),
                     Text(
-                      'Isletmeye atanmis kuryeleri goruntuleyin ve yonetin.',
+                      'İşletmeye atanmış kuryeleri görüntüleyin ve yönetin.',
                       style: TextStyle(
                         fontSize: 14,
                         color: AppColors.textSecondary,
@@ -89,7 +89,7 @@ class _AdminCouriersScreenState extends ConsumerState<AdminCouriersScreen> {
                       const Icon(Icons.error_outline, size: 48, color: AppColors.error),
                       const SizedBox(height: 16),
                       const Text(
-                        'Kuryeler yuklenirken hata olustu',
+                        'Kuryeler yüklenirken hata oluştu',
                         style: TextStyle(color: AppColors.textPrimary, fontSize: 16),
                       ),
                       const SizedBox(height: 8),
@@ -114,7 +114,7 @@ class _AdminCouriersScreenState extends ConsumerState<AdminCouriersScreen> {
                           const Icon(Icons.delivery_dining, size: 64, color: AppColors.textMuted),
                           const SizedBox(height: 16),
                           const Text(
-                            'Henuz atanmis kurye bulunmuyor',
+                            'Henüz atanmış kurye bulunmuyor',
                             style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
                           ),
                           const SizedBox(height: 16),
@@ -166,18 +166,21 @@ class _AdminCouriersScreenState extends ConsumerState<AdminCouriersScreen> {
   }
 
   Widget _buildCourierCard(Map<String, dynamic> assignment) {
-    final courier = assignment['couriers'] as Map<String, dynamic>?;
-    final name = courier?['full_name'] as String? ?? 'Bilinmeyen Kurye';
-    final phone = courier?['phone'] as String? ?? '-';
-    final status = courier?['status'] as String? ?? 'inactive';
-    final avatarUrl = courier?['avatar_url'] as String?;
-    final rating = (courier?['rating'] as num?)?.toDouble() ?? 0.0;
-    final totalDeliveries = (courier?['total_deliveries'] as num?)?.toInt() ?? 0;
+    final name = assignment['full_name'] as String? ?? 'Bilinmeyen Kurye';
+    final phone = assignment['phone'] as String? ?? '-';
+    final status = assignment['status'] as String? ?? 'inactive';
+    final avatarUrl = assignment['profile_photo_url'] as String?;
+    final rating = (assignment['rating'] as num?)?.toDouble() ?? 0.0;
+    final totalDeliveries = (assignment['total_deliveries'] as num?)?.toInt() ?? 0;
     final assignmentId = assignment['id'] as String;
 
-    // Placeholder performance metrics
-    final avgDeliveryTime = '${25 + (name.length % 10)} dk';
-    final completionRate = '${85 + (totalDeliveries % 15)}%';
+    // Performance metrics from data or N/A
+    final avgDeliveryTime = assignment['avg_delivery_time'] != null
+        ? '${(assignment['avg_delivery_time'] as num).toInt()} dk'
+        : 'N/A';
+    final completionRate = assignment['completion_rate'] != null
+        ? '${(assignment['completion_rate'] as num).toInt()}%'
+        : 'N/A';
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -289,7 +292,7 @@ class _AdminCouriersScreenState extends ConsumerState<AdminCouriersScreen> {
               Expanded(
                 child: _buildMetric(
                   icon: Icons.timer_outlined,
-                  label: 'Ort. Sure',
+                  label: 'Ort. Süre',
                   value: avgDeliveryTime,
                 ),
               ),
@@ -324,7 +327,7 @@ class _AdminCouriersScreenState extends ConsumerState<AdminCouriersScreen> {
                 ),
               ),
               icon: const Icon(Icons.person_remove, size: 16),
-              label: const Text('Kaldir', style: TextStyle(fontSize: 13)),
+              label: const Text('Kaldır', style: TextStyle(fontSize: 13)),
             ),
           ),
         ],
@@ -346,7 +349,7 @@ class _AdminCouriersScreenState extends ConsumerState<AdminCouriersScreen> {
       case 'busy':
         bgColor = AppColors.warning.withValues(alpha: 0.1);
         textColor = AppColors.warning;
-        label = 'Mesgul';
+        label = 'Meşgul';
         break;
       default:
         bgColor = AppColors.textMuted.withValues(alpha: 0.1);
@@ -437,7 +440,7 @@ class _AdminCouriersScreenState extends ConsumerState<AdminCouriersScreen> {
                     controller: searchController,
                     style: const TextStyle(color: AppColors.textPrimary),
                     decoration: InputDecoration(
-                      hintText: 'Kurye adi veya telefon ile arayiniz...',
+                      hintText: 'Kurye adı veya telefon ile arayınız...',
                       hintStyle: const TextStyle(color: AppColors.textMuted),
                       prefixIcon: const Icon(Icons.search, color: AppColors.textMuted),
                       suffixIcon: isSearching
@@ -478,7 +481,7 @@ class _AdminCouriersScreenState extends ConsumerState<AdminCouriersScreen> {
                         final client = ref.read(supabaseProvider);
                         final results = await client
                             .from('couriers')
-                            .select('id, full_name, phone, status, avatar_url, rating')
+                            .select('id, full_name, phone, status, profile_photo_url, rating')
                             .or('full_name.ilike.%$value%,phone.ilike.%$value%')
                             .limit(10);
                         setDialogState(() {
@@ -498,8 +501,8 @@ class _AdminCouriersScreenState extends ConsumerState<AdminCouriersScreen> {
                         ? Center(
                             child: Text(
                               searchController.text.length < 2
-                                  ? 'Aramaya baslamak icin en az 2 karakter girin'
-                                  : 'Sonuc bulunamadi',
+                                  ? 'Aramaya başlamak için en az 2 karakter girin'
+                                  : 'Sonuç bulunamadı',
                               style: const TextStyle(
                                 color: AppColors.textMuted,
                                 fontSize: 14,
@@ -574,7 +577,7 @@ class _AdminCouriersScreenState extends ConsumerState<AdminCouriersScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(dialogContext).pop(),
-                child: const Text('Iptal', style: TextStyle(color: AppColors.textSecondary)),
+                child: const Text('İptal', style: TextStyle(color: AppColors.textSecondary)),
               ),
             ],
           );
@@ -586,7 +589,7 @@ class _AdminCouriersScreenState extends ConsumerState<AdminCouriersScreen> {
   Future<void> _assignCourier(String courierId, String courierName) async {
     try {
       final client = ref.read(supabaseProvider);
-      await client.from('courier_assignments').insert({
+      await client.from('merchant_couriers').insert({
         'merchant_id': widget.merchantId,
         'courier_id': courierId,
       });
@@ -594,7 +597,7 @@ class _AdminCouriersScreenState extends ConsumerState<AdminCouriersScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('$courierName basariyla atandi'),
+            content: Text('$courierName başarıyla atandı'),
             backgroundColor: AppColors.success,
           ),
         );
@@ -603,7 +606,7 @@ class _AdminCouriersScreenState extends ConsumerState<AdminCouriersScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Atama basarisiz: $e'),
+            content: Text('Atama başarısız: $e'),
             backgroundColor: AppColors.error,
           ),
         );
@@ -618,17 +621,17 @@ class _AdminCouriersScreenState extends ConsumerState<AdminCouriersScreen> {
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text(
-          'Kurye Atamasini Kaldir',
+          'Kurye Atamasını Kaldır',
           style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
         ),
         content: Text(
-          '$courierName adli kuryenin atamasini kaldirmak istediginizden emin misiniz?',
+          '$courierName adlı kuryenin atamasını kaldırmak istediğinizden emin misiniz?',
           style: const TextStyle(color: AppColors.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Iptal', style: TextStyle(color: AppColors.textSecondary)),
+            child: const Text('İptal', style: TextStyle(color: AppColors.textSecondary)),
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
@@ -636,7 +639,7 @@ class _AdminCouriersScreenState extends ConsumerState<AdminCouriersScreen> {
               backgroundColor: AppColors.error,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Kaldir'),
+            child: const Text('Kaldır'),
           ),
         ],
       ),
@@ -645,7 +648,7 @@ class _AdminCouriersScreenState extends ConsumerState<AdminCouriersScreen> {
     if (confirmed == true) {
       try {
         final client = ref.read(supabaseProvider);
-        await client.from('courier_assignments').delete().eq('id', assignmentId);
+        await client.from('merchant_couriers').delete().eq('id', assignmentId);
         ref.invalidate(merchantCouriersProvider(widget.merchantId));
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -659,7 +662,7 @@ class _AdminCouriersScreenState extends ConsumerState<AdminCouriersScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Islem basarisiz: $e'),
+              content: Text('İşlem başarısız: $e'),
               backgroundColor: AppColors.error,
             ),
           );

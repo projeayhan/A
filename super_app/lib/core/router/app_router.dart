@@ -31,6 +31,12 @@ import '../../screens/store/store_product_detail_screen.dart';
 import '../../screens/store/store_cart_screen.dart';
 import '../../screens/store/store_checkout_screen.dart';
 import '../../screens/taxi/taxi_home_screen.dart';
+import '../../screens/taxi/taxi_destination_screen.dart';
+import '../../screens/taxi/taxi_vehicle_selection_screen.dart';
+import '../../screens/taxi/taxi_searching_screen.dart';
+import '../../screens/taxi/taxi_ride_screen.dart';
+import '../../screens/taxi/taxi_rating_screen.dart';
+import '../../models/taxi/taxi_models.dart';
 import '../../screens/rental/rental_home_screen.dart';
 import '../../screens/rental/my_bookings_screen.dart';
 import '../../screens/rental/car_detail_screen.dart' as rental_detail;
@@ -60,6 +66,9 @@ import '../../screens/jobs/job_search_screen.dart';
 import '../../screens/jobs/add_job_listing_screen.dart';
 import '../../screens/jobs/my_job_listings_screen.dart';
 import '../../models/jobs/job_models.dart';
+import '../../models/jobs/job_data_models.dart';
+import '../../models/jobs/job_model_extensions.dart';
+import '../../services/jobs_service.dart';
 import '../../screens/support/ai_chat_screen.dart';
 import '../../screens/support/help_center_screen.dart';
 import '../../screens/grocery/grocery_home_screen.dart';
@@ -91,6 +100,11 @@ class AppRoutes {
   static const String market = '/market';
   static const String grocery = '/grocery';
   static const String taxi = '/taxi';
+  static const String taxiDestination = '/taxi/destination';
+  static const String taxiVehicleSelection = '/taxi/vehicle-selection';
+  static const String taxiSearching = '/taxi/searching';
+  static const String taxiRide = '/taxi/ride';
+  static const String taxiRating = '/taxi/rating';
   static const String rental = '/rental';
   static const String rentalMyBookings = '/rental/my-bookings';
   static const String service = '/service';
@@ -136,6 +150,9 @@ class AppRoutes {
   // Support Routes
   static const String aiChat = '/support/ai-chat';
   static const String helpCenter = '/help-center';
+
+  // Store Routes
+  static const String storeOrderTracking = '/store/order-tracking/:orderId';
 }
 
 final rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -208,6 +225,68 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.forgotPassword,
         name: 'forgotPassword',
         builder: (context, state) => const ForgotPasswordScreen(),
+      ),
+
+      // Taxi Full-Screen Routes (without bottom nav)
+      GoRoute(
+        path: AppRoutes.taxiDestination,
+        name: 'taxiDestination',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>? ?? {};
+          return TaxiDestinationScreen(
+            pickupLat: (extra['pickupLat'] as num?)?.toDouble() ?? 0.0,
+            pickupLng: (extra['pickupLng'] as num?)?.toDouble() ?? 0.0,
+            pickupAddress: extra['pickupAddress'] as String? ?? '',
+            dropoffLat: (extra['dropoffLat'] as num?)?.toDouble(),
+            dropoffLng: (extra['dropoffLng'] as num?)?.toDouble(),
+            dropoffAddress: extra['dropoffAddress'] as String?,
+            isScheduleMode: extra['isScheduleMode'] as bool? ?? false,
+          );
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.taxiVehicleSelection,
+        name: 'taxiVehicleSelection',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>;
+          return TaxiVehicleSelectionScreen(
+            pickup: extra['pickup'] as TaxiLocation,
+            dropoff: extra['dropoff'] as TaxiLocation,
+            isScheduleMode: extra['isScheduleMode'] as bool? ?? false,
+          );
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.taxiSearching,
+        name: 'taxiSearching',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>;
+          return TaxiSearchingScreen(
+            pickup: extra['pickup'] as TaxiLocation,
+            dropoff: extra['dropoff'] as TaxiLocation,
+            vehicleType: extra['vehicleType'] as VehicleType,
+            fare: (extra['fare'] as num).toDouble(),
+            distanceKm: (extra['distanceKm'] as num).toDouble(),
+            durationMinutes: extra['durationMinutes'] as int,
+            existingRide: extra['existingRide'] as TaxiRide?,
+          );
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.taxiRide,
+        name: 'taxiRide',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>;
+          return TaxiRideScreen(ride: extra['ride'] as TaxiRide);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.taxiRating,
+        name: 'taxiRating',
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>;
+          return TaxiRatingScreen(ride: extra['ride'] as TaxiRide);
+        },
       ),
 
       // Shell Route - Tüm sayfalarda bottom navigation bar gösterilecek
@@ -337,7 +416,9 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/store/search',
             name: 'storeSearch',
-            builder: (context, state) => const StoreSearchScreen(),
+            builder: (context, state) => StoreSearchScreen(
+              initialFilter: state.uri.queryParameters['filter'],
+            ),
           ),
           GoRoute(
             path: '/store/detail/:id',
@@ -396,6 +477,14 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/store/checkout',
             name: 'storeCheckout',
             builder: (context, state) => const StoreCheckoutScreen(),
+          ),
+          GoRoute(
+            path: '/store/order-tracking/:orderId',
+            name: 'storeOrderTracking',
+            builder: (context, state) {
+              final orderId = state.pathParameters['orderId'] ?? '';
+              return OrderTrackingScreen(orderId: orderId);
+            },
           ),
           // Grocery (Market) Routes
           GoRoute(
@@ -461,14 +550,16 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: AppRoutes.service,
             name: 'service',
-            builder: (context, state) =>
-                const Center(child: Text('Hizmet Servisi - Yakında')),
+            builder: (context, state) => const Scaffold(
+              body: Center(child: Text('Hizmet Servisi - Yakında')),
+            ),
           ),
           GoRoute(
             path: AppRoutes.appointment,
             name: 'appointment',
-            builder: (context, state) =>
-                const Center(child: Text('Randevu Servisi - Yakında')),
+            builder: (context, state) => const Scaffold(
+              body: Center(child: Text('Randevu Servisi - Yakında')),
+            ),
           ),
 
           // Emlak Routes
@@ -631,13 +722,9 @@ final routerProvider = Provider<GoRouter>((ref) {
               if (job != null) {
                 return JobDetailScreen(job: job);
               }
-              // Fallback - find by id from demo data
-              final id = state.pathParameters['id'] ?? '';
-              final foundJob = JobsDemoData.listings.firstWhere(
-                (j) => j.id == id,
-                orElse: () => JobsDemoData.listings.first,
-              );
-              return JobDetailScreen(job: foundJob);
+              // Deep link — load from DB by id
+              final id = state.pathParameters['id']!;
+              return _JobDetailLoader(jobId: id);
             },
           ),
           GoRoute(
@@ -712,3 +799,56 @@ final routerProvider = Provider<GoRouter>((ref) {
     ),
   );
 });
+
+/// Deep link için iş ilanını ID ile yükleyen wrapper widget
+class _JobDetailLoader extends StatefulWidget {
+  final String jobId;
+  const _JobDetailLoader({required this.jobId});
+
+  @override
+  State<_JobDetailLoader> createState() => _JobDetailLoaderState();
+}
+
+class _JobDetailLoaderState extends State<_JobDetailLoader> {
+  late final Future<JobListingData?> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = JobsService.instance.getListing(widget.jobId);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<JobListingData?>(
+      future: _future,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        final data = snapshot.data;
+        if (data == null) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('İlan Detayı')),
+            body: const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.work_off_outlined, size: 64, color: Colors.grey),
+                  SizedBox(height: 16),
+                  Text('İlan bulunamadı', style: TextStyle(fontSize: 18)),
+                  SizedBox(height: 8),
+                  Text('Bu ilan artık mevcut olmayabilir.',
+                      style: TextStyle(color: Colors.grey)),
+                ],
+              ),
+            ),
+          );
+        }
+        return JobDetailScreen(job: data.toUIModel());
+      },
+    );
+  }
+}

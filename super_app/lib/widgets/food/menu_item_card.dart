@@ -19,7 +19,8 @@ class MenuItemCard extends StatefulWidget {
   final String deliveryTime;
   final double rating;
   final GlobalKey? cartIconKey;
-  final bool hasOptionGroups; // Whether item has option groups that need selection
+  final bool
+  hasOptionGroups; // Whether item has option groups that need selection
   final double? imageSize; // Optional override for image size
 
   const MenuItemCard({
@@ -83,7 +84,8 @@ class _MenuItemCardState extends State<MenuItemCard> {
 
   @override
   Widget build(BuildContext context) {
-    final imageSize = widget.imageSize ?? context.listItemImage; // 64px on mobile default
+    final imageSize =
+        widget.imageSize ?? context.listItemImage; // 64px on mobile default
 
     return InkWell(
       onTap: () {
@@ -118,7 +120,9 @@ class _MenuItemCardState extends State<MenuItemCard> {
                     style: TextStyle(
                       fontSize: context.priceSize,
                       fontWeight: FontWeight.w600,
-                      color: widget.isDark ? Colors.white : const Color(0xFF111827),
+                      color: widget.isDark
+                          ? Colors.white
+                          : const Color(0xFF111827),
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -130,7 +134,9 @@ class _MenuItemCardState extends State<MenuItemCard> {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: context.bodySmallSize,
-                      color: widget.isDark ? Colors.grey[400] : Colors.grey[500],
+                      color: widget.isDark
+                          ? Colors.grey[400]
+                          : Colors.grey[500],
                       height: 1.3,
                     ),
                   ),
@@ -142,7 +148,9 @@ class _MenuItemCardState extends State<MenuItemCard> {
                         style: TextStyle(
                           fontSize: context.bodySize,
                           fontWeight: FontWeight.bold,
-                          color: widget.isDark ? Colors.white : const Color(0xFF111827),
+                          color: widget.isDark
+                              ? Colors.white
+                              : const Color(0xFF111827),
                         ),
                       ),
                       if (widget.badge != null) ...[
@@ -190,20 +198,26 @@ class _MenuItemCardState extends State<MenuItemCard> {
                       fit: BoxFit.cover,
                       memCacheWidth: 200,
                       memCacheHeight: 200,
-                      placeholder: (_, __) => Container(
+                      placeholder: (_, _) => Container(
                         width: imageSize,
                         height: imageSize,
                         color: Colors.grey[200],
-                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                        child: const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
                       ),
-                      errorWidget: (_, __, ___) => Container(
+                      errorWidget: (_, _, _) => Container(
                         width: imageSize,
                         height: imageSize,
-                        color: widget.isDark ? Colors.grey[800] : Colors.grey[100],
+                        color: widget.isDark
+                            ? Colors.grey[800]
+                            : Colors.grey[100],
                         child: Icon(
                           Icons.fastfood,
                           size: 24,
-                          color: widget.isDark ? Colors.grey[600] : Colors.grey[400],
+                          color: widget.isDark
+                              ? Colors.grey[600]
+                              : Colors.grey[400],
                         ),
                       ),
                     ),
@@ -218,7 +232,9 @@ class _MenuItemCardState extends State<MenuItemCard> {
                         width: 28,
                         height: 28,
                         decoration: BoxDecoration(
-                          color: widget.isDark ? FoodColors.surfaceDark : Colors.white,
+                          color: widget.isDark
+                              ? FoodColors.surfaceDark
+                              : Colors.white,
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(

@@ -33,7 +33,7 @@ class PropertyActivityCard extends StatelessWidget {
                   ? Image.network(
                       activity.firstImage,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Icon(
+                      errorBuilder: (_, _, _) => Icon(
                         Icons.home_outlined,
                         color: AppColors.textMuted(isDark),
                       ),
@@ -72,12 +72,20 @@ class PropertyActivityCard extends StatelessWidget {
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    _miniStat(Icons.visibility, '${activity.viewCount}',
-                        AppColors.info, isDark),
+                    _miniStat(
+                      Icons.visibility,
+                      '${activity.viewCount}',
+                      AppColors.info,
+                      isDark,
+                    ),
                     const SizedBox(width: 8),
                     if (activity.isFavorited)
-                      _miniStat(Icons.favorite, 'Favori', AppColors.error,
-                          isDark),
+                      _miniStat(
+                        Icons.favorite,
+                        'Favori',
+                        AppColors.error,
+                        isDark,
+                      ),
                     const Spacer(),
                     if (activity.lastViewedAt != null)
                       Text(

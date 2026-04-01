@@ -266,7 +266,7 @@ final vehicleTypesProvider = FutureProvider<List<Map<String, dynamic>>>((ref) as
 });
 
 /// Nearby Drivers Provider
-final nearbyDriversProvider = FutureProvider.family<List<Map<String, dynamic>>, Map<String, dynamic>>((ref, params) async {
+final nearbyDriversProvider = FutureProvider.autoDispose.family<List<Map<String, dynamic>>, Map<String, dynamic>>((ref, params) async {
   return TaxiService.findNearbyDrivers(
     latitude: (params['latitude'] as num).toDouble(),
     longitude: (params['longitude'] as num).toDouble(),
@@ -276,7 +276,7 @@ final nearbyDriversProvider = FutureProvider.family<List<Map<String, dynamic>>, 
 });
 
 /// Fare Calculation Provider
-final fareCalculationProvider = FutureProvider.family<Map<String, dynamic>, Map<String, dynamic>>((ref, params) async {
+final fareCalculationProvider = FutureProvider.autoDispose.family<Map<String, dynamic>, Map<String, dynamic>>((ref, params) async {
   return TaxiService.calculateFare(
     pickupLatitude: (params['pickup_latitude'] as num).toDouble(),
     pickupLongitude: (params['pickup_longitude'] as num).toDouble(),
@@ -298,7 +298,7 @@ final recentLocationsProvider = FutureProvider<List<Map<String, dynamic>>>((ref)
 });
 
 /// Feedback Tags Provider
-final feedbackTagsProvider = FutureProvider.family<List<Map<String, dynamic>>, String>((ref, category) async {
+final feedbackTagsProvider = FutureProvider.autoDispose.family<List<Map<String, dynamic>>, String>((ref, category) async {
   return TaxiService.getFeedbackTags(category: category);
 });
 

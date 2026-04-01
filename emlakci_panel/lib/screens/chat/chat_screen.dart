@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../providers/realtor_provider.dart';
 import '../../services/chat_service.dart';
+import 'package:emlakci_panel/core/services/log_service.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final String conversationId;
@@ -61,7 +62,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
       });
 
       _scrollToBottom();
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to load chat data', error: e, stackTrace: st, source: 'ChatScreen:_loadData');
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -123,7 +125,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         content: text,
       );
       // Mesaj realtime ile gelecek, burada eklememize gerek yok
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to send message', error: e, stackTrace: st, source: 'ChatScreen:_sendMessage');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Mesaj gönderilemedi: $e'), backgroundColor: Colors.red),

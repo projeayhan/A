@@ -1,5 +1,5 @@
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:emlakci_panel/core/services/log_service.dart';
 
 /// Emlakçı (Realtor) Servisi
 /// Emlakçı başvuruları, profil yönetimi, müşteri ve randevu işlemleri
@@ -766,8 +766,8 @@ class RealtorService {
           'appointments': prevTotalAppointments,
         },
       };
-    } catch (e) {
-      debugPrint('Performans istatistikleri alınamadı: $e');
+    } catch (e, st) {
+      LogService.error('Performans istatistikleri alınamadı', error: e, stackTrace: st, source: 'RealtorService:getPerformanceStats');
       return {'properties': [], 'totals': {}, 'previousTotals': {}};
     }
   }
@@ -809,8 +809,8 @@ class RealtorService {
         'entity_type': entityType,
         'entity_id': entityId,
       });
-    } catch (e) {
-      // Log hatası önemsiz
+    } catch (e, st) {
+      LogService.error('Failed to log activity', error: e, stackTrace: st, source: 'RealtorService:logActivity');
     }
   }
 
@@ -847,8 +847,8 @@ class RealtorService {
           .order('duration_days');
 
       return (response as List).cast<Map<String, dynamic>>();
-    } catch (e) {
-      debugPrint('Promosyon fiyatları alınamadı: $e');
+    } catch (e, st) {
+      LogService.error('Promosyon fiyatları alınamadı', error: e, stackTrace: st, source: 'RealtorService:getPromotionPrices');
       return [];
     }
   }
@@ -863,8 +863,8 @@ class RealtorService {
           .order('created_at', ascending: false);
 
       return (response as List).cast<Map<String, dynamic>>();
-    } catch (e) {
-      debugPrint('Promosyonlar alınamadı: $e');
+    } catch (e, st) {
+      LogService.error('Promosyonlar alınamadı', error: e, stackTrace: st, source: 'RealtorService:getPropertyPromotions');
       return [];
     }
   }
@@ -912,7 +912,9 @@ class RealtorService {
                 .gte('viewed_at', beforeStart.toIso8601String())
                 .lt('viewed_at', startDate.toIso8601String());
             viewsBefore = (beforeViews as List).length;
-          } catch (_) {}
+          } catch (e, st) {
+            LogService.error('Before views query failed', error: e, stackTrace: st, source: 'RealtorService:getActivePromotions');
+          }
 
           // Promosyon süresince görüntülenme
           try {
@@ -922,7 +924,9 @@ class RealtorService {
                 .eq('property_id', propertyId)
                 .gte('viewed_at', startDate.toIso8601String());
             viewsDuring = (duringViews as List).length;
-          } catch (_) {}
+          } catch (e, st) {
+            LogService.error('During views query failed', error: e, stackTrace: st, source: 'RealtorService:getActivePromotions');
+          }
         }
 
         enrichedPromotions.add({
@@ -937,8 +941,8 @@ class RealtorService {
       }
 
       return enrichedPromotions;
-    } catch (e) {
-      debugPrint('Aktif promosyonlar alınamadı: $e');
+    } catch (e, st) {
+      LogService.error('Aktif promosyonlar alınamadı', error: e, stackTrace: st, source: 'RealtorService:getActivePromotions');
       return [];
     }
   }
@@ -961,8 +965,8 @@ class RealtorService {
           .limit(50);
 
       return (response as List).cast<Map<String, dynamic>>();
-    } catch (e) {
-      debugPrint('Promosyon geçmişi alınamadı: $e');
+    } catch (e, st) {
+      LogService.error('Promosyon geçmişi alınamadı', error: e, stackTrace: st, source: 'RealtorService:getPromotionHistory');
       return [];
     }
   }
@@ -980,8 +984,8 @@ class RealtorService {
           .maybeSingle();
 
       return response;
-    } catch (e) {
-      debugPrint('Aktif promosyon kontrolü başarısız: $e');
+    } catch (e, st) {
+      LogService.error('Aktif promosyon kontrolü başarısız', error: e, stackTrace: st, source: 'RealtorService:getActivePromotion');
       return null;
     }
   }
@@ -1065,8 +1069,8 @@ class RealtorService {
       );
 
       return response;
-    } catch (e) {
-      debugPrint('Promosyon oluşturulamadı: $e');
+    } catch (e, st) {
+      LogService.error('Promosyon oluşturulamadı', error: e, stackTrace: st, source: 'RealtorService:createPromotion');
       return null;
     }
   }
@@ -1094,8 +1098,8 @@ class RealtorService {
       await _updatePropertyPromotionStatus(propertyId);
 
       return true;
-    } catch (e) {
-      debugPrint('Promosyon iptal edilemedi: $e');
+    } catch (e, st) {
+      LogService.error('Promosyon iptal edilemedi', error: e, stackTrace: st, source: 'RealtorService:cancelPromotion');
       return false;
     }
   }
@@ -1131,8 +1135,8 @@ class RealtorService {
             'updated_at': DateTime.now().toIso8601String(),
           })
           .eq('id', propertyId);
-    } catch (e) {
-      debugPrint('Property promosyon durumu güncellenemedi: $e');
+    } catch (e, st) {
+      LogService.error('Property promosyon durumu güncellenemedi', error: e, stackTrace: st, source: 'RealtorService:_updatePropertyPromotionStatus');
     }
   }
 
@@ -1142,8 +1146,149 @@ class RealtorService {
       await _client.rpc('increment_promotion_views', params: {
         'p_property_id': propertyId,
       });
-    } catch (e) {
-      // Sessizce devam et
+    } catch (e, st) {
+      LogService.error('Promosyon görüntülenme artırılamadı', error: e, stackTrace: st, source: 'RealtorService:incrementPromotionViews');
+    }
+  }
+
+  // ==================== PROMOSYON AKIŞI (Anında Aktif) ====================
+
+  /// property_promotion_prices tablosundan fiyat listesini getir.
+  Future<List<Map<String, dynamic>>> getPropertyPromotionPrices() async {
+    try {
+      final response = await _client
+          .from('property_promotion_prices')
+          .select()
+          .eq('is_active', true)
+          .order('sort_order');
+      return (response as List).cast<Map<String, dynamic>>();
+    } catch (e, st) {
+      LogService.error('Emlak promosyon fiyatları alınamadı', error: e, stackTrace: st, source: 'RealtorService:getPropertyPromotionPrices');
+      return [];
+    }
+  }
+
+  /// Promosyon satın al.
+  /// [status] = 'pending_payment' → sadece kayıt oluşturur, ilanı aktifleştirmez.
+  /// [status] = 'active' (varsayılan) → kayıt + anında aktivasyon.
+  Future<Map<String, dynamic>?> submitPropertyPromotionRequest({
+    required String listingId,
+    required String priceId,
+    String status = 'active',
+  }) async {
+    if (_userId == null) return null;
+
+    try {
+      final priceData = await _client
+          .from('property_promotion_prices')
+          .select()
+          .eq('id', priceId)
+          .single();
+
+      final promotionType = priceData['promotion_type'] as String;
+      final durationDays = priceData['duration_days'] as int;
+      final amountPaid = (priceData['discounted_price'] as num?)?.toDouble() ??
+          (priceData['price'] as num).toDouble();
+
+      final realtorId = await _getRealtorId();
+      final now = DateTime.now();
+      final expiresAt = now.add(Duration(days: durationDays));
+
+      final response = await _client
+          .from('property_promotions')
+          .insert({
+            'listing_id': listingId,
+            'realtor_id': realtorId,
+            'user_id': _userId,
+            'price_id': priceId,
+            'promotion_type': promotionType,
+            'duration_days': durationDays,
+            'amount_paid': amountPaid,
+            'started_at': now.toIso8601String(),
+            'expires_at': expiresAt.toIso8601String(),
+            'status': status,
+            'payment_status': status == 'active' ? 'completed' : 'pending',
+          })
+          .select()
+          .single();
+
+      // Sadece status 'active' ise ilanı hemen öne çıkar
+      if (status == 'active') {
+        await _client.from('property_listings').update({
+          'is_featured': true,
+          if (promotionType == 'premium') 'is_premium': true,
+          'updated_at': now.toIso8601String(),
+        }).eq('id', listingId);
+      }
+
+      return response;
+    } catch (e, st) {
+      LogService.error('Emlak promosyonu başlatılamadı', error: e, stackTrace: st, source: 'RealtorService:submitPropertyPromotionRequest');
+      return null;
+    }
+  }
+
+  /// Bekleyen bir emlak promosyonunu aktifleştirir (webhook güvenlik ağı ile birlikte).
+  Future<bool> activatePropertyPromotion(
+    String promotionId,
+    String listingId,
+    String promotionType,
+  ) async {
+    try {
+      await _client
+          .from('property_promotions')
+          .update({'status': 'active', 'payment_status': 'completed'})
+          .eq('id', promotionId);
+
+      await _client.from('property_listings').update({
+        'is_featured': true,
+        if (promotionType == 'premium') 'is_premium': true,
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', listingId);
+
+      return true;
+    } catch (e, st) {
+      LogService.error('Emlak promosyonu aktifleştirilemedi', error: e, stackTrace: st, source: 'RealtorService:activatePropertyPromotion');
+      return false;
+    }
+  }
+
+  /// Kullanıcının tüm property promosyonlarını getir (ilan başlığı join'li).
+  Future<List<Map<String, dynamic>>> getMyPropertyPromotions() async {
+    if (_userId == null) return [];
+
+    try {
+      final response = await _client
+          .from('property_promotions')
+          .select('''
+            *,
+            property_listings:listing_id (id, title, images, city, district)
+          ''')
+          .eq('user_id', _userId!)
+          .order('created_at', ascending: false);
+      return (response as List).cast<Map<String, dynamic>>();
+    } catch (e, st) {
+      LogService.error('Emlak promosyonları alınamadı', error: e, stackTrace: st, source: 'RealtorService:getMyPropertyPromotions');
+      return [];
+    }
+  }
+
+  /// Bekleyen bir promosyon talebini iptal et.
+  Future<bool> cancelPropertyPromotion(String promotionId) async {
+    if (_userId == null) return false;
+    try {
+      await _client
+          .from('property_promotions')
+          .update({
+            'status': 'cancelled',
+            'cancelled_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', promotionId)
+          .eq('user_id', _userId!);
+      return true;
+    } catch (e, st) {
+      LogService.error('Emlak promosyonu iptal edilemedi', error: e, stackTrace: st, source: 'RealtorService:cancelPropertyPromotion');
+      return false;
     }
   }
 }

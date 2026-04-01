@@ -4,18 +4,16 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
 import '../../core/theme/app_responsive.dart';
 
+import '../../core/providers/address_provider.dart';
 import '../../core/services/taxi_service.dart';
 import '../../services/location_service.dart';
 import '../../services/google_places_service.dart';
-import 'taxi_destination_screen.dart';
 import '../../models/taxi/taxi_models.dart';
 import '../../core/services/supabase_service.dart';
-import 'taxi_ride_screen.dart' hide AnimatedBuilder;
-import 'taxi_searching_screen.dart' hide AnimatedBuilder;
-import 'taxi_driver_screen.dart' hide AnimatedBuilder, AnimatedBuilder2;
 
 class TaxiHomeScreen extends ConsumerStatefulWidget {
   const TaxiHomeScreen({super.key});
@@ -82,30 +80,24 @@ class _TaxiHomeScreenState extends ConsumerState<TaxiHomeScreen>
             final vehicleType = VehicleType.fromJson(vehicleTypeData);
 
             if (mounted) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => TaxiSearchingScreen(
-                    pickup: ride.pickup,
-                    dropoff: ride.dropoff,
-                    vehicleType: vehicleType,
-                    fare: ride.fare,
-                    distanceKm: ride.distanceKm,
-                    durationMinutes: ride.durationMinutes,
-                    existingRide: ride,
-                  ),
-                ),
-              );
+              context.go('/taxi/searching', extra: {
+                'pickup': ride.pickup,
+                'dropoff': ride.dropoff,
+                'vehicleType': vehicleType,
+                'fare': ride.fare,
+                'distanceKm': ride.distanceKm,
+                'durationMinutes': ride.durationMinutes,
+                'existingRide': ride,
+              });
             }
           } catch (e) {
             debugPrint('Error restoring search screen: $e');
           }
         } else if (ride.status != RideStatus.completed &&
             ride.status != RideStatus.cancelled) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (_) => TaxiRideScreen(ride: ride)),
-          );
+          if (mounted) {
+            context.go('/taxi/ride', extra: {'ride': ride});
+          }
         }
       }
     } catch (e) {
@@ -311,29 +303,11 @@ class _TaxiHomeScreenState extends ConsumerState<TaxiHomeScreen>
 
   void _openDestinationScreen() {
     HapticFeedback.lightImpact();
-    Navigator.of(context).push(
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            TaxiDestinationScreen(
-              pickupLat: _currentLat,
-              pickupLng: _currentLng,
-              pickupAddress: _currentAddress,
-            ),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          return SlideTransition(
-            position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
-                .animate(
-                  CurvedAnimation(
-                    parent: animation,
-                    curve: Curves.easeOutCubic,
-                  ),
-                ),
-            child: child,
-          );
-        },
-        transitionDuration: const Duration(milliseconds: 400),
-      ),
-    );
+    context.push('/taxi/destination', extra: {
+      'pickupLat': _currentLat,
+      'pickupLng': _currentLng,
+      'pickupAddress': _currentAddress,
+    });
   }
 
   @override
@@ -424,28 +398,6 @@ class _TaxiHomeScreenState extends ConsumerState<TaxiHomeScreen>
               },
             ),
             const Spacer(),
-            // Sürücü modu butonu
-            _buildCircleButton(
-              icon: Icons.local_taxi_outlined,
-              isDark: isDark,
-              onTap: () {
-                HapticFeedback.lightImpact();
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const TaxiDriverScreen(),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(width: 8),
-            _buildCircleButton(
-              icon: Icons.person_outline,
-              isDark: isDark,
-              onTap: () {
-                HapticFeedback.lightImpact();
-              },
-            ),
           ],
         ),
       ),
@@ -914,6 +866,25 @@ class _TaxiHomeScreenState extends ConsumerState<TaxiHomeScreen>
   }
 
   Widget _buildSavedLocations(bool isDark) {
+    final addresses = ref.watch(allAddressesProvider);
+    final homeAddress = addresses.where((a) => a.type == 'home').firstOrNull;
+    final workAddress = addresses.where((a) => a.type == 'work').firstOrNull;
+
+    void goToAddress(UserAddress? address) {
+      if (address == null) return;
+      HapticFeedback.lightImpact();
+      context.push('/taxi/destination', extra: {
+        'pickupLat': _currentLat,
+        'pickupLng': _currentLng,
+        'pickupAddress': _currentAddress,
+        'dropoffLat': address.latitude,
+        'dropoffLng': address.longitude,
+        'dropoffAddress': address.fullAddress.isNotEmpty
+            ? address.fullAddress
+            : address.shortAddress,
+      });
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -938,15 +909,19 @@ class _TaxiHomeScreenState extends ConsumerState<TaxiHomeScreen>
               _buildSavedLocationCard(
                 icon: Icons.home_rounded,
                 label: 'Ev',
+                subtitle: homeAddress?.shortAddress,
                 color: Colors.blue,
                 isDark: isDark,
+                onTap: homeAddress != null ? () => goToAddress(homeAddress) : null,
               ),
               const SizedBox(width: 12),
               _buildSavedLocationCard(
                 icon: Icons.work_rounded,
                 label: 'İş',
+                subtitle: workAddress?.shortAddress,
                 color: Colors.orange,
                 isDark: isDark,
+                onTap: workAddress != null ? () => goToAddress(workAddress) : null,
               ),
               const SizedBox(width: 12),
               _buildAddLocationCard(isDark),
@@ -962,9 +937,11 @@ class _TaxiHomeScreenState extends ConsumerState<TaxiHomeScreen>
     required String label,
     required Color color,
     required bool isDark,
+    String? subtitle,
+    VoidCallback? onTap,
   }) {
     return GestureDetector(
-      onTap: () => HapticFeedback.lightImpact(),
+      onTap: onTap ?? () => HapticFeedback.lightImpact(),
       child: TweenAnimationBuilder<double>(
         tween: Tween(begin: 0.0, end: 1.0),
         duration: const Duration(milliseconds: 400),
@@ -1088,18 +1065,14 @@ class _TaxiHomeScreenState extends ConsumerState<TaxiHomeScreen>
       child: InkWell(
         onTap: () {
           HapticFeedback.lightImpact();
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => TaxiDestinationScreen(
-                pickupLat: _currentLat,
-                pickupLng: _currentLng,
-                pickupAddress: _currentAddress,
-                dropoffLat: (location['latitude'] as num?)?.toDouble(),
-                dropoffLng: (location['longitude'] as num?)?.toDouble(),
-                dropoffAddress: location['address'] as String?,
-              ),
-            ),
-          );
+          context.push('/taxi/destination', extra: {
+            'pickupLat': _currentLat,
+            'pickupLng': _currentLng,
+            'pickupAddress': _currentAddress,
+            'dropoffLat': (location['latitude'] as num?)?.toDouble(),
+            'dropoffLng': (location['longitude'] as num?)?.toDouble(),
+            'dropoffAddress': location['address'] as String?,
+          });
         },
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),

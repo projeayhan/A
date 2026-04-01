@@ -7,12 +7,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'supabase_service.dart';
+import 'package:super_app/core/services/log_service.dart';
 
 /// Background message handler - must be top-level function
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
-  debugPrint('Background message: ${message.messageId}');
+  LogService.info('Background message: ${message.messageId}', source: 'PushNotificationService:backgroundHandler');
 }
 
 /// Push Notification Service using Firebase Cloud Messaging
@@ -43,7 +44,7 @@ class PushNotificationService {
   Future<void> initialize() async {
     // Web platformunda push notification desteklenmiyor
     if (kIsWeb) {
-      debugPrint('Push notifications skipped on web platform');
+      LogService.info('Push notifications skipped on web platform', source: 'PushNotificationService:initialize');
       return;
     }
 
@@ -75,9 +76,9 @@ class PushNotificationService {
         _handleNotificationTap(initialMessage);
       }
 
-      debugPrint('Push notification service initialized');
-    } catch (e) {
-      debugPrint('Error initializing push notifications: $e');
+      LogService.info('Push notification service initialized', source: 'PushNotificationService:initialize');
+    } catch (e, st) {
+      LogService.error('Error initializing push notifications', error: e, stackTrace: st, source: 'PushNotificationService:initialize');
     }
   }
 
@@ -93,7 +94,7 @@ class PushNotificationService {
       sound: true,
     );
 
-    debugPrint('Notification permission status: ${settings.authorizationStatus}');
+    LogService.info('Notification permission status: ${settings.authorizationStatus}', source: 'PushNotificationService:_requestPermission');
   }
 
   /// Initialize local notifications for foreground display
@@ -117,8 +118,8 @@ class PushNotificationService {
           try {
             final data = jsonDecode(response.payload!);
             _notificationController?.add(data);
-          } catch (e) {
-            debugPrint('Error parsing notification payload: $e');
+          } catch (e, st) {
+            LogService.error('Error parsing notification payload', error: e, stackTrace: st, source: 'PushNotificationService:_setupMessageHandlers');
           }
         }
       },
@@ -147,10 +148,10 @@ class PushNotificationService {
       _fcmToken = await _messaging.getToken();
       if (_fcmToken != null) {
         await _saveTokenToSupabase(_fcmToken!);
-        debugPrint('FCM Token: $_fcmToken');
+        LogService.info('FCM Token obtained', source: 'PushNotificationService:_getAndSaveToken');
       }
-    } catch (e) {
-      debugPrint('Error getting FCM token: $e');
+    } catch (e, st) {
+      LogService.error('Error getting FCM token', error: e, stackTrace: st, source: 'PushNotificationService:_getAndSaveToken');
     }
   }
 
@@ -167,9 +168,9 @@ class PushNotificationService {
         'updated_at': DateTime.now().toIso8601String(),
       }, onConflict: 'user_id');
 
-      debugPrint('FCM token saved to Supabase');
-    } catch (e) {
-      debugPrint('Error saving FCM token: $e');
+      LogService.info('FCM token saved to Supabase', source: 'PushNotificationService:_saveTokenToSupabase');
+    } catch (e, st) {
+      LogService.error('Error saving FCM token', error: e, stackTrace: st, source: 'PushNotificationService:_saveTokenToSupabase');
     }
   }
 
@@ -196,7 +197,7 @@ class PushNotificationService {
 
   /// Handle foreground message - show local notification
   Future<void> _handleForegroundMessage(RemoteMessage message) async {
-    debugPrint('Foreground message received: ${message.messageId}');
+    LogService.info('Foreground message received: ${message.messageId}', source: 'PushNotificationService:_handleForegroundMessage');
 
     final notification = message.notification;
     if (notification == null) return;
@@ -206,7 +207,7 @@ class PushNotificationService {
 
     // Check user preferences before showing
     if (!await _shouldShowNotification(type)) {
-      debugPrint('Notification suppressed by user preferences: $type');
+      LogService.info('Notification suppressed by user preferences: $type', source: 'PushNotificationService:_handleForegroundMessage');
       return;
     }
 
@@ -240,7 +241,7 @@ class PushNotificationService {
 
   /// Handle notification tap
   void _handleNotificationTap(RemoteMessage message) {
-    debugPrint('Notification tapped: ${message.messageId}');
+    LogService.info('Notification tapped: ${message.messageId}', source: 'PushNotificationService:_handleNotificationTap');
     _notificationController?.add(message.data);
   }
 
@@ -288,9 +289,9 @@ class PushNotificationService {
       await _messaging.deleteToken();
       _fcmToken = null;
 
-      debugPrint('FCM token deleted');
-    } catch (e) {
-      debugPrint('Error deleting FCM token: $e');
+      LogService.info('FCM token deleted', source: 'PushNotificationService:deleteToken');
+    } catch (e, st) {
+      LogService.error('Error deleting FCM token', error: e, stackTrace: st, source: 'PushNotificationService:deleteToken');
     }
   }
 

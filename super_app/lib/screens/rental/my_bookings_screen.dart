@@ -39,7 +39,9 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
   }
 
   void _subscribeToBookings() {
-    _realtimeSubscription = _rentalService.subscribeToUserBookings().listen((_) {
+    _realtimeSubscription = _rentalService.subscribeToUserBookings().listen((
+      _,
+    ) {
       if (!mounted) return;
       // Realtime only returns basic columns, reload full data with joins
       _loadBookings(silent: true);
@@ -59,12 +61,16 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
 
       final active = bookings.where((b) {
         final status = b['status'] as String?;
-        return status == 'pending' || status == 'confirmed' || status == 'active';
+        return status == 'pending' ||
+            status == 'confirmed' ||
+            status == 'active';
       }).toList();
 
       final past = bookings.where((b) {
         final status = b['status'] as String?;
-        return status == 'completed' || status == 'cancelled' || status == 'no_show';
+        return status == 'completed' ||
+            status == 'cancelled' ||
+            status == 'no_show';
       }).toList();
 
       if (mounted) {
@@ -103,14 +109,22 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
       body: _isLoading
           ? Center(child: CircularProgressIndicator(color: colors.primary))
           : _error != null
-              ? _buildErrorView(theme)
-              : TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildBookingsList(_activeBookings, isActive: true, theme: theme),
-                    _buildBookingsList(_pastBookings, isActive: false, theme: theme),
-                  ],
+          ? _buildErrorView(theme)
+          : TabBarView(
+              controller: _tabController,
+              children: [
+                _buildBookingsList(
+                  _activeBookings,
+                  isActive: true,
+                  theme: theme,
                 ),
+                _buildBookingsList(
+                  _pastBookings,
+                  isActive: false,
+                  theme: theme,
+                ),
+              ],
+            ),
     );
   }
 
@@ -125,10 +139,13 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
           const SizedBox(height: 8),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Text(_error!,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant),
-                textAlign: TextAlign.center),
+            child: Text(
+              _error!,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
+            ),
           ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
@@ -141,8 +158,11 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
     );
   }
 
-  Widget _buildBookingsList(List<Map<String, dynamic>> bookings,
-      {required bool isActive, required ThemeData theme}) {
+  Widget _buildBookingsList(
+    List<Map<String, dynamic>> bookings, {
+    required bool isActive,
+    required ThemeData theme,
+  }) {
     if (bookings.isEmpty) {
       return Center(
         child: Column(
@@ -155,9 +175,12 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
             ),
             const SizedBox(height: 16),
             Text(
-              isActive ? 'Aktif rezervasyonunuz yok' : 'Geçmiş rezervasyonunuz yok',
+              isActive
+                  ? 'Aktif rezervasyonunuz yok'
+                  : 'Geçmiş rezervasyonunuz yok',
               style: theme.textTheme.bodyLarge?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant),
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),
@@ -171,19 +194,27 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
         padding: const EdgeInsets.all(16),
         itemCount: bookings.length,
         itemBuilder: (context, index) {
-          return _buildBookingCard(bookings[index], isActive: isActive, theme: theme);
+          return _buildBookingCard(
+            bookings[index],
+            isActive: isActive,
+            theme: theme,
+          );
         },
       ),
     );
   }
 
-  Widget _buildBookingCard(Map<String, dynamic> booking,
-      {required bool isActive, required ThemeData theme}) {
+  Widget _buildBookingCard(
+    Map<String, dynamic> booking, {
+    required bool isActive,
+    required ThemeData theme,
+  }) {
     final colors = theme.colorScheme;
     final car = booking['rental_cars'] as Map<String, dynamic>?;
     final company = booking['rental_companies'] as Map<String, dynamic>?;
     final pickupLocation = booking['pickup_location'] as Map<String, dynamic>?;
-    final dropoffLocation = booking['dropoff_location'] as Map<String, dynamic>?;
+    final dropoffLocation =
+        booking['dropoff_location'] as Map<String, dynamic>?;
 
     final pickupDate = DateTime.tryParse(booking['pickup_date'] ?? '');
     final dropoffDate = DateTime.tryParse(booking['dropoff_date'] ?? '');
@@ -208,7 +239,10 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: statusColor,
                     borderRadius: BorderRadius.circular(8),
@@ -223,9 +257,12 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                   ),
                 ),
                 const Spacer(),
-                Text(bookingNumber,
-                    style: theme.textTheme.labelLarge?.copyWith(
-                        color: colors.onSurfaceVariant)),
+                Text(
+                  bookingNumber,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: colors.onSurfaceVariant,
+                  ),
+                ),
               ],
             ),
           ),
@@ -245,9 +282,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                           fit: BoxFit.cover,
                           memCacheWidth: 200,
                           memCacheHeight: 140,
-                          placeholder: (_, __) => _buildCarPlaceholder(theme),
-                          errorWidget: (_, __, ___) =>
-                              _buildCarPlaceholder(theme),
+                          placeholder: (_, _) => _buildCarPlaceholder(theme),
+                          errorWidget: (_, _, _) => _buildCarPlaceholder(theme),
                         )
                       : _buildCarPlaceholder(theme),
                 ),
@@ -264,13 +300,16 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                       Text(
                         company?['company_name'] ?? '',
                         style: theme.textTheme.bodySmall?.copyWith(
-                            color: colors.onSurfaceVariant),
+                          color: colors.onSurfaceVariant,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         '₺${totalAmount.toStringAsFixed(0)}',
                         style: theme.textTheme.titleLarge?.copyWith(
-                            color: colors.primary, fontWeight: FontWeight.bold),
+                          color: colors.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),
@@ -295,18 +334,25 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                       children: [
                         Icon(Icons.login, color: AppColors.success, size: 20),
                         const SizedBox(height: 4),
-                        Text('Alış', style: theme.textTheme.labelSmall?.copyWith(
-                            color: colors.onSurfaceVariant)),
+                        Text(
+                          'Alış',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: colors.onSurfaceVariant,
+                          ),
+                        ),
                         const SizedBox(height: 2),
                         Text(
-                          pickupDate != null ? dateFormat.format(pickupDate) : '-',
+                          pickupDate != null
+                              ? dateFormat.format(pickupDate)
+                              : '-',
                           style: theme.textTheme.bodySmall,
                           textAlign: TextAlign.center,
                         ),
                         Text(
                           pickupLocation?['name'] ?? '',
                           style: theme.textTheme.labelSmall?.copyWith(
-                              color: colors.onSurfaceVariant),
+                            color: colors.onSurfaceVariant,
+                          ),
                           textAlign: TextAlign.center,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -314,28 +360,31 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                       ],
                     ),
                   ),
-                  Container(
-                    width: 1,
-                    height: 60,
-                    color: colors.outlineVariant,
-                  ),
+                  Container(width: 1, height: 60, color: colors.outlineVariant),
                   Expanded(
                     child: Column(
                       children: [
                         Icon(Icons.logout, color: AppColors.error, size: 20),
                         const SizedBox(height: 4),
-                        Text('Teslim', style: theme.textTheme.labelSmall?.copyWith(
-                            color: colors.onSurfaceVariant)),
+                        Text(
+                          'Teslim',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: colors.onSurfaceVariant,
+                          ),
+                        ),
                         const SizedBox(height: 2),
                         Text(
-                          dropoffDate != null ? dateFormat.format(dropoffDate) : '-',
+                          dropoffDate != null
+                              ? dateFormat.format(dropoffDate)
+                              : '-',
                           style: theme.textTheme.bodySmall,
                           textAlign: TextAlign.center,
                         ),
                         Text(
                           dropoffLocation?['name'] ?? '',
                           style: theme.textTheme.labelSmall?.copyWith(
-                              color: colors.onSurfaceVariant),
+                            color: colors.onSurfaceVariant,
+                          ),
                           textAlign: TextAlign.center,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -412,8 +461,11 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
         color: theme.colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Icon(Icons.directions_car,
-          color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.3), size: 32),
+      child: Icon(
+        Icons.directions_car,
+        color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+        size: 32,
+      ),
     );
   }
 
@@ -465,7 +517,9 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Bu rezervasyonu iptal etmek istediğinizden emin misiniz?'),
+            const Text(
+              'Bu rezervasyonu iptal etmek istediğinizden emin misiniz?',
+            ),
             const SizedBox(height: 16),
             TextField(
               controller: reasonController,
@@ -492,7 +546,9 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
               );
             },
             style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.error, foregroundColor: Colors.white),
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
             child: const Text('İptal Et'),
           ),
         ],
@@ -523,10 +579,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Hata: $e'),
-          backgroundColor: AppColors.error,
-        ),
+        SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
       );
     }
   }
@@ -538,9 +591,9 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
       );
       return;
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Aranıyor: $phone')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Aranıyor: $phone')));
   }
 
   void _showReviewDialog(Map<String, dynamic> booking) {
@@ -581,8 +634,10 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                 child: Row(
                   children: [
                     Expanded(
-                      child: Text('Değerlendirme',
-                          style: theme.textTheme.titleLarge),
+                      child: Text(
+                        'Değerlendirme',
+                        style: theme.textTheme.titleLarge,
+                      ),
                     ),
                     IconButton(
                       onPressed: () => Navigator.pop(context),
@@ -600,27 +655,52 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _buildRatingSection(
-                        'Genel Değerlendirme', overallRating,
-                        (rating) => setDialogState(() => overallRating = rating),
-                        isMain: true, theme: theme,
+                        'Genel Değerlendirme',
+                        overallRating,
+                        (rating) =>
+                            setDialogState(() => overallRating = rating),
+                        isMain: true,
+                        theme: theme,
                       ),
                       const SizedBox(height: 24),
-                      Text('Detaylı Değerlendirme',
-                          style: theme.textTheme.titleSmall?.copyWith(
-                              color: colors.onSurfaceVariant)),
+                      Text(
+                        'Detaylı Değerlendirme',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
                       const SizedBox(height: 16),
-                      _buildRatingSection('Araç Durumu', carConditionRating,
-                          (r) => setDialogState(() => carConditionRating = r), theme: theme),
-                      _buildRatingSection('Temizlik', cleanlinessRating,
-                          (r) => setDialogState(() => cleanlinessRating = r), theme: theme),
-                      _buildRatingSection('Hizmet Kalitesi', serviceRating,
-                          (r) => setDialogState(() => serviceRating = r), theme: theme),
-                      _buildRatingSection('Fiyat/Performans', valueRating,
-                          (r) => setDialogState(() => valueRating = r), theme: theme),
+                      _buildRatingSection(
+                        'Araç Durumu',
+                        carConditionRating,
+                        (r) => setDialogState(() => carConditionRating = r),
+                        theme: theme,
+                      ),
+                      _buildRatingSection(
+                        'Temizlik',
+                        cleanlinessRating,
+                        (r) => setDialogState(() => cleanlinessRating = r),
+                        theme: theme,
+                      ),
+                      _buildRatingSection(
+                        'Hizmet Kalitesi',
+                        serviceRating,
+                        (r) => setDialogState(() => serviceRating = r),
+                        theme: theme,
+                      ),
+                      _buildRatingSection(
+                        'Fiyat/Performans',
+                        valueRating,
+                        (r) => setDialogState(() => valueRating = r),
+                        theme: theme,
+                      ),
                       const SizedBox(height: 24),
-                      Text('Yorumunuz',
-                          style: theme.textTheme.titleSmall?.copyWith(
-                              color: colors.onSurfaceVariant)),
+                      Text(
+                        'Yorumunuz',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
                       const SizedBox(height: 12),
                       TextField(
                         controller: commentController,
@@ -638,7 +718,8 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
               // Submit Button
               Padding(
                 padding: EdgeInsets.only(
-                  left: 20, right: 20,
+                  left: 20,
+                  right: 20,
                   bottom: MediaQuery.of(context).padding.bottom + 20,
                   top: 16,
                 ),
@@ -648,16 +729,25 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
                     onPressed: () async {
                       Navigator.pop(context);
                       await _submitDetailedReview(
-                        booking, overallRating, carConditionRating,
-                        cleanlinessRating, serviceRating, valueRating,
+                        booking,
+                        overallRating,
+                        carConditionRating,
+                        cleanlinessRating,
+                        serviceRating,
+                        valueRating,
                         commentController.text,
                       );
                     },
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
-                    child: const Text('Değerlendirmeyi Gönder',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                    child: const Text(
+                      'Değerlendirmeyi Gönder',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -669,18 +759,25 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
   }
 
   Widget _buildRatingSection(
-    String label, int rating, Function(int) onRatingChanged,
-    {bool isMain = false, required ThemeData theme}) {
+    String label,
+    int rating,
+    Function(int) onRatingChanged, {
+    bool isMain = false,
+    required ThemeData theme,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         children: [
           Expanded(
-            child: Text(label,
-                style: isMain
-                    ? theme.textTheme.titleSmall
-                    : theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant)),
+            child: Text(
+              label,
+              style: isMain
+                  ? theme.textTheme.titleSmall
+                  : theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+            ),
           ),
           Row(
             children: List.generate(5, (index) {
@@ -705,8 +802,12 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
 
   Future<void> _submitDetailedReview(
     Map<String, dynamic> booking,
-    int overallRating, int carConditionRating, int cleanlinessRating,
-    int serviceRating, int valueRating, String comment,
+    int overallRating,
+    int carConditionRating,
+    int cleanlinessRating,
+    int serviceRating,
+    int valueRating,
+    String comment,
   ) async {
     try {
       final success = await _rentalService.createReview(
@@ -740,10 +841,7 @@ class _MyBookingsScreenState extends State<MyBookingsScreen>
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Hata: $e'),
-          backgroundColor: AppColors.error,
-        ),
+        SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
       );
     }
   }

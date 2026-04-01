@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:data_table_2/data_table_2.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
@@ -24,9 +23,10 @@ class _AdminCarListingsScreenState extends ConsumerState<AdminCarListingsScreen>
     with SingleTickerProviderStateMixin {
   String _searchQuery = '';
   String _statusFilter = 'all';
+  bool _isGridView = true;
   Timer? _debounce;
   final _currencyFormat = NumberFormat.currency(locale: 'tr_TR', symbol: '₺', decimalDigits: 0);
-  final _dateFormat = DateFormat('dd MMM yyyy', 'tr');
+  final _numberFormat = NumberFormat('#,###', 'tr_TR');
 
   List<Map<String, dynamic>> _listings = [];
   bool _isLoading = true;
@@ -37,9 +37,10 @@ class _AdminCarListingsScreenState extends ConsumerState<AdminCarListingsScreen>
     {'key': 'all', 'label': 'Tümü'},
     {'key': 'active', 'label': 'Aktif'},
     {'key': 'pending', 'label': 'Beklemede'},
+    {'key': 'inactive', 'label': 'Pasif'},
     {'key': 'sold', 'label': 'Satıldı'},
     {'key': 'reserved', 'label': 'Rezerve'},
-    {'key': 'expired', 'label': 'Süresi Doldu'},
+    {'key': 'expired', 'label': 'Süresi Dolmuş'},
     {'key': 'rejected', 'label': 'Reddedildi'},
   ];
 
@@ -63,7 +64,9 @@ class _AdminCarListingsScreenState extends ConsumerState<AdminCarListingsScreen>
   }
 
   Future<void> _fetchListings() async {
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     setState(() => _isLoading = true);
 
     try {
@@ -74,27 +77,35 @@ class _AdminCarListingsScreenState extends ConsumerState<AdminCarListingsScreen>
           .eq('dealer_id', widget.dealerId)
           .order('created_at', ascending: false);
 
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() {
         _listings = List<Map<String, dynamic>>.from(response);
         _isLoading = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      debugPrint('fetchListings error: $e');
+      if (!mounted) {
+        return;
+      }
       setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Araç ilanları yüklenemedi: $e'), backgroundColor: Colors.red),
+      );
     }
   }
 
   List<Map<String, dynamic>> get _filteredListings {
     return _listings.where((listing) {
+      final brand = (listing['brand'] ?? listing['brand_name'] ?? '').toString().toLowerCase();
+      final model = (listing['model'] ?? listing['model_name'] ?? '').toString().toLowerCase();
       final title = (listing['title'] ?? '').toString().toLowerCase();
-      final brand = (listing['brand_name'] ?? '').toString().toLowerCase();
-      final model = (listing['model_name'] ?? '').toString().toLowerCase();
       final query = _searchQuery.toLowerCase();
       final matchesSearch = _searchQuery.isEmpty ||
-          title.contains(query) ||
           brand.contains(query) ||
-          model.contains(query);
+          model.contains(query) ||
+          title.contains(query);
 
       final matchesStatus = _statusFilter == 'all' ||
           listing['status'] == _statusFilter;
@@ -103,13 +114,140 @@ class _AdminCarListingsScreenState extends ConsumerState<AdminCarListingsScreen>
     }).toList();
   }
 
+  String _getListingTitle(Map<String, dynamic> listing) {
+    final brand = listing['brand'] ?? listing['brand_name'] ?? '';
+    final model = listing['model'] ?? listing['model_name'] ?? '';
+    final year = listing['year']?.toString() ?? '';
+    final composed = '$brand $model $year'.trim();
+    return composed.isNotEmpty ? composed : (listing['title'] ?? 'İsimsiz');
+  }
+
+  String? _getFirstImage(Map<String, dynamic> listing) {
+    final images = listing['images'];
+    if (images is List && images.isNotEmpty) {
+      return images[0] as String?;
+    }
+    return null;
+  }
+
+  String _formatPrice(dynamic price) {
+    if (price == null) {
+      return '-';
+    }
+    return _currencyFormat.format(price);
+  }
+
+  String _formatMileage(dynamic mileage) {
+    if (mileage == null) {
+      return '-';
+    }
+    return '${_numberFormat.format(mileage)} km';
+  }
+
+  String _translateFuelType(String? fuelType) {
+    switch (fuelType) {
+      case 'gasoline':
+        return 'Benzin';
+      case 'diesel':
+        return 'Dizel';
+      case 'lpg':
+        return 'LPG';
+      case 'electric':
+        return 'Elektrik';
+      case 'hybrid':
+        return 'Hibrit';
+      default:
+        return fuelType ?? '-';
+    }
+  }
+
+  String _translateTransmission(String? transmission) {
+    switch (transmission) {
+      case 'automatic':
+        return 'Otomatik';
+      case 'manual':
+        return 'Manuel';
+      case 'semi_automatic':
+        return 'Yarı Otomatik';
+      default:
+        return transmission ?? '-';
+    }
+  }
+
+  String _translateBodyType(String? bodyType) {
+    switch (bodyType) {
+      case 'sedan':
+        return 'Sedan';
+      case 'hatchback':
+        return 'Hatchback';
+      case 'suv':
+        return 'SUV';
+      case 'coupe':
+        return 'Coupe';
+      case 'convertible':
+        return 'Cabrio';
+      case 'pickup':
+        return 'Pickup';
+      case 'van':
+        return 'Van';
+      case 'minivan':
+        return 'Minivan';
+      case 'wagon':
+        return 'Station Wagon';
+      default:
+        return bodyType ?? '-';
+    }
+  }
+
+  Color _statusColor(String status) {
+    switch (status) {
+      case 'active':
+        return AppColors.success;
+      case 'pending':
+        return AppColors.warning;
+      case 'sold':
+        return AppColors.info;
+      case 'reserved':
+        return AppColors.primary;
+      case 'expired':
+        return AppColors.textMuted;
+      case 'rejected':
+        return AppColors.error;
+      case 'inactive':
+        return AppColors.textMuted;
+      default:
+        return AppColors.textMuted;
+    }
+  }
+
+  String _statusLabel(String status) {
+    switch (status) {
+      case 'active':
+        return 'Aktif';
+      case 'pending':
+        return 'Beklemede';
+      case 'inactive':
+        return 'Pasif';
+      case 'sold':
+        return 'Satıldı';
+      case 'reserved':
+        return 'Rezerve';
+      case 'expired':
+        return 'Süresi Dolmuş';
+      case 'rejected':
+        return 'Reddedildi';
+      default:
+        return status;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final filtered = _filteredListings;
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -150,6 +288,30 @@ class _AdminCarListingsScreenState extends ConsumerState<AdminCarListingsScreen>
                 ),
                 Row(
                   children: [
+                    // Grid/List toggle
+                    Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.surfaceLight),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildViewToggleButton(
+                            icon: Icons.grid_view_rounded,
+                            isActive: _isGridView,
+                            onTap: () => setState(() => _isGridView = true),
+                          ),
+                          _buildViewToggleButton(
+                            icon: Icons.view_list_rounded,
+                            isActive: !_isGridView,
+                            onTap: () => setState(() => _isGridView = false),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
                     OutlinedButton.icon(
                       onPressed: _fetchListings,
                       icon: const Icon(Icons.refresh, size: 18),
@@ -174,43 +336,39 @@ class _AdminCarListingsScreenState extends ConsumerState<AdminCarListingsScreen>
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AppColors.surfaceLight),
               ),
-              child: Column(
-                children: [
-                  TabBar(
-                    controller: _tabController,
-                    isScrollable: true,
-                    indicatorColor: AppColors.primary,
-                    labelColor: AppColors.primary,
-                    unselectedLabelColor: AppColors.textMuted,
-                    indicatorSize: TabBarIndicatorSize.label,
-                    tabAlignment: TabAlignment.start,
-                    tabs: _statusTabs.map((tab) {
-                      final count = tab['key'] == 'all'
-                          ? _listings.length
-                          : _listings.where((l) => l['status'] == tab['key']).length;
-                      return Tab(
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(tab['label']!),
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: AppColors.surfaceLight,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text(
-                                '$count',
-                                style: const TextStyle(fontSize: 11),
-                              ),
-                            ),
-                          ],
+              child: TabBar(
+                controller: _tabController,
+                isScrollable: true,
+                indicatorColor: AppColors.primary,
+                labelColor: AppColors.primary,
+                unselectedLabelColor: AppColors.textMuted,
+                indicatorSize: TabBarIndicatorSize.label,
+                tabAlignment: TabAlignment.start,
+                tabs: _statusTabs.map((tab) {
+                  final count = tab['key'] == 'all'
+                      ? _listings.length
+                      : _listings.where((l) => l['status'] == tab['key']).length;
+                  return Tab(
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(tab['label']!),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceLight,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '$count',
+                            style: const TextStyle(fontSize: 11),
+                          ),
                         ),
-                      );
-                    }).toList(),
-                  ),
-                ],
+                      ],
+                    ),
+                  );
+                }).toList(),
               ),
             ),
 
@@ -224,51 +382,67 @@ class _AdminCarListingsScreenState extends ConsumerState<AdminCarListingsScreen>
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AppColors.surfaceLight),
               ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      onChanged: (value) {
-                        _debounce?.cancel();
-                        _debounce = Timer(const Duration(milliseconds: 300), () {
-                          if (mounted) setState(() => _searchQuery = value);
-                        });
-                      },
-                      decoration: InputDecoration(
-                        hintText: 'Başlık, marka veya model ara...',
-                        prefixIcon: const Icon(Icons.search, color: AppColors.textMuted),
-                        filled: true,
-                        fillColor: AppColors.background,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide.none,
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      ),
-                    ),
+              child: TextField(
+                onChanged: (value) {
+                  _debounce?.cancel();
+                  _debounce = Timer(const Duration(milliseconds: 300), () {
+                    if (mounted) {
+                      setState(() => _searchQuery = value);
+                    }
+                  });
+                },
+                decoration: InputDecoration(
+                  hintText: 'Marka, model veya başlık ara...',
+                  prefixIcon: const Icon(Icons.search, color: AppColors.textMuted),
+                  filled: true,
+                  fillColor: AppColors.background,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide.none,
                   ),
-                ],
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
               ),
             ),
 
             const SizedBox(height: 16),
 
-            // Table
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.surfaceLight),
-                ),
-                child: _isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : filtered.isEmpty
-                        ? _buildEmptyState()
-                        : _buildDataTable(filtered),
-              ),
-            ),
+            // Listings content
+            if (_isLoading)
+              const Padding(
+                padding: EdgeInsets.all(48),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (filtered.isEmpty)
+              _buildEmptyState()
+            else if (_isGridView)
+              _buildGridView(filtered)
+            else
+              _buildListView(filtered),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildViewToggleButton({
+    required IconData icon,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: isActive ? AppColors.primary.withValues(alpha: 0.2) : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(
+          icon,
+          size: 20,
+          color: isActive ? AppColors.primary : AppColors.textMuted,
         ),
       ),
     );
@@ -379,194 +553,416 @@ class _AdminCarListingsScreenState extends ConsumerState<AdminCarListingsScreen>
     );
   }
 
-  Widget _buildDataTable(List<Map<String, dynamic>> listings) {
-    return DataTable2(
-      columnSpacing: 12,
-      horizontalMargin: 16,
-      minWidth: 1400,
-      headingRowColor: WidgetStateProperty.all(AppColors.background),
-      headingTextStyle: const TextStyle(
-        color: AppColors.textMuted,
-        fontWeight: FontWeight.w600,
-        fontSize: 12,
-      ),
-      dataTextStyle: const TextStyle(
-        color: AppColors.textPrimary,
-        fontSize: 14,
-      ),
-      columns: const [
-        DataColumn2(label: Text('ARAÇ'), size: ColumnSize.L),
-        DataColumn2(label: Text('FİYAT'), size: ColumnSize.S),
-        DataColumn2(label: Text('YAKIT'), size: ColumnSize.S),
-        DataColumn2(label: Text('VİTES'), size: ColumnSize.S),
-        DataColumn2(label: Text('KM'), size: ColumnSize.S),
-        DataColumn2(label: Text('ŞEHİR'), size: ColumnSize.S),
-        DataColumn2(label: Text('DURUM'), size: ColumnSize.S),
-        DataColumn2(label: Text('GÖRÜNTÜLENME'), fixedWidth: 120),
-        DataColumn2(label: Text('TARİH'), size: ColumnSize.S),
-        DataColumn2(label: Text('İŞLEMLER'), size: ColumnSize.M),
-      ],
-      rows: listings.map((listing) {
-        final images = listing['images'];
-        String? imageUrl;
-        if (images is List && images.isNotEmpty) {
-          imageUrl = images[0] as String?;
-        }
+  // ==================== GRID VIEW ====================
 
-        final brandName = listing['brand_name'] ?? '';
-        final modelName = listing['model_name'] ?? '';
-        final year = listing['year']?.toString() ?? '';
-        final title = '$brandName $modelName $year'.trim();
+  Widget _buildGridView(List<Map<String, dynamic>> listings) {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 420,
+        mainAxisExtent: 340,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+      ),
+      itemCount: listings.length,
+      itemBuilder: (context, index) {
+        return _buildListingCard(listings[index]);
+      },
+    );
+  }
 
-        return DataRow2(
-          cells: [
-            // Thumbnail + Title
-            DataCell(
-              Row(
+  Widget _buildListingCard(Map<String, dynamic> listing) {
+    final imageUrl = _getFirstImage(listing);
+    final title = _getListingTitle(listing);
+    final status = (listing['status'] ?? 'pending') as String;
+    final isPending = status == 'pending';
+
+    return InkWell(
+      onTap: () => _showDetailDialog(listing),
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.surfaceLight),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Image section
+            SizedBox(
+              height: 150,
+              child: Stack(
+                fit: StackFit.expand,
                 children: [
-                  Container(
-                    width: 48,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceLight,
-                      borderRadius: BorderRadius.circular(6),
-                      image: imageUrl != null
-                          ? DecorationImage(
-                              image: NetworkImage(imageUrl),
-                              fit: BoxFit.cover,
-                            )
-                          : null,
+                  ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(14),
+                      topRight: Radius.circular(14),
                     ),
-                    child: imageUrl == null
-                        ? const Icon(Icons.directions_car, color: AppColors.textMuted, size: 20)
-                        : null,
+                    child: imageUrl != null
+                        ? Image.network(
+                            imageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, _, _) => _buildImagePlaceholder(),
+                          )
+                        : _buildImagePlaceholder(),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
+                  // Status badge
+                  Positioned(
+                    top: 10,
+                    left: 10,
+                    child: _buildStatusBadge(status),
+                  ),
+                  // Premium / Featured badges
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          title.isNotEmpty ? title : (listing['title'] ?? 'İsimsiz'),
-                          style: const TextStyle(fontWeight: FontWeight.w500),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Row(
-                          children: [
-                            if (listing['is_featured'] == true)
-                              _buildMiniTag('Öne Çıkan', AppColors.warning),
-                            if (listing['is_premium'] == true)
-                              _buildMiniTag('Premium', AppColors.primary),
-                          ],
-                        ),
+                        if (listing['is_premium'] == true)
+                          _buildGradientBadge('Premium', [AppColors.primary, AppColors.primaryLight]),
+                        if (listing['is_premium'] == true && listing['is_featured'] == true)
+                          const SizedBox(width: 4),
+                        if (listing['is_featured'] == true)
+                          _buildGradientBadge('Öne Çıkan', [AppColors.warning, const Color(0xFFFBBF24)]),
                       ],
                     ),
                   ),
                 ],
               ),
             ),
-            // Price
-            DataCell(
-              Text(
-                listing['price'] != null
-                    ? _currencyFormat.format(listing['price'])
-                    : '-',
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
-            ),
-            // Fuel type
-            DataCell(Text(_translateFuelType(listing['fuel_type']))),
-            // Transmission
-            DataCell(Text(_translateTransmission(listing['transmission']))),
-            // Mileage
-            DataCell(
-              Text(
-                listing['mileage'] != null
-                    ? '${NumberFormat('#,###', 'tr_TR').format(listing['mileage'])} km'
-                    : '-',
-              ),
-            ),
-            // City
-            DataCell(Text(listing['city'] ?? '-')),
-            // Status
-            DataCell(_buildStatusBadge(listing['status'] ?? 'pending')),
-            // View count
-            DataCell(
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.visibility, size: 14, color: AppColors.textMuted),
-                  const SizedBox(width: 4),
-                  Text('${listing['view_count'] ?? 0}'),
-                ],
-              ),
-            ),
-            // Created at
-            DataCell(
-              Text(
-                listing['created_at'] != null
-                    ? _dateFormat.format(DateTime.parse(listing['created_at']))
-                    : '-',
-                style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
-              ),
-            ),
-            // Actions
-            DataCell(
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (listing['status'] == 'pending') ...[
-                    IconButton(
-                      onPressed: () => _updateListingStatus(listing['id'], 'active'),
-                      icon: const Icon(Icons.check_circle, size: 18),
-                      color: AppColors.success,
-                      tooltip: 'Onayla',
+
+            // Info section
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Title
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    IconButton(
-                      onPressed: () => _updateListingStatus(listing['id'], 'rejected'),
-                      icon: const Icon(Icons.cancel, size: 18),
-                      color: AppColors.error,
-                      tooltip: 'Reddet',
+                    const SizedBox(height: 6),
+
+                    // Spec chips
+                    Row(
+                      children: [
+                        _buildSpecChip(_formatMileage(listing['mileage'])),
+                        const SizedBox(width: 6),
+                        _buildSpecChip(_translateFuelType(listing['fuel_type'])),
+                        const SizedBox(width: 6),
+                        _buildSpecChip(_translateTransmission(listing['transmission'])),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Price
+                    Text(
+                      _formatPrice(listing['price']),
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 17,
+                      ),
+                    ),
+
+                    const Spacer(),
+
+                    // Bottom row: stats + actions
+                    Row(
+                      children: [
+                        // View count
+                        Icon(Icons.visibility_outlined, size: 14, color: AppColors.textMuted.withValues(alpha: 0.8)),
+                        const SizedBox(width: 3),
+                        Text(
+                          '${listing['view_count'] ?? 0}',
+                          style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                        ),
+                        const SizedBox(width: 10),
+                        // Favorite count
+                        Icon(Icons.favorite_outline, size: 14, color: AppColors.textMuted.withValues(alpha: 0.8)),
+                        const SizedBox(width: 3),
+                        Text(
+                          '${listing['favorite_count'] ?? 0}',
+                          style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                        ),
+                        const SizedBox(width: 10),
+                        // Contact count
+                        Icon(Icons.phone_outlined, size: 14, color: AppColors.textMuted.withValues(alpha: 0.8)),
+                        const SizedBox(width: 3),
+                        Text(
+                          '${listing['contact_count'] ?? 0}',
+                          style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                        ),
+                        const Spacer(),
+                        // Pending actions
+                        if (isPending) ...[
+                          _buildMiniActionButton(
+                            icon: Icons.check_circle,
+                            color: AppColors.success,
+                            tooltip: 'Onayla',
+                            onTap: () => _updateListingStatus(listing['id'], 'active'),
+                          ),
+                          const SizedBox(width: 4),
+                          _buildMiniActionButton(
+                            icon: Icons.cancel,
+                            color: AppColors.error,
+                            tooltip: 'Reddet',
+                            onTap: () => _showRejectDialog(listing['id']),
+                          ),
+                        ],
+                        if (status == 'active' || status == 'inactive') ...[
+                          _buildMiniActionButton(
+                            icon: status == 'active' ? Icons.pause_circle_filled : Icons.play_circle_filled,
+                            color: status == 'active' ? AppColors.warning : AppColors.success,
+                            tooltip: status == 'active' ? 'Pasife Al' : 'Aktif Et',
+                            onTap: () => _updateListingStatus(
+                              listing['id'],
+                              status == 'active' ? 'inactive' : 'active',
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                        ],
+                        if (!isPending)
+                          _buildMiniActionButton(
+                            icon: Icons.more_vert,
+                            color: AppColors.textMuted,
+                            tooltip: 'İşlemler',
+                            onTap: () => _showActionsMenu(listing),
+                          ),
+                      ],
                     ),
                   ],
-                  IconButton(
-                    onPressed: () => _toggleFeatured(listing),
-                    icon: Icon(
-                      listing['is_featured'] == true ? Icons.star : Icons.star_border,
-                      size: 18,
-                    ),
-                    color: listing['is_featured'] == true ? AppColors.warning : AppColors.textMuted,
-                    tooltip: listing['is_featured'] == true ? 'Öne Çıkarmayı Kaldır' : 'Öne Çıkar',
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ==================== LIST VIEW ====================
+
+  Widget _buildListView(List<Map<String, dynamic>> listings) {
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: listings.length,
+      itemBuilder: (context, index) {
+        return _buildListingRow(listings[index]);
+      },
+    );
+  }
+
+  Widget _buildListingRow(Map<String, dynamic> listing) {
+    final imageUrl = _getFirstImage(listing);
+    final title = _getListingTitle(listing);
+    final status = (listing['status'] ?? 'pending') as String;
+    final isPending = status == 'pending';
+
+    return InkWell(
+      onTap: () => _showDetailDialog(listing),
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.surfaceLight),
+        ),
+        child: Row(
+          children: [
+            // Image
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: SizedBox(
+                width: 120,
+                height: 80,
+                child: imageUrl != null
+                    ? Image.network(
+                        imageUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) => _buildImagePlaceholder(),
+                      )
+                    : _buildImagePlaceholder(),
+              ),
+            ),
+            const SizedBox(width: 16),
+
+            // Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Title + badges
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (listing['is_premium'] == true)
+                        _buildMiniTag('Premium', AppColors.primary),
+                      if (listing['is_featured'] == true)
+                        _buildMiniTag('Öne Çıkan', AppColors.warning),
+                      const SizedBox(width: 8),
+                      _buildStatusBadge(status),
+                    ],
                   ),
-                  IconButton(
-                    onPressed: () => _togglePremium(listing),
-                    icon: Icon(
-                      listing['is_premium'] == true ? Icons.workspace_premium : Icons.workspace_premium_outlined,
-                      size: 18,
-                    ),
-                    color: listing['is_premium'] == true ? AppColors.primary : AppColors.textMuted,
-                    tooltip: listing['is_premium'] == true ? 'Premium Kaldır' : 'Premium Yap',
+                  const SizedBox(height: 6),
+
+                  // Spec chips
+                  Row(
+                    children: [
+                      _buildSpecChip(_formatMileage(listing['mileage'])),
+                      const SizedBox(width: 6),
+                      _buildSpecChip(_translateFuelType(listing['fuel_type'])),
+                      const SizedBox(width: 6),
+                      _buildSpecChip(_translateTransmission(listing['transmission'])),
+                    ],
                   ),
-                  IconButton(
-                    onPressed: () => _showDetailDialog(listing),
-                    icon: const Icon(Icons.visibility, size: 18),
-                    color: AppColors.textMuted,
-                    tooltip: 'Detay',
+                  const SizedBox(height: 8),
+
+                  // Price + stats + actions
+                  Row(
+                    children: [
+                      Text(
+                        _formatPrice(listing['price']),
+                        style: const TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(width: 20),
+                      Icon(Icons.visibility_outlined, size: 14, color: AppColors.textMuted.withValues(alpha: 0.8)),
+                      const SizedBox(width: 3),
+                      Text('${listing['view_count'] ?? 0}', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                      const SizedBox(width: 10),
+                      Icon(Icons.favorite_outline, size: 14, color: AppColors.textMuted.withValues(alpha: 0.8)),
+                      const SizedBox(width: 3),
+                      Text('${listing['favorite_count'] ?? 0}', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                      const SizedBox(width: 10),
+                      Icon(Icons.phone_outlined, size: 14, color: AppColors.textMuted.withValues(alpha: 0.8)),
+                      const SizedBox(width: 3),
+                      Text('${listing['contact_count'] ?? 0}', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+                      const Spacer(),
+                      if (isPending) ...[
+                        _buildMiniActionButton(
+                          icon: Icons.check_circle,
+                          color: AppColors.success,
+                          tooltip: 'Onayla',
+                          onTap: () => _updateListingStatus(listing['id'], 'active'),
+                        ),
+                        const SizedBox(width: 4),
+                        _buildMiniActionButton(
+                          icon: Icons.cancel,
+                          color: AppColors.error,
+                          tooltip: 'Reddet',
+                          onTap: () => _showRejectDialog(listing['id']),
+                        ),
+                      ],
+                      if (status == 'active' || status == 'inactive') ...[
+                        _buildMiniActionButton(
+                          icon: status == 'active' ? Icons.pause_circle_filled : Icons.play_circle_filled,
+                          color: status == 'active' ? AppColors.warning : AppColors.success,
+                          tooltip: status == 'active' ? 'Pasife Al' : 'Aktif Et',
+                          onTap: () => _updateListingStatus(
+                            listing['id'],
+                            status == 'active' ? 'inactive' : 'active',
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                      ],
+                      _buildMiniActionButton(
+                        icon: Icons.star,
+                        color: listing['is_featured'] == true ? AppColors.warning : AppColors.textMuted,
+                        tooltip: listing['is_featured'] == true ? 'Öne Çıkarmayı Kaldır' : 'Öne Çıkar',
+                        onTap: () => _toggleFeatured(listing),
+                      ),
+                      const SizedBox(width: 4),
+                      _buildMiniActionButton(
+                        icon: Icons.workspace_premium,
+                        color: listing['is_premium'] == true ? AppColors.primary : AppColors.textMuted,
+                        tooltip: listing['is_premium'] == true ? 'Premium Kaldır' : 'Premium Yap',
+                        onTap: () => _togglePremium(listing),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
           ],
-        );
-      }).toList(),
+        ),
+      ),
+    );
+  }
+
+  // ==================== SHARED WIDGETS ====================
+
+  Widget _buildImagePlaceholder() {
+    return Container(
+      color: AppColors.surfaceLight,
+      child: const Center(
+        child: Icon(Icons.directions_car, color: AppColors.textMuted, size: 32),
+      ),
+    );
+  }
+
+  Widget _buildStatusBadge(String status) {
+    final color = _statusColor(status);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        _statusLabel(status),
+        style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+
+  Widget _buildGradientBadge(String label, List<Color> gradient) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: gradient),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600),
+      ),
     );
   }
 
   Widget _buildMiniTag(String text, Color color) {
     return Container(
-      margin: const EdgeInsets.only(right: 4, top: 2),
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+      margin: const EdgeInsets.only(left: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(4),
@@ -578,85 +974,624 @@ class _AdminCarListingsScreenState extends ConsumerState<AdminCarListingsScreen>
     );
   }
 
-  Widget _buildStatusBadge(String status) {
-    Color color;
-    String text;
-
-    switch (status) {
-      case 'active':
-        color = AppColors.success;
-        text = 'Aktif';
-        break;
-      case 'pending':
-        color = AppColors.warning;
-        text = 'Beklemede';
-        break;
-      case 'sold':
-        color = AppColors.info;
-        text = 'Satıldı';
-        break;
-      case 'reserved':
-        color = AppColors.primary;
-        text = 'Rezerve';
-        break;
-      case 'expired':
-        color = AppColors.textMuted;
-        text = 'Süresi Doldu';
-        break;
-      case 'rejected':
-        color = AppColors.error;
-        text = 'Reddedildi';
-        break;
-      default:
-        color = AppColors.textMuted;
-        text = status;
-    }
-
+  Widget _buildSpecChip(String text) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(20),
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
         text,
-        style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w500),
+        style: const TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w500),
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }
 
-  String _translateFuelType(String? fuelType) {
-    switch (fuelType) {
-      case 'gasoline':
-        return 'Benzin';
-      case 'diesel':
-        return 'Dizel';
-      case 'lpg':
-        return 'LPG';
-      case 'electric':
-        return 'Elektrik';
-      case 'hybrid':
-        return 'Hibrit';
-      default:
-        return fuelType ?? '-';
-    }
+  Widget _buildMiniActionButton({
+    required IconData icon,
+    required Color color,
+    required String tooltip,
+    required VoidCallback onTap,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(6),
+        child: Padding(
+          padding: const EdgeInsets.all(4),
+          child: Icon(icon, size: 18, color: color),
+        ),
+      ),
+    );
   }
 
-  String _translateTransmission(String? transmission) {
-    switch (transmission) {
-      case 'automatic':
-        return 'Otomatik';
-      case 'manual':
-        return 'Manuel';
-      case 'semi_automatic':
-        return 'Yarı Otomatik';
-      default:
-        return transmission ?? '-';
-    }
+  void _showActionsMenu(Map<String, dynamic> listing) {
+    final RenderBox button = context.findRenderObject() as RenderBox;
+    showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        button.size.width - 200,
+        button.size.height / 2,
+        0,
+        0,
+      ),
+      color: AppColors.surface,
+      items: [
+        const PopupMenuItem(
+          value: 'detail',
+          child: Row(
+            children: [
+              Icon(Icons.visibility, size: 18, color: AppColors.textSecondary),
+              SizedBox(width: 8),
+              Text('Detay Görüntüle', style: TextStyle(color: AppColors.textPrimary)),
+            ],
+          ),
+        ),
+        if (listing['status'] == 'active' || listing['status'] == 'inactive')
+          PopupMenuItem(
+            value: 'toggle_status',
+            child: Row(
+              children: [
+                Icon(
+                  listing['status'] == 'active' ? Icons.pause_circle_filled : Icons.play_circle_filled,
+                  size: 18,
+                  color: listing['status'] == 'active' ? AppColors.warning : AppColors.success,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  listing['status'] == 'active' ? 'Pasife Al' : 'Aktif Et',
+                  style: const TextStyle(color: AppColors.textPrimary),
+                ),
+              ],
+            ),
+          ),
+        PopupMenuItem(
+          value: 'featured',
+          child: Row(
+            children: [
+              Icon(
+                listing['is_featured'] == true ? Icons.star : Icons.star_border,
+                size: 18,
+                color: AppColors.warning,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                listing['is_featured'] == true ? 'Öne Çıkarmayı Kaldır' : 'Öne Çıkar',
+                style: const TextStyle(color: AppColors.textPrimary),
+              ),
+            ],
+          ),
+        ),
+        PopupMenuItem(
+          value: 'premium',
+          child: Row(
+            children: [
+              Icon(
+                listing['is_premium'] == true ? Icons.workspace_premium : Icons.workspace_premium_outlined,
+                size: 18,
+                color: AppColors.primary,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                listing['is_premium'] == true ? 'Premium Kaldır' : 'Premium Yap',
+                style: const TextStyle(color: AppColors.textPrimary),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ).then((value) {
+      if (value == 'detail') {
+        _showDetailDialog(listing);
+      } else if (value == 'toggle_status') {
+        _updateListingStatus(
+          listing['id'],
+          listing['status'] == 'active' ? 'inactive' : 'active',
+        );
+      } else if (value == 'featured') {
+        _toggleFeatured(listing);
+      } else if (value == 'premium') {
+        _togglePremium(listing);
+      }
+    });
   }
+
+  // ==================== DETAIL DIALOG ====================
+
+  void _showDetailDialog(Map<String, dynamic> listing) {
+    final images = (listing['images'] is List) ? List<String>.from(listing['images']) : <String>[];
+    final features = (listing['features'] is List) ? List<String>.from(listing['features']) : <String>[];
+    int currentImageIndex = 0;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            return Dialog(
+              backgroundColor: AppColors.surface,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 800, maxHeight: 700),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Dialog header
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(24, 20, 16, 16),
+                      decoration: const BoxDecoration(
+                        border: Border(bottom: BorderSide(color: AppColors.surfaceLight)),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _getListingTitle(listing),
+                                  style: const TextStyle(
+                                    color: AppColors.textPrimary,
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    _buildStatusBadge((listing['status'] ?? 'pending') as String),
+                                    if (listing['is_premium'] == true) ...[
+                                      const SizedBox(width: 8),
+                                      _buildMiniTag('Premium', AppColors.primary),
+                                    ],
+                                    if (listing['is_featured'] == true) ...[
+                                      const SizedBox(width: 8),
+                                      _buildMiniTag('Öne Çıkan', AppColors.warning),
+                                    ],
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            icon: const Icon(Icons.close, color: AppColors.textMuted),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Dialog body
+                    Flexible(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Image gallery
+                            if (images.isNotEmpty) ...[
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: SizedBox(
+                                  height: 250,
+                                  width: double.infinity,
+                                  child: Stack(
+                                    fit: StackFit.expand,
+                                    children: [
+                                      PageView.builder(
+                                        itemCount: images.length,
+                                        onPageChanged: (index) {
+                                          setDialogState(() => currentImageIndex = index);
+                                        },
+                                        itemBuilder: (context, index) {
+                                          return Image.network(
+                                            images[index],
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, _, _) => _buildImagePlaceholder(),
+                                          );
+                                        },
+                                      ),
+                                      if (images.length > 1)
+                                        Positioned(
+                                          bottom: 12,
+                                          right: 12,
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                            decoration: BoxDecoration(
+                                              color: Colors.black54,
+                                              borderRadius: BorderRadius.circular(16),
+                                            ),
+                                            child: Text(
+                                              '${currentImageIndex + 1} / ${images.length}',
+                                              style: const TextStyle(color: Colors.white, fontSize: 12),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              // Thumbnail strip
+                              if (images.length > 1) ...[
+                                const SizedBox(height: 10),
+                                SizedBox(
+                                  height: 56,
+                                  child: ListView.builder(
+                                    scrollDirection: Axis.horizontal,
+                                    itemCount: images.length,
+                                    itemBuilder: (context, index) {
+                                      final isActive = index == currentImageIndex;
+                                      return GestureDetector(
+                                        onTap: () => setDialogState(() => currentImageIndex = index),
+                                        child: Container(
+                                          width: 72,
+                                          margin: const EdgeInsets.only(right: 8),
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(8),
+                                            border: Border.all(
+                                              color: isActive ? AppColors.primary : AppColors.surfaceLight,
+                                              width: isActive ? 2 : 1,
+                                            ),
+                                          ),
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(7),
+                                            child: Image.network(
+                                              images[index],
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (_, _, _) => const Icon(Icons.broken_image, size: 16, color: AppColors.textMuted),
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(height: 20),
+                            ] else ...[
+                              Container(
+                                height: 150,
+                                width: double.infinity,
+                                decoration: BoxDecoration(
+                                  color: AppColors.background,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Center(
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.directions_car, size: 48, color: AppColors.textMuted),
+                                      SizedBox(height: 8),
+                                      Text('Fotoğraf yok', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                            ],
+
+                            // Price card
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.sell, color: AppColors.primary, size: 24),
+                                  const SizedBox(width: 12),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text('Fiyat', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                                      Text(
+                                        _formatPrice(listing['price']),
+                                        style: const TextStyle(
+                                          color: AppColors.primary,
+                                          fontSize: 22,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  if (listing['currency'] != null && listing['currency'] != 'TRY') ...[
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      listing['currency'],
+                                      style: const TextStyle(color: AppColors.textMuted, fontSize: 14),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+
+                            // Full specs
+                            const Text(
+                              'Araç Bilgileri',
+                              style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(height: 12),
+                            _buildSpecsGrid(listing),
+                            const SizedBox(height: 20),
+
+                            // Features
+                            if (features.isNotEmpty) ...[
+                              const Text(
+                                'Donanım & Özellikler',
+                                style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w600),
+                              ),
+                              const SizedBox(height: 12),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: features.map((f) {
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.background,
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: AppColors.surfaceLight),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.check_circle, size: 14, color: AppColors.success),
+                                        const SizedBox(width: 6),
+                                        Text(f, style: const TextStyle(color: AppColors.textPrimary, fontSize: 13)),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                              const SizedBox(height: 20),
+                            ],
+
+                            // Description
+                            if (listing['description'] != null && (listing['description'] as String).isNotEmpty) ...[
+                              const Text(
+                                'Açıklama',
+                                style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w600),
+                              ),
+                              const SizedBox(height: 8),
+                              Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: AppColors.background,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  listing['description'],
+                                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 14, height: 1.5),
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                            ],
+
+                            // Statistics
+                            const Text(
+                              'İstatistikler',
+                              style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                _buildDetailStatCard('Görüntülenme', '${listing['view_count'] ?? 0}', Icons.visibility, AppColors.info),
+                                const SizedBox(width: 12),
+                                _buildDetailStatCard('Favoriler', '${listing['favorite_count'] ?? 0}', Icons.favorite, AppColors.error),
+                                const SizedBox(width: 12),
+                                _buildDetailStatCard('İletişim', '${listing['contact_count'] ?? 0}', Icons.phone, AppColors.success),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    // Dialog footer with actions
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
+                      decoration: const BoxDecoration(
+                        border: Border(top: BorderSide(color: AppColors.surfaceLight)),
+                      ),
+                      child: Row(
+                        children: [
+                          if (listing['status'] == 'pending') ...[
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                _updateListingStatus(listing['id'], 'active');
+                              },
+                              icon: const Icon(Icons.check_circle, size: 18),
+                              label: const Text('Onayla'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.success,
+                                foregroundColor: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                _showRejectDialog(listing['id']);
+                              },
+                              icon: const Icon(Icons.cancel, size: 18),
+                              label: const Text('Reddet'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.error,
+                                foregroundColor: Colors.white,
+                              ),
+                            ),
+                          ],
+                          if (listing['status'] == 'active' || listing['status'] == 'inactive') ...[
+                            ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                _updateListingStatus(
+                                  listing['id'],
+                                  listing['status'] == 'active' ? 'inactive' : 'active',
+                                );
+                              },
+                              icon: Icon(
+                                listing['status'] == 'active'
+                                    ? Icons.pause_circle_filled
+                                    : Icons.play_circle_filled,
+                                size: 18,
+                              ),
+                              label: Text(listing['status'] == 'active' ? 'Pasife Al' : 'Aktif Et'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: listing['status'] == 'active'
+                                    ? AppColors.warning
+                                    : AppColors.success,
+                                foregroundColor: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                          const Spacer(),
+                          OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              _toggleFeatured(listing);
+                            },
+                            icon: Icon(
+                              listing['is_featured'] == true ? Icons.star : Icons.star_border,
+                              size: 18,
+                              color: AppColors.warning,
+                            ),
+                            label: Text(listing['is_featured'] == true ? 'Öne Çıkarmayı Kaldır' : 'Öne Çıkar'),
+                          ),
+                          const SizedBox(width: 8),
+                          OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              _togglePremium(listing);
+                            },
+                            icon: Icon(
+                              listing['is_premium'] == true ? Icons.workspace_premium : Icons.workspace_premium_outlined,
+                              size: 18,
+                              color: AppColors.primary,
+                            ),
+                            label: Text(listing['is_premium'] == true ? 'Premium Kaldır' : 'Premium Yap'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildSpecsGrid(Map<String, dynamic> listing) {
+    final specs = <MapEntry<String, String>>[
+      MapEntry('Marka', (listing['brand'] ?? listing['brand_name'] ?? '-').toString()),
+      MapEntry('Model', (listing['model'] ?? listing['model_name'] ?? '-').toString()),
+      MapEntry('Yıl', listing['year']?.toString() ?? '-'),
+      MapEntry('Renk', (listing['color'] ?? '-').toString()),
+      MapEntry('Yakıt', _translateFuelType(listing['fuel_type'])),
+      MapEntry('Vites', _translateTransmission(listing['transmission'])),
+      MapEntry('Kilometre', _formatMileage(listing['mileage'])),
+      MapEntry('Motor', listing['engine_size'] != null ? '${listing['engine_size']} cc' : '-'),
+      MapEntry('Beygir', listing['horsepower'] != null ? '${listing['horsepower']} HP' : '-'),
+      MapEntry('Kasa Tipi', _translateBodyType(listing['body_type'])),
+    ];
+
+    return Wrap(
+      spacing: 12,
+      runSpacing: 10,
+      children: specs.map((spec) {
+        return SizedBox(
+          width: 170,
+          child: Row(
+            children: [
+              SizedBox(
+                width: 70,
+                child: Text(
+                  spec.key,
+                  style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  spec.value,
+                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w500),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildDetailStatCard(String label, String value, IconData icon, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 22),
+            const SizedBox(height: 6),
+            Text(
+              value,
+              style: TextStyle(color: color, fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 2),
+            Text(label, style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ==================== ACTIONS ====================
 
   Future<void> _updateListingStatus(String listingId, String newStatus) async {
-    final actionLabel = newStatus == 'active' ? 'onaylamak' : 'reddetmek';
+    String actionLabel;
+    String successMsg;
+    Color btnColor;
+    String btnLabel;
+
+    switch (newStatus) {
+      case 'active':
+        actionLabel = 'onaylamak/aktif etmek';
+        successMsg = 'İlan aktif edildi';
+        btnColor = AppColors.success;
+        btnLabel = 'Onayla';
+      case 'inactive':
+        actionLabel = 'pasife almak';
+        successMsg = 'İlan pasife alındı';
+        btnColor = AppColors.warning;
+        btnLabel = 'Pasife Al';
+      case 'rejected':
+        actionLabel = 'reddetmek';
+        successMsg = 'İlan reddedildi';
+        btnColor = AppColors.error;
+        btnLabel = 'Reddet';
+      default:
+        actionLabel = 'değiştirmek';
+        successMsg = 'İlan güncellendi';
+        btnColor = AppColors.primary;
+        btnLabel = 'Onayla';
+    }
 
     final confirmed = await showDialog<bool>(
       context: context,
@@ -674,16 +1609,16 @@ class _AdminCarListingsScreenState extends ConsumerState<AdminCarListingsScreen>
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: newStatus == 'active' ? AppColors.success : AppColors.error,
-            ),
-            child: Text(newStatus == 'active' ? 'Onayla' : 'Reddet'),
+            style: ElevatedButton.styleFrom(backgroundColor: btnColor),
+            child: Text(btnLabel),
           ),
         ],
       ),
     );
 
-    if (confirmed != true) return;
+    if (confirmed != true) {
+      return;
+    }
 
     try {
       final supabase = ref.read(supabaseProvider);
@@ -701,10 +1636,7 @@ class _AdminCarListingsScreenState extends ConsumerState<AdminCarListingsScreen>
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(newStatus == 'active' ? 'İlan onaylandı' : 'İlan reddedildi'),
-            backgroundColor: newStatus == 'active' ? AppColors.success : AppColors.warning,
-          ),
+          SnackBar(content: Text(successMsg), backgroundColor: btnColor),
         );
       }
     } catch (e) {
@@ -714,6 +1646,87 @@ class _AdminCarListingsScreenState extends ConsumerState<AdminCarListingsScreen>
         );
       }
     }
+  }
+
+  void _showRejectDialog(String listingId) {
+    final reasonController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          backgroundColor: AppColors.surface,
+          title: const Text('İlanı Reddet', style: TextStyle(color: AppColors.textPrimary)),
+          content: SizedBox(
+            width: 400,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Red gerekçesini yazınız:',
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: reasonController,
+                  maxLines: 4,
+                  decoration: InputDecoration(
+                    hintText: 'Örn: Eksik fotoğraf, uygunsuz fiyat, eksik bilgi...',
+                    hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                    filled: true,
+                    fillColor: AppColors.background,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                  style: const TextStyle(color: AppColors.textPrimary),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Vazgeç'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                try {
+                  final supabase = ref.read(supabaseProvider);
+                  await supabase.from('car_listings').update({
+                    'status': 'rejected',
+                    'rejection_reason': reasonController.text.trim(),
+                    'updated_at': DateTime.now().toIso8601String(),
+                  }).eq('id', listingId);
+
+                  _fetchListings();
+
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('İlan reddedildi'),
+                        backgroundColor: AppColors.warning,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
+                    );
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+              child: const Text('Reddet'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _toggleFeatured(Map<String, dynamic> listing) async {
@@ -770,98 +1783,5 @@ class _AdminCarListingsScreenState extends ConsumerState<AdminCarListingsScreen>
         );
       }
     }
-  }
-
-  void _showDetailDialog(Map<String, dynamic> listing) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: const Text(
-          'İlan Detayları',
-          style: TextStyle(color: AppColors.textPrimary),
-        ),
-        content: SizedBox(
-          width: 500,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildDetailRow('Başlık', listing['title'] ?? '-'),
-                _buildDetailRow('Marka', listing['brand_name'] ?? '-'),
-                _buildDetailRow('Model', listing['model_name'] ?? '-'),
-                _buildDetailRow('Yıl', listing['year']?.toString() ?? '-'),
-                _buildDetailRow(
-                  'Fiyat',
-                  listing['price'] != null
-                      ? '${_currencyFormat.format(listing['price'])} ${listing['currency'] ?? 'TRY'}'
-                      : '-',
-                ),
-                _buildDetailRow('Yakıt', _translateFuelType(listing['fuel_type'])),
-                _buildDetailRow('Vites', _translateTransmission(listing['transmission'])),
-                _buildDetailRow('Kasa Tipi', listing['body_type'] ?? '-'),
-                _buildDetailRow(
-                  'Kilometre',
-                  listing['mileage'] != null
-                      ? '${NumberFormat('#,###', 'tr_TR').format(listing['mileage'])} km'
-                      : '-',
-                ),
-                _buildDetailRow('Şehir', listing['city'] ?? '-'),
-                _buildDetailRow('Durum', listing['status'] ?? '-'),
-                _buildDetailRow('Görüntülenme', '${listing['view_count'] ?? 0}'),
-                _buildDetailRow('Favori', '${listing['favorite_count'] ?? 0}'),
-                _buildDetailRow('İletişim', '${listing['contact_count'] ?? 0}'),
-                _buildDetailRow('Öne Çıkan', listing['is_featured'] == true ? 'Evet' : 'Hayır'),
-                _buildDetailRow('Premium', listing['is_premium'] == true ? 'Evet' : 'Hayır'),
-                _buildDetailRow(
-                  'Oluşturulma',
-                  listing['created_at'] != null
-                      ? DateTime.parse(listing['created_at']).toString().split('.')[0]
-                      : '-',
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Kapat'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: AppColors.textMuted,
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 14,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }

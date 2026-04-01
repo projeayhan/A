@@ -65,7 +65,7 @@ class _BusinessDetailShellState extends ConsumerState<BusinessDetailShell> {
               const SizedBox(width: 8),
               businessAsync.when(
                 data: (data) => Text(
-                  data?['name'] ?? data?['full_name'] ?? data?['company_name'] ?? 'İşletme Detayı',
+                  data?[widget.sector.nameField] ?? data?['name'] ?? data?['full_name'] ?? data?['company_name'] ?? data?['business_name'] ?? 'İşletme Detayı',
                   style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 loading: () => const SizedBox(

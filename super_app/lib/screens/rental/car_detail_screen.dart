@@ -71,23 +71,16 @@ class _CarDetailScreenState extends State<CarDetailScreen>
       vsync: this,
     );
 
-    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(
-        parent: _mainController,
-        curve: Curves.easeOut,
-      ),
-    );
+    _fadeAnimation = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _mainController, curve: Curves.easeOut));
 
     _slideAnimation = Tween<double>(begin: 20, end: 0).animate(
-      CurvedAnimation(
-        parent: _mainController,
-        curve: Curves.easeOutCubic,
-      ),
+      CurvedAnimation(parent: _mainController, curve: Curves.easeOutCubic),
     );
 
-    _scaleAnimation = Tween<double>(begin: 1, end: 1).animate(
-      _mainController,
-    );
+    _scaleAnimation = Tween<double>(begin: 1, end: 1).animate(_mainController);
 
     _mainController.forward();
     _loadReviews();
@@ -168,7 +161,10 @@ class _CarDetailScreenState extends State<CarDetailScreen>
             onPressed: () {
               final c = widget.car;
               SharePlus.instance.share(
-                ShareParams(text: '${c.brandName} ${c.model} - ₺${c.discountedDailyPrice.toInt()}/gün\nSuperCyp\'de kirala!'),
+                ShareParams(
+                  text:
+                      '${c.brandName} ${c.model} - ₺${c.discountedDailyPrice.toInt()}/gün\nSuperCyp\'de kirala!',
+                ),
               );
             },
           ),
@@ -200,19 +196,13 @@ class _CarDetailScreenState extends State<CarDetailScreen>
             physics: const BouncingScrollPhysics(),
             slivers: [
               // Car Image Hero Section
-              SliverToBoxAdapter(
-                child: _buildHeroSection(car, size, theme),
-              ),
+              SliverToBoxAdapter(child: _buildHeroSection(car, size, theme)),
 
               // Car Info Section
-              SliverToBoxAdapter(
-                child: _buildCarInfoSection(car, theme),
-              ),
+              SliverToBoxAdapter(child: _buildCarInfoSection(car, theme)),
 
               // Features Section
-              SliverToBoxAdapter(
-                child: _buildFeaturesSection(car, theme),
-              ),
+              SliverToBoxAdapter(child: _buildFeaturesSection(car, theme)),
 
               // Specifications Section
               SliverToBoxAdapter(
@@ -220,14 +210,10 @@ class _CarDetailScreenState extends State<CarDetailScreen>
               ),
 
               // Reviews Section
-              SliverToBoxAdapter(
-                child: _buildReviewsSection(car, theme),
-              ),
+              SliverToBoxAdapter(child: _buildReviewsSection(car, theme)),
 
               // Bottom Padding for Book Button
-              const SliverToBoxAdapter(
-                child: SizedBox(height: 120),
-              ),
+              const SliverToBoxAdapter(child: SizedBox(height: 120)),
             ],
           ),
 
@@ -263,11 +249,13 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                         fit: BoxFit.cover,
                         memCacheWidth: 400,
                         memCacheHeight: 300,
-                        placeholder: (_, __) => Container(
+                        placeholder: (_, _) => Container(
                           color: Colors.grey[300],
-                          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                          child: const Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
                         ),
-                        errorWidget: (_, __, ___) => Container(
+                        errorWidget: (_, _, _) => Container(
                           color: Colors.grey[300],
                           child: const Icon(
                             Icons.directions_car,
@@ -289,7 +277,9 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                           colors: [
                             Colors.black.withValues(alpha: 0.4),
                             Colors.transparent,
-                            theme.scaffoldBackgroundColor.withValues(alpha: 0.8),
+                            theme.scaffoldBackgroundColor.withValues(
+                              alpha: 0.8,
+                            ),
                             theme.scaffoldBackgroundColor,
                           ],
                           stops: const [0.0, 0.3, 0.8, 1.0],
@@ -318,7 +308,9 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                           borderRadius: BorderRadius.circular(20),
                           boxShadow: [
                             BoxShadow(
-                              color: theme.colorScheme.primary.withValues(alpha: 0.4),
+                              color: theme.colorScheme.primary.withValues(
+                                alpha: 0.4,
+                              ),
                               blurRadius: 12,
                               offset: const Offset(0, 4),
                             ),
@@ -404,39 +396,56 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                                 padding: const EdgeInsets.only(bottom: 8),
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 10, vertical: 5,
+                                    horizontal: 10,
+                                    vertical: 5,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                                    color: theme.colorScheme.primary.withValues(
+                                      alpha: 0.1,
+                                    ),
                                     borderRadius: BorderRadius.circular(8),
                                     border: Border.all(
-                                      color: theme.colorScheme.primary.withValues(alpha: 0.2),
+                                      color: theme.colorScheme.primary
+                                          .withValues(alpha: 0.2),
                                     ),
                                   ),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      if (car.companyLogo != null && car.companyLogo!.isNotEmpty)
+                                      if (car.companyLogo != null &&
+                                          car.companyLogo!.isNotEmpty)
                                         Padding(
-                                          padding: const EdgeInsets.only(right: 6),
+                                          padding: const EdgeInsets.only(
+                                            right: 6,
+                                          ),
                                           child: ClipRRect(
-                                            borderRadius: BorderRadius.circular(4),
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
                                             child: CachedNetworkImage(
                                               imageUrl: car.companyLogo!,
                                               width: 18,
                                               height: 18,
                                               fit: BoxFit.cover,
-                                              errorWidget: (_, __, ___) =>
-                                                  Icon(Icons.business, size: 14,
-                                                      color: theme.colorScheme.primary),
+                                              errorWidget: (_, _, _) => Icon(
+                                                Icons.business,
+                                                size: 14,
+                                                color:
+                                                    theme.colorScheme.primary,
+                                              ),
                                             ),
                                           ),
                                         )
                                       else
                                         Padding(
-                                          padding: const EdgeInsets.only(right: 6),
-                                          child: Icon(Icons.business, size: 14,
-                                              color: theme.colorScheme.primary),
+                                          padding: const EdgeInsets.only(
+                                            right: 6,
+                                          ),
+                                          child: Icon(
+                                            Icons.business,
+                                            size: 14,
+                                            color: theme.colorScheme.primary,
+                                          ),
                                         ),
                                       Text(
                                         car.companyName!,
@@ -495,8 +504,9 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                                     vertical: 4,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: _getCategoryColor(car.category)
-                                        .withValues(alpha: 0.15),
+                                    color: _getCategoryColor(
+                                      car.category,
+                                    ).withValues(alpha: 0.15),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
@@ -560,7 +570,10 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 14,
+                      ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
@@ -604,7 +617,12 @@ class _CarDetailScreenState extends State<CarDetailScreen>
     );
   }
 
-  Widget _buildQuickSpec(IconData icon, String value, String label, ThemeData theme) {
+  Widget _buildQuickSpec(
+    IconData icon,
+    String value,
+    String label,
+    ThemeData theme,
+  ) {
     return Column(
       children: [
         Icon(icon, color: theme.colorScheme.primary, size: 24),
@@ -630,11 +648,7 @@ class _CarDetailScreenState extends State<CarDetailScreen>
   }
 
   Widget _buildVerticalDivider() {
-    return Container(
-      width: 1,
-      height: 50,
-      color: Colors.grey.shade200,
-    );
+    return Container(width: 1, height: 50, color: Colors.grey.shade200);
   }
 
   Widget _buildCollapsibleSection({
@@ -734,7 +748,8 @@ class _CarDetailScreenState extends State<CarDetailScreen>
               title: '\u00D6zellikler',
               subtitle: '${features.length} \u00F6zellik',
               isExpanded: _isFeaturesExpanded,
-              onToggle: () => setState(() => _isFeaturesExpanded = !_isFeaturesExpanded),
+              onToggle: () =>
+                  setState(() => _isFeaturesExpanded = !_isFeaturesExpanded),
               content: Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -790,9 +805,11 @@ class _CarDetailScreenState extends State<CarDetailScreen>
               theme: theme,
               icon: Icons.build_circle_outlined,
               title: 'Teknik \u00D6zellikler',
-              subtitle: '${car.brandName} \u00B7 ${car.transmissionName} \u00B7 ${car.fuelTypeName}',
+              subtitle:
+                  '${car.brandName} \u00B7 ${car.transmissionName} \u00B7 ${car.fuelTypeName}',
               isExpanded: _isSpecsExpanded,
-              onToggle: () => setState(() => _isSpecsExpanded = !_isSpecsExpanded),
+              onToggle: () =>
+                  setState(() => _isSpecsExpanded = !_isSpecsExpanded),
               content: GridView.count(
                 crossAxisCount: 2,
                 shrinkWrap: true,
@@ -800,7 +817,9 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                 mainAxisSpacing: 10,
                 crossAxisSpacing: 10,
                 childAspectRatio: 2.2,
-                children: specs.map((spec) => _buildSpecGridItem(spec, theme)).toList(),
+                children: specs
+                    .map((spec) => _buildSpecGridItem(spec, theme))
+                    .toList(),
               ),
             ),
           ),
@@ -915,7 +934,9 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                       ),
                     ),
                     const SizedBox(height: 12),
-                    ..._reviews.take(3).map((review) => _buildReviewCard(review, theme)),
+                    ..._reviews
+                        .take(3)
+                        .map((review) => _buildReviewCard(review, theme)),
                   ],
                 ],
               ),
@@ -937,9 +958,7 @@ class _CarDetailScreenState extends State<CarDetailScreen>
 
     return Card(
       elevation: 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Row(
@@ -958,11 +977,23 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                   children: List.generate(5, (index) {
                     final starValue = index + 1;
                     if (rating >= starValue) {
-                      return Icon(Icons.star, color: theme.colorScheme.primary, size: 16);
+                      return Icon(
+                        Icons.star,
+                        color: theme.colorScheme.primary,
+                        size: 16,
+                      );
                     } else if (rating >= starValue - 0.5) {
-                      return Icon(Icons.star_half, color: theme.colorScheme.primary, size: 16);
+                      return Icon(
+                        Icons.star_half,
+                        color: theme.colorScheme.primary,
+                        size: 16,
+                      );
                     } else {
-                      return Icon(Icons.star_border, color: theme.colorScheme.primary, size: 16);
+                      return Icon(
+                        Icons.star_border,
+                        color: theme.colorScheme.primary,
+                        size: 16,
+                      );
                     }
                   }),
                 ),
@@ -1011,7 +1042,9 @@ class _CarDetailScreenState extends State<CarDetailScreen>
               children: [
                 CircleAvatar(
                   radius: 20,
-                  backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
+                  backgroundColor: theme.colorScheme.primary.withValues(
+                    alpha: 0.1,
+                  ),
                   backgroundImage: review.userAvatar != null
                       ? NetworkImage(review.userAvatar!)
                       : null,
@@ -1050,7 +1083,9 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                 Row(
                   children: List.generate(5, (index) {
                     return Icon(
-                      index < review.overallRating ? Icons.star : Icons.star_border,
+                      index < review.overallRating
+                          ? Icons.star
+                          : Icons.star_border,
                       color: theme.colorScheme.primary,
                       size: 16,
                     );
@@ -1070,7 +1105,8 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                 overflow: TextOverflow.ellipsis,
               ),
             ],
-            if (review.companyReply != null && review.companyReply!.isNotEmpty) ...[
+            if (review.companyReply != null &&
+                review.companyReply!.isNotEmpty) ...[
               const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(12),
@@ -1086,7 +1122,11 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.store, size: 16, color: theme.colorScheme.primary),
+                        Icon(
+                          Icons.store,
+                          size: 16,
+                          color: theme.colorScheme.primary,
+                        ),
                         const SizedBox(width: 6),
                         Text(
                           'Firma Yan\u0131t\u0131',
@@ -1242,10 +1282,7 @@ class _CarDetailScreenState extends State<CarDetailScreen>
                 children: [
                   Text(
                     '\u015Eimdi Kirala',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                   SizedBox(width: 8),
                   Icon(Icons.arrow_forward, size: 20),
@@ -1262,29 +1299,28 @@ class _CarDetailScreenState extends State<CarDetailScreen>
     Navigator.push(
       context,
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            BookingScreen(
-              car: car,
-              initialPickupLocation: widget.pickupLocation,
-              initialDropoffLocation: widget.dropoffLocation,
-              initialPickupDate: widget.pickupDate,
-              initialDropoffDate: widget.dropoffDate,
-              initialIsPickupCustomAddress: widget.isPickupCustomAddress,
-              initialIsDropoffCustomAddress: widget.isDropoffCustomAddress,
-              initialPickupCustomAddress: widget.pickupCustomAddress,
-              initialDropoffCustomAddress: widget.dropoffCustomAddress,
-              initialPickupCustomAddressNote: widget.pickupCustomAddressNote,
-              initialDropoffCustomAddressNote: widget.dropoffCustomAddressNote,
-            ),
+        pageBuilder: (context, animation, secondaryAnimation) => BookingScreen(
+          car: car,
+          initialPickupLocation: widget.pickupLocation,
+          initialDropoffLocation: widget.dropoffLocation,
+          initialPickupDate: widget.pickupDate,
+          initialDropoffDate: widget.dropoffDate,
+          initialIsPickupCustomAddress: widget.isPickupCustomAddress,
+          initialIsDropoffCustomAddress: widget.isDropoffCustomAddress,
+          initialPickupCustomAddress: widget.pickupCustomAddress,
+          initialDropoffCustomAddress: widget.dropoffCustomAddress,
+          initialPickupCustomAddressNote: widget.pickupCustomAddressNote,
+          initialDropoffCustomAddressNote: widget.dropoffCustomAddressNote,
+        ),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, 1),
-              end: Offset.zero,
-            ).animate(CurvedAnimation(
-              parent: animation,
-              curve: Curves.easeOutCubic,
-            )),
+            position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
+                .animate(
+                  CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                  ),
+                ),
             child: child,
           );
         },

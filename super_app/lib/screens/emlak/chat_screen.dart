@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/providers/chat_provider.dart';
 import '../../services/emlak/chat_service.dart';
 import '../../models/emlak/emlak_models.dart';
@@ -10,10 +11,7 @@ import '../../core/services/supabase_service.dart';
 class ChatScreen extends ConsumerStatefulWidget {
   final String conversationId;
 
-  const ChatScreen({
-    super.key,
-    required this.conversationId,
-  });
+  const ChatScreen({super.key, required this.conversationId});
 
   @override
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
@@ -49,7 +47,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (content.isEmpty) return;
 
     _messageController.clear();
-    await ref.read(messagesProvider(widget.conversationId).notifier).sendMessage(content);
+    await ref
+        .read(messagesProvider(widget.conversationId).notifier)
+        .sendMessage(content);
     _scrollToBottom();
   }
 
@@ -57,7 +57,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final messagesState = ref.watch(messagesProvider(widget.conversationId));
-    final conversationAsync = ref.watch(conversationDetailProvider(widget.conversationId));
+    final conversationAsync = ref.watch(
+      conversationDetailProvider(widget.conversationId),
+    );
     final currentUserId = SupabaseService.currentUser?.id ?? '';
 
     // Mesajlar yüklendiğinde en alta scroll
@@ -74,54 +76,58 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         children: [
           // Property card
           conversationAsync.whenOrNull(
-            data: (conversation) => conversation?.property != null
-                ? _PropertyInfoCard(
-                    property: conversation!.property!,
-                    isDark: isDark,
-                    onTap: () {
-                      if (conversation.propertyId != null) {
-                        context.push('/emlak/property/${conversation.propertyId}');
-                      }
-                    },
-                  )
-                : null,
-          ) ?? const SizedBox.shrink(),
+                data: (conversation) => conversation?.property != null
+                    ? _PropertyInfoCard(
+                        property: conversation!.property!,
+                        isDark: isDark,
+                        onTap: () {
+                          if (conversation.propertyId != null) {
+                            context.push(
+                              '/emlak/property/${conversation.propertyId}',
+                            );
+                          }
+                        },
+                      )
+                    : null,
+              ) ??
+              const SizedBox.shrink(),
 
           // Messages
           Expanded(
             child: messagesState.isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : messagesState.messages.isEmpty
-                    ? _buildEmptyMessages(isDark)
-                    : ListView.builder(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.all(16),
-                        itemCount: messagesState.messages.length,
-                        itemBuilder: (context, index) {
-                          final message = messagesState.messages[index];
-                          final isMe = message.senderId == currentUserId;
-                          final showDate = index == 0 ||
-                              !_isSameDay(
-                                messagesState.messages[index - 1].createdAt,
-                                message.createdAt,
-                              );
-
-                          return Column(
-                            children: [
-                              if (showDate)
-                                _DateSeparator(
-                                  date: message.createdAt,
-                                  isDark: isDark,
-                                ),
-                              _MessageBubble(
-                                message: message,
-                                isMe: isMe,
-                                isDark: isDark,
-                              ),
-                            ],
+                ? _buildEmptyMessages(isDark)
+                : ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.all(16),
+                    itemCount: messagesState.messages.length,
+                    itemBuilder: (context, index) {
+                      final message = messagesState.messages[index];
+                      final isMe = message.senderId == currentUserId;
+                      final showDate =
+                          index == 0 ||
+                          !_isSameDay(
+                            messagesState.messages[index - 1].createdAt,
+                            message.createdAt,
                           );
-                        },
-                      ),
+
+                      return Column(
+                        children: [
+                          if (showDate)
+                            _DateSeparator(
+                              date: message.createdAt,
+                              isDark: isDark,
+                            ),
+                          _MessageBubble(
+                            message: message,
+                            isMe: isMe,
+                            isDark: isDark,
+                          ),
+                        ],
+                      );
+                    },
+                  ),
           ),
 
           // Input
@@ -213,27 +219,34 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           );
         },
         loading: () => const SizedBox.shrink(),
-        error: (_, __) => Text(
+        error: (_, _) => Text(
           'Mesaj',
-          style: TextStyle(
-            color: EmlakColors.textPrimary(isDark),
-          ),
+          style: TextStyle(color: EmlakColors.textPrimary(isDark)),
         ),
       ),
       actions: [
         IconButton(
-          onPressed: () {
-            // TODO: Telefon arama
+          onPressed: () async {
+            final conversation = conversationAsync.valueOrNull;
+            final otherProfile = conversation?.getOtherUserProfile(currentUserId);
+            final phone = otherProfile?['phone'] as String?;
+            if (phone != null && phone.isNotEmpty) {
+              final uri = Uri.parse('tel:$phone');
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri);
+              }
+            } else {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Telefon numarası bulunamadı')),
+                );
+              }
+            }
           },
-          icon: Icon(
-            Icons.phone_outlined,
-            color: EmlakColors.primary,
-          ),
+          icon: Icon(Icons.phone_outlined, color: EmlakColors.primary),
         ),
         IconButton(
-          onPressed: () {
-            // TODO: Daha fazla seçenek
-          },
+          onPressed: () {},
           icon: Icon(
             Icons.more_vert_rounded,
             color: EmlakColors.textPrimary(isDark),
@@ -298,7 +311,9 @@ class _PropertyInfoCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final title = property['title'] as String? ?? 'İlan';
     final images = property['images'] as List<dynamic>?;
-    final imageUrl = images?.isNotEmpty == true ? images!.first as String : null;
+    final imageUrl = images?.isNotEmpty == true
+        ? images!.first as String
+        : null;
     final price = property['price'] as num?;
     final city = property['city'] as String?;
     final district = property['district'] as String?;
@@ -311,9 +326,7 @@ class _PropertyInfoCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: EmlakColors.surface(isDark),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: EmlakColors.border(isDark),
-          ),
+          border: Border.all(color: EmlakColors.border(isDark)),
         ),
         child: Row(
           children: [
@@ -326,13 +339,15 @@ class _PropertyInfoCard extends StatelessWidget {
                       width: 60,
                       height: 60,
                       fit: BoxFit.cover,
-                      placeholder: (_, __) => Container(
+                      placeholder: (_, _) => Container(
                         width: 60,
                         height: 60,
                         color: Colors.grey[200],
-                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                        child: const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
                       ),
-                      errorWidget: (_, __, ___) => Container(
+                      errorWidget: (_, _, _) => Container(
                         width: 60,
                         height: 60,
                         color: EmlakColors.primary.withValues(alpha: 0.1),
@@ -429,10 +444,7 @@ class _DateSeparator extends StatelessWidget {
   final DateTime date;
   final bool isDark;
 
-  const _DateSeparator({
-    required this.date,
-    required this.isDark,
-  });
+  const _DateSeparator({required this.date, required this.isDark});
 
   @override
   Widget build(BuildContext context) {
@@ -440,11 +452,7 @@ class _DateSeparator extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: Row(
         children: [
-          Expanded(
-            child: Divider(
-              color: EmlakColors.divider(isDark),
-            ),
-          ),
+          Expanded(child: Divider(color: EmlakColors.divider(isDark))),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Text(
@@ -455,11 +463,7 @@ class _DateSeparator extends StatelessWidget {
               ),
             ),
           ),
-          Expanded(
-            child: Divider(
-              color: EmlakColors.divider(isDark),
-            ),
-          ),
+          Expanded(child: Divider(color: EmlakColors.divider(isDark))),
         ],
       ),
     );
@@ -477,8 +481,18 @@ class _DateSeparator extends StatelessWidget {
       return 'Dün';
     } else {
       final months = [
-        'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-        'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
+        'Ocak',
+        'Şubat',
+        'Mart',
+        'Nisan',
+        'Mayıs',
+        'Haziran',
+        'Temmuz',
+        'Ağustos',
+        'Eylül',
+        'Ekim',
+        'Kasım',
+        'Aralık',
       ];
       return '${date.day} ${months[date.month - 1]} ${date.year}';
     }
@@ -516,8 +530,8 @@ class _MessageBubble extends StatelessWidget {
           color: isMe
               ? EmlakColors.primary
               : isDark
-                  ? EmlakColors.cardDark
-                  : EmlakColors.surfaceLight,
+              ? EmlakColors.cardDark
+              : EmlakColors.surfaceLight,
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(16),
             topRight: const Radius.circular(16),
@@ -533,8 +547,9 @@ class _MessageBubble extends StatelessWidget {
           ],
         ),
         child: Column(
-          crossAxisAlignment:
-              isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          crossAxisAlignment: isMe
+              ? CrossAxisAlignment.end
+              : CrossAxisAlignment.start,
           children: [
             Text(
               message.content,
@@ -621,16 +636,6 @@ class _MessageInput extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Attachment button
-          IconButton(
-            onPressed: () {
-              // TODO: Dosya ekleme
-            },
-            icon: Icon(
-              Icons.attach_file_rounded,
-              color: EmlakColors.textSecondary(isDark),
-            ),
-          ),
 
           // Input field
           Expanded(
@@ -645,15 +650,11 @@ class _MessageInput extends StatelessWidget {
                 focusNode: focusNode,
                 decoration: InputDecoration(
                   hintText: 'Mesaj yazın...',
-                  hintStyle: TextStyle(
-                    color: EmlakColors.textTertiary(isDark),
-                  ),
+                  hintStyle: TextStyle(color: EmlakColors.textTertiary(isDark)),
                   border: InputBorder.none,
                   contentPadding: const EdgeInsets.symmetric(vertical: 12),
                 ),
-                style: TextStyle(
-                  color: EmlakColors.textPrimary(isDark),
-                ),
+                style: TextStyle(color: EmlakColors.textPrimary(isDark)),
                 textCapitalization: TextCapitalization.sentences,
                 maxLines: 4,
                 minLines: 1,
@@ -680,10 +681,7 @@ class _MessageInput extends StatelessWidget {
                         color: Colors.white,
                       ),
                     )
-                  : const Icon(
-                      Icons.send_rounded,
-                      color: Colors.white,
-                    ),
+                  : const Icon(Icons.send_rounded, color: Colors.white),
             ),
           ),
         ],

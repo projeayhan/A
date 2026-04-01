@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show Supabase;
 import '../../core/providers/auth_provider.dart';
+import '../../core/services/log_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/utils/app_dialogs.dart';
@@ -61,7 +62,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       if (phone.isNotEmpty) {
         String stripped = phone;
         if (stripped.startsWith('+')) stripped = stripped.substring(1);
-        if (stripped.startsWith('90') && stripped.length > 10) stripped = stripped.substring(2);
+        if (stripped.startsWith('90') && stripped.length > 10) {
+          stripped = stripped.substring(2);
+        }
         if (stripped.startsWith('0')) stripped = stripped.substring(1);
         _phoneController.text = stripped;
       }
@@ -75,20 +78,23 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           .select('id, name')
           .eq('is_active', true)
           .order('sort_order');
-      final list = (response as List).map<Map<String, String>>((e) => {
-        'value': e['id'] as String,
-        'label': e['name'] as String,
-      }).toList();
+      final list = (response as List)
+          .map<Map<String, String>>(
+            (e) => {'value': e['id'] as String, 'label': e['name'] as String},
+          )
+          .toList();
       if (mounted) {
         setState(() {
           _vehicleTypes = list;
-          if (list.isNotEmpty && !list.any((t) => t['value'] == _selectedVehicleType)) {
+          if (list.isNotEmpty &&
+              !list.any((t) => t['value'] == _selectedVehicleType)) {
             _selectedVehicleType = list.first['value']!;
           }
           _isLoadingVehicleTypes = false;
         });
       }
-    } catch (_) {
+    } catch (e, st) {
+      LogService.error('loadVehicleTypes error', error: e, stackTrace: st, source: 'RegisterScreen:_loadVehicleTypes');
       // Fallback: hardcoded defaults
       if (mounted) {
         setState(() {
@@ -116,7 +122,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     {
       'value': 'restaurant',
       'label': 'İşletme Kuryesi',
-      'description': 'Sadece belirli bir işletmeye (restoran, market veya mağaza) çalışırsınız',
+      'description':
+          'Sadece belirli bir işletmeye (restoran, market veya mağaza) çalışırsınız',
       'icon': 'store',
     },
     {
@@ -162,7 +169,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       }
       // Telefon zaten doğrulanmışsa OTP sayfasını atla
       if (_phoneVerified) {
-        _pageController.animateToPage(2,
+        _pageController.animateToPage(
+          2,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
         );
@@ -192,7 +200,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   void _previousPage() {
     // Telefon doğrulanmışsa araç bilgileri sayfasından geriye gidince OTP'yi atlayıp page 0'a atla
     if (_phoneVerified && _currentPage == 2) {
-      _pageController.animateToPage(0,
+      _pageController.animateToPage(
+        0,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
@@ -252,7 +261,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     _otpTimer?.cancel();
     setState(() => _otpCountdown = 60);
     _otpTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) { timer.cancel(); return; }
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
       setState(() {
         _otpCountdown--;
         if (_otpCountdown <= 0) timer.cancel();
@@ -300,32 +312,36 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     if (_isExistingUser) {
       // Mevcut kullanıcı (e-posta ile giriş yapmış, profili yok): sadece kurye profili oluştur
-      await ref.read(authProvider.notifier).completeRegistration(
-        fullName: _fullNameController.text.trim(),
-        phone: '+90${_phoneController.text.trim()}',
-        tcNo: _tcNoController.text.trim(),
-        vehicleType: _selectedVehicleType,
-        vehiclePlate: _vehiclePlateController.text.trim().toUpperCase(),
-        bankName: _bankNameController.text.trim(),
-        bankIban: _ibanController.text.replaceAll(' ', '').toUpperCase(),
-        workMode: _selectedWorkMode,
-        merchantId: _selectedMerchant?['id'],
-      );
+      await ref
+          .read(authProvider.notifier)
+          .completeRegistration(
+            fullName: _fullNameController.text.trim(),
+            phone: '+90${_phoneController.text.trim()}',
+            tcNo: _tcNoController.text.trim(),
+            vehicleType: _selectedVehicleType,
+            vehiclePlate: _vehiclePlateController.text.trim().toUpperCase(),
+            bankName: _bankNameController.text.trim(),
+            bankIban: _ibanController.text.replaceAll(' ', '').toUpperCase(),
+            workMode: _selectedWorkMode,
+            merchantId: _selectedMerchant?['id'],
+          );
     } else {
       // Yeni kullanıcı: e-posta + şifre ile hesap oluştur + kurye profili oluştur
-      await ref.read(authProvider.notifier).registerWithEmail(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
-        fullName: _fullNameController.text.trim(),
-        phone: '+90${_phoneController.text.trim()}',
-        tcNo: _tcNoController.text.trim(),
-        vehicleType: _selectedVehicleType,
-        vehiclePlate: _vehiclePlateController.text.trim().toUpperCase(),
-        bankName: _bankNameController.text.trim(),
-        bankIban: _ibanController.text.replaceAll(' ', '').toUpperCase(),
-        workMode: _selectedWorkMode,
-        merchantId: _selectedMerchant?['id'],
-      );
+      await ref
+          .read(authProvider.notifier)
+          .registerWithEmail(
+            email: _emailController.text.trim(),
+            password: _passwordController.text,
+            fullName: _fullNameController.text.trim(),
+            phone: '+90${_phoneController.text.trim()}',
+            tcNo: _tcNoController.text.trim(),
+            vehicleType: _selectedVehicleType,
+            vehiclePlate: _vehiclePlateController.text.trim().toUpperCase(),
+            bankName: _bankNameController.text.trim(),
+            bankIban: _ibanController.text.replaceAll(' ', '').toUpperCase(),
+            workMode: _selectedWorkMode,
+            merchantId: _selectedMerchant?['id'],
+          );
     }
     // Router otomatik pending'e yönlendirir
   }
@@ -362,7 +378,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             }
           },
         ),
-        title: Text(_isExistingUser && _currentPage == 0 ? 'Bilgilerinizi Tamamlayın' : _getPageTitle()),
+        title: Text(
+          _isExistingUser && _currentPage == 0
+              ? 'Bilgilerinizi Tamamlayın'
+              : _getPageTitle(),
+        ),
       ),
       body: Column(
         children: [
@@ -376,7 +396,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     margin: EdgeInsets.only(left: i > 0 ? 8 : 0),
                     height: 4,
                     decoration: BoxDecoration(
-                      color: i <= _currentPage ? AppColors.primary : AppColors.border,
+                      color: i <= _currentPage
+                          ? AppColors.primary
+                          : AppColors.border,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -393,9 +415,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               onPageChanged: (page) => setState(() => _currentPage = page),
               children: [
                 _buildPersonalInfoPage(isLoading),
-                _buildOtpPage(),        // page 1
+                _buildOtpPage(), // page 1
                 _buildVehicleInfoPage(isLoading), // page 2
-                _buildWorkModePage(isLoading),    // page 3
+                _buildWorkModePage(isLoading), // page 3
               ],
             ),
           ),
@@ -508,8 +530,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               onPressed: (isLoading || _isSendingOtp) ? null : _nextPage,
               child: _isSendingOtp
                   ? const SizedBox(
-                      width: 24, height: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
                   : const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -560,25 +586,34 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
           // İkon
           Container(
-            width: 80, height: 80,
+            width: 80,
+            height: 80,
             decoration: BoxDecoration(
               color: AppColors.primary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.sms_outlined, size: 40, color: AppColors.primary),
+            child: const Icon(
+              Icons.sms_outlined,
+              size: 40,
+              color: AppColors.primary,
+            ),
           ),
 
           const SizedBox(height: 24),
 
           Text(
             'Doğrulama Kodu',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
           Text(
             '+90 $maskedPhone numarasına gönderilen\n6 haneli kodu girin',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
             textAlign: TextAlign.center,
           ),
 
@@ -591,7 +626,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             keyboardType: TextInputType.number,
             textAlign: TextAlign.center,
             maxLength: 6,
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 8),
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 8,
+            ),
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             decoration: const InputDecoration(
               counterText: '',
@@ -612,8 +651,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               onPressed: _isVerifyingOtp ? null : _verifyOtp,
               child: _isVerifyingOtp
                   ? const SizedBox(
-                      width: 24, height: 24,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
                     )
                   : const Text('Doğrula'),
             ),
@@ -626,13 +669,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             child: _otpCountdown > 0
                 ? Text(
                     'Tekrar gönder ($_otpCountdown sn)',
-                    style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 14,
+                    ),
                   )
                 : TextButton(
-                    onPressed: _isSendingOtp ? null : () async {
-                      _otpController.clear();
-                      await _sendOtp();
-                    },
+                    onPressed: _isSendingOtp
+                        ? null
+                        : () async {
+                            _otpController.clear();
+                            await _sendOtp();
+                          },
                     child: const Text('Kodu Tekrar Gönder'),
                   ),
           ),
@@ -652,9 +700,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             controller: _tcNoController,
             enabled: !isLoading,
             keyboardType: TextInputType.number,
-            inputFormatters: [
-              FilteringTextInputFormatter.digitsOnly,
-            ],
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             decoration: const InputDecoration(
               labelText: 'Kimlik Numarası',
               prefixIcon: Icon(Icons.badge_outlined),
@@ -678,7 +724,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             )
           else
             DropdownButtonFormField<String>(
-              value: _selectedVehicleType,
+              initialValue: _selectedVehicleType,
               decoration: const InputDecoration(
                 labelText: 'Araç Tipi',
                 prefixIcon: Icon(Icons.two_wheeler_outlined),
@@ -856,13 +902,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           Row(
                             children: [
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.1),
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.1,
+                                  ),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(
-                                  _getMerchantTypeLabel(_selectedMerchant!['type']),
+                                  _getMerchantTypeLabel(
+                                    _selectedMerchant!['type'],
+                                  ),
                                   style: TextStyle(
                                     fontSize: 10,
                                     fontWeight: FontWeight.w600,

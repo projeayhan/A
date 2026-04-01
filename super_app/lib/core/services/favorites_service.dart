@@ -1,6 +1,6 @@
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supabase_service.dart';
+import 'package:super_app/core/services/log_service.dart';
 
 class FavoritesService {
   static SupabaseClient get _client => SupabaseService.client;
@@ -23,8 +23,8 @@ class FavoritesService {
       return (response as List)
           .map((row) => row['merchant_id'] as String)
           .toList();
-    } catch (e) {
-      if (kDebugMode) print('Error fetching favorites: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching favorites', error: e, stackTrace: st, source: 'FavoritesService:getFavoriteMerchantIds');
       return [];
     }
   }
@@ -40,8 +40,8 @@ class FavoritesService {
         'merchant_id': merchantId,
       });
       return true;
-    } catch (e) {
-      if (kDebugMode) print('Error adding favorite: $e');
+    } catch (e, st) {
+      LogService.error('Error adding favorite', error: e, stackTrace: st, source: 'FavoritesService:addFavorite');
       // Duplicate key error is OK
       return false;
     }
@@ -59,8 +59,8 @@ class FavoritesService {
           .eq('user_id', userId)
           .eq('merchant_id', merchantId);
       return true;
-    } catch (e) {
-      if (kDebugMode) print('Error removing favorite: $e');
+    } catch (e, st) {
+      LogService.error('Error removing favorite', error: e, stackTrace: st, source: 'FavoritesService:removeFavorite');
       return false;
     }
   }
@@ -79,7 +79,8 @@ class FavoritesService {
           .maybeSingle();
 
       return response != null;
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Error checking favorite', error: e, stackTrace: st, source: 'FavoritesService:isFavorite');
       return false;
     }
   }

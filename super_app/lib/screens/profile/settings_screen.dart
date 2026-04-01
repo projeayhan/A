@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/providers/auth_provider.dart';
 import '../../core/providers/notification_preferences_provider.dart';
@@ -12,6 +11,7 @@ import '../../core/providers/privacy_settings_provider.dart';
 import '../../core/providers/settings_provider.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/utils/app_dialogs.dart';
+import '../../l10n/app_localizations.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -52,7 +52,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           onPressed: () => context.pop(),
         ),
         title: Text(
-          'Ayarlar',
+          S.of(context)!.settings,
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -69,44 +69,44 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             const SizedBox(height: 8),
 
             // Account Section
-            _buildSectionHeader('Hesap', Icons.person_outline, const Color(0xFF3B82F6), isDark),
+            _buildSectionHeader(S.of(context)!.account, Icons.person_outline, const Color(0xFF3B82F6), isDark),
             _buildSettingsCard(isDark, [
               _buildNavigationItem(
                 icon: Icons.person_outline,
-                title: 'Kişisel Bilgiler',
-                subtitle: 'Ad, soyad, e-posta, telefon',
+                title: S.of(context)!.personalInfo,
+                subtitle: S.of(context)!.personalInfoSubtitleFull,
                 color: const Color(0xFF3B82F6),
                 isDark: isDark,
                 onTap: () => context.push('/settings/personal-info'),
               ),
               _buildNavigationItem(
                 icon: Icons.lock_outline,
-                title: 'Şifre ve Güvenlik',
-                subtitle: 'Şifre değiştir, 2FA ayarları',
+                title: S.of(context)!.passwordAndSecurity,
+                subtitle: S.of(context)!.passwordAndSecuritySubtitle,
                 color: const Color(0xFFEF4444),
                 isDark: isDark,
                 onTap: () => context.push('/settings/security'),
               ),
               _buildNavigationItem(
                 icon: Icons.location_on_outlined,
-                title: 'Adreslerim',
-                subtitle: 'Kayıtlı teslimat adresleri',
+                title: S.of(context)!.myAddresses,
+                subtitle: S.of(context)!.registeredDeliveryAddresses,
                 color: const Color(0xFF10B981),
                 isDark: isDark,
                 onTap: () => context.push('/settings/addresses'),
               ),
               _buildNavigationItem(
                 icon: Icons.credit_card_outlined,
-                title: 'Ödeme Yöntemlerim',
-                subtitle: 'Kartlar ve ödeme seçenekleri',
+                title: S.of(context)!.myPaymentMethods,
+                subtitle: S.of(context)!.cardsAndPaymentOptions,
                 color: const Color(0xFF8B5CF6),
                 isDark: isDark,
                 onTap: () => context.push('/settings/payment-methods'),
               ),
               _buildNavigationItem(
                 icon: Icons.emergency_outlined,
-                title: 'Acil Durum Kişileri',
-                subtitle: 'SOS mesajı gönderilecek kişiler',
+                title: S.of(context)!.emergencyContacts,
+                subtitle: S.of(context)!.emergencyContactsSubtitle,
                 color: const Color(0xFFEF4444),
                 isDark: isDark,
                 onTap: () => context.push('/settings/emergency-contacts'),
@@ -116,7 +116,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             const SizedBox(height: 24),
 
             // Notifications Section
-            _buildSectionHeader('Bildirimler', Icons.notifications_outlined, const Color(0xFFF59E0B), isDark),
+            _buildSectionHeader(S.of(context)!.notifications, Icons.notifications_outlined, const Color(0xFFF59E0B), isDark),
             Consumer(
               builder: (context, ref, _) {
                 final notifPrefs = ref.watch(notificationPreferencesProvider);
@@ -124,8 +124,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 return _buildSettingsCard(isDark, [
                   _buildSwitchItem(
                     icon: Icons.notifications_active_outlined,
-                    title: 'Push Bildirimleri',
-                    subtitle: 'Anlık bildirimler al',
+                    title: S.of(context)!.pushNotifications,
+                    subtitle: S.of(context)!.getInstantNotifications,
                     color: const Color(0xFFF59E0B),
                     isDark: isDark,
                     value: notifPrefs.pushEnabled,
@@ -133,8 +133,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                   _buildSwitchItem(
                     icon: Icons.email_outlined,
-                    title: 'E-posta Bildirimleri',
-                    subtitle: 'Güncellemeleri e-posta ile al',
+                    title: S.of(context)!.emailNotifications,
+                    subtitle: S.of(context)!.getEmailUpdates,
                     color: const Color(0xFF6366F1),
                     isDark: isDark,
                     value: notifPrefs.emailEnabled,
@@ -142,8 +142,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                   _buildSwitchItem(
                     icon: Icons.sms_outlined,
-                    title: 'SMS Bildirimleri',
-                    subtitle: 'Önemli uyarıları SMS ile al',
+                    title: S.of(context)!.smsNotifications,
+                    subtitle: S.of(context)!.getSmsAlerts,
                     color: const Color(0xFF14B8A6),
                     isDark: isDark,
                     value: notifPrefs.smsEnabled,
@@ -152,8 +152,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   _buildDivider(isDark),
                   _buildSwitchItem(
                     icon: Icons.local_shipping_outlined,
-                    title: 'Sipariş Güncellemeleri',
-                    subtitle: 'Sipariş durumu değişiklikleri',
+                    title: S.of(context)!.orderUpdates,
+                    subtitle: S.of(context)!.orderStatusChanges,
                     color: const Color(0xFF3B82F6),
                     isDark: isDark,
                     value: notifPrefs.orderUpdates,
@@ -161,8 +161,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                   _buildSwitchItem(
                     icon: Icons.campaign_outlined,
-                    title: 'Kampanyalar',
-                    subtitle: 'Özel fırsatlardan haberdar ol',
+                    title: S.of(context)!.campaigns,
+                    subtitle: S.of(context)!.specialOffers,
                     color: const Color(0xFFEC4899),
                     isDark: isDark,
                     value: notifPrefs.campaigns,
@@ -170,8 +170,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                   _buildSwitchItem(
                     icon: Icons.new_releases_outlined,
-                    title: 'Yeni Özellikler',
-                    subtitle: 'Uygulama yeniliklerini öğren',
+                    title: S.of(context)!.newFeatures,
+                    subtitle: S.of(context)!.learnAboutUpdates,
                     color: const Color(0xFF8B5CF6),
                     isDark: isDark,
                     value: notifPrefs.newFeatures,
@@ -184,12 +184,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             const SizedBox(height: 24),
 
             // Privacy Section
-            _buildSectionHeader('Gizlilik', Icons.shield_outlined, const Color(0xFF10B981), isDark),
+            _buildSectionHeader(S.of(context)!.privacySection, Icons.shield_outlined, const Color(0xFF10B981), isDark),
             _buildSettingsCard(isDark, [
               _buildSwitchItem(
                 icon: Icons.location_on_outlined,
-                title: 'Konum Servisleri',
-                subtitle: 'Yakındaki işletmeleri bul',
+                title: S.of(context)!.locationServices,
+                subtitle: S.of(context)!.findNearbyBusinesses,
                 color: const Color(0xFF10B981),
                 isDark: isDark,
                 value: ref.watch(privacySettingsProvider).locationServices,
@@ -197,8 +197,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
               _buildSwitchItem(
                 icon: Icons.analytics_outlined,
-                title: 'Analitik Veriler',
-                subtitle: 'Uygulama iyileştirmelerine katkı',
+                title: S.of(context)!.analyticsData,
+                subtitle: S.of(context)!.contributeToImprovements,
                 color: const Color(0xFF6366F1),
                 isDark: isDark,
                 value: ref.watch(privacySettingsProvider).analytics,
@@ -206,8 +206,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
               _buildSwitchItem(
                 icon: Icons.ads_click_outlined,
-                title: 'Kişiselleştirilmiş Reklamlar',
-                subtitle: 'İlgi alanlarına göre reklamlar',
+                title: S.of(context)!.personalizedAds,
+                subtitle: S.of(context)!.adsByInterest,
                 color: const Color(0xFFF59E0B),
                 isDark: isDark,
                 value: ref.watch(privacySettingsProvider).personalizedAds,
@@ -216,16 +216,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               _buildDivider(isDark),
               _buildNavigationItem(
                 icon: Icons.history,
-                title: 'Veri İndirme',
-                subtitle: 'Verilerinin bir kopyasını al',
+                title: S.of(context)!.downloadData,
+                subtitle: S.of(context)!.getDataCopy,
                 color: const Color(0xFF3B82F6),
                 isDark: isDark,
                 onTap: () => _showDataDownloadDialog(),
               ),
               _buildNavigationItem(
                 icon: Icons.delete_outline,
-                title: 'Hesabı Sil',
-                subtitle: 'Hesabını kalıcı olarak kaldır',
+                title: S.of(context)!.deleteAccount,
+                subtitle: S.of(context)!.deleteAccountSubtitle,
                 color: const Color(0xFFEF4444),
                 isDark: isDark,
                 onTap: () => _showDeleteAccountDialog(),
@@ -235,25 +235,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             const SizedBox(height: 24),
 
             // App Preferences Section
-            _buildSectionHeader('Uygulama Tercihleri', Icons.tune_outlined, const Color(0xFF8B5CF6), isDark),
+            _buildSectionHeader(S.of(context)!.appPreferences, Icons.tune_outlined, const Color(0xFF8B5CF6), isDark),
             _buildSettingsCard(isDark, [
               _buildSwitchItem(
-                icon: Icons.dark_mode_outlined,
-                title: 'Karanlık Mod',
-                subtitle: 'Göz yorgunluğunu azalt',
-                color: const Color(0xFF6366F1),
-                isDark: isDark,
-                value: ref.watch(settingsProvider).themeMode == ThemeMode.dark,
-                onChanged: (v) {
-                  ref.read(settingsProvider.notifier).setThemeMode(
-                    v ? ThemeMode.dark : ThemeMode.light,
-                  );
-                },
-              ),
-              _buildSwitchItem(
                 icon: Icons.fingerprint,
-                title: 'Biyometrik Giriş',
-                subtitle: 'Parmak izi veya yüz tanıma',
+                title: S.of(context)!.biometricLogin,
+                subtitle: S.of(context)!.biometricSubtitle,
                 color: const Color(0xFF10B981),
                 isDark: isDark,
                 value: ref.watch(settingsProvider).biometricLogin,
@@ -261,8 +248,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
               _buildSwitchItem(
                 icon: Icons.system_update_outlined,
-                title: 'Otomatik Güncelleme',
-                subtitle: 'Uygulamayı otomatik güncelle',
+                title: S.of(context)!.autoUpdate,
+                subtitle: S.of(context)!.autoUpdateSubtitle,
                 color: const Color(0xFF3B82F6),
                 isDark: isDark,
                 value: ref.watch(settingsProvider).autoUpdate,
@@ -276,62 +263,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 color: const Color(0xFF06B6D4),
                 isDark: isDark,
                 onTap: () => _showLanguageSelector(),
-              ),
-            ]),
-
-            const SizedBox(height: 24),
-
-            // Support Section
-            _buildSectionHeader('Destek ve Bilgi', Icons.help_outline, const Color(0xFFEC4899), isDark),
-            _buildSettingsCard(isDark, [
-              _buildNavigationItem(
-                icon: Icons.help_center_outlined,
-                title: 'Yardım Merkezi',
-                subtitle: 'Sıkça sorulan sorular',
-                color: const Color(0xFFEC4899),
-                isDark: isDark,
-                onTap: () => context.push('/help-center'),
-              ),
-              _buildNavigationItem(
-                icon: Icons.chat_bubble_outline,
-                title: 'Canlı Destek',
-                subtitle: '7/24 müşteri hizmetleri',
-                color: const Color(0xFF14B8A6),
-                isDark: isDark,
-                onTap: () => _showLiveChatDialog(),
-              ),
-              _buildNavigationItem(
-                icon: Icons.bug_report_outlined,
-                title: 'Hata Bildir',
-                subtitle: 'Sorunları bize iletin',
-                color: const Color(0xFFF59E0B),
-                isDark: isDark,
-                onTap: () => _showBugReportDialog(),
-              ),
-              _buildDivider(isDark),
-              _buildNavigationItem(
-                icon: Icons.description_outlined,
-                title: 'Kullanım Koşulları',
-                subtitle: 'Hizmet şartları',
-                color: const Color(0xFF64748B),
-                isDark: isDark,
-                onTap: () => _openUrl('https://supercyp.com/terms'),
-              ),
-              _buildNavigationItem(
-                icon: Icons.privacy_tip_outlined,
-                title: 'Gizlilik Politikası',
-                subtitle: 'Veri koruma politikamız',
-                color: const Color(0xFF64748B),
-                isDark: isDark,
-                onTap: () => _openUrl('https://supercyp.com/privacy'),
-              ),
-              _buildNavigationItem(
-                icon: Icons.info_outline,
-                title: 'Hakkında',
-                subtitle: 'Versiyon 1.0.0+1',
-                color: const Color(0xFF64748B),
-                isDark: isDark,
-                onTap: () => _showAboutDialog(),
               ),
             ]),
 
@@ -605,14 +536,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             color: Colors.red.withValues(alpha: 0.3),
           ),
         ),
-        child: const Row(
+        child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.logout, color: Colors.red, size: 20),
-            SizedBox(width: 10),
+            const Icon(Icons.logout, color: Colors.red, size: 20),
+            const SizedBox(width: 10),
             Text(
-              'Çıkış Yap',
-              style: TextStyle(
+              S.of(context)!.signOut,
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: Colors.red,
@@ -658,10 +589,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final languages = [
       {'name': 'Türkçe', 'locale': const Locale('tr', 'TR')},
       {'name': 'English', 'locale': const Locale('en', 'US')},
-      {'name': 'Deutsch', 'locale': const Locale('de', 'DE')},
-      {'name': 'Français', 'locale': const Locale('fr', 'FR')},
-      {'name': 'Español', 'locale': const Locale('es', 'ES')},
-      {'name': 'العربية', 'locale': const Locale('ar', 'SA')},
     ];
 
     showModalBottomSheet(
@@ -688,7 +615,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             const SizedBox(height: 20),
             Text(
-              'Dil Seçin',
+              S.of(context)!.selectLanguage,
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -740,14 +667,14 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.logout, color: Colors.red),
-            SizedBox(width: 12),
-            Text('Çıkış Yap'),
+            const Icon(Icons.logout, color: Colors.red),
+            const SizedBox(width: 12),
+            Text(S.of(context)!.signOut),
           ],
         ),
-        content: const Text('Hesabınızdan çıkış yapmak istediğinize emin misiniz?'),
+        content: Text(S.of(context)!.signOutConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -762,7 +689,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               backgroundColor: Colors.red,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            child: const Text('Çıkış Yap', style: TextStyle(color: Colors.white)),
+            child: Text(S.of(context)!.signOut, style: const TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -774,11 +701,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.red, size: 28),
-            SizedBox(width: 12),
-            Text('Hesabı Sil'),
+            const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 28),
+            const SizedBox(width: 12),
+            Text(S.of(context)!.deleteAccount),
           ],
         ),
         content: const Column(
@@ -800,7 +727,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext),
-            child: Text('Vazgeç', style: TextStyle(color: Colors.grey[600])),
+            child: Text(S.of(context)!.cancel, style: TextStyle(color: Colors.grey[600])),
           ),
           StatefulBuilder(
             builder: (context, setDialogState) {
@@ -827,7 +754,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 child: _isDeletingAccount
                     ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Text('Hesabı Sil', style: TextStyle(color: Colors.white)),
+                    : Text(S.of(context)!.deleteAccount, style: const TextStyle(color: Colors.white)),
               );
             },
           ),
@@ -841,11 +768,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.download, color: Color(0xFF3B82F6)),
-            SizedBox(width: 12),
-            Text('Veri İndirme'),
+            const Icon(Icons.download, color: Color(0xFF3B82F6)),
+            const SizedBox(width: 12),
+            Text(S.of(context)!.downloadData),
           ],
         ),
         content: const Text(
@@ -893,209 +820,4 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  void _showLiveChatDialog() {
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
-          children: [
-            Icon(Icons.support_agent, color: Color(0xFF14B8A6)),
-            SizedBox(width: 12),
-            Text('Canlı Destek'),
-          ],
-        ),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('AI asistanımız size 7/24 yardımcı olabilir.'),
-            SizedBox(height: 16),
-            Row(
-              children: [
-                Icon(Icons.smart_toy_outlined, size: 18, color: Colors.grey),
-                SizedBox(width: 8),
-                Text('Anında yanıt alın'),
-              ],
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: Text('Vazgeç', style: TextStyle(color: Colors.grey[600])),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(dialogContext);
-              context.push('/support/ai-chat');
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF14B8A6),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            child: const Text('Sohbet Başlat', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showBugReportDialog() {
-    final controller = TextEditingController();
-    bool isSending = false;
-    showDialog(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Row(
-            children: [
-              Icon(Icons.bug_report, color: Color(0xFFF59E0B)),
-              SizedBox(width: 12),
-              Text('Hata Bildir'),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Karşılaştığınız sorunu detaylı bir şekilde açıklayın.'),
-              const SizedBox(height: 16),
-              TextField(
-                controller: controller,
-                maxLines: 4,
-                decoration: InputDecoration(
-                  hintText: 'Sorunu açıklayın...',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: AppColors.primary),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text('İptal', style: TextStyle(color: Colors.grey[600])),
-            ),
-            ElevatedButton(
-              onPressed: isSending ? null : () async {
-                final text = controller.text.trim();
-                if (text.isEmpty) {
-                  await AppDialogs.showWarning(dialogContext, 'Lütfen sorunu açıklayın.');
-                  return;
-                }
-                setDialogState(() => isSending = true);
-                try {
-                  await SupabaseService.client.from('bug_reports').insert({
-                    'user_id': SupabaseService.currentUser!.id,
-                    'description': text,
-                  });
-                  if (!mounted) return;
-                  Navigator.pop(dialogContext);
-                  await AppDialogs.showSuccess(this.context, 'Hata raporu gönderildi. Teşekkür ederiz!');
-                } catch (e) {
-                  setDialogState(() => isSending = false);
-                  if (!mounted) return;
-                  await AppDialogs.showWarning(dialogContext, 'Gönderilemedi: $e');
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFF59E0B),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-              child: isSending
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : const Text('Gönder', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showAboutDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.primary, Color(0xFF60A5FA)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Icon(Icons.apps, color: Colors.white, size: 40),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'SuperCyp',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Versiyon 1.0.0+1',
-              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Tüm ihtiyaçlarınız için tek uygulama.\nYemek, market, kurye, taksi ve daha fazlası.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14),
-            ),
-            const SizedBox(height: 16),
-            Text(
-              '© 2025 SuperCyp. Tüm hakları saklıdır.',
-              style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                TextButton.icon(
-                  onPressed: () => _openUrl('https://supercyp.com/terms'),
-                  icon: Icon(Icons.description_outlined, size: 16, color: Colors.grey[500]),
-                  label: Text('Koşullar', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-                ),
-                Text('·', style: TextStyle(color: Colors.grey[400])),
-                TextButton.icon(
-                  onPressed: () => _openUrl('https://supercyp.com/privacy'),
-                  icon: Icon(Icons.privacy_tip_outlined, size: 16, color: Colors.grey[500]),
-                  label: Text('Gizlilik', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-                ),
-              ],
-            ),
-          ],
-        ),
-        actions: [
-          Center(
-            child: TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Tamam'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _openUrl(String url) async {
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } else if (mounted) {
-      await AppDialogs.showWarning(context, 'Bağlantı açılamadı.');
-    }
-  }
 }

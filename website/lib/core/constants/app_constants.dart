@@ -15,7 +15,7 @@ class AppUrls {
 
 class AppStrings {
   static const String appName = 'SuperCyp';
-  static const String tagline = 'Tek Uygulama, Sınırsız Hizmet';
+  static const String tagline = 'Kıbrıs\'ta her şey tek uygulamada';
   static const String description =
       'Kuzey Kıbrıs\'ın yapay zeka destekli süper uygulama platformu. '
       'Yemekten emlağa, taksiden iş ilanlarına 8 hizmet tek uygulamada.';

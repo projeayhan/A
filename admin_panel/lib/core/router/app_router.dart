@@ -10,23 +10,14 @@ import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/forgot_password_screen.dart';
 import '../../features/dashboard/screens/dashboard_screen.dart';
 import '../../features/users/screens/users_screen.dart';
-import '../../features/merchants/screens/merchants_screen.dart';
 import '../../features/partners/screens/partners_screen.dart';
-import '../../features/orders/screens/orders_screen.dart';
 import '../../features/finance/screens/finance_dashboard_screen.dart';
 import '../../features/finance/screens/income_expense_screen.dart';
-import '../../features/finance/screens/tax_report_screen.dart';
-import '../../features/finance/screens/balance_sheet_screen.dart';
-import '../../features/finance/screens/profit_loss_screen.dart';
 import '../../features/finance/screens/commission_management_screen.dart';
-import '../../features/finance/screens/payment_tracking_screen.dart';
-import '../../features/finance/screens/batch_invoice_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
-import '../../features/pricing/screens/pricing_screen.dart';
 import '../../features/banners/screens/banners_screen.dart';
+import '../../features/banners/screens/banner_packages_screen.dart';
 import '../../features/invoices/screens/invoices_screen.dart';
-import '../../features/surge/screens/surge_screen.dart';
-import '../../features/earnings/screens/earnings_screen.dart';
 import '../../features/applications/screens/applications_screen.dart';
 import '../../features/notifications/screens/notifications_screen.dart';
 import '../../features/sanctions/screens/sanctions_screen.dart';
@@ -34,44 +25,16 @@ import '../../features/logs/screens/logs_screen.dart';
 import '../../features/security/screens/security_screen.dart';
 import '../../features/system_health/screens/system_health_screen.dart';
 import '../../features/support/screens/ai_support_screen.dart';
-import '../../features/rental/screens/rental_dashboard_screen.dart';
-import '../../features/rental/screens/rental_vehicles_screen.dart';
-import '../../features/rental/screens/rental_bookings_screen.dart';
-import '../../features/rental/screens/rental_locations_screen.dart';
-import '../../features/emlak/screens/emlak_dashboard_screen.dart';
-import '../../features/emlak/screens/emlak_cities_screen.dart';
-import '../../features/emlak/screens/emlak_districts_screen.dart';
-import '../../features/emlak/screens/emlak_listings_screen.dart';
-import '../../features/emlak/screens/emlak_property_types_screen.dart';
-import '../../features/emlak/screens/emlak_amenities_screen.dart';
-import '../../features/emlak/screens/emlak_settings_screen.dart';
-import '../../features/emlak/screens/emlak_realtor_applications_screen.dart';
-import '../../features/emlak/screens/emlak_pricing_screen.dart';
-import '../../features/car_sales/screens/car_sales_dashboard_screen.dart';
-import '../../features/car_sales/screens/car_sales_listings_screen.dart';
-import '../../features/car_sales/screens/car_sales_brands_screen.dart';
-import '../../features/car_sales/screens/car_sales_features_screen.dart';
-import '../../features/car_sales/screens/car_sales_pricing_screen.dart';
-import '../../features/car_sales/screens/car_sales_body_types_screen.dart';
-import '../../features/car_sales/screens/car_sales_fuel_types_screen.dart';
-import '../../features/car_sales/screens/car_sales_transmissions_screen.dart';
-import '../../features/job_listings/screens/job_listings_dashboard_screen.dart';
-import '../../features/job_listings/screens/job_categories_screen.dart';
-import '../../features/job_listings/screens/job_skills_screen.dart';
-import '../../features/job_listings/screens/job_benefits_screen.dart';
-import '../../features/job_listings/screens/job_listings_list_screen.dart';
-import '../../features/job_listings/screens/job_companies_screen.dart';
-import '../../features/job_listings/screens/job_pricing_screen.dart';
-import '../../features/job_listings/screens/job_settings_screen.dart';
-import '../../features/food/screens/restaurant_categories_screen.dart';
-import '../../features/store/screens/store_categories_screen.dart';
+// Eski sektör ekran importları kaldırıldı (dosyalar hala mevcut)
 import '../../features/courier/screens/courier_vehicle_types_screen.dart';
 import '../../features/support_agents/screens/support_agents_screen.dart';
 import '../../features/support_monitoring/screens/support_dashboard_screen.dart';
 import '../../features/support_monitoring/screens/ticket_review_screen.dart';
 import '../../features/support_monitoring/screens/agent_performance_screen.dart';
 import '../../features/support_monitoring/screens/support_reports_screen.dart';
+import '../../features/support_monitoring/screens/order_history_screen.dart';
 import '../../features/reports/screens/reports_screen.dart';
+import '../../features/promotions/screens/promotion_requests_screen.dart';
 import '../../features/business/screens/business_listing_screen.dart';
 import '../../features/business/screens/business_overview_screen.dart';
 import '../../features/business/screens/sector_settings_screen.dart';
@@ -94,6 +57,18 @@ import '../../features/emlak_management/screens/admin_emlak_analytics_screen.dar
 // Car Sales Management (Phase 3)
 import '../../features/car_sales_management/screens/admin_car_listings_screen.dart';
 import '../../features/car_sales_management/screens/admin_car_performance_screen.dart';
+import '../../features/car_sales_management/screens/admin_dealer_messages_screen.dart';
+// Taxi Management (Phase 4)
+import '../../features/taxi_management/screens/admin_rides_screen.dart';
+import '../../features/taxi_management/screens/admin_driver_earnings_screen.dart';
+import '../../features/taxi_management/screens/admin_driver_settings_screen.dart';
+// Jobs Management (Phase 4)
+import '../../features/jobs_management/screens/admin_company_jobs_screen.dart';
+import '../../features/jobs_management/screens/admin_job_applicants_screen.dart';
+import '../../features/jobs_management/screens/admin_company_settings_screen.dart';
+import '../../features/rental_management/screens/admin_rental_settings_screen.dart';
+import '../../features/emlak_management/screens/admin_realtor_settings_screen.dart';
+import '../../features/car_sales_management/screens/admin_dealer_settings_screen.dart';
 // Rental Management (Phase 3)
 import '../../features/rental_management/screens/admin_rental_cars_screen.dart';
 import '../../features/rental_management/screens/admin_rental_bookings_screen.dart';
@@ -108,9 +83,7 @@ class AppRoutes {
   static const String forgotPassword = '/forgot-password';
   static const String dashboard = '/';
   static const String users = '/users';
-  static const String merchants = '/merchants';
   static const String partners = '/partners';
-  static const String orders = '/orders';
   static const String finance = '/finans';
   static const String financeInvoices = '/finans/faturalar';
   static const String financeBatchInvoice = '/finans/toplu-fatura';
@@ -120,12 +93,10 @@ class AppRoutes {
   static const String financeProfitLoss = '/finans/kar-zarar';
   static const String financeCommission = '/finans/komisyon';
   static const String financePaymentTracking = '/finans/odeme-takip';
+  static const String financeBudget = '/finans/butce';
   static const String settings = '/settings';
-  static const String pricing = '/pricing';
   static const String banners = '/banners';
-  static const String invoices = '/invoices';
-  static const String surge = '/surge';
-  static const String earnings = '/earnings';
+  static const String bannerPackages = '/banners/packages';
   static const String applications = '/applications';
   static const String notifications = '/notifications';
   static const String sanctions = '/sanctions';
@@ -133,11 +104,21 @@ class AppRoutes {
   static const String security = '/security';
   static const String systemHealth = '/system-health';
   static const String aiSupport = '/ai-support';
+  // Kurye
+  static const String courierVehicleTypes = '/courier/vehicle-types';
+  // Eski rota sabitleri (ekranlar hala referans ediyor, rotalar kaldırıldı)
+  static const String jobListingsDashboard = '/job-listings';
+  static const String jobCategories = '/job-listings/categories';
+  static const String jobSkills = '/job-listings/skills';
+  static const String jobBenefits = '/job-listings/benefits';
+  static const String jobListingsList = '/job-listings/listings';
+  static const String jobCompanies = '/job-listings/companies';
+  static const String jobPricing = '/job-listings/pricing';
+  static const String jobSettings = '/job-listings/settings';
   static const String rentalDashboard = '/rental';
   static const String rentalVehicles = '/rental/vehicles';
   static const String rentalBookings = '/rental/bookings';
   static const String rentalLocations = '/rental/locations';
-  // Emlak (eski rotalar - hala çalışır)
   static const String emlakDashboard = '/emlak';
   static const String emlakCities = '/emlak/cities';
   static const String emlakDistricts = '/emlak/districts';
@@ -147,7 +128,6 @@ class AppRoutes {
   static const String emlakSettings = '/emlak/settings';
   static const String emlakRealtorApplications = '/emlak/realtor-applications';
   static const String emlakPricing = '/emlak/pricing';
-  // Araç Satış (eski rotalar - hala çalışır)
   static const String carSalesDashboard = '/car-sales';
   static const String carSalesListings = '/car-sales/listings';
   static const String carSalesBrands = '/car-sales/brands';
@@ -156,29 +136,19 @@ class AppRoutes {
   static const String carSalesBodyTypes = '/car-sales/body-types';
   static const String carSalesFuelTypes = '/car-sales/fuel-types';
   static const String carSalesTransmissions = '/car-sales/transmissions';
-  // Kurye
-  static const String courierVehicleTypes = '/courier/vehicle-types';
-  // Magazalar
   static const String storeCategories = '/store/categories';
-  // Yemek
   static const String restaurantCategories = '/food/categories';
-  // İş İlanları (eski rotalar - hala çalışır)
-  static const String jobListingsDashboard = '/job-listings';
-  static const String jobCategories = '/job-listings/categories';
-  static const String jobSkills = '/job-listings/skills';
-  static const String jobBenefits = '/job-listings/benefits';
-  static const String jobListingsList = '/job-listings/listings';
-  static const String jobCompanies = '/job-listings/companies';
-  static const String jobPricing = '/job-listings/pricing';
-  static const String jobSettings = '/job-listings/settings';
   // Destek
   static const String supportAgents = '/support-agents';
   static const String supportDashboard = '/support-dashboard';
   static const String ticketReview = '/ticket-review';
   static const String agentPerformance = '/agent-performance';
   static const String supportReports = '/support-reports';
+  static const String orderHistory = '/destek/siparis-gecmisi';
   // Raporlar
   static const String reports = '/reports';
+  // Öne Çıkarma Talepleri
+  static const String promotionRequests = '/promotion-requests';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -213,7 +183,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         if (admin == null) {
           return AppRoutes.login;
         }
-        final permission = PermissionConfig.routePermissions[state.matchedLocation];
+        final permission = PermissionConfig.getPermissionForPath(state.matchedLocation);
         if (permission != null && !admin.hasPermission(permission.$1, permission.$2)) {
           return AppRoutes.dashboard;
         }
@@ -248,6 +218,12 @@ final routerProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: ReportsScreen()),
           ),
+          GoRoute(
+            path: AppRoutes.promotionRequests,
+            name: 'promotion-requests',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: PromotionRequestsScreen()),
+          ),
 
           // ==================== YENİ SEKTÖR ROTALARI ====================
           ..._buildSectorRoutes(SectorType.food),
@@ -272,11 +248,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: InvoicesScreen()),
           ),
+          // Toplu Fatura artık Faturalar ekranının bir tab'ı
           GoRoute(
             path: AppRoutes.financeBatchInvoice,
             name: 'finance-batch-invoice',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: BatchInvoiceScreen()),
+            redirect: (context, state) => AppRoutes.financeInvoices,
           ),
           GoRoute(
             path: AppRoutes.financeIncomeExpense,
@@ -284,23 +260,21 @@ final routerProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: IncomeExpenseScreen()),
           ),
+          // Kaldırılan ekranlar → Dashboard'a redirect
           GoRoute(
             path: AppRoutes.financeTax,
             name: 'finance-tax',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: TaxReportScreen()),
+            redirect: (context, state) => AppRoutes.finance,
           ),
           GoRoute(
             path: AppRoutes.financeBalanceSheet,
             name: 'finance-balance-sheet',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: BalanceSheetScreen()),
+            redirect: (context, state) => AppRoutes.finance,
           ),
           GoRoute(
             path: AppRoutes.financeProfitLoss,
             name: 'finance-profit-loss',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: ProfitLossScreen()),
+            redirect: (context, state) => AppRoutes.finance,
           ),
           GoRoute(
             path: AppRoutes.financeCommission,
@@ -308,35 +282,16 @@ final routerProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: CommissionManagementScreen()),
           ),
+          // Ödeme Takip artık Faturalar ekranının bir tab'ı
           GoRoute(
             path: AppRoutes.financePaymentTracking,
             name: 'finance-payment-tracking',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: PaymentTrackingScreen()),
+            redirect: (context, state) => AppRoutes.financeInvoices,
           ),
           GoRoute(
-            path: AppRoutes.earnings,
-            name: 'earnings',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: EarningsScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.invoices,
-            name: 'invoices',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: InvoicesScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.pricing,
-            name: 'pricing',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: PricingScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.surge,
-            name: 'surge',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: SurgeScreen()),
+            path: AppRoutes.financeBudget,
+            name: 'finance-budget',
+            redirect: (context, state) => AppRoutes.finance,
           ),
           GoRoute(
             path: AppRoutes.applications,
@@ -351,22 +306,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                 const NoTransitionPage(child: UsersScreen()),
           ),
           GoRoute(
-            path: AppRoutes.merchants,
-            name: 'merchants',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: MerchantsScreen()),
-          ),
-          GoRoute(
             path: AppRoutes.partners,
             name: 'partners',
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: PartnersScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.orders,
-            name: 'orders',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: OrdersScreen()),
           ),
 
           // ==================== DESTEK ====================
@@ -405,6 +348,12 @@ final routerProvider = Provider<GoRouter>((ref) {
             name: 'support-agents',
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: SupportAgentsScreen()),
+          ),
+          GoRoute(
+            path: AppRoutes.orderHistory,
+            name: 'order-history',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: OrderHistoryScreen()),
           ),
 
           // ==================== SİSTEM ====================
@@ -456,194 +405,14 @@ final routerProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) =>
                 const NoTransitionPage(child: BannersScreen()),
           ),
+          GoRoute(
+            path: AppRoutes.bannerPackages,
+            name: 'banner-packages',
+            pageBuilder: (context, state) =>
+                const NoTransitionPage(child: BannerPackagesScreen()),
+          ),
 
-          // ==================== ESKİ ROTALAR (sidebar'dan gizli, hala çalışır) ====================
-          GoRoute(
-            path: AppRoutes.rentalDashboard,
-            name: 'rental-dashboard',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: RentalDashboardScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.rentalVehicles,
-            name: 'rental-vehicles',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: RentalVehiclesScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.rentalBookings,
-            name: 'rental-bookings',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: RentalBookingsScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.rentalLocations,
-            name: 'rental-locations',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: RentalLocationsScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.emlakDashboard,
-            name: 'emlak-dashboard',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: EmlakDashboardScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.emlakCities,
-            name: 'emlak-cities',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: EmlakCitiesScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.emlakDistricts,
-            name: 'emlak-districts',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: EmlakDistrictsScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.emlakListings,
-            name: 'emlak-listings',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: EmlakListingsScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.emlakPropertyTypes,
-            name: 'emlak-property-types',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: EmlakPropertyTypesScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.emlakAmenities,
-            name: 'emlak-amenities',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: EmlakAmenitiesScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.emlakSettings,
-            name: 'emlak-settings',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: EmlakSettingsScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.emlakRealtorApplications,
-            name: 'emlak-realtor-applications',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: EmlakRealtorApplicationsScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.emlakPricing,
-            name: 'emlak-pricing',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: EmlakPricingScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.carSalesDashboard,
-            name: 'car-sales-dashboard',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: CarSalesDashboardScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.carSalesListings,
-            name: 'car-sales-listings',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: CarSalesListingsScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.carSalesBrands,
-            name: 'car-sales-brands',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: CarSalesBrandsScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.carSalesFeatures,
-            name: 'car-sales-features',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: CarSalesFeaturesScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.carSalesPricing,
-            name: 'car-sales-pricing',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: CarSalesPricingScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.carSalesBodyTypes,
-            name: 'car-sales-body-types',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: CarSalesBodyTypesScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.carSalesFuelTypes,
-            name: 'car-sales-fuel-types',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: CarSalesFuelTypesScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.carSalesTransmissions,
-            name: 'car-sales-transmissions',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: CarSalesTransmissionsScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.storeCategories,
-            name: 'store-categories',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: StoreCategoriesScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.restaurantCategories,
-            name: 'restaurant-categories',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: RestaurantCategoriesScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.jobListingsDashboard,
-            name: 'job-listings-dashboard',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: JobListingsDashboardScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.jobCategories,
-            name: 'job-categories',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: JobCategoriesScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.jobSkills,
-            name: 'job-skills',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: JobSkillsScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.jobBenefits,
-            name: 'job-benefits',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: JobBenefitsScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.jobListingsList,
-            name: 'job-listings-list',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: JobListingsListScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.jobCompanies,
-            name: 'job-companies',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: JobCompaniesScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.jobPricing,
-            name: 'job-pricing',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: JobPricingScreen()),
-          ),
-          GoRoute(
-            path: AppRoutes.jobSettings,
-            name: 'job-settings',
-            pageBuilder: (context, state) =>
-                const NoTransitionPage(child: JobSettingsScreen()),
-          ),
+          // Eski sektör rotaları kaldırıldı (yeni sektör rotaları yukarıda)
         ],
       ),
     ],
@@ -748,11 +517,41 @@ Widget _buildTabScreen(SectorType sector, SectorTab tab, String id) {
       );
     case 'mesajlar':
     case 'sohbet':
+      if (sector == SectorType.carSales) {
+        return AdminDealerMessagesScreen(dealerId: id);
+      }
       return AdminMessagesScreen(
         entityType: sector.tableName,
         entityId: id,
       );
+    case 'basvurular':
+      if (sector == SectorType.jobs) {
+        return AdminJobApplicantsScreen(companyId: id);
+      }
+      return PlaceholderTabScreen(tabName: tab.label, sectorName: sector.label);
+
+    // ==================== TAKSİ TABLARI ====================
+    case 'seferler':
+      return AdminRidesScreen(driverId: id);
+    case 'kazanclar':
+      return AdminDriverEarningsScreen(driverId: id);
+
     case 'ayarlar':
+      if (sector == SectorType.taxi) {
+        return AdminDriverSettingsScreen(driverId: id);
+      }
+      if (sector == SectorType.jobs) {
+        return AdminCompanySettingsScreen(companyId: id);
+      }
+      if (sector == SectorType.carRental) {
+        return AdminRentalSettingsScreen(companyId: id);
+      }
+      if (sector == SectorType.realEstate) {
+        return AdminRealtorSettingsScreen(realtorId: id);
+      }
+      if (sector == SectorType.carSales) {
+        return AdminDealerSettingsScreen(dealerId: id);
+      }
       return AdminMerchantSettingsScreen(merchantId: id);
 
     // ==================== EMLAK TABLARI ====================
@@ -762,6 +561,9 @@ Widget _buildTabScreen(SectorType sector, SectorTab tab, String id) {
       }
       if (sector == SectorType.carSales) {
         return AdminCarListingsScreen(dealerId: id);
+      }
+      if (sector == SectorType.jobs) {
+        return AdminCompanyJobsScreen(companyId: id);
       }
       return PlaceholderTabScreen(tabName: tab.label, sectorName: sector.label);
     case 'crm':

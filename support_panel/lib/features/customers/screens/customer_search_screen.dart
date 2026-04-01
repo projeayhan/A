@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/customer_service.dart';
 import '../../../core/router/app_router.dart';
+import 'package:support_panel/core/services/log_service.dart';
 
 class CustomerSearchScreen extends ConsumerStatefulWidget {
   const CustomerSearchScreen({super.key});
@@ -33,7 +34,8 @@ class _CustomerSearchScreenState extends ConsumerState<CustomerSearchScreen> {
       final service = ref.read(customerServiceProvider);
       final results = await service.searchCustomers(query: q);
       setState(() { _results = results; _isLoading = false; });
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Customer search failed', error: e, stackTrace: st, source: 'CustomerSearchScreen:_search');
       setState(() { _isLoading = false; });
     }
   }

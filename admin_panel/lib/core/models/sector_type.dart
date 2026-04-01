@@ -74,6 +74,44 @@ enum SectorType {
   final String tableName;
   final String idField;
 
+  /// Veritabanındaki ad kolonu
+  String get nameField {
+    switch (this) {
+      case SectorType.food:
+      case SectorType.market:
+      case SectorType.store:
+      case SectorType.carSales:
+        return 'business_name';
+      case SectorType.realEstate:
+      case SectorType.carRental:
+        return 'company_name';
+      case SectorType.taxi:
+        return 'full_name';
+      case SectorType.jobs:
+        return 'name';
+    }
+  }
+
+  /// Veritabanındaki sayı kolonu
+  String? get countField {
+    switch (this) {
+      case SectorType.food:
+      case SectorType.market:
+      case SectorType.store:
+        return 'total_orders';
+      case SectorType.taxi:
+        return 'total_rides';
+      case SectorType.carSales:
+        return 'total_listings';
+      case SectorType.jobs:
+        return 'active_listings';
+      case SectorType.carRental:
+        return 'total_bookings';
+      case SectorType.realEstate:
+        return null;
+    }
+  }
+
   /// Sektör tipine göre tab listesini döner
   List<SectorTab> get tabs {
     switch (this) {
@@ -151,6 +189,46 @@ enum SectorType {
       case SectorType.store:
         return 'store';
       default:
+        return null;
+    }
+  }
+
+  /// Reviews tablosu adı (canlı puan hesaplaması için)
+  String? get reviewTableName {
+    switch (this) {
+      case SectorType.food:
+      case SectorType.market:
+      case SectorType.store:
+        return 'reviews';
+      case SectorType.taxi:
+        return null; // taxi reviews are stored in taxi_rides table, not a separate table
+      case SectorType.carRental:
+        return 'rental_reviews';
+      case SectorType.carSales:
+        return 'car_dealer_reviews';
+      case SectorType.realEstate:
+        return 'realtor_reviews';
+      case SectorType.jobs:
+        return null;
+    }
+  }
+
+  /// Reviews tablosundaki merchant/business foreign key kolonu
+  String? get reviewMerchantColumn {
+    switch (this) {
+      case SectorType.food:
+      case SectorType.market:
+      case SectorType.store:
+        return 'merchant_id';
+      case SectorType.taxi:
+        return null; // taxi reviews are in taxi_rides, not a separate table
+      case SectorType.carRental:
+        return 'company_id';
+      case SectorType.carSales:
+        return 'dealer_id';
+      case SectorType.realEstate:
+        return 'realtor_id';
+      case SectorType.jobs:
         return null;
     }
   }

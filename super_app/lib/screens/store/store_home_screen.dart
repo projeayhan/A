@@ -15,9 +15,11 @@ import '../../widgets/store/product_card.dart';
 import '../../widgets/store/section_header.dart';
 import '../../widgets/store/campaign_carousel.dart';
 import '../../widgets/common/generic_banner_carousel.dart';
+import '../../widgets/common/shimmer_widgets.dart';
 import '../../core/providers/banner_provider.dart';
 import '../../core/providers/notification_provider.dart';
-import '../../core/providers/store_follow_provider.dart' hide unreadNotificationCountProvider;
+import '../../core/providers/store_follow_provider.dart'
+    hide unreadNotificationCountProvider;
 import '../../core/theme/store_colors.dart';
 
 class StoreHomeScreen extends ConsumerStatefulWidget {
@@ -84,7 +86,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
     // Cancel previous timer
     _debounceTimer?.cancel();
 
-    if (query.isEmpty) {
+    if (query.isEmpty || query.length < 3) {
       setState(() {
         _searchQuery = query;
       });
@@ -117,7 +119,8 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
   OverlayEntry _createOverlayEntry() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
-    final screenWidth = renderBox?.size.width ?? MediaQuery.of(context).size.width;
+    final screenWidth =
+        renderBox?.size.width ?? MediaQuery.of(context).size.width;
     final query = _searchQuery;
 
     return OverlayEntry(
@@ -130,7 +133,8 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
           child: Material(
             color: Colors.transparent,
             child: Consumer(
-              builder: (context, ref, _) => _buildSearchResults(ref, isDark, query),
+              builder: (context, ref, _) =>
+                  _buildSearchResults(ref, isDark, query),
             ),
           ),
         ),
@@ -142,7 +146,9 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
     final productResultsAsync = ref.watch(productSearchProvider(query));
     final storeResultsAsync = ref.watch(storeSearchProvider(query));
 
-    final productResults = (productResultsAsync.valueOrNull ?? []).take(4).toList();
+    final productResults = (productResultsAsync.valueOrNull ?? [])
+        .take(4)
+        .toList();
     final storeResults = (storeResultsAsync.valueOrNull ?? []).take(3).toList();
 
     // Show loading state
@@ -160,13 +166,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
             ),
           ],
         ),
-        child: const Center(
-          child: SizedBox(
-            width: 24,
-            height: 24,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        ),
+        child: const ShimmerBox(height: 80, borderRadius: 12),
       );
     }
 
@@ -199,7 +199,10 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
             const SizedBox(height: 4),
             Text(
               '"$query" için sonuç yok',
-              style: TextStyle(fontSize: context.bodySmallSize, color: Colors.grey[500]),
+              style: TextStyle(
+                fontSize: context.bodySmallSize,
+                color: Colors.grey[500],
+              ),
             ),
           ],
         ),
@@ -229,14 +232,29 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               if (storeResults.isNotEmpty) ...[
-                _buildSearchSectionHeader('Mağazalar', Icons.storefront, isDark),
-                ...storeResults.map((store) => _buildStoreSearchItem(store, isDark)),
+                _buildSearchSectionHeader(
+                  'Mağazalar',
+                  Icons.storefront,
+                  isDark,
+                ),
+                ...storeResults.map(
+                  (store) => _buildStoreSearchItem(store, isDark),
+                ),
               ],
               if (productResults.isNotEmpty) ...[
                 if (storeResults.isNotEmpty)
-                  Divider(height: 1, color: isDark ? Colors.grey[800] : Colors.grey[200]),
-                _buildSearchSectionHeader('Ürünler', Icons.shopping_bag, isDark),
-                ...productResults.map((product) => _buildProductSearchItem(product, isDark)),
+                  Divider(
+                    height: 1,
+                    color: isDark ? Colors.grey[800] : Colors.grey[200],
+                  ),
+                _buildSearchSectionHeader(
+                  'Ürünler',
+                  Icons.shopping_bag,
+                  isDark,
+                ),
+                ...productResults.map(
+                  (product) => _buildProductSearchItem(product, isDark),
+                ),
               ],
             ],
           ),
@@ -305,11 +323,13 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                   fit: BoxFit.cover,
                   memCacheWidth: 100,
                   memCacheHeight: 100,
-                  placeholder: (_, __) => Container(
+                  placeholder: (_, _) => Container(
                     color: Colors.grey[200],
-                    child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    child: const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
                   ),
-                  errorWidget: (_, __, ___) => Container(
+                  errorWidget: (_, _, _) => Container(
                     color: StoreColors.primary.withValues(alpha: 0.1),
                     child: Icon(Icons.store, color: StoreColors.primary),
                   ),
@@ -336,7 +356,11 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                       ),
                       if (store.isVerified) ...[
                         const SizedBox(width: 4),
-                        Icon(Icons.verified, size: 14, color: StoreColors.primary),
+                        Icon(
+                          Icons.verified,
+                          size: 14,
+                          color: StoreColors.primary,
+                        ),
                       ],
                     ],
                   ),
@@ -357,14 +381,21 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                       Expanded(
                         child: Consumer(
                           builder: (context, ref, _) {
-                            final cats = ref.watch(storeCategoriesProvider).valueOrNull ?? [];
+                            final cats =
+                                ref
+                                    .watch(storeCategoriesProvider)
+                                    .valueOrNull ??
+                                [];
                             final categoryName = cats
                                 .where((c) => store.categoryIds.contains(c.id))
                                 .map((c) => c.name)
                                 .join(', ');
                             return Text(
                               categoryName,
-                              style: TextStyle(fontSize: context.captionSize, color: Colors.grey[500]),
+                              style: TextStyle(
+                                fontSize: context.captionSize,
+                                color: Colors.grey[500],
+                              ),
                               overflow: TextOverflow.ellipsis,
                             );
                           },
@@ -414,11 +445,13 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                   fit: BoxFit.cover,
                   memCacheWidth: 100,
                   memCacheHeight: 100,
-                  placeholder: (_, __) => Container(
+                  placeholder: (_, _) => Container(
                     color: Colors.grey[200],
-                    child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    child: const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
                   ),
-                  errorWidget: (_, __, ___) => Container(
+                  errorWidget: (_, _, _) => Container(
                     color: StoreColors.primary.withValues(alpha: 0.1),
                     child: Icon(Icons.shopping_bag, color: StoreColors.primary),
                   ),
@@ -443,7 +476,11 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                   const SizedBox(height: 2),
                   Row(
                     children: [
-                      Icon(Icons.storefront, size: 12, color: StoreColors.primary),
+                      Icon(
+                        Icons.storefront,
+                        size: 12,
+                        color: StoreColors.primary,
+                      ),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
@@ -501,7 +538,9 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
   void _showNotificationOverlayDropdown() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final notifications = ref.read(notificationProvider).notifications;
-    final storeNotifications = ref.read(storeNotificationProvider).notifications;
+    final storeNotifications = ref
+        .read(storeNotificationProvider)
+        .notifications;
 
     _notificationOverlay = OverlayEntry(
       builder: (context) => Stack(
@@ -545,7 +584,9 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
-                              color: isDark ? Colors.white : StoreColors.surfaceDark,
+                              color: isDark
+                                  ? Colors.white
+                                  : StoreColors.surfaceDark,
                             ),
                           ),
                           const Spacer(),
@@ -569,14 +610,18 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                     ),
                     const Divider(height: 1),
                     Flexible(
-                      child: (notifications.isEmpty && storeNotifications.isEmpty)
+                      child:
+                          (notifications.isEmpty && storeNotifications.isEmpty)
                           ? Padding(
                               padding: const EdgeInsets.all(32),
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.notifications_off_outlined,
-                                      size: 48, color: Colors.grey[400]),
+                                  Icon(
+                                    Icons.notifications_off_outlined,
+                                    size: 48,
+                                    color: Colors.grey[400],
+                                  ),
                                   const SizedBox(height: 12),
                                   Text(
                                     'Bildirim yok',
@@ -590,8 +635,13 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                               padding: const EdgeInsets.all(8),
                               children: [
                                 if (storeNotifications.isNotEmpty) ...[
-                                  _notifSectionLabel('Mağaza Bildirimleri', Icons.store_rounded),
-                                  ...storeNotifications.map((n) => _buildStoreNotifItem(n, isDark)),
+                                  _notifSectionLabel(
+                                    'Mağaza Bildirimleri',
+                                    Icons.store_rounded,
+                                  ),
+                                  ...storeNotifications.map(
+                                    (n) => _buildStoreNotifItem(n, isDark),
+                                  ),
                                   if (notifications.isNotEmpty) ...[
                                     const SizedBox(height: 8),
                                     const Divider(height: 1),
@@ -599,8 +649,13 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                                   ],
                                 ],
                                 if (notifications.isNotEmpty) ...[
-                                  _notifSectionLabel('Genel Bildirimler', Icons.notifications_rounded),
-                                  ...notifications.map((n) => _buildAppNotifItem(n, isDark)),
+                                  _notifSectionLabel(
+                                    'Genel Bildirimler',
+                                    Icons.notifications_rounded,
+                                  ),
+                                  ...notifications.map(
+                                    (n) => _buildAppNotifItem(n, isDark),
+                                  ),
                                 ],
                               ],
                             ),
@@ -640,7 +695,9 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
   Widget _buildStoreNotifItem(StoreNotification notification, bool isDark) {
     return GestureDetector(
       onTap: () {
-        ref.read(storeNotificationProvider.notifier).markAsRead(notification.id);
+        ref
+            .read(storeNotificationProvider.notifier)
+            .markAsRead(notification.id);
         _removeNotificationOverlay();
         setState(() => _showNotificationDropdown = false);
       },
@@ -663,7 +720,11 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                 color: notification.iconColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(notification.icon, color: notification.iconColor, size: 18),
+              child: Icon(
+                notification.icon,
+                color: notification.iconColor,
+                size: 18,
+              ),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -677,14 +738,19 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                           notification.title,
                           style: TextStyle(
                             fontSize: context.bodySmallSize,
-                            fontWeight: notification.isRead ? FontWeight.w500 : FontWeight.bold,
-                            color: isDark ? Colors.white : StoreColors.surfaceDark,
+                            fontWeight: notification.isRead
+                                ? FontWeight.w500
+                                : FontWeight.bold,
+                            color: isDark
+                                ? Colors.white
+                                : StoreColors.surfaceDark,
                           ),
                         ),
                       ),
                       if (!notification.isRead)
                         Container(
-                          width: 7, height: 7,
+                          width: 7,
+                          height: 7,
                           decoration: BoxDecoration(
                             color: notification.iconColor,
                             shape: BoxShape.circle,
@@ -695,14 +761,20 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                   const SizedBox(height: 2),
                   Text(
                     notification.message,
-                    style: TextStyle(fontSize: context.captionSmallSize, color: Colors.grey[500]),
+                    style: TextStyle(
+                      fontSize: context.captionSmallSize,
+                      color: Colors.grey[500],
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
                   Text(
                     notification.timeAgo,
-                    style: TextStyle(fontSize: context.captionSmallSize, color: Colors.grey[400]),
+                    style: TextStyle(
+                      fontSize: context.captionSmallSize,
+                      color: Colors.grey[400],
+                    ),
                   ),
                 ],
               ),
@@ -760,14 +832,19 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                           notification.title,
                           style: TextStyle(
                             fontSize: context.bodySmallSize,
-                            fontWeight: notification.isRead ? FontWeight.w500 : FontWeight.bold,
-                            color: isDark ? Colors.white : StoreColors.surfaceDark,
+                            fontWeight: notification.isRead
+                                ? FontWeight.w500
+                                : FontWeight.bold,
+                            color: isDark
+                                ? Colors.white
+                                : StoreColors.surfaceDark,
                           ),
                         ),
                       ),
                       if (!notification.isRead)
                         Container(
-                          width: 7, height: 7,
+                          width: 7,
+                          height: 7,
                           decoration: BoxDecoration(
                             color: iconColor,
                             shape: BoxShape.circle,
@@ -778,14 +855,20 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                   const SizedBox(height: 2),
                   Text(
                     notification.body,
-                    style: TextStyle(fontSize: context.captionSmallSize, color: Colors.grey[500]),
+                    style: TextStyle(
+                      fontSize: context.captionSmallSize,
+                      color: Colors.grey[500],
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
                   Text(
                     timeAgo,
-                    style: TextStyle(fontSize: context.captionSmallSize, color: Colors.grey[400]),
+                    style: TextStyle(
+                      fontSize: context.captionSmallSize,
+                      color: Colors.grey[400],
+                    ),
                   ),
                 ],
               ),
@@ -798,16 +881,26 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
 
   IconData _notifIcon(String iconName) {
     switch (iconName) {
-      case 'restaurant': return Icons.restaurant;
-      case 'shopping_bag': return Icons.shopping_bag;
-      case 'local_taxi': return Icons.local_taxi;
-      case 'directions_car': return Icons.directions_car;
-      case 'work': return Icons.work;
-      case 'home': return Icons.home;
-      case 'celebration': return Icons.celebration;
-      case 'delivery_dining': return Icons.delivery_dining;
-      case 'star': return Icons.star;
-      default: return Icons.notifications;
+      case 'restaurant':
+        return Icons.restaurant;
+      case 'shopping_bag':
+        return Icons.shopping_bag;
+      case 'local_taxi':
+        return Icons.local_taxi;
+      case 'directions_car':
+        return Icons.directions_car;
+      case 'work':
+        return Icons.work;
+      case 'home':
+        return Icons.home;
+      case 'celebration':
+        return Icons.celebration;
+      case 'delivery_dining':
+        return Icons.delivery_dining;
+      case 'star':
+        return Icons.star;
+      default:
+        return Icons.notifications;
     }
   }
 
@@ -884,7 +977,9 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
 
   String _getSelectedCategoryName(List<StoreCategory> categories) {
     if (_selectedCategoryId == null) return '';
-    final category = categories.where((c) => c.id == _selectedCategoryId).firstOrNull;
+    final category = categories
+        .where((c) => c.id == _selectedCategoryId)
+        .firstOrNull;
     return category?.name ?? '';
   }
 
@@ -905,25 +1000,40 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
 
     final filteredStores = _selectedCategoryId == null
         ? allStores
-        : allStores.where((s) => s.categoryIds.contains(_selectedCategoryId)).toList();
+        : allStores
+              .where((s) => s.categoryIds.contains(_selectedCategoryId))
+              .toList();
     final filteredFeaturedStores = _selectedCategoryId == null
         ? allStores.where((s) => s.isVerified).toList()
-        : allStores.where((s) => s.isVerified && s.categoryIds.contains(_selectedCategoryId)).toList();
+        : allStores
+              .where(
+                (s) =>
+                    s.isVerified && s.categoryIds.contains(_selectedCategoryId),
+              )
+              .toList();
     final filteredFlashDeals = _selectedCategoryId == null
         ? allFlashDeals
         : allFlashDeals.where((p) {
-            final store = allStores.firstWhere((s) => s.id == p.storeId, orElse: () => allStores.first);
+            final store = allStores.firstWhere(
+              (s) => s.id == p.storeId,
+              orElse: () => allStores.first,
+            );
             return store.categoryIds.contains(_selectedCategoryId);
           }).toList();
     final filteredBestSellers = _selectedCategoryId == null
         ? allBestSellers
         : allBestSellers.where((p) {
-            final store = allStores.firstWhere((s) => s.id == p.storeId, orElse: () => allStores.first);
+            final store = allStores.firstWhere(
+              (s) => s.id == p.storeId,
+              orElse: () => allStores.first,
+            );
             return store.categoryIds.contains(_selectedCategoryId);
           }).toList();
 
     return Scaffold(
-      backgroundColor: isDark ? StoreColors.backgroundDark : StoreColors.backgroundLight,
+      backgroundColor: isDark
+          ? StoreColors.backgroundDark
+          : StoreColors.backgroundLight,
       body: Stack(
         children: [
           CustomScrollView(
@@ -960,7 +1070,9 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                                     style: TextStyle(
                                       fontSize: context.heading1Size,
                                       fontWeight: FontWeight.w800,
-                                      color: isDark ? Colors.white : Colors.black87,
+                                      color: isDark
+                                          ? Colors.white
+                                          : Colors.black87,
                                       letterSpacing: -0.3,
                                     ),
                                   ),
@@ -980,8 +1092,12 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                             // Notification Button
                             Consumer(
                               builder: (context, ref, _) {
-                                final generalUnread = ref.watch(notificationProvider).unreadCount;
-                                final storeUnread = ref.watch(storeNotificationProvider).unreadCount;
+                                final generalUnread = ref
+                                    .watch(notificationProvider)
+                                    .unreadCount;
+                                final storeUnread = ref
+                                    .watch(storeNotificationProvider)
+                                    .unreadCount;
                                 final unreadCount = generalUnread + storeUnread;
                                 return IconButton(
                                   onPressed: _toggleNotificationDropdown,
@@ -990,7 +1106,9 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                                     isLabelVisible: unreadCount > 0,
                                     child: Icon(
                                       Icons.notifications_outlined,
-                                      color: isDark ? Colors.white : Colors.black87,
+                                      color: isDark
+                                          ? Colors.white
+                                          : Colors.black87,
                                     ),
                                   ),
                                 );
@@ -1030,7 +1148,9 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                           border: Border.all(
                             color: _searchFocusNode.hasFocus
                                 ? StoreColors.primary
-                                : (isDark ? Colors.grey[700]! : Colors.grey[200]!),
+                                : (isDark
+                                      ? Colors.grey[700]!
+                                      : Colors.grey[200]!),
                             width: _searchFocusNode.hasFocus ? 2 : 1,
                           ),
                         ),
@@ -1089,14 +1209,18 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         scrollDirection: Axis.horizontal,
                         itemCount: categories.length + 1,
-                        separatorBuilder: (_, __) => const SizedBox(width: 8),
+                        separatorBuilder: (_, _) => const SizedBox(width: 8),
                         itemBuilder: (context, index) {
                           if (index == 0) {
                             return _buildAllCategoryChip(isDark);
                           }
                           final category = categories[index - 1];
                           final isSelected = _selectedCategoryId == category.id;
-                          return _buildCategoryChip(category, isSelected, isDark);
+                          return _buildCategoryChip(
+                            category,
+                            isSelected,
+                            isDark,
+                          );
                         },
                       ),
                     ),
@@ -1104,7 +1228,10 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                     // Selected category indicator
                     if (_selectedCategoryId != null)
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
                         child: Row(
                           children: [
                             Container(
@@ -1166,13 +1293,16 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                     ],
 
                     // Campaign Carousel (only when no filter and campaigns exist)
-                    if (_selectedCategoryId == null && campaigns.isNotEmpty) ...[
+                    if (_selectedCategoryId == null &&
+                        campaigns.isNotEmpty) ...[
                       CampaignCarousel(
                         campaigns: campaigns,
                         onTap: (campaign) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('${campaign.title} kampanyası açılıyor...'),
+                              content: Text(
+                                '${campaign.title} kampanyası açılıyor...',
+                              ),
                               duration: const Duration(seconds: 1),
                             ),
                           );
@@ -1180,7 +1310,6 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                       ),
                       const SizedBox(height: 10),
                     ],
-
 
                     // Featured Stores
                     if (filteredFeaturedStores.isNotEmpty) ...[
@@ -1190,7 +1319,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                             : 'Öne Çıkan Mağazalar',
                         icon: Icons.store_rounded,
                         actionText: 'Tümü',
-                        onActionTap: () {},
+                        onActionTap: () => context.push('/store/search?filter=featured_stores'),
                       ),
                       const SizedBox(height: 8),
                       SizedBox(
@@ -1200,7 +1329,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                           scrollDirection: Axis.horizontal,
                           addAutomaticKeepAlives: false,
                           itemCount: filteredFeaturedStores.length,
-                          separatorBuilder: (_, __) => const SizedBox(width: 8),
+                          separatorBuilder: (_, _) => const SizedBox(width: 8),
                           itemBuilder: (context, index) {
                             return StoreCard(
                               store: filteredFeaturedStores[index],
@@ -1223,7 +1352,7 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                             : 'Çok Satanlar',
                         icon: Icons.trending_up_rounded,
                         actionText: 'Tümü',
-                        onActionTap: () {},
+                        onActionTap: () => context.push('/store/search?filter=best_sellers'),
                       ),
                       const SizedBox(height: 8),
                       SizedBox(
@@ -1233,23 +1362,31 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                           scrollDirection: Axis.horizontal,
                           addAutomaticKeepAlives: false,
                           itemCount: filteredBestSellers.length,
-                          separatorBuilder: (_, __) => const SizedBox(width: 8),
+                          separatorBuilder: (_, _) => const SizedBox(width: 8),
                           itemBuilder: (context, index) {
                             final product = filteredBestSellers[index];
                             return SizedBox(
                               width: 150,
                               child: ProductCard(
                                 product: product,
-                                isFavorite: ref.watch(isProductFavoriteProvider(product.id)),
+                                isFavorite: ref.watch(
+                                  isProductFavoriteProvider(product.id),
+                                ),
                                 onTap: () {
                                   _navigateToProduct(product);
                                 },
                                 onFavorite: () {
-                                  ref.read(productFavoriteProvider.notifier).toggleFavorite(product);
+                                  ref
+                                      .read(productFavoriteProvider.notifier)
+                                      .toggleFavorite(product);
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
-                                        ref.read(isProductFavoriteProvider(product.id))
+                                        ref.read(
+                                              isProductFavoriteProvider(
+                                                product.id,
+                                              ),
+                                            )
                                             ? '${product.name} favorilere eklendi'
                                             : '${product.name} favorilerden çıkarıldı',
                                       ),
@@ -1279,12 +1416,14 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Column(
                           children: filteredStores
-                              .map((store) => StoreCard(
-                                    store: store,
-                                    onTap: () {
-                                      _navigateToStore(store);
-                                    },
-                                  ))
+                              .map(
+                                (store) => StoreCard(
+                                  store: store,
+                                  onTap: () {
+                                    _navigateToStore(store);
+                                  },
+                                ),
+                              )
                               .toList(),
                         ),
                       ),
@@ -1404,7 +1543,11 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
     );
   }
 
-  Widget _buildCategoryChip(StoreCategory category, bool isSelected, bool isDark) {
+  Widget _buildCategoryChip(
+    StoreCategory category,
+    bool isSelected,
+    bool isDark,
+  ) {
     return GestureDetector(
       onTap: () => _selectCategory(category.id),
       child: SizedBox(
@@ -1467,7 +1610,6 @@ class _StoreHomeScreenState extends ConsumerState<StoreHomeScreen> {
       ),
     );
   }
-
 
   void _navigateToProduct(StoreProduct product) {
     context.push('/store/product/${product.id}', extra: {'product': product});

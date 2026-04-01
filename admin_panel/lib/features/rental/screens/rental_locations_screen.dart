@@ -131,8 +131,8 @@ class _RentalLocationsScreenState extends ConsumerState<RentalLocationsScreen> {
   }
 
   Widget _buildStatsRow(List<RentalLocationView> locations) {
-    final totalCars = locations.fold<int>(0, (sum, l) => sum + l.totalCarCount);
-    final availableCars = locations.fold<int>(0, (sum, l) => sum + l.availableCarCount);
+    final totalCars = locations.length;
+    final availableCars = locations.where((l) => l.isActive).length;
     final airportLocations = locations.where((l) => l.isAirport).length;
     final locations24h = locations.where((l) => l.is24Hours).length;
 
@@ -367,7 +367,7 @@ class _RentalLocationsScreenState extends ConsumerState<RentalLocationsScreen> {
                       const Icon(Icons.directions_car, size: 18, color: AppColors.textMuted),
                       const SizedBox(width: 8),
                       Text(
-                        '${location.availableCarCount} / ${location.totalCarCount} müsait',
+                        location.isActive ? 'Müsait' : 'Dolu',
                         style: const TextStyle(
                           color: AppColors.textPrimary,
                           fontWeight: FontWeight.w600,
@@ -390,15 +390,15 @@ class _RentalLocationsScreenState extends ConsumerState<RentalLocationsScreen> {
                       width: 8,
                       height: 8,
                       decoration: BoxDecoration(
-                        color: location.availableCarCount > 0 ? AppColors.success : AppColors.error,
+                        color: location.isActive ? AppColors.success : AppColors.error,
                         shape: BoxShape.circle,
                       ),
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      location.availableCarCount > 0 ? 'Aktif' : 'Dolu',
+                      location.isActive ? 'Aktif' : 'Dolu',
                       style: TextStyle(
-                        color: location.availableCarCount > 0 ? AppColors.success : AppColors.error,
+                        color: location.isActive ? AppColors.success : AppColors.error,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -659,11 +659,11 @@ class _RentalLocationsScreenState extends ConsumerState<RentalLocationsScreen> {
                 const Icon(Icons.directions_car, size: 48, color: AppColors.textMuted),
                 const SizedBox(height: 16),
                 Text(
-                  '${location.totalCarCount} araç bu lokasyonda',
+                  'Lokasyon detayları',
                   style: const TextStyle(color: AppColors.textSecondary),
                 ),
                 Text(
-                  '${location.availableCarCount} müsait',
+                  location.isActive ? 'Aktif' : 'Pasif',
                   style: const TextStyle(color: AppColors.success, fontWeight: FontWeight.w600),
                 ),
               ],

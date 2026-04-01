@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/realtor_service.dart';
 import '../services/chat_service.dart';
+import 'package:emlakci_panel/core/services/log_service.dart';
 
 // ============================================
 // REALTOR SERVICE PROVIDER
@@ -173,7 +174,8 @@ class RealtorAppointmentsNotifier extends StateNotifier<RealtorAppointmentsState
         todayAppointments: todayAppointments,
         isLoading: false,
       );
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to load appointments', error: e, stackTrace: st, source: 'RealtorAppointmentsNotifier:loadAppointments');
       state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
@@ -200,7 +202,8 @@ class RealtorAppointmentsNotifier extends StateNotifier<RealtorAppointmentsState
         location: location,
       );
       await loadAppointments();
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to add appointment', error: e, stackTrace: st, source: 'RealtorAppointmentsNotifier:addAppointment');
       state = state.copyWith(error: e.toString());
     }
   }
@@ -209,7 +212,8 @@ class RealtorAppointmentsNotifier extends StateNotifier<RealtorAppointmentsState
     try {
       await _service.cancelAppointment(appointmentId, reason, source: source);
       await loadAppointments();
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to cancel appointment', error: e, stackTrace: st, source: 'RealtorAppointmentsNotifier:cancelAppointment');
       state = state.copyWith(error: e.toString());
     }
   }
@@ -218,7 +222,8 @@ class RealtorAppointmentsNotifier extends StateNotifier<RealtorAppointmentsState
     try {
       await _service.completeAppointment(appointmentId, outcome, source: source);
       await loadAppointments();
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to complete appointment', error: e, stackTrace: st, source: 'RealtorAppointmentsNotifier:completeAppointment');
       state = state.copyWith(error: e.toString());
     }
   }
@@ -351,7 +356,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
         totalUnreadCount: unreadCount,
         isLoading: false,
       );
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to load conversations', error: e, stackTrace: st, source: 'ChatNotifier:loadConversations');
       state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
@@ -364,7 +370,8 @@ class ChatNotifier extends StateNotifier<ChatState> {
     try {
       await _service.markMessagesAsRead(conversationId);
       await loadConversations();
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to mark messages as read', error: e, stackTrace: st, source: 'ChatNotifier:markAsRead');
       state = state.copyWith(error: e.toString());
     }
   }

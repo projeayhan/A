@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:rent_a_car_panel/core/services/log_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -175,7 +176,8 @@ class _LoginScreenState extends State<LoginScreen>
       setState(() {
         _error = _getErrorMessage(e.message);
       });
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Login failed', error: e, stackTrace: st, source: 'LoginScreen:_handleLogin');
       setState(() {
         _error = 'Bir hata oluştu. Lütfen tekrar deneyin.';
       });

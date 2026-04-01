@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/theme.dart';
 import '../../core/supabase_config.dart';
+import 'package:rent_a_car_panel/core/services/log_service.dart';
 
 // Cars provider
 final carsProvider = FutureProvider.autoDispose((ref) async {
@@ -98,10 +99,7 @@ class _CarsScreenState extends ConsumerState<CarsScreen> {
               children: [
                 const Text(
                   'Araclar',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                 ),
                 ElevatedButton.icon(
                   onPressed: () => _showAddCarDialog(context),
@@ -116,7 +114,7 @@ class _CarsScreenState extends ConsumerState<CarsScreen> {
             carsAsync.when(
               data: (cars) => _FleetSummaryStrip(cars: cars),
               loading: () => const SizedBox.shrink(),
-              error: (_, __) => const SizedBox.shrink(),
+              error: (_, _) => const SizedBox.shrink(),
             ),
             const SizedBox(height: 16),
 
@@ -147,17 +145,29 @@ class _CarsScreenState extends ConsumerState<CarsScreen> {
                     // Status filter
                     Expanded(
                       child: DropdownButtonFormField<String?>(
-                        value: _statusFilter,
+                        initialValue: _statusFilter,
                         decoration: const InputDecoration(
                           labelText: 'Durum',
                           border: InputBorder.none,
                         ),
                         items: const [
                           DropdownMenuItem(value: null, child: Text('Tumu')),
-                          DropdownMenuItem(value: 'available', child: Text('Musait')),
-                          DropdownMenuItem(value: 'rented', child: Text('Kirada')),
-                          DropdownMenuItem(value: 'maintenance', child: Text('Bakimda')),
-                          DropdownMenuItem(value: 'inactive', child: Text('Pasif')),
+                          DropdownMenuItem(
+                            value: 'available',
+                            child: Text('Musait'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'rented',
+                            child: Text('Kirada'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'maintenance',
+                            child: Text('Bakimda'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'inactive',
+                            child: Text('Pasif'),
+                          ),
                         ],
                         onChanged: (value) {
                           setState(() {
@@ -171,19 +181,34 @@ class _CarsScreenState extends ConsumerState<CarsScreen> {
                     // Category filter
                     Expanded(
                       child: DropdownButtonFormField<String?>(
-                        value: _categoryFilter,
+                        initialValue: _categoryFilter,
                         decoration: const InputDecoration(
                           labelText: 'Kategori',
                           border: InputBorder.none,
                         ),
                         items: const [
                           DropdownMenuItem(value: null, child: Text('Tumu')),
-                          DropdownMenuItem(value: 'economy', child: Text('Ekonomi')),
-                          DropdownMenuItem(value: 'compact', child: Text('Kompakt')),
-                          DropdownMenuItem(value: 'midsize', child: Text('Orta')),
-                          DropdownMenuItem(value: 'fullsize', child: Text('Buyuk')),
+                          DropdownMenuItem(
+                            value: 'economy',
+                            child: Text('Ekonomi'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'compact',
+                            child: Text('Kompakt'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'midsize',
+                            child: Text('Orta'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'fullsize',
+                            child: Text('Buyuk'),
+                          ),
                           DropdownMenuItem(value: 'suv', child: Text('SUV')),
-                          DropdownMenuItem(value: 'luxury', child: Text('Luks')),
+                          DropdownMenuItem(
+                            value: 'luxury',
+                            child: Text('Luks'),
+                          ),
                           DropdownMenuItem(value: 'van', child: Text('Van')),
                         ],
                         onChanged: (value) {
@@ -203,31 +228,41 @@ class _CarsScreenState extends ConsumerState<CarsScreen> {
             Expanded(
               child: carsAsync.when(
                 data: (cars) {
-                  final activeBookings = activeBookingsAsync.valueOrNull ?? <String, Map<String, dynamic>>{};
+                  final activeBookings =
+                      activeBookingsAsync.valueOrNull ??
+                      <String, Map<String, dynamic>>{};
 
                   // Apply filters
                   var filteredCars = cars.where((car) {
                     if (_searchQuery.isNotEmpty) {
-                      final brand = (car['brand'] ?? '').toString().toLowerCase();
-                      final model = (car['model'] ?? '').toString().toLowerCase();
-                      final plate = (car['plate'] ?? '').toString().toLowerCase();
+                      final brand = (car['brand'] ?? '')
+                          .toString()
+                          .toLowerCase();
+                      final model = (car['model'] ?? '')
+                          .toString()
+                          .toLowerCase();
+                      final plate = (car['plate'] ?? '')
+                          .toString()
+                          .toLowerCase();
                       if (!brand.contains(_searchQuery) &&
                           !model.contains(_searchQuery) &&
                           !plate.contains(_searchQuery)) {
                         return false;
                       }
                     }
-                    if (_statusFilter != null && car['status'] != _statusFilter) {
+                    if (_statusFilter != null &&
+                        car['status'] != _statusFilter) {
                       return false;
                     }
-                    if (_categoryFilter != null && car['category'] != _categoryFilter) {
+                    if (_categoryFilter != null &&
+                        car['category'] != _categoryFilter) {
                       return false;
                     }
                     return true;
                   }).toList();
 
                   if (filteredCars.isEmpty) {
-                    return Center(
+                    return const Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -236,8 +271,8 @@ class _CarsScreenState extends ConsumerState<CarsScreen> {
                             size: 64,
                             color: AppColors.textMuted,
                           ),
-                          const SizedBox(height: 16),
-                          const Text(
+                          SizedBox(height: 16),
+                          Text(
                             'Arac bulunamadi',
                             style: TextStyle(
                               color: AppColors.textSecondary,
@@ -254,21 +289,80 @@ class _CarsScreenState extends ConsumerState<CarsScreen> {
                       children: [
                         // Table header
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          decoration: BoxDecoration(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                          decoration: const BoxDecoration(
                             color: AppColors.surfaceLight,
-                            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(12),
+                            ),
                           ),
                           child: const Row(
                             children: [
                               SizedBox(width: 50), // Image
                               SizedBox(width: 12),
-                              Expanded(flex: 2, child: Text('Arac', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
-                              Expanded(flex: 1, child: Text('Plaka', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
-                              Expanded(flex: 1, child: Text('Kategori', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
-                              Expanded(flex: 1, child: Text('Gunluk Fiyat', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
-                              Expanded(flex: 1, child: Text('Lokasyon', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
-                              SizedBox(width: 120, child: Text('Durum', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
+                              Expanded(
+                                flex: 2,
+                                child: Text(
+                                  'Arac',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                flex: 1,
+                                child: Text(
+                                  'Plaka',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                flex: 1,
+                                child: Text(
+                                  'Kategori',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                flex: 1,
+                                child: Text(
+                                  'Gunluk Fiyat',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                flex: 1,
+                                child: Text(
+                                  'Lokasyon',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(
+                                width: 120,
+                                child: Text(
+                                  'Durum',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
                               SizedBox(width: 50), // Actions
                             ],
                           ),
@@ -277,19 +371,20 @@ class _CarsScreenState extends ConsumerState<CarsScreen> {
                         Expanded(
                           child: ListView.separated(
                             itemCount: filteredCars.length,
-                            separatorBuilder: (_, __) => const Divider(height: 1),
+                            separatorBuilder: (_, _) =>
+                                const Divider(height: 1),
                             itemBuilder: (context, index) {
                               final car = filteredCars[index];
                               final carId = car['id'] as String?;
-                              final booking = carId != null ? activeBookings[carId] : null;
+                              final booking = carId != null
+                                  ? activeBookings[carId]
+                                  : null;
                               return _CarRow(
                                 car: car,
                                 activeBooking: booking,
                                 onTap: () => context.go('/cars/${car['id']}'),
-                                onStatusChange: (newStatus) => _updateCarStatus(
-                                  car['id'],
-                                  newStatus,
-                                ),
+                                onStatusChange: (newStatus) =>
+                                    _updateCarStatus(car['id'], newStatus),
                               );
                             },
                           ),
@@ -323,11 +418,12 @@ class _CarsScreenState extends ConsumerState<CarsScreen> {
           const SnackBar(content: Text('Arac durumu guncellendi')),
         );
       }
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to toggle car status', error: e, stackTrace: st, source: 'CarsScreen:_toggleCarStatus');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Hata: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Hata: $e')));
       }
     }
   }
@@ -367,15 +463,16 @@ class _CarsScreenState extends ConsumerState<CarsScreen> {
 
             if (mounted) {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Arac eklendi')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('Arac eklendi')));
             }
-          } catch (e) {
+          } catch (e, st) {
+            LogService.error('Failed to add car', error: e, stackTrace: st, source: 'CarsScreen:_showAddCarDialog');
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Hata: $e')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text('Hata: $e')));
             }
           }
         },
@@ -520,7 +617,11 @@ class _CarRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final formatter = NumberFormat.currency(locale: 'tr_TR', symbol: '\u20BA', decimalDigits: 0);
+    final formatter = NumberFormat.currency(
+      locale: 'tr_TR',
+      symbol: '\u20BA',
+      decimalDigits: 0,
+    );
     final location = car['rental_locations'] as Map<String, dynamic>?;
     final status = car['status'] ?? '';
     final isInactive = status == 'inactive';
@@ -558,7 +659,7 @@ class _CarRow extends StatelessWidget {
                     ? Image.network(
                         car['image_url'],
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const Icon(
+                        errorBuilder: (_, _, _) => const Icon(
                           Icons.directions_car,
                           size: 20,
                           color: AppColors.textMuted,
@@ -677,7 +778,11 @@ class _CarRow extends StatelessWidget {
                           value: 'maintenance',
                           child: Row(
                             children: [
-                              Icon(Icons.build, size: 18, color: AppColors.warning),
+                              Icon(
+                                Icons.build,
+                                size: 18,
+                                color: AppColors.warning,
+                              ),
                               SizedBox(width: 8),
                               Text('Bakima Al'),
                             ],
@@ -687,7 +792,11 @@ class _CarRow extends StatelessWidget {
                           value: 'inactive',
                           child: Row(
                             children: [
-                              Icon(Icons.visibility_off, size: 18, color: AppColors.error),
+                              Icon(
+                                Icons.visibility_off,
+                                size: 18,
+                                color: AppColors.error,
+                              ),
                               SizedBox(width: 8),
                               Text('Pasife Al'),
                             ],
@@ -699,7 +808,11 @@ class _CarRow extends StatelessWidget {
                           value: 'available',
                           child: Row(
                             children: [
-                              Icon(Icons.check_circle, size: 18, color: AppColors.success),
+                              Icon(
+                                Icons.check_circle,
+                                size: 18,
+                                color: AppColors.success,
+                              ),
                               SizedBox(width: 8),
                               Text('Bakimdan Cikar'),
                             ],
@@ -711,7 +824,11 @@ class _CarRow extends StatelessWidget {
                           value: 'available',
                           child: Row(
                             children: [
-                              Icon(Icons.visibility, size: 18, color: AppColors.success),
+                              Icon(
+                                Icons.visibility,
+                                size: 18,
+                                color: AppColors.success,
+                              ),
                               SizedBox(width: 8),
                               Text('Aktif Yap'),
                             ],
@@ -723,7 +840,11 @@ class _CarRow extends StatelessWidget {
                           enabled: false,
                           child: Row(
                             children: [
-                              Icon(Icons.info, size: 18, color: AppColors.textMuted),
+                              Icon(
+                                Icons.info,
+                                size: 18,
+                                color: AppColors.textMuted,
+                              ),
                               SizedBox(width: 8),
                               Text('Kirada - Islem yapilamaz'),
                             ],
@@ -751,7 +872,8 @@ class _CarRow extends StatelessWidget {
         final dropoffDate = DateTime.parse(dropoffDateStr);
         final dateFormat = DateFormat('dd MMM', 'tr_TR');
         returnText = dateFormat.format(dropoffDate);
-      } catch (_) {
+      } catch (e, st) {
+        LogService.error('Date parse failed', error: e, stackTrace: st, source: 'CarsScreen:_buildActiveBookingOverlay');
         returnText = '';
       }
     }
@@ -764,7 +886,11 @@ class _CarRow extends StatelessWidget {
 
     return Row(
       children: [
-        Icon(Icons.person_outline, size: 11, color: AppColors.info.withValues(alpha: 0.7)),
+        Icon(
+          Icons.person_outline,
+          size: 11,
+          color: AppColors.info.withValues(alpha: 0.7),
+        ),
         const SizedBox(width: 3),
         Expanded(
           child: Text(
@@ -852,10 +978,7 @@ class _AddCarDialog extends StatefulWidget {
   final List<Map<String, dynamic>> locations;
   final Function(Map<String, dynamic>) onSave;
 
-  const _AddCarDialog({
-    required this.locations,
-    required this.onSave,
-  });
+  const _AddCarDialog({required this.locations, required this.onSave});
 
   @override
   State<_AddCarDialog> createState() => _AddCarDialogState();
@@ -913,295 +1036,377 @@ class _AddCarDialogState extends State<_AddCarDialog> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Yeni Araç Ekle',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.close),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-
-                // Brand & Model
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _brandController,
-                        decoration: const InputDecoration(labelText: 'Marka *'),
-                        validator: (v) => v?.isEmpty == true ? 'Zorunlu' : null,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _modelController,
-                        decoration: const InputDecoration(labelText: 'Model *'),
-                        validator: (v) => v?.isEmpty == true ? 'Zorunlu' : null,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // Year & Plate
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: _yearController,
-                        decoration: const InputDecoration(labelText: 'Yıl *'),
-                        keyboardType: TextInputType.number,
-                        validator: (v) => v?.isEmpty == true ? 'Zorunlu' : null,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _plateController,
-                        decoration: const InputDecoration(labelText: 'Plaka *'),
-                        validator: (v) => v?.isEmpty == true ? 'Zorunlu' : null,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // Location & Price
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: _selectedLocationId,
-                        decoration: const InputDecoration(labelText: 'Lokasyon *'),
-                        items: widget.locations
-                            .map((loc) => DropdownMenuItem(
-                                  value: loc['id'] as String,
-                                  child: Text('${loc['name']} - ${loc['city']}'),
-                                ))
-                            .toList(),
-                        onChanged: (v) => setState(() => _selectedLocationId = v),
-                        validator: (v) => v == null ? 'Lokasyon seçin' : null,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _dailyPriceController,
-                        decoration: const InputDecoration(
-                          labelText: 'Günlük Fiyat (₺) *',
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Yeni Araç Ekle',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
                         ),
-                        keyboardType: TextInputType.number,
-                        validator: (v) => v?.isEmpty == true ? 'Zorunlu' : null,
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
 
-                // Category & Transmission
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: _category,
-                        decoration: const InputDecoration(labelText: 'Kategori'),
-                        items: const [
-                          DropdownMenuItem(value: 'economy', child: Text('Ekonomi')),
-                          DropdownMenuItem(value: 'compact', child: Text('Kompakt')),
-                          DropdownMenuItem(value: 'midsize', child: Text('Orta')),
-                          DropdownMenuItem(value: 'fullsize', child: Text('Büyük')),
-                          DropdownMenuItem(value: 'suv', child: Text('SUV')),
-                          DropdownMenuItem(value: 'luxury', child: Text('Lüks')),
-                          DropdownMenuItem(value: 'van', child: Text('Van')),
-                        ],
-                        onChanged: (v) => setState(() => _category = v!),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: _transmission,
-                        decoration: const InputDecoration(labelText: 'Vites'),
-                        items: const [
-                          DropdownMenuItem(value: 'manual', child: Text('Manuel')),
-                          DropdownMenuItem(value: 'automatic', child: Text('Otomatik')),
-                        ],
-                        onChanged: (v) => setState(() => _transmission = v!),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // Fuel & Seats & Doors
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: _fuelType,
-                        decoration: const InputDecoration(labelText: 'Yakıt'),
-                        items: const [
-                          DropdownMenuItem(value: 'gasoline', child: Text('Benzin')),
-                          DropdownMenuItem(value: 'diesel', child: Text('Dizel')),
-                          DropdownMenuItem(value: 'hybrid', child: Text('Hibrit')),
-                          DropdownMenuItem(value: 'electric', child: Text('Elektrik')),
-                          DropdownMenuItem(value: 'lpg', child: Text('LPG')),
-                        ],
-                        onChanged: (v) => setState(() => _fuelType = v!),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: DropdownButtonFormField<int>(
-                        value: _seats,
-                        decoration: const InputDecoration(labelText: 'Koltuk'),
-                        items: [2, 4, 5, 7, 8, 9]
-                            .map((s) => DropdownMenuItem(value: s, child: Text('$s')))
-                            .toList(),
-                        onChanged: (v) => setState(() => _seats = v!),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: DropdownButtonFormField<int>(
-                        value: _doors,
-                        decoration: const InputDecoration(labelText: 'Kapı'),
-                        items: [2, 3, 4, 5]
-                            .map((d) => DropdownMenuItem(value: d, child: Text('$d')))
-                            .toList(),
-                        onChanged: (v) => setState(() => _doors = v!),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // Image section
-                Row(
-                  children: [
-                    const Text(
-                      'Araç Görselleri',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${_uploadedImageUrls.length}/10',
-                      style: TextStyle(
-                        color: _uploadedImageUrls.length >= 10
-                            ? AppColors.error
-                            : AppColors.textMuted,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                // Image source toggle
-                Row(
-                  children: [
-                    ChoiceChip(
-                      label: const Text('URL ile ekle'),
-                      selected: _imageSource == 'url',
-                      onSelected: (selected) {
-                        if (selected) setState(() => _imageSource = 'url');
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    ChoiceChip(
-                      label: const Text('Dosya yükle'),
-                      selected: _imageSource == 'upload',
-                      onSelected: (selected) {
-                        if (selected) setState(() => _imageSource = 'upload');
-                      },
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                // URL input
-                if (_imageSource == 'url')
+                  // Brand & Model
                   Row(
                     children: [
                       Expanded(
                         child: TextFormField(
-                          controller: _imageUrlController,
+                          controller: _brandController,
                           decoration: const InputDecoration(
-                            labelText: 'Görsel URL',
-                            hintText: 'https://...',
-                            prefixIcon: Icon(Icons.link),
+                            labelText: 'Marka *',
                           ),
+                          validator: (v) =>
+                              v?.isEmpty == true ? 'Zorunlu' : null,
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      IconButton.filled(
-                        onPressed: _uploadedImageUrls.length >= 10
-                            ? null
-                            : () {
-                                final url = _imageUrlController.text.trim();
-                                if (url.isNotEmpty && Uri.tryParse(url)?.hasAbsolutePath == true) {
-                                  setState(() {
-                                    _uploadedImageUrls.add(url);
-                                    _imageUrlController.clear();
-                                  });
-                                }
-                              },
-                        icon: const Icon(Icons.add),
-                        tooltip: 'URL ekle',
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _modelController,
+                          decoration: const InputDecoration(
+                            labelText: 'Model *',
+                          ),
+                          validator: (v) =>
+                              v?.isEmpty == true ? 'Zorunlu' : null,
+                        ),
                       ),
                     ],
                   ),
+                  const SizedBox(height: 16),
 
-                // File upload button
-                if (_imageSource == 'upload')
-                  _buildFileUploadButton(),
+                  // Year & Plate
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          controller: _yearController,
+                          decoration: const InputDecoration(labelText: 'Yıl *'),
+                          keyboardType: TextInputType.number,
+                          validator: (v) =>
+                              v?.isEmpty == true ? 'Zorunlu' : null,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _plateController,
+                          decoration: const InputDecoration(
+                            labelText: 'Plaka *',
+                          ),
+                          validator: (v) =>
+                              v?.isEmpty == true ? 'Zorunlu' : null,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
 
-                const SizedBox(height: 12),
+                  // Location & Price
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          initialValue: _selectedLocationId,
+                          decoration: const InputDecoration(
+                            labelText: 'Lokasyon *',
+                          ),
+                          items: widget.locations
+                              .map(
+                                (loc) => DropdownMenuItem(
+                                  value: loc['id'] as String,
+                                  child: Text(
+                                    '${loc['name']} - ${loc['city']}',
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (v) =>
+                              setState(() => _selectedLocationId = v),
+                          validator: (v) => v == null ? 'Lokasyon seçin' : null,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _dailyPriceController,
+                          decoration: const InputDecoration(
+                            labelText: 'Günlük Fiyat (₺) *',
+                          ),
+                          keyboardType: TextInputType.number,
+                          validator: (v) {
+                            if (v == null || v.isEmpty) return 'Zorunlu';
+                            final price = double.tryParse(v);
+                            if (price == null || price <= 0) {
+                              return 'Fiyat 0\'dan büyük olmalıdır';
+                            }
+                            return null;
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
 
-                // Uploaded images grid
-                if (_uploadedImageUrls.isNotEmpty)
-                  _buildImageGrid(),
-                const SizedBox(height: 24),
+                  // Category & Transmission
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          initialValue: _category,
+                          decoration: const InputDecoration(
+                            labelText: 'Kategori',
+                          ),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'economy',
+                              child: Text('Ekonomi'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'compact',
+                              child: Text('Kompakt'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'midsize',
+                              child: Text('Orta'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'fullsize',
+                              child: Text('Büyük'),
+                            ),
+                            DropdownMenuItem(value: 'suv', child: Text('SUV')),
+                            DropdownMenuItem(
+                              value: 'luxury',
+                              child: Text('Lüks'),
+                            ),
+                            DropdownMenuItem(value: 'van', child: Text('Van')),
+                          ],
+                          onChanged: (v) => setState(() => _category = v!),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          initialValue: _transmission,
+                          decoration: const InputDecoration(labelText: 'Vites'),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'manual',
+                              child: Text('Manuel'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'automatic',
+                              child: Text('Otomatik'),
+                            ),
+                          ],
+                          onChanged: (v) => setState(() => _transmission = v!),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
 
-                // Buttons
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    OutlinedButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('İptal'),
+                  // Fuel & Seats & Doors
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          initialValue: _fuelType,
+                          decoration: const InputDecoration(labelText: 'Yakıt'),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'gasoline',
+                              child: Text('Benzin'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'diesel',
+                              child: Text('Dizel'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'hybrid',
+                              child: Text('Hibrit'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'electric',
+                              child: Text('Elektrik'),
+                            ),
+                            DropdownMenuItem(value: 'lpg', child: Text('LPG')),
+                          ],
+                          onChanged: (v) => setState(() => _fuelType = v!),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: DropdownButtonFormField<int>(
+                          initialValue: _seats,
+                          decoration: const InputDecoration(
+                            labelText: 'Koltuk',
+                          ),
+                          items: [2, 4, 5, 7, 8, 9]
+                              .map(
+                                (s) => DropdownMenuItem(
+                                  value: s,
+                                  child: Text('$s'),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (v) => setState(() => _seats = v!),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: DropdownButtonFormField<int>(
+                          initialValue: _doors,
+                          decoration: const InputDecoration(labelText: 'Kapı'),
+                          items: [2, 3, 4, 5]
+                              .map(
+                                (d) => DropdownMenuItem(
+                                  value: d,
+                                  child: Text('$d'),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (v) => setState(() => _doors = v!),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Image section
+                  Row(
+                    children: [
+                      const Text(
+                        'Araç Görselleri',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${_uploadedImageUrls.length}/10',
+                        style: TextStyle(
+                          color: _uploadedImageUrls.length >= 10
+                              ? AppColors.error
+                              : AppColors.textMuted,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Image source toggle
+                  Row(
+                    children: [
+                      ChoiceChip(
+                        label: const Text('URL ile ekle'),
+                        selected: _imageSource == 'url',
+                        onSelected: (selected) {
+                          if (selected) setState(() => _imageSource = 'url');
+                        },
+                      ),
+                      const SizedBox(width: 8),
+                      ChoiceChip(
+                        label: const Text('Dosya yükle'),
+                        selected: _imageSource == 'upload',
+                        onSelected: (selected) {
+                          if (selected) setState(() => _imageSource = 'upload');
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // URL input
+                  if (_imageSource == 'url')
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _imageUrlController,
+                            decoration: const InputDecoration(
+                              labelText: 'Görsel URL',
+                              hintText: 'https://...',
+                              prefixIcon: Icon(Icons.link),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton.filled(
+                          onPressed: _uploadedImageUrls.length >= 10
+                              ? null
+                              : () {
+                                  final url = _imageUrlController.text.trim();
+                                  final uri = Uri.tryParse(url);
+                                  final isValidImageUrl =
+                                      url.isNotEmpty &&
+                                      uri != null &&
+                                      uri.hasAbsolutePath &&
+                                      (uri.scheme == 'https' ||
+                                          uri.scheme == 'http') &&
+                                      RegExp(
+                                        r'\.(jpg|jpeg|png|gif|webp|avif)(\?.*)?$',
+                                        caseSensitive: false,
+                                      ).hasMatch(url);
+                                  if (isValidImageUrl) {
+                                    setState(() {
+                                      _uploadedImageUrls.add(url);
+                                      _imageUrlController.clear();
+                                    });
+                                  }
+                                },
+                          icon: const Icon(Icons.add),
+                          tooltip: 'URL ekle',
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    ElevatedButton(
-                      onPressed: _isLoading ? null : _save,
-                      child: _isLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Text('Kaydet'),
-                    ),
-                  ],
-                ),
-              ],
+
+                  // File upload button
+                  if (_imageSource == 'upload') _buildFileUploadButton(),
+
+                  const SizedBox(height: 12),
+
+                  // Uploaded images grid
+                  if (_uploadedImageUrls.isNotEmpty) _buildImageGrid(),
+                  const SizedBox(height: 24),
+
+                  // Buttons
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('İptal'),
+                      ),
+                      const SizedBox(width: 12),
+                      ElevatedButton(
+                        onPressed: _isLoading ? null : _save,
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text('Kaydet'),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
         ),
       ),
     );
@@ -1219,9 +1424,7 @@ class _AddCarDialogState extends State<_AddCarDialog> {
         decoration: BoxDecoration(
           color: AppColors.surfaceLight,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: AppColors.primary.withValues(alpha: 0.3),
-          ),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
         ),
         child: _isUploadingImage
             ? const Center(
@@ -1258,10 +1461,7 @@ class _AddCarDialogState extends State<_AddCarDialog> {
                   ),
                   const Text(
                     'JPG, PNG, GIF, WEBP (max 5MB)',
-                    style: TextStyle(
-                      color: AppColors.textMuted,
-                      fontSize: 11,
-                    ),
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 11),
                   ),
                 ],
               ),
@@ -1293,10 +1493,8 @@ class _AddCarDialogState extends State<_AddCarDialog> {
               child: Image.network(
                 url,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const Icon(
-                  Icons.broken_image,
-                  color: AppColors.textMuted,
-                ),
+                errorBuilder: (_, _, _) =>
+                    const Icon(Icons.broken_image, color: AppColors.textMuted),
               ),
             ),
             // Index badge
@@ -1305,14 +1503,21 @@ class _AddCarDialogState extends State<_AddCarDialog> {
                 left: 4,
                 top: 4,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 1,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.primary,
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: const Text(
                     'Kapak',
-                    style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
@@ -1372,11 +1577,12 @@ class _AddCarDialogState extends State<_AddCarDialog> {
           await _uploadSingleImage(file);
         }
       }
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to pick images', error: e, stackTrace: st, source: 'CarsScreen:_pickImages');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Dosya seçilirken hata: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Dosya seçilirken hata: $e')));
       }
     }
   }
@@ -1402,7 +1608,8 @@ class _AddCarDialogState extends State<_AddCarDialog> {
         _uploadedImageUrls.add(publicUrl);
         _isUploadingImage = false;
       });
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to upload image', error: e, stackTrace: st, source: 'CarsScreen:_uploadSingleImage');
       setState(() => _isUploadingImage = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1419,8 +1626,9 @@ class _AddCarDialogState extends State<_AddCarDialog> {
     if (!_formKey.currentState!.validate()) return;
 
     // First image is the cover (image_url), all go into images array
-    final String? coverUrl =
-        _uploadedImageUrls.isNotEmpty ? _uploadedImageUrls.first : null;
+    final String? coverUrl = _uploadedImageUrls.isNotEmpty
+        ? _uploadedImageUrls.first
+        : null;
 
     setState(() => _isLoading = true);
 

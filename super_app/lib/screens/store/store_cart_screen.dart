@@ -7,7 +7,6 @@ import '../../core/providers/address_provider.dart';
 import '../../core/theme/app_responsive.dart';
 import '../../core/theme/store_colors.dart';
 import '../../widgets/common/common_widgets.dart';
-import '../../core/services/delivery_service.dart';
 
 class StoreCartScreen extends ConsumerStatefulWidget {
   const StoreCartScreen({super.key});
@@ -17,8 +16,6 @@ class StoreCartScreen extends ConsumerStatefulWidget {
 }
 
 class _StoreCartScreenState extends ConsumerState<StoreCartScreen> {
-  int _selectedPaymentMethod = 0;
-
   @override
   void initState() {
     super.initState();
@@ -31,15 +28,19 @@ class _StoreCartScreenState extends ConsumerState<StoreCartScreen> {
     final selectedAddress = ref.read(selectedAddressProvider);
     final cartState = ref.read(storeCartProvider);
     if (selectedAddress == null || cartState.items.isEmpty) return;
-    if (selectedAddress.latitude == null || selectedAddress.longitude == null) return;
+    if (selectedAddress.latitude == null || selectedAddress.longitude == null) {
+      return;
+    }
 
     // Use first store's ID for estimation
     final firstStoreId = cartState.items.first.storeId;
-    ref.read(storeCartProvider.notifier).calculateDeliveryFee(
-      storeId: firstStoreId,
-      customerLat: selectedAddress.latitude!,
-      customerLon: selectedAddress.longitude!,
-    );
+    ref
+        .read(storeCartProvider.notifier)
+        .calculateDeliveryFee(
+          storeId: firstStoreId,
+          customerLat: selectedAddress.latitude!,
+          customerLon: selectedAddress.longitude!,
+        );
   }
 
   @override
@@ -72,8 +73,6 @@ class _StoreCartScreenState extends ConsumerState<StoreCartScreen> {
                             child: _buildCartItem(item, isDark),
                           );
                         }),
-                        const SizedBox(height: 24),
-                        _buildPaymentSection(isDark),
                         const SizedBox(height: 24),
                         _buildOrderSummary(isDark, cartState),
                       ],
@@ -590,9 +589,11 @@ class _StoreCartScreenState extends ConsumerState<StoreCartScreen> {
               child: CachedNetworkImage(
                 imageUrl: item.imageUrl,
                 fit: BoxFit.cover,
-                placeholder: (_, __) => Container(
+                placeholder: (_, _) => Container(
                   color: Colors.grey[200],
-                  child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                  child: const Center(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
                 ),
                 errorWidget: (context, error, stackTrace) {
                   return Icon(
@@ -681,17 +682,6 @@ class _StoreCartScreenState extends ConsumerState<StoreCartScreen> {
       onIncrement: () => cartNotifier.incrementQuantity(item.id),
       primaryColor: StoreColors.primary,
       isDark: isDark,
-    );
-  }
-
-  Widget _buildPaymentSection(bool isDark) {
-    return PaymentMethodSelector(
-      selectedIndex: _selectedPaymentMethod,
-      onChanged: (index) => setState(() => _selectedPaymentMethod = index),
-      primaryColor: StoreColors.primary,
-      isDark: isDark,
-      onViewAll: () {},
-      showAddNew: false,
     );
   }
 

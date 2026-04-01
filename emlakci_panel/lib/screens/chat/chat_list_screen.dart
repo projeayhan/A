@@ -43,7 +43,10 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
             Center(
               child: Container(
                 margin: const EdgeInsets.only(right: 16),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFF3B82F6),
                   borderRadius: BorderRadius.circular(20),
@@ -67,10 +70,10 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
       body: chatState.isLoading
           ? const Center(child: CircularProgressIndicator())
           : chatState.error != null
-              ? _buildErrorState(chatState.error!)
-              : chatState.conversations.isEmpty
-                  ? _buildEmptyState()
-                  : _buildConversationsList(chatState.conversations),
+          ? _buildErrorState(chatState.error!)
+          : chatState.conversations.isEmpty
+          ? _buildEmptyState()
+          : _buildConversationsList(chatState.conversations),
     );
   }
 
@@ -81,11 +84,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.error_outline,
-              size: 64,
-              color: Color(0xFFEF4444),
-            ),
+            const Icon(Icons.error_outline, size: 64, color: Color(0xFFEF4444)),
             const SizedBox(height: 16),
             const Text(
               'Bir hata oluştu',
@@ -99,9 +98,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
             Text(
               error,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Color(0xFF64748B),
-              ),
+              style: const TextStyle(color: Color(0xFF64748B)),
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
@@ -151,10 +148,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
             const Text(
               'Müşterilerinizden gelen mesajlar\nburada görünecek',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Color(0xFF64748B),
-                height: 1.5,
-              ),
+              style: TextStyle(color: Color(0xFF64748B), height: 1.5),
             ),
           ],
         ),
@@ -186,7 +180,9 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
         color: hasUnread ? const Color(0xFFEFF6FF) : Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: hasUnread ? const Color(0xFF3B82F6).withValues(alpha: 0.3) : const Color(0xFFE2E8F0),
+          color: hasUnread
+              ? const Color(0xFF3B82F6).withValues(alpha: 0.3)
+              : const Color(0xFFE2E8F0),
         ),
         boxShadow: [
           BoxShadow(
@@ -215,7 +211,9 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                         Text(
                           conversation.propertyTitle!,
                           style: TextStyle(
-                            fontWeight: hasUnread ? FontWeight.bold : FontWeight.w600,
+                            fontWeight: hasUnread
+                                ? FontWeight.bold
+                                : FontWeight.w600,
                             fontSize: 14,
                             color: const Color(0xFF1E293B),
                           ),
@@ -226,9 +224,13 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                       Text(
                         conversation.lastMessage ?? 'Henüz mesaj yok',
                         style: TextStyle(
-                          color: hasUnread ? const Color(0xFF1E293B) : const Color(0xFF64748B),
+                          color: hasUnread
+                              ? const Color(0xFF1E293B)
+                              : const Color(0xFF64748B),
                           fontSize: 13,
-                          fontWeight: hasUnread ? FontWeight.w500 : FontWeight.normal,
+                          fontWeight: hasUnread
+                              ? FontWeight.w500
+                              : FontWeight.normal,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -243,15 +245,22 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                     Text(
                       _formatTime(conversation.lastMessageAt),
                       style: TextStyle(
-                        color: hasUnread ? const Color(0xFF3B82F6) : const Color(0xFF94A3B8),
+                        color: hasUnread
+                            ? const Color(0xFF3B82F6)
+                            : const Color(0xFF94A3B8),
                         fontSize: 11,
-                        fontWeight: hasUnread ? FontWeight.w600 : FontWeight.normal,
+                        fontWeight: hasUnread
+                            ? FontWeight.w600
+                            : FontWeight.normal,
                       ),
                     ),
                     const SizedBox(height: 6),
                     if (hasUnread)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFF3B82F6),
                           borderRadius: BorderRadius.circular(12),
@@ -297,15 +306,10 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
             ? Image.network(
                 imageUrl,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const Icon(
-                  Icons.home,
-                  color: Color(0xFF94A3B8),
-                ),
+                errorBuilder: (_, _, _) =>
+                    const Icon(Icons.home, color: Color(0xFF94A3B8)),
               )
-            : const Icon(
-                Icons.home,
-                color: Color(0xFF94A3B8),
-              ),
+            : const Icon(Icons.home, color: Color(0xFF94A3B8)),
       ),
     );
   }

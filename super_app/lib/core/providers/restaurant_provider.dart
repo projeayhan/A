@@ -43,7 +43,7 @@ final restaurantCategoriesProvider = FutureProvider<List<RestaurantCategory>>((r
 });
 
 // Kategoriye göre restoranlar provider (teslimat bölgesi filtreli + realtime)
-final restaurantsByCategoryProvider = FutureProvider.family<List<Restaurant>, String?>((ref, category) async {
+final restaurantsByCategoryProvider = FutureProvider.autoDispose.family<List<Restaurant>, String?>((ref, category) async {
   // Merchants değişikliklerini dinle
   ref.watch(_merchantsChangeProvider);
 
@@ -62,19 +62,19 @@ final restaurantsByCategoryProvider = FutureProvider.family<List<Restaurant>, St
 });
 
 // Tek restoran provider
-final restaurantByIdProvider = FutureProvider.family<Restaurant?, String>((ref, id) async {
+final restaurantByIdProvider = FutureProvider.autoDispose.family<Restaurant?, String>((ref, id) async {
   return await RestaurantService.getRestaurantById(id);
 });
 
 // Restoran menüsü provider (realtime ile)
-final menuItemsProvider = FutureProvider.family<List<MenuItem>, String>((ref, restaurantId) async {
+final menuItemsProvider = FutureProvider.autoDispose.family<List<MenuItem>, String>((ref, restaurantId) async {
   // Menu items değişikliklerini dinle
   ref.watch(_menuItemsChangeProvider);
   return await RestaurantService.getMenuItems(restaurantId);
 });
 
 // Restoran arama provider (teslimat bölgesi filtreli)
-final restaurantSearchProvider = FutureProvider.family<List<Restaurant>, String>((ref, query) async {
+final restaurantSearchProvider = FutureProvider.autoDispose.family<List<Restaurant>, String>((ref, query) async {
   if (query.isEmpty) return [];
   final selectedAddress = ref.watch(selectedAddressProvider);
   return await RestaurantService.searchRestaurants(

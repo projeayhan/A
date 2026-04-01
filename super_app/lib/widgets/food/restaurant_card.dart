@@ -51,151 +51,67 @@ class RestaurantCard extends ConsumerWidget {
         );
       },
       child: Container(
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF2D241E) : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey[100]!,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF2D241E) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.grey[100]!,
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Image Section
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-            child: Stack(
-              children: [
-                SizedBox(
-                  height: context.cardImageHeight(140),
-                  width: double.infinity,
-                  child: CachedNetworkImage(
-                    imageUrl: ImageUtils.getProductDetail(imageUrl),
-                    fit: BoxFit.cover,
-                    placeholder: (_, __) => Container(
-                      color: Colors.grey[200],
-                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                    ),
-                    errorWidget: (_, __, ___) => Container(
-                      color: isDark ? Colors.grey[800] : Colors.grey[200],
-                      child: Icon(
-                        Icons.restaurant,
-                        size: 48,
-                        color: isDark ? Colors.grey[600] : Colors.grey[400],
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Image Section
+            ClipRRect(
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(12),
+              ),
+              child: Stack(
+                children: [
+                  SizedBox(
+                    height: context.cardImageHeight(140),
+                    width: double.infinity,
+                    child: CachedNetworkImage(
+                      imageUrl: ImageUtils.getProductDetail(imageUrl),
+                      fit: BoxFit.cover,
+                      placeholder: (_, _) => Container(
+                        color: Colors.grey[200],
+                        child: const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                      errorWidget: (_, _, _) => Container(
+                        color: isDark ? Colors.grey[800] : Colors.grey[200],
+                        child: Icon(
+                          Icons.restaurant,
+                          size: 48,
+                          color: isDark ? Colors.grey[600] : Colors.grey[400],
+                        ),
                       ),
                     ),
                   ),
-                ),
 
-                // Delivery Time Badge
-                Positioned(
-                  top: 12,
-                  left: 12,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF2D241E) : Colors.white,
-                      borderRadius: BorderRadius.circular(6),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 4,
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.schedule,
-                          size: 14,
-                          color: Color(0xFFEC6D13),
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          deliveryTime,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFFEC6D13),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // Min Order Badge
-                Positioned(
-                  bottom: 12,
-                  right: 12,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF2D241E) : Colors.white,
-                      borderRadius: BorderRadius.circular(6),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 4,
-                        ),
-                      ],
-                    ),
-                    child: Text(
-                      'Min. $minOrder',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: isDark ? Colors.white : const Color(0xFF111827),
-                      ),
-                    ),
-                  ),
-                ),
-
-                // Favorite Button
-                Positioned(
-                  top: 12,
-                  right: 12,
-                  child: GestureDetector(
-                    onTap: () {
-                      final restaurant = FavoriteRestaurant(
-                        id: restaurantId,
-                        name: name,
-                        imageUrl: imageUrl,
-                        category: categories,
-                        rating: rating,
-                        deliveryTime: deliveryTime,
-                        minOrder: minOrderAmount ?? 100,
-                        addedAt: DateTime.now(),
-                      );
-                      ref.read(foodFavoriteProvider.notifier).toggleRestaurant(restaurant);
-
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            isFavorite
-                                ? '$name favorilerden kaldırıldı'
-                                : '$name favorilere eklendi',
-                          ),
-                          backgroundColor: isFavorite ? Colors.red : const Color(0xFFEC6D13),
-                          behavior: SnackBarBehavior.floating,
-                          duration: const Duration(seconds: 2),
-                        ),
-                      );
-                    },
-                    behavior: HitTestBehavior.opaque,
+                  // Delivery Time Badge
+                  Positioned(
+                    top: 12,
+                    left: 12,
                     child: Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: isDark ? const Color(0xFF2D241E) : Colors.white,
-                        shape: BoxShape.circle,
+                        borderRadius: BorderRadius.circular(6),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.1),
@@ -203,134 +119,251 @@ class RestaurantCard extends ConsumerWidget {
                           ),
                         ],
                       ),
-                      child: Icon(
-                        isFavorite ? Icons.favorite : Icons.favorite_border,
-                        color: isFavorite ? const Color(0xFFEC4899) : Colors.grey[400],
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Info Section
-          Padding(
-            padding: EdgeInsets.all(context.cardPadding),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Name and Rating Row
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        name,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : const Color(0xFF111827),
-                        ),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? const Color(0xFF166534).withValues(alpha: 0.3)
-                            : const Color(0xFFDCFCE7),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
+                          const Icon(
+                            Icons.schedule,
+                            size: 14,
+                            color: Color(0xFFEC6D13),
+                          ),
+                          const SizedBox(width: 4),
                           Text(
-                            rating.toString(),
-                            style: TextStyle(
+                            deliveryTime,
+                            style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
-                              color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF15803D),
+                              color: Color(0xFFEC6D13),
                             ),
-                          ),
-                          const SizedBox(width: 2),
-                          Icon(
-                            Icons.star,
-                            size: 12,
-                            color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF15803D),
                           ),
                         ],
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-
-                // Categories
-                Text(
-                  categories,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: isDark ? Colors.grey[400] : Colors.grey[500],
                   ),
-                ),
-                const SizedBox(height: 8),
 
-                // Delivery Info
-                Container(
-                  padding: const EdgeInsets.only(top: 8),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      top: BorderSide(
-                        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey[100]!,
+                  // Min Order Badge
+                  Positioned(
+                    bottom: 12,
+                    right: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF2D241E) : Colors.white,
+                        borderRadius: BorderRadius.circular(6),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.1),
+                            blurRadius: 4,
+                          ),
+                        ],
+                      ),
+                      child: Text(
+                        'Min. $minOrder',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: isDark
+                              ? Colors.white
+                              : const Color(0xFF111827),
+                        ),
                       ),
                     ),
                   ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.local_shipping_outlined,
-                        size: 14,
-                        color: isDark ? Colors.grey[500] : Colors.grey[400],
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        deliveryFee,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isDark ? Colors.grey[500] : Colors.grey[400],
+
+                  // Favorite Button
+                  Positioned(
+                    top: 12,
+                    right: 12,
+                    child: GestureDetector(
+                      onTap: () {
+                        final restaurant = FavoriteRestaurant(
+                          id: restaurantId,
+                          name: name,
+                          imageUrl: imageUrl,
+                          category: categories,
+                          rating: rating,
+                          deliveryTime: deliveryTime,
+                          minOrder: minOrderAmount ?? 100,
+                          addedAt: DateTime.now(),
+                        );
+                        ref
+                            .read(foodFavoriteProvider.notifier)
+                            .toggleRestaurant(restaurant);
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              isFavorite
+                                  ? '$name favorilerden kaldırıldı'
+                                  : '$name favorilere eklendi',
+                            ),
+                            backgroundColor: isFavorite
+                                ? Colors.red
+                                : const Color(0xFFEC6D13),
+                            behavior: SnackBarBehavior.floating,
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                      behavior: HitTestBehavior.opaque,
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? const Color(0xFF2D241E)
+                              : Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.1),
+                              blurRadius: 4,
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          isFavorite ? Icons.favorite : Icons.favorite_border,
+                          color: isFavorite
+                              ? const Color(0xFFEC4899)
+                              : Colors.grey[400],
+                          size: 20,
                         ),
                       ),
-                      if (discount != null) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          width: 4,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: Colors.grey[300],
-                            shape: BoxShape.circle,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Info Section
+            Padding(
+              padding: EdgeInsets.all(context.cardPadding),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Name and Rating Row
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          name,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: isDark
+                                ? Colors.white
+                                : const Color(0xFF111827),
                           ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? const Color(0xFF166534).withValues(alpha: 0.3)
+                              : const Color(0xFFDCFCE7),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              rating.toString(),
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: isDark
+                                    ? const Color(0xFF4ADE80)
+                                    : const Color(0xFF15803D),
+                              ),
+                            ),
+                            const SizedBox(width: 2),
+                            Icon(
+                              Icons.star,
+                              size: 12,
+                              color: isDark
+                                  ? const Color(0xFF4ADE80)
+                                  : const Color(0xFF15803D),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+
+                  // Categories
+                  Text(
+                    categories,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: isDark ? Colors.grey[400] : Colors.grey[500],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Delivery Info
+                  Container(
+                    padding: const EdgeInsets.only(top: 8),
+                    decoration: BoxDecoration(
+                      border: Border(
+                        top: BorderSide(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.05)
+                              : Colors.grey[100]!,
+                        ),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.local_shipping_outlined,
+                          size: 14,
+                          color: isDark ? Colors.grey[500] : Colors.grey[400],
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          discount!,
-                          style: const TextStyle(
+                          deliveryFee,
+                          style: TextStyle(
                             fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFFEC6D13),
+                            color: isDark ? Colors.grey[500] : Colors.grey[400],
                           ),
                         ),
+                        if (discount != null) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            width: 4,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[300],
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            discount!,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFFEC6D13),
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_responsive.dart';
 import '../../models/car_sales/car_sales_models.dart';
@@ -13,14 +14,14 @@ import 'brand_search_sheet.dart';
 import 'advanced_filter_sheet.dart';
 import 'filter_selection_sheet.dart';
 
-class CarSalesHomeScreen extends StatefulWidget {
+class CarSalesHomeScreen extends ConsumerStatefulWidget {
   const CarSalesHomeScreen({super.key});
 
   @override
-  State<CarSalesHomeScreen> createState() => _CarSalesHomeScreenState();
+  ConsumerState<CarSalesHomeScreen> createState() => _CarSalesHomeScreenState();
 }
 
-class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
+class _CarSalesHomeScreenState extends ConsumerState<CarSalesHomeScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _headerController;
   late Animation<double> _headerAnimation;
@@ -76,8 +77,9 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
   CarListing _convertToCarListing(CarListingData data) {
     // Brand'ı bul veya varsayılan kullan
     final brand = CarBrand.allBrands.firstWhere(
-      (b) => b.name.toLowerCase().contains(data.brandName.toLowerCase()) ||
-             data.brandName.toLowerCase().contains(b.name.toLowerCase()),
+      (b) =>
+          b.name.toLowerCase().contains(data.brandName.toLowerCase()) ||
+          data.brandName.toLowerCase().contains(b.name.toLowerCase()),
       orElse: () => CarBrand.allBrands.first,
     );
 
@@ -85,7 +87,8 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
     CarColor exteriorColor = CarColor.white;
     try {
       exteriorColor = CarColor.values.firstWhere(
-        (c) => c.label.toLowerCase() == (data.exteriorColor?.toLowerCase() ?? ''),
+        (c) =>
+            c.label.toLowerCase() == (data.exteriorColor?.toLowerCase() ?? ''),
         orElse: () => CarColor.white,
       );
     } catch (_) {}
@@ -113,7 +116,9 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
       id: data.userId, // Satıcının auth.users ID'si
       name: data.dealer?.ownerName ?? 'Satıcı',
       phone: data.dealer?.phone ?? '',
-      type: data.dealer?.isVerified == true ? SellerType.dealer : SellerType.individual,
+      type: data.dealer?.isVerified == true
+          ? SellerType.dealer
+          : SellerType.individual,
       companyName: data.dealer?.businessName,
       isVerified: data.dealer?.isVerified ?? false,
       memberSince: DateTime.now().subtract(const Duration(days: 365)),
@@ -193,6 +198,9 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
       debugPrint('CarSalesHomeScreen._loadData error: $e');
       if (mounted) {
         setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Veriler yüklenirken hata oluştu: $e')),
+        );
       }
     }
   }
@@ -217,13 +225,15 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
           return false;
         }
       }
-      if (listing.price < _priceRange.start || listing.price > _priceRange.end) {
+      if (listing.price < _priceRange.start ||
+          listing.price > _priceRange.end) {
         return false;
       }
       if (listing.year < _yearRange.start || listing.year > _yearRange.end) {
         return false;
       }
-      if (listing.mileage < _mileageRange.start || listing.mileage > _mileageRange.end) {
+      if (listing.mileage < _mileageRange.start ||
+          listing.mileage > _mileageRange.end) {
         return false;
       }
       return true;
@@ -288,7 +298,9 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
     if (_selectedTransmissionIds.isNotEmpty) count++;
     if (_selectedBrandIds.isNotEmpty) count++;
     if (_priceRange.start > 0 || _priceRange.end < 50000000) count++;
-    if (_yearRange.start > 2010 || _yearRange.end < DateTime.now().year) count++;
+    if (_yearRange.start > 2010 || _yearRange.end < DateTime.now().year) {
+      count++;
+    }
     if (_mileageRange.start > 0 || _mileageRange.end < 500000) count++;
     return count;
   }
@@ -340,25 +352,17 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                   _buildSliverAppBar(isDark, size),
 
                   // Compact Filter Bar
-                  SliverToBoxAdapter(
-                    child: _buildCompactFilterBar(isDark),
-                  ),
+                  SliverToBoxAdapter(child: _buildCompactFilterBar(isDark)),
 
                   // Popular Brands
-                  SliverToBoxAdapter(
-                    child: _buildPopularBrands(isDark),
-                  ),
+                  SliverToBoxAdapter(child: _buildPopularBrands(isDark)),
 
                   // Sort & View Bar
-                  SliverToBoxAdapter(
-                    child: _buildSortAndViewBar(isDark),
-                  ),
+                  SliverToBoxAdapter(child: _buildSortAndViewBar(isDark)),
 
                   // Active Filters
                   if (_activeFilterCount > 0)
-                    SliverToBoxAdapter(
-                      child: _buildActiveFilters(isDark),
-                    ),
+                    SliverToBoxAdapter(child: _buildActiveFilters(isDark)),
 
                   // İlanlar
                   SliverToBoxAdapter(
@@ -459,9 +463,18 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                         ),
                       ),
                       // Quick action icons
-                      _buildAppBarIcon(Icons.list_alt, () => _navigateToMyListings()),
-                      _buildAppBarIcon(Icons.favorite_outline, () => context.push('/car-sales/favorites')),
-                      _buildAppBarIcon(Icons.chat_bubble_outline, () => context.push('/car-sales/chats')),
+                      _buildAppBarIcon(
+                        Icons.list_alt,
+                        () => _navigateToMyListings(),
+                      ),
+                      _buildAppBarIcon(
+                        Icons.favorite_outline,
+                        () => context.push('/car-sales/favorites'),
+                      ),
+                      _buildAppBarIcon(
+                        Icons.chat_bubble_outline,
+                        () => context.push('/car-sales/chats'),
+                      ),
                       _buildAppBarIcon(Icons.search, () => _navigateToSearch()),
                       _buildAppBarIcon(Icons.tune, () => _showFilterSheet()),
                     ],
@@ -529,7 +542,9 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
             isDark: isDark,
             label: 'Fiyat',
             icon: Icons.attach_money,
-            selectedCount: (_priceRange.start > 0 || _priceRange.end < 50000000) ? 1 : 0,
+            selectedCount: (_priceRange.start > 0 || _priceRange.end < 50000000)
+                ? 1
+                : 0,
             onTap: () => _showFilterSheet(),
           ),
           const SizedBox(width: 8),
@@ -558,8 +573,8 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
     final bgColor = isAccent
         ? CarSalesColors.primary.withValues(alpha: 0.1)
         : hasSelection
-            ? CarSalesColors.primary.withValues(alpha: 0.1)
-            : CarSalesColors.card(isDark);
+        ? CarSalesColors.primary.withValues(alpha: 0.1)
+        : CarSalesColors.card(isDark);
     final borderColor = isAccent || hasSelection
         ? CarSalesColors.primary
         : CarSalesColors.border(isDark);
@@ -765,7 +780,12 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
     );
   }
 
-  Widget _buildViewToggle(bool isDark, IconData icon, bool isSelected, VoidCallback onTap) {
+  Widget _buildViewToggle(
+    bool isDark,
+    IconData icon,
+    bool isSelected,
+    VoidCallback onTap,
+  ) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -777,7 +797,9 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
         child: Icon(
           icon,
           size: 16,
-          color: isSelected ? Colors.white : CarSalesColors.textSecondary(isDark),
+          color: isSelected
+              ? Colors.white
+              : CarSalesColors.textSecondary(isDark),
         ),
       ),
     );
@@ -818,46 +840,55 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                 ),
               ),
               const Divider(height: 1),
-              ...CarSortOption.values.map((option) => InkWell(
-                onTap: () {
-                  setState(() {
-                    _currentSortOption = option;
-                    _sortListings();
-                  });
-                  Navigator.pop(context);
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Row(
-                    children: [
-                      Icon(
-                        option.icon,
-                        size: 20,
-                        color: _currentSortOption == option
-                            ? CarSalesColors.primary
-                            : CarSalesColors.textSecondary(isDark),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          option.label,
-                          style: TextStyle(
-                            color: _currentSortOption == option
-                                ? CarSalesColors.primary
-                                : CarSalesColors.textPrimary(isDark),
-                            fontSize: 14,
-                            fontWeight: _currentSortOption == option
-                                ? FontWeight.w600
-                                : FontWeight.normal,
+              ...CarSortOption.values.map(
+                (option) => InkWell(
+                  onTap: () {
+                    setState(() {
+                      _currentSortOption = option;
+                      _sortListings();
+                    });
+                    Navigator.pop(context);
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          option.icon,
+                          size: 20,
+                          color: _currentSortOption == option
+                              ? CarSalesColors.primary
+                              : CarSalesColors.textSecondary(isDark),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            option.label,
+                            style: TextStyle(
+                              color: _currentSortOption == option
+                                  ? CarSalesColors.primary
+                                  : CarSalesColors.textPrimary(isDark),
+                              fontSize: 14,
+                              fontWeight: _currentSortOption == option
+                                  ? FontWeight.w600
+                                  : FontWeight.normal,
+                            ),
                           ),
                         ),
-                      ),
-                      if (_currentSortOption == option)
-                        const Icon(Icons.check, color: CarSalesColors.primary, size: 18),
-                    ],
+                        if (_currentSortOption == option)
+                          const Icon(
+                            Icons.check,
+                            color: CarSalesColors.primary,
+                            size: 18,
+                          ),
+                      ],
+                    ),
                   ),
                 ),
-              )),
+              ),
               SizedBox(height: MediaQuery.of(context).padding.bottom + 8),
             ],
           ),
@@ -961,7 +992,12 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
     );
   }
 
-  Widget _buildFilterChip(bool isDark, String label, VoidCallback onRemove, {Color? color}) {
+  Widget _buildFilterChip(
+    bool isDark,
+    String label,
+    VoidCallback onRemove, {
+    Color? color,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
@@ -1144,7 +1180,7 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                             child: CachedNetworkImage(
                               imageUrl: brand.logoUrl,
                               fit: BoxFit.contain,
-                              placeholder: (_, __) => Center(
+                              placeholder: (_, _) => Center(
                                 child: Text(
                                   brand.name.substring(0, 1),
                                   style: const TextStyle(
@@ -1154,7 +1190,7 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                                   ),
                                 ),
                               ),
-                              errorWidget: (_, __, ___) => Center(
+                              errorWidget: (_, _, _) => Center(
                                 child: Text(
                                   brand.name.substring(0, 1),
                                   style: const TextStyle(
@@ -1178,7 +1214,9 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                               ? CarSalesColors.primary
                               : CarSalesColors.textSecondary(isDark),
                           fontSize: 9,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                          fontWeight: isSelected
+                              ? FontWeight.bold
+                              : FontWeight.w500,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -1266,7 +1304,10 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                   style: ElevatedButton.styleFrom(
                     backgroundColor: CarSalesColors.primary,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 10,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -1287,7 +1328,11 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
           child: Center(
             child: Column(
               children: [
-                Icon(Icons.directions_car_outlined, size: 56, color: Colors.grey[400]),
+                Icon(
+                  Icons.directions_car_outlined,
+                  size: 56,
+                  color: Colors.grey[400],
+                ),
                 const SizedBox(height: 12),
                 Text(
                   'Henüz ilan bulunamadı',
@@ -1308,24 +1353,18 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
           crossAxisSpacing: 10,
           mainAxisSpacing: 10,
         ),
-        delegate: SliverChildBuilderDelegate(
-          (context, index) {
-            final car = listings[index];
-            return _buildGridCard(car, isDark);
-          },
-          childCount: listings.length,
-        ),
+        delegate: SliverChildBuilderDelegate((context, index) {
+          final car = listings[index];
+          return _buildGridCard(car, isDark);
+        }, childCount: listings.length),
       );
     }
 
     return SliverList(
-      delegate: SliverChildBuilderDelegate(
-        (context, index) {
-          final car = listings[index];
-          return _buildListingCard(car, isDark);
-        },
-        childCount: listings.length,
-      ),
+      delegate: SliverChildBuilderDelegate((context, index) {
+        final car = listings[index];
+        return _buildListingCard(car, isDark);
+      }, childCount: listings.length),
     );
   }
 
@@ -1352,18 +1391,22 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
               child: Stack(
                 children: [
                   ClipRRect(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(14),
+                    ),
                     child: CachedNetworkImage(
                       imageUrl: car.images.first,
                       width: double.infinity,
                       fit: BoxFit.cover,
                       memCacheWidth: 400,
                       memCacheHeight: 300,
-                      placeholder: (_, __) => Container(
+                      placeholder: (_, _) => Container(
                         color: CarSalesColors.surface(isDark),
-                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                        child: const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
                       ),
-                      errorWidget: (_, __, ___) => Container(
+                      errorWidget: (_, _, _) => Container(
                         color: CarSalesColors.surface(isDark),
                         child: Icon(
                           Icons.directions_car,
@@ -1378,14 +1421,48 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                       top: 6,
                       left: 6,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
-                          gradient: const LinearGradient(colors: CarSalesColors.goldGradient),
+                          gradient: const LinearGradient(
+                            colors: CarSalesColors.goldGradient,
+                          ),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: const Text(
                           'VIP',
-                          style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (car.isFeatured && !car.isPremiumListing)
+                    Positioned(
+                      top: 6,
+                      left: 6,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF3B9EFF), Color(0xFF1565C0)],
+                          ),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          'Öne Çıkan',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
@@ -1444,9 +1521,14 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
         decoration: BoxDecoration(
           color: CarSalesColors.card(isDark),
           borderRadius: BorderRadius.circular(16),
+          border: car.isFeatured && !car.isPremiumListing
+              ? Border.all(color: const Color(0xFF3B9EFF), width: 1.5)
+              : null,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
+              color: car.isFeatured && !car.isPremiumListing
+                  ? const Color(0xFF3B9EFF).withValues(alpha: 0.18)
+                  : Colors.black.withValues(alpha: 0.06),
               blurRadius: 12,
               offset: const Offset(0, 3),
             ),
@@ -1465,13 +1547,15 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                 fit: BoxFit.cover,
                 memCacheWidth: 260,
                 memCacheHeight: 240,
-                placeholder: (_, __) => Container(
+                placeholder: (_, _) => Container(
                   width: 130,
                   height: 120,
                   color: CarSalesColors.surface(isDark),
-                  child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                  child: const Center(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
                 ),
-                errorWidget: (_, __, ___) => Container(
+                errorWidget: (_, _, _) => Container(
                   width: 130,
                   height: 120,
                   color: CarSalesColors.surface(isDark),
@@ -1506,6 +1590,28 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                             ),
                             child: const Text(
                               'P',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        if (car.isFeatured && !car.isPremiumListing)
+                          Container(
+                            margin: const EdgeInsets.only(right: 6),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 5,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF3B9EFF), Color(0xFF1565C0)],
+                              ),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'Öne Çıkan',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 9,
@@ -1565,7 +1671,9 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
                                   Text(
                                     car.location,
                                     style: TextStyle(
-                                      color: CarSalesColors.textTertiary(isDark),
+                                      color: CarSalesColors.textTertiary(
+                                        isDark,
+                                      ),
                                       fontSize: 10,
                                     ),
                                   ),
@@ -1631,11 +1739,7 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
               ),
             ],
           ),
-          child: const Icon(
-            Icons.add,
-            color: Colors.white,
-            size: 28,
-          ),
+          child: const Icon(Icons.add, color: Colors.white, size: 28),
         ),
       ),
     );
@@ -1645,18 +1749,22 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
   void _navigateToSearch({String? brandId}) {
     Navigator.of(context).push(
       PageRouteBuilder(
-        pageBuilder: (_, animation, __) => CarSearchScreen(initialBrandId: brandId),
-        transitionsBuilder: (_, animation, __, child) {
+        pageBuilder: (_, animation, _) =>
+            CarSearchScreen(initialBrandId: brandId),
+        transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(
             opacity: animation,
             child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0, 0.1),
-                end: Offset.zero,
-              ).animate(CurvedAnimation(
-                parent: animation,
-                curve: Curves.easeOutCubic,
-              )),
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(0, 0.1),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeOutCubic,
+                    ),
+                  ),
               child: child,
             ),
           );
@@ -1669,18 +1777,21 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
   void _navigateToDetail(CarListing car) {
     Navigator.of(context).push(
       PageRouteBuilder(
-        pageBuilder: (_, animation, __) => CarDetailScreen(car: car),
-        transitionsBuilder: (_, animation, __, child) {
+        pageBuilder: (_, animation, _) => CarDetailScreen(car: car),
+        transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(
             opacity: animation,
             child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0.1, 0),
-                end: Offset.zero,
-              ).animate(CurvedAnimation(
-                parent: animation,
-                curve: Curves.easeOutCubic,
-              )),
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(0.1, 0),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeOutCubic,
+                    ),
+                  ),
               child: child,
             ),
           );
@@ -1693,18 +1804,21 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
   void _navigateToAddListing() {
     Navigator.of(context).push(
       PageRouteBuilder(
-        pageBuilder: (_, animation, __) => const AddCarListingScreen(),
-        transitionsBuilder: (_, animation, __, child) {
+        pageBuilder: (_, animation, _) => const AddCarListingScreen(),
+        transitionsBuilder: (_, animation, _, child) {
           return FadeTransition(
             opacity: animation,
             child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0, 0.3),
-                end: Offset.zero,
-              ).animate(CurvedAnimation(
-                parent: animation,
-                curve: Curves.easeOutCubic,
-              )),
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(0, 0.3),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeOutCubic,
+                    ),
+                  ),
               child: child,
             ),
           );
@@ -1722,13 +1836,16 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
           return FadeTransition(
             opacity: animation,
             child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0.1, 0),
-                end: Offset.zero,
-              ).animate(CurvedAnimation(
-                parent: animation,
-                curve: Curves.easeOutCubic,
-              )),
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(0.1, 0),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeOutCubic,
+                    ),
+                  ),
               child: child,
             ),
           );
@@ -1757,22 +1874,31 @@ class _CarSalesHomeScreenState extends State<CarSalesHomeScreen>
         bodyTypesData: _bodyTypesData,
         fuelTypesData: _fuelTypesData,
         transmissionsData: _transmissionsData,
-        onApply: (bodyTypeIds, fuelTypeIds, transmissionIds, brandIds, priceRange, yearRange, mileageRange) {
-          setState(() {
-            _selectedBodyTypeIds.clear();
-            _selectedBodyTypeIds.addAll(bodyTypeIds);
-            _selectedFuelTypeIds.clear();
-            _selectedFuelTypeIds.addAll(fuelTypeIds);
-            _selectedTransmissionIds.clear();
-            _selectedTransmissionIds.addAll(transmissionIds);
-            _selectedBrandIds.clear();
-            _selectedBrandIds.addAll(brandIds);
-            _priceRange = priceRange;
-            _yearRange = yearRange;
-            _mileageRange = mileageRange;
-            _applyFilter();
-          });
-        },
+        onApply:
+            (
+              bodyTypeIds,
+              fuelTypeIds,
+              transmissionIds,
+              brandIds,
+              priceRange,
+              yearRange,
+              mileageRange,
+            ) {
+              setState(() {
+                _selectedBodyTypeIds.clear();
+                _selectedBodyTypeIds.addAll(bodyTypeIds);
+                _selectedFuelTypeIds.clear();
+                _selectedFuelTypeIds.addAll(fuelTypeIds);
+                _selectedTransmissionIds.clear();
+                _selectedTransmissionIds.addAll(transmissionIds);
+                _selectedBrandIds.clear();
+                _selectedBrandIds.addAll(brandIds);
+                _priceRange = priceRange;
+                _yearRange = yearRange;
+                _mileageRange = mileageRange;
+                _applyFilter();
+              });
+            },
         onClear: _clearAllFilters,
       ),
     );

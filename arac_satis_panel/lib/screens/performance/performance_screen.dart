@@ -46,23 +46,26 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
           statsAsync.when(
             data: (data) => _buildContent(context, isDark, data),
             loading: () => _buildLoadingState(),
-            error: (_, __) => Center(
+            error: (_, _) => Center(
               child: Column(
                 children: [
                   const SizedBox(height: 40),
-                  Icon(Icons.error_outline,
-                      size: 48,
-                      color: CarSalesColors.textTertiary(isDark)),
+                  Icon(
+                    Icons.error_outline,
+                    size: 48,
+                    color: CarSalesColors.textTertiary(isDark),
+                  ),
                   const SizedBox(height: 12),
                   Text(
                     'Veriler yuklenirken hata olustu',
                     style: TextStyle(
-                        color: CarSalesColors.textSecondary(isDark)),
+                      color: CarSalesColors.textSecondary(isDark),
+                    ),
                   ),
                   const SizedBox(height: 12),
                   TextButton(
-                    onPressed: () => ref.invalidate(
-                        listingPerformanceStatsProvider(_days)),
+                    onPressed: () =>
+                        ref.invalidate(listingPerformanceStatsProvider(_days)),
                     child: const Text('Tekrar Dene'),
                   ),
                 ],
@@ -117,11 +120,13 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
   }
 
   Widget _buildContent(
-      BuildContext context, bool isDark, Map<String, dynamic> data) {
+    BuildContext context,
+    bool isDark,
+    Map<String, dynamic> data,
+  ) {
     final listings =
         (data['listings'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-    final totals =
-        (data['totals'] as Map<String, dynamic>?) ?? {};
+    final totals = (data['totals'] as Map<String, dynamic>?) ?? {};
     final previousTotals =
         (data['previousTotals'] as Map<String, dynamic>?) ?? {};
 
@@ -198,8 +203,7 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
               padding: const EdgeInsets.all(32),
               child: Text(
                 'Henuz aktif ilaniniz yok.',
-                style: TextStyle(
-                    color: CarSalesColors.textSecondary(isDark)),
+                style: TextStyle(color: CarSalesColors.textSecondary(isDark)),
               ),
             ),
           )
@@ -234,8 +238,7 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
     );
   }
 
-  Widget _buildTopListings(
-      bool isDark, List<Map<String, dynamic>> listings) {
+  Widget _buildTopListings(bool isDark, List<Map<String, dynamic>> listings) {
     final top5 = listings.take(5).toList();
 
     return Column(
@@ -257,10 +260,10 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
           final rankColor = index == 0
               ? const Color(0xFFFFD700)
               : index == 1
-                  ? const Color(0xFFC0C0C0)
-                  : index == 2
-                      ? const Color(0xFFCD7F32)
-                      : CarSalesColors.textTertiary(isDark);
+              ? const Color(0xFFC0C0C0)
+              : index == 2
+              ? const Color(0xFFCD7F32)
+              : CarSalesColors.textTertiary(isDark);
 
           return Container(
             margin: const EdgeInsets.only(bottom: 10),
@@ -301,7 +304,7 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
                           width: 48,
                           height: 36,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
+                          errorBuilder: (_, _, _) =>
                               _buildMiniPlaceholder(isDark),
                         )
                       : _buildMiniPlaceholder(isDark),
@@ -349,7 +352,9 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
   }
 
   Widget _buildPerformanceTable(
-      bool isDark, List<Map<String, dynamic>> listings) {
+    bool isDark,
+    List<Map<String, dynamic>> listings,
+  ) {
     return Container(
       decoration: BoxDecoration(
         color: CarSalesColors.card(isDark),
@@ -364,44 +369,62 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
           ),
           columns: [
             DataColumn(
-              label: Text('Ilan',
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: CarSalesColors.textPrimary(isDark))),
+              label: Text(
+                'Ilan',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: CarSalesColors.textPrimary(isDark),
+                ),
+              ),
             ),
             DataColumn(
-              label: Text('Goruntuleme',
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: CarSalesColors.textPrimary(isDark))),
+              label: Text(
+                'Goruntuleme',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: CarSalesColors.textPrimary(isDark),
+                ),
+              ),
               numeric: true,
             ),
             DataColumn(
-              label: Text('Favori',
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: CarSalesColors.textPrimary(isDark))),
+              label: Text(
+                'Favori',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: CarSalesColors.textPrimary(isDark),
+                ),
+              ),
               numeric: true,
             ),
             DataColumn(
-              label: Text('Iletisim',
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: CarSalesColors.textPrimary(isDark))),
+              label: Text(
+                'Iletisim',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: CarSalesColors.textPrimary(isDark),
+                ),
+              ),
               numeric: true,
             ),
             DataColumn(
-              label: Text('Donusum',
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: CarSalesColors.textPrimary(isDark))),
+              label: Text(
+                'Donusum',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: CarSalesColors.textPrimary(isDark),
+                ),
+              ),
               numeric: true,
             ),
             DataColumn(
-              label: Text('Trend',
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: CarSalesColors.textPrimary(isDark))),
+              label: Text(
+                'Trend',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: CarSalesColors.textPrimary(isDark),
+                ),
+              ),
             ),
           ],
           rows: listings.map((item) {
@@ -409,38 +432,52 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
             final favorites = item['favorites'] as int? ?? 0;
             final contacts = item['contacts'] as int? ?? 0;
             final prevViews = item['previousViews'] as int? ?? 0;
-            final conversion =
-                views > 0 ? (contacts / views * 100) : 0.0;
+            final conversion = views > 0 ? (contacts / views * 100) : 0.0;
             final trend = prevViews > 0
                 ? ((views - prevViews) / prevViews * 100)
                 : (views > 0 ? 100.0 : 0.0);
 
-            return DataRow(cells: [
-              DataCell(
-                SizedBox(
-                  width: 200,
-                  child: Text(
-                    '${item['brand_name'] ?? ''} ${item['model_name'] ?? ''} ${item['year'] ?? ''}',
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        color: CarSalesColors.textPrimary(isDark)),
+            return DataRow(
+              cells: [
+                DataCell(
+                  SizedBox(
+                    width: 200,
+                    child: Text(
+                      '${item['brand_name'] ?? ''} ${item['model_name'] ?? ''} ${item['year'] ?? ''}',
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: CarSalesColors.textPrimary(isDark),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-              DataCell(Text('$views',
-                  style: TextStyle(
-                      color: CarSalesColors.textPrimary(isDark)))),
-              DataCell(Text('$favorites',
-                  style: TextStyle(
-                      color: CarSalesColors.textPrimary(isDark)))),
-              DataCell(Text('$contacts',
-                  style: TextStyle(
-                      color: CarSalesColors.textPrimary(isDark)))),
-              DataCell(Text('${conversion.toStringAsFixed(1)}%',
-                  style: TextStyle(
-                      color: CarSalesColors.textPrimary(isDark)))),
-              DataCell(_buildTrendIndicator(trend)),
-            ]);
+                DataCell(
+                  Text(
+                    '$views',
+                    style: TextStyle(color: CarSalesColors.textPrimary(isDark)),
+                  ),
+                ),
+                DataCell(
+                  Text(
+                    '$favorites',
+                    style: TextStyle(color: CarSalesColors.textPrimary(isDark)),
+                  ),
+                ),
+                DataCell(
+                  Text(
+                    '$contacts',
+                    style: TextStyle(color: CarSalesColors.textPrimary(isDark)),
+                  ),
+                ),
+                DataCell(
+                  Text(
+                    '${conversion.toStringAsFixed(1)}%',
+                    style: TextStyle(color: CarSalesColors.textPrimary(isDark)),
+                  ),
+                ),
+                DataCell(_buildTrendIndicator(trend)),
+              ],
+            );
           }).toList(),
         ),
       ),
@@ -448,17 +485,17 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
   }
 
   Widget _buildPerformanceCards(
-      bool isDark, List<Map<String, dynamic>> listings) {
+    bool isDark,
+    List<Map<String, dynamic>> listings,
+  ) {
     return Column(
       children: listings.map((item) {
-        final images =
-            (item['images'] as List?)?.cast<String>() ?? [];
+        final images = (item['images'] as List?)?.cast<String>() ?? [];
         final views = item['views'] as int? ?? 0;
         final favorites = item['favorites'] as int? ?? 0;
         final contacts = item['contacts'] as int? ?? 0;
         final prevViews = item['previousViews'] as int? ?? 0;
-        final conversion =
-            views > 0 ? (contacts / views * 100) : 0.0;
+        final conversion = views > 0 ? (contacts / views * 100) : 0.0;
         final trend = prevViews > 0
             ? ((views - prevViews) / prevViews * 100)
             : (views > 0 ? 100.0 : 0.0);
@@ -484,7 +521,7 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
                             width: 56,
                             height: 42,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) =>
+                            errorBuilder: (_, _, _) =>
                                 _buildMiniPlaceholder(isDark),
                           )
                         : _buildMiniPlaceholder(isDark),
@@ -510,13 +547,29 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
                   _buildMiniStat(
-                      Icons.visibility_outlined, '$views', 'Goruntuleme', isDark),
+                    Icons.visibility_outlined,
+                    '$views',
+                    'Goruntuleme',
+                    isDark,
+                  ),
                   _buildMiniStat(
-                      Icons.favorite_outline, '$favorites', 'Favori', isDark),
+                    Icons.favorite_outline,
+                    '$favorites',
+                    'Favori',
+                    isDark,
+                  ),
                   _buildMiniStat(
-                      Icons.phone_outlined, '$contacts', 'Iletisim', isDark),
-                  _buildMiniStat(Icons.trending_up,
-                      '${conversion.toStringAsFixed(1)}%', 'Donusum', isDark),
+                    Icons.phone_outlined,
+                    '$contacts',
+                    'Iletisim',
+                    isDark,
+                  ),
+                  _buildMiniStat(
+                    Icons.trending_up,
+                    '${conversion.toStringAsFixed(1)}%',
+                    'Donusum',
+                    isDark,
+                  ),
                 ],
               ),
             ],
@@ -527,9 +580,12 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
   }
 
   Widget _buildLowPerformingAlerts(
-      bool isDark, List<Map<String, dynamic>> listings) {
-    final lowPerforming =
-        listings.where((l) => (l['views'] as int? ?? 0) < 10).toList();
+    bool isDark,
+    List<Map<String, dynamic>> listings,
+  ) {
+    final lowPerforming = listings
+        .where((l) => (l['views'] as int? ?? 0) < 10)
+        .toList();
 
     if (lowPerforming.isEmpty) return const SizedBox.shrink();
 
@@ -538,8 +594,11 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
       children: [
         Row(
           children: [
-            Icon(Icons.warning_amber_outlined,
-                color: CarSalesColors.secondary, size: 22),
+            Icon(
+              Icons.warning_amber_outlined,
+              color: CarSalesColors.secondary,
+              size: 22,
+            ),
             const SizedBox(width: 8),
             Text(
               'Dusuk Performans Uyarilari',
@@ -558,7 +617,8 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
             color: CarSalesColors.secondary.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-                color: CarSalesColors.secondary.withValues(alpha: 0.3)),
+              color: CarSalesColors.secondary.withValues(alpha: 0.3),
+            ),
           ),
           child: Column(
             children: lowPerforming.map((item) {
@@ -566,8 +626,11 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Row(
                   children: [
-                    Icon(Icons.info_outline,
-                        size: 16, color: CarSalesColors.secondary),
+                    Icon(
+                      Icons.info_outline,
+                      size: 16,
+                      color: CarSalesColors.secondary,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
@@ -588,19 +651,22 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
     );
   }
 
-  Widget _buildViewsGraph(
-      bool isDark, List<Map<String, dynamic>> listings) {
+  Widget _buildViewsGraph(bool isDark, List<Map<String, dynamic>> listings) {
     // Select listing for graph
-    final selectedId = _selectedListingForGraph ?? listings.first['id'] as String;
+    final selectedId =
+        _selectedListingForGraph ?? listings.first['id'] as String;
     final selectedListing = listings.firstWhere(
       (l) => l['id'] == selectedId,
       orElse: () => listings.first,
     );
     final dailyViews =
-        (selectedListing['dailyViews'] as List?)?.cast<int>() ?? List.filled(7, 0);
+        (selectedListing['dailyViews'] as List?)?.cast<int>() ??
+        List.filled(7, 0);
     final maxViews = dailyViews.isEmpty
         ? 1
-        : dailyViews.reduce((a, b) => max(a, b)).clamp(1, double.maxFinite.toInt());
+        : dailyViews
+              .reduce((a, b) => max(a, b))
+              .clamp(1, double.maxFinite.toInt());
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -721,9 +787,7 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
 
   Widget _buildTrendIndicator(double trend) {
     final isPositive = trend >= 0;
-    final color = isPositive
-        ? CarSalesColors.success
-        : const Color(0xFFEF4444);
+    final color = isPositive ? CarSalesColors.success : const Color(0xFFEF4444);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
@@ -753,7 +817,11 @@ class _PerformanceScreenState extends ConsumerState<PerformanceScreen> {
   }
 
   Widget _buildMiniStat(
-      IconData icon, String value, String label, bool isDark) {
+    IconData icon,
+    String value,
+    String label,
+    bool isDark,
+  ) {
     return Column(
       children: [
         Icon(icon, size: 16, color: CarSalesColors.textTertiary(isDark)),

@@ -8,10 +8,12 @@ class AgentPerformanceScreen extends ConsumerStatefulWidget {
   const AgentPerformanceScreen({super.key});
 
   @override
-  ConsumerState<AgentPerformanceScreen> createState() => _AgentPerformanceScreenState();
+  ConsumerState<AgentPerformanceScreen> createState() =>
+      _AgentPerformanceScreenState();
 }
 
-class _AgentPerformanceScreenState extends ConsumerState<AgentPerformanceScreen> {
+class _AgentPerformanceScreenState
+    extends ConsumerState<AgentPerformanceScreen> {
   List<Map<String, dynamic>> _agents = [];
   bool _loading = true;
   String? _error;
@@ -30,41 +32,65 @@ class _AgentPerformanceScreenState extends ConsumerState<AgentPerformanceScreen>
 
   DateTime get _startDate {
     switch (_period) {
-      case '7d': return DateTime.now().subtract(const Duration(days: 7));
-      case '30d': return DateTime.now().subtract(const Duration(days: 30));
-      case '90d': return DateTime.now().subtract(const Duration(days: 90));
-      default: return DateTime.now().subtract(const Duration(days: 30));
+      case '7d':
+        return DateTime.now().subtract(const Duration(days: 7));
+      case '30d':
+        return DateTime.now().subtract(const Duration(days: 30));
+      case '90d':
+        return DateTime.now().subtract(const Duration(days: 90));
+      default:
+        return DateTime.now().subtract(const Duration(days: 30));
     }
   }
 
   Future<void> _loadData() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final service = ref.read(supportMonitoringServiceProvider);
-      final agents = await service.getAgentPerformance(startDate: _startDate, endDate: DateTime.now());
-      setState(() { _agents = agents; _loading = false; });
+      final agents = await service.getAgentPerformance(
+        startDate: _startDate,
+        endDate: DateTime.now(),
+      );
+      setState(() {
+        _agents = agents;
+        _loading = false;
+      });
     } catch (e) {
-      setState(() { _error = e.toString(); _loading = false; });
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
     }
   }
 
   Future<void> _loadAgentDetail(String agentId) async {
-    setState(() { _selectedAgentId = agentId; _loadingDetail = true; });
+    setState(() {
+      _selectedAgentId = agentId;
+      _loadingDetail = true;
+    });
     try {
       final service = ref.read(supportMonitoringServiceProvider);
-      final agent = _agents.firstWhere((a) => a['agent_id'] == agentId, orElse: () => {});
+      final agent = _agents.firstWhere(
+        (a) => a['agent_id'] == agentId,
+        orElse: () => {},
+      );
       final results = await Future.wait([
         service.getAgentActions(agentId: agentId, limit: 30),
         service.getTickets(agentId: agentId, limit: 10),
       ]);
       setState(() {
         _selectedAgent = agent;
-        _agentActions = results[0] as List<Map<String, dynamic>>;
-        _agentTickets = results[1] as List<Map<String, dynamic>>;
+        _agentActions = results[0];
+        _agentTickets = results[1];
         _loadingDetail = false;
       });
     } catch (e) {
-      setState(() { _loadingDetail = false; });
+      setState(() {
+        _loadingDetail = false;
+      });
     }
   }
 
@@ -73,8 +99,12 @@ class _AgentPerformanceScreenState extends ConsumerState<AgentPerformanceScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? AppColors.background : const Color(0xFFF8FAFC);
     final cardBg = isDark ? AppColors.surface : Colors.white;
-    final borderColor = isDark ? AppColors.surfaceLight : const Color(0xFFE2E8F0);
-    final textPrimary = isDark ? AppColors.textPrimary : const Color(0xFF0F172A);
+    final borderColor = isDark
+        ? AppColors.surfaceLight
+        : const Color(0xFFE2E8F0);
+    final textPrimary = isDark
+        ? AppColors.textPrimary
+        : const Color(0xFF0F172A);
     final textMuted = isDark ? AppColors.textMuted : const Color(0xFF94A3B8);
 
     return Container(
@@ -91,13 +121,28 @@ class _AgentPerformanceScreenState extends ConsumerState<AgentPerformanceScreen>
                   padding: const EdgeInsets.all(24),
                   child: Row(
                     children: [
-                      Icon(Icons.bar_chart_rounded, color: AppColors.primary, size: 28),
+                      Icon(
+                        Icons.bar_chart_rounded,
+                        color: AppColors.primary,
+                        size: 28,
+                      ),
                       const SizedBox(width: 12),
-                      Text('Temsilci Performans', style: TextStyle(color: textPrimary, fontSize: 24, fontWeight: FontWeight.bold)),
+                      Text(
+                        'Temsilci Performans',
+                        style: TextStyle(
+                          color: textPrimary,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       const Spacer(),
                       _buildPeriodSelector(isDark, borderColor),
                       const SizedBox(width: 12),
-                      IconButton(onPressed: _loadData, icon: const Icon(Icons.refresh), tooltip: 'Yenile'),
+                      IconButton(
+                        onPressed: _loadData,
+                        icon: const Icon(Icons.refresh),
+                        tooltip: 'Yenile',
+                      ),
                     ],
                   ),
                 ),
@@ -107,13 +152,29 @@ class _AgentPerformanceScreenState extends ConsumerState<AgentPerformanceScreen>
                   child: _loading
                       ? const Center(child: CircularProgressIndicator())
                       : _error != null
-                          ? Center(child: Text(_error!, style: TextStyle(color: AppColors.error)))
-                          : _agents.isEmpty
-                              ? Center(child: Text('Temsilci bulunamadi', style: TextStyle(color: textMuted)))
-                              : SingleChildScrollView(
-                                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                                  child: _buildAgentTable(cardBg, borderColor, textPrimary, textMuted, isDark),
-                                ),
+                      ? Center(
+                          child: Text(
+                            _error!,
+                            style: TextStyle(color: AppColors.error),
+                          ),
+                        )
+                      : _agents.isEmpty
+                      ? Center(
+                          child: Text(
+                            'Temsilci bulunamadi',
+                            style: TextStyle(color: textMuted),
+                          ),
+                        )
+                      : SingleChildScrollView(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          child: _buildAgentTable(
+                            cardBg,
+                            borderColor,
+                            textPrimary,
+                            textMuted,
+                            isDark,
+                          ),
+                        ),
                 ),
               ],
             ),
@@ -124,7 +185,13 @@ class _AgentPerformanceScreenState extends ConsumerState<AgentPerformanceScreen>
             Container(width: 1, color: borderColor),
             Expanded(
               flex: 4,
-              child: _buildDetailPanel(cardBg, borderColor, textPrimary, textMuted, isDark),
+              child: _buildDetailPanel(
+                cardBg,
+                borderColor,
+                textPrimary,
+                textMuted,
+                isDark,
+              ),
             ),
           ],
         ],
@@ -153,23 +220,35 @@ class _AgentPerformanceScreenState extends ConsumerState<AgentPerformanceScreen>
   Widget _periodChip(String label, String value) {
     final isActive = _period == value;
     return GestureDetector(
-      onTap: () { setState(() => _period = value); _loadData(); },
+      onTap: () {
+        setState(() => _period = value);
+        _loadData();
+      },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
           color: isActive ? AppColors.primary : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Text(label, style: TextStyle(
-          color: isActive ? Colors.white : null,
-          fontSize: 13,
-          fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-        )),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isActive ? Colors.white : null,
+            fontSize: 13,
+            fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildAgentTable(Color cardBg, Color borderColor, Color textPrimary, Color textMuted, bool isDark) {
+  Widget _buildAgentTable(
+    Color cardBg,
+    Color borderColor,
+    Color textPrimary,
+    Color textMuted,
+    bool isDark,
+  ) {
     return Container(
       decoration: BoxDecoration(
         color: cardBg,
@@ -182,8 +261,12 @@ class _AgentPerformanceScreenState extends ConsumerState<AgentPerformanceScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
             decoration: BoxDecoration(
-              color: isDark ? AppColors.surfaceLight.withValues(alpha: 0.3) : const Color(0xFFF8FAFC),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              color: isDark
+                  ? AppColors.surfaceLight.withValues(alpha: 0.3)
+                  : const Color(0xFFF8FAFC),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(16),
+              ),
             ),
             child: Row(
               children: [
@@ -205,14 +288,23 @@ class _AgentPerformanceScreenState extends ConsumerState<AgentPerformanceScreen>
             final isSelected = _selectedAgentId == agent['agent_id'];
             return Material(
               color: isSelected
-                  ? (isDark ? AppColors.primary.withValues(alpha: 0.12) : AppColors.primary.withValues(alpha: 0.06))
+                  ? (isDark
+                        ? AppColors.primary.withValues(alpha: 0.12)
+                        : AppColors.primary.withValues(alpha: 0.06))
                   : Colors.transparent,
               child: InkWell(
                 onTap: () => _loadAgentDetail(agent['agent_id']),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 14,
+                  ),
                   decoration: BoxDecoration(
-                    border: Border(bottom: BorderSide(color: borderColor.withValues(alpha: 0.5))),
+                    border: Border(
+                      bottom: BorderSide(
+                        color: borderColor.withValues(alpha: 0.5),
+                      ),
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -223,10 +315,18 @@ class _AgentPerformanceScreenState extends ConsumerState<AgentPerformanceScreen>
                           children: [
                             CircleAvatar(
                               radius: 16,
-                              backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+                              backgroundColor: AppColors.primary.withValues(
+                                alpha: 0.15,
+                              ),
                               child: Text(
-                                (agent['full_name']?.toString() ?? 'A').substring(0, 1).toUpperCase(),
-                                style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 13),
+                                (agent['full_name']?.toString() ?? 'A')
+                                    .substring(0, 1)
+                                    .toUpperCase(),
+                                style: const TextStyle(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -234,8 +334,21 @@ class _AgentPerformanceScreenState extends ConsumerState<AgentPerformanceScreen>
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(agent['full_name'] ?? '', style: TextStyle(color: textPrimary, fontSize: 13, fontWeight: FontWeight.w500)),
-                                  Text(agent['permission_level'] ?? '', style: TextStyle(color: textMuted, fontSize: 11)),
+                                  Text(
+                                    agent['full_name'] ?? '',
+                                    style: TextStyle(
+                                      color: textPrimary,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  Text(
+                                    agent['permission_level'] ?? '',
+                                    style: TextStyle(
+                                      color: textMuted,
+                                      fontSize: 11,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -245,27 +358,63 @@ class _AgentPerformanceScreenState extends ConsumerState<AgentPerformanceScreen>
                       // Status
                       Expanded(
                         flex: 1,
-                        child: _buildStatusBadge(agent['status']?.toString() ?? 'offline'),
+                        child: _buildStatusBadge(
+                          agent['status']?.toString() ?? 'offline',
+                        ),
                       ),
                       // Tickets handled
-                      _tableCell('${agent['tickets_handled'] ?? 0}', flex: 1, textPrimary: textPrimary),
+                      _tableCell(
+                        '${agent['tickets_handled'] ?? 0}',
+                        flex: 1,
+                        textPrimary: textPrimary,
+                      ),
                       // Tickets resolved
-                      _tableCell('${agent['tickets_resolved'] ?? 0}', flex: 1, textPrimary: textPrimary,
-                          color: (agent['tickets_resolved'] ?? 0) > 0 ? AppColors.success : null),
+                      _tableCell(
+                        '${agent['tickets_resolved'] ?? 0}',
+                        flex: 1,
+                        textPrimary: textPrimary,
+                        color: (agent['tickets_resolved'] ?? 0) > 0
+                            ? AppColors.success
+                            : null,
+                      ),
                       // Avg first response
-                      _tableCell(SupportMonitoringService.formatDuration(agent['avg_first_response_seconds'] ?? 0),
-                          flex: 1, textPrimary: textPrimary),
+                      _tableCell(
+                        SupportMonitoringService.formatDuration(
+                          agent['avg_first_response_seconds'] ?? 0,
+                        ),
+                        flex: 1,
+                        textPrimary: textPrimary,
+                      ),
                       // Avg resolution
-                      _tableCell(SupportMonitoringService.formatDuration(agent['avg_resolution_seconds'] ?? 0),
-                          flex: 1, textPrimary: textPrimary),
+                      _tableCell(
+                        SupportMonitoringService.formatDuration(
+                          agent['avg_resolution_seconds'] ?? 0,
+                        ),
+                        flex: 1,
+                        textPrimary: textPrimary,
+                      ),
                       // CSAT
-                      _tableCell('${agent['csat_average'] ?? 0}', flex: 1, textPrimary: textPrimary,
-                          color: _csatColor(agent['csat_average'])),
+                      _tableCell(
+                        '${agent['csat_average'] ?? 0}',
+                        flex: 1,
+                        textPrimary: textPrimary,
+                        color: _csatColor(agent['csat_average']),
+                      ),
                       // SLA breaches
-                      _tableCell('${agent['sla_breaches'] ?? 0}', flex: 1, textPrimary: textPrimary,
-                          color: (agent['sla_breaches'] ?? 0) > 0 ? AppColors.error : null),
+                      _tableCell(
+                        '${agent['sla_breaches'] ?? 0}',
+                        flex: 1,
+                        textPrimary: textPrimary,
+                        color: (agent['sla_breaches'] ?? 0) > 0
+                            ? AppColors.error
+                            : null,
+                      ),
                       // Messages
-                      _tableCell('${agent['messages_sent'] ?? 0}', flex: 1, textPrimary: textPrimary),
+                      _tableCell(
+                        '${agent['messages_sent'] ?? 0}',
+                        flex: 1,
+                        textPrimary: textPrimary,
+                      ),
                     ],
                   ),
                 ),
@@ -277,28 +426,57 @@ class _AgentPerformanceScreenState extends ConsumerState<AgentPerformanceScreen>
     );
   }
 
-  Widget _tableHeader(String label, {required int flex, required Color textMuted}) {
+  Widget _tableHeader(
+    String label, {
+    required int flex,
+    required Color textMuted,
+  }) {
     return Expanded(
       flex: flex,
-      child: Text(label, style: TextStyle(color: textMuted, fontSize: 12, fontWeight: FontWeight.w600)),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: textMuted,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 
-  Widget _tableCell(String value, {required int flex, required Color textPrimary, Color? color}) {
+  Widget _tableCell(
+    String value, {
+    required int flex,
+    required Color textPrimary,
+    Color? color,
+  }) {
     return Expanded(
       flex: flex,
-      child: Text(value, style: TextStyle(color: color ?? textPrimary, fontSize: 13, fontWeight: color != null ? FontWeight.w600 : FontWeight.w400)),
+      child: Text(
+        value,
+        style: TextStyle(
+          color: color ?? textPrimary,
+          fontSize: 13,
+          fontWeight: color != null ? FontWeight.w600 : FontWeight.w400,
+        ),
+      ),
     );
   }
 
   Widget _buildStatusBadge(String status) {
-    final color = status == 'online' ? AppColors.success
-        : status == 'busy' ? AppColors.warning
-        : status == 'break' ? const Color(0xFFF97316)
+    final color = status == 'online'
+        ? AppColors.success
+        : status == 'busy'
+        ? AppColors.warning
+        : status == 'break'
+        ? const Color(0xFFF97316)
         : AppColors.textMuted;
-    final label = status == 'online' ? 'Online'
-        : status == 'busy' ? 'Mesgul'
-        : status == 'break' ? 'Mola'
+    final label = status == 'online'
+        ? 'Online'
+        : status == 'busy'
+        ? 'Mesgul'
+        : status == 'break'
+        ? 'Mola'
         : 'Offline';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -306,21 +484,40 @@ class _AgentPerformanceScreenState extends ConsumerState<AgentPerformanceScreen>
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(6),
       ),
-      child: Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 
   Color? _csatColor(dynamic csat) {
     if (csat == null || csat == 0) return null;
-    final val = csat is num ? csat.toDouble() : double.tryParse(csat.toString()) ?? 0;
+    final val = csat is num
+        ? csat.toDouble()
+        : double.tryParse(csat.toString()) ?? 0;
     if (val >= 4.0) return AppColors.success;
     if (val >= 3.0) return AppColors.warning;
     return AppColors.error;
   }
 
-  Widget _buildDetailPanel(Color cardBg, Color borderColor, Color textPrimary, Color textMuted, bool isDark) {
+  Widget _buildDetailPanel(
+    Color cardBg,
+    Color borderColor,
+    Color textPrimary,
+    Color textMuted,
+    bool isDark,
+  ) {
     if (_loadingDetail) return const Center(child: CircularProgressIndicator());
-    if (_selectedAgent == null) return Center(child: Text('Temsilci secin', style: TextStyle(color: textMuted)));
+    if (_selectedAgent == null) {
+      return Center(
+        child: Text('Temsilci secin', style: TextStyle(color: textMuted)),
+      );
+    }
 
     final agent = _selectedAgent!;
 
@@ -334,8 +531,14 @@ class _AgentPerformanceScreenState extends ConsumerState<AgentPerformanceScreen>
               radius: 24,
               backgroundColor: AppColors.primary.withValues(alpha: 0.15),
               child: Text(
-                (agent['full_name']?.toString() ?? 'A').substring(0, 1).toUpperCase(),
-                style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 20),
+                (agent['full_name']?.toString() ?? 'A')
+                    .substring(0, 1)
+                    .toUpperCase(),
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                ),
               ),
             ),
             const SizedBox(width: 14),
@@ -343,14 +546,26 @@ class _AgentPerformanceScreenState extends ConsumerState<AgentPerformanceScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(agent['full_name'] ?? '', style: TextStyle(color: textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
-                  Text('${agent['email'] ?? ''} | ${agent['permission_level'] ?? ''}',
-                      style: TextStyle(color: textMuted, fontSize: 12)),
+                  Text(
+                    agent['full_name'] ?? '',
+                    style: TextStyle(
+                      color: textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    '${agent['email'] ?? ''} | ${agent['permission_level'] ?? ''}',
+                    style: TextStyle(color: textMuted, fontSize: 12),
+                  ),
                 ],
               ),
             ),
             IconButton(
-              onPressed: () => setState(() { _selectedAgentId = null; _selectedAgent = null; }),
+              onPressed: () => setState(() {
+                _selectedAgentId = null;
+                _selectedAgent = null;
+              }),
               icon: const Icon(Icons.close),
             ),
           ],
@@ -362,48 +577,130 @@ class _AgentPerformanceScreenState extends ConsumerState<AgentPerformanceScreen>
           spacing: 12,
           runSpacing: 12,
           children: [
-            _miniCard(cardBg, borderColor, textPrimary, textMuted,
-                'Ticket', '${agent['tickets_handled'] ?? 0}', Icons.confirmation_number_outlined, AppColors.info),
-            _miniCard(cardBg, borderColor, textPrimary, textMuted,
-                'Cozulen', '${agent['tickets_resolved'] ?? 0}', Icons.check_circle_outline, AppColors.success),
-            _miniCard(cardBg, borderColor, textPrimary, textMuted,
-                'CSAT', '${agent['csat_average'] ?? 0}/5', Icons.star_outline, const Color(0xFFF59E0B)),
-            _miniCard(cardBg, borderColor, textPrimary, textMuted,
-                'SLA Ihlal', '${agent['sla_breaches'] ?? 0}', Icons.warning_amber_outlined, AppColors.error),
-            _miniCard(cardBg, borderColor, textPrimary, textMuted,
-                'Ort. Yanit', SupportMonitoringService.formatDuration(agent['avg_first_response_seconds'] ?? 0),
-                Icons.timer_outlined, AppColors.warning),
-            _miniCard(cardBg, borderColor, textPrimary, textMuted,
-                'Mesaj', '${agent['messages_sent'] ?? 0}', Icons.message_outlined, AppColors.primary),
+            _miniCard(
+              cardBg,
+              borderColor,
+              textPrimary,
+              textMuted,
+              'Ticket',
+              '${agent['tickets_handled'] ?? 0}',
+              Icons.confirmation_number_outlined,
+              AppColors.info,
+            ),
+            _miniCard(
+              cardBg,
+              borderColor,
+              textPrimary,
+              textMuted,
+              'Cozulen',
+              '${agent['tickets_resolved'] ?? 0}',
+              Icons.check_circle_outline,
+              AppColors.success,
+            ),
+            _miniCard(
+              cardBg,
+              borderColor,
+              textPrimary,
+              textMuted,
+              'CSAT',
+              '${agent['csat_average'] ?? 0}/5',
+              Icons.star_outline,
+              const Color(0xFFF59E0B),
+            ),
+            _miniCard(
+              cardBg,
+              borderColor,
+              textPrimary,
+              textMuted,
+              'SLA Ihlal',
+              '${agent['sla_breaches'] ?? 0}',
+              Icons.warning_amber_outlined,
+              AppColors.error,
+            ),
+            _miniCard(
+              cardBg,
+              borderColor,
+              textPrimary,
+              textMuted,
+              'Ort. Yanit',
+              SupportMonitoringService.formatDuration(
+                agent['avg_first_response_seconds'] ?? 0,
+              ),
+              Icons.timer_outlined,
+              AppColors.warning,
+            ),
+            _miniCard(
+              cardBg,
+              borderColor,
+              textPrimary,
+              textMuted,
+              'Mesaj',
+              '${agent['messages_sent'] ?? 0}',
+              Icons.message_outlined,
+              AppColors.primary,
+            ),
           ],
         ),
         const SizedBox(height: 24),
 
         // Recent Tickets
-        Text('Son Ticketlar', style: TextStyle(color: textPrimary, fontSize: 14, fontWeight: FontWeight.w600)),
+        Text(
+          'Son Ticketlar',
+          style: TextStyle(
+            color: textPrimary,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         const SizedBox(height: 8),
         if (_agentTickets == null || _agentTickets!.isEmpty)
           Text('Ticket yok', style: TextStyle(color: textMuted, fontSize: 12))
         else
           ..._agentTickets!.map((ticket) {
             final status = ticket['status']?.toString() ?? '';
-            final createdAt = DateTime.tryParse(ticket['created_at']?.toString() ?? '');
+            final createdAt = DateTime.tryParse(
+              ticket['created_at']?.toString() ?? '',
+            );
             return Container(
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isDark ? AppColors.surfaceLight.withValues(alpha: 0.3) : const Color(0xFFF8FAFC),
+                color: isDark
+                    ? AppColors.surfaceLight.withValues(alpha: 0.3)
+                    : const Color(0xFFF8FAFC),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: borderColor),
               ),
               child: Row(
                 children: [
-                  Text('#${ticket['ticket_number'] ?? ''}', style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w600)),
+                  Text(
+                    '#${ticket['ticket_number'] ?? ''}',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(width: 8),
-                  Expanded(child: Text(ticket['subject'] ?? '-', style: TextStyle(color: textPrimary, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis)),
-                  _buildBadge(SupportMonitoringService.statusLabel(status), SupportMonitoringService.statusColor(status)),
+                  Expanded(
+                    child: Text(
+                      ticket['subject'] ?? '-',
+                      style: TextStyle(color: textPrimary, fontSize: 12),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  _buildBadge(
+                    SupportMonitoringService.statusLabel(status),
+                    SupportMonitoringService.statusColor(status),
+                  ),
                   const SizedBox(width: 8),
-                  Text(createdAt != null ? DateFormat('dd/MM').format(createdAt.toLocal()) : '', style: TextStyle(color: textMuted, fontSize: 11)),
+                  Text(
+                    createdAt != null
+                        ? DateFormat('dd/MM').format(createdAt.toLocal())
+                        : '',
+                    style: TextStyle(color: textMuted, fontSize: 11),
+                  ),
                 ],
               ),
             );
@@ -411,13 +708,22 @@ class _AgentPerformanceScreenState extends ConsumerState<AgentPerformanceScreen>
         const SizedBox(height: 24),
 
         // Actions Log
-        Text('Son Aksiyonlar', style: TextStyle(color: textPrimary, fontSize: 14, fontWeight: FontWeight.w600)),
+        Text(
+          'Son Aksiyonlar',
+          style: TextStyle(
+            color: textPrimary,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         const SizedBox(height: 8),
         if (_agentActions == null || _agentActions!.isEmpty)
           Text('Aksiyon yok', style: TextStyle(color: textMuted, fontSize: 12))
         else
           ..._agentActions!.take(20).map((action) {
-            final createdAt = DateTime.tryParse(action['created_at']?.toString() ?? '');
+            final createdAt = DateTime.tryParse(
+              action['created_at']?.toString() ?? '',
+            );
             return Padding(
               padding: const EdgeInsets.only(bottom: 6),
               child: Row(
@@ -426,22 +732,40 @@ class _AgentPerformanceScreenState extends ConsumerState<AgentPerformanceScreen>
                   SizedBox(
                     width: 70,
                     child: Text(
-                      createdAt != null ? DateFormat('dd/MM HH:mm').format(createdAt.toLocal()) : '',
+                      createdAt != null
+                          ? DateFormat(
+                              'dd/MM HH:mm',
+                            ).format(createdAt.toLocal())
+                          : '',
                       style: TextStyle(color: textMuted, fontSize: 10),
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: Text(action['action_type'] ?? '', style: TextStyle(color: AppColors.primary, fontSize: 10, fontWeight: FontWeight.w600)),
+                    child: Text(
+                      action['action_type'] ?? '',
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                   const SizedBox(width: 6),
                   Expanded(
-                    child: Text(action['action_description'] ?? '', style: TextStyle(color: textPrimary, fontSize: 11),
-                        maxLines: 2, overflow: TextOverflow.ellipsis),
+                    child: Text(
+                      action['action_description'] ?? '',
+                      style: TextStyle(color: textPrimary, fontSize: 11),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),
@@ -451,8 +775,16 @@ class _AgentPerformanceScreenState extends ConsumerState<AgentPerformanceScreen>
     );
   }
 
-  Widget _miniCard(Color cardBg, Color borderColor, Color textPrimary, Color textMuted,
-      String label, String value, IconData icon, Color color) {
+  Widget _miniCard(
+    Color cardBg,
+    Color borderColor,
+    Color textPrimary,
+    Color textMuted,
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       width: 140,
       padding: const EdgeInsets.all(12),
@@ -466,7 +798,14 @@ class _AgentPerformanceScreenState extends ConsumerState<AgentPerformanceScreen>
         children: [
           Icon(icon, color: color, size: 18),
           const SizedBox(height: 6),
-          Text(value, style: TextStyle(color: textPrimary, fontSize: 18, fontWeight: FontWeight.bold)),
+          Text(
+            value,
+            style: TextStyle(
+              color: textPrimary,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           Text(label, style: TextStyle(color: textMuted, fontSize: 11)),
         ],
       ),
@@ -480,7 +819,14 @@ class _AgentPerformanceScreenState extends ConsumerState<AgentPerformanceScreen>
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(6),
       ),
-      child: Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 }

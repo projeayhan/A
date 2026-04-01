@@ -58,12 +58,14 @@ class StoreCard extends StatelessWidget {
                     fit: BoxFit.cover,
                     memCacheWidth: 220,
                     memCacheHeight: 128,
-                    placeholder: (_, __) => Container(
+                    placeholder: (_, _) => Container(
                       height: 64,
                       color: Colors.grey[200],
-                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                      child: const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
                     ),
-                    errorWidget: (_, __, ___) => Container(
+                    errorWidget: (_, _, _) => Container(
                       height: 64,
                       color: AppColors.primary.withValues(alpha: 0.1),
                       child: Icon(
@@ -193,12 +195,14 @@ class StoreCard extends StatelessWidget {
                     fit: BoxFit.cover,
                     memCacheWidth: 600,
                     memCacheHeight: 180,
-                    placeholder: (_, __) => Container(
+                    placeholder: (_, _) => Container(
                       height: 90,
                       color: Colors.grey[200],
-                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                      child: const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
                     ),
-                    errorWidget: (_, __, ___) => Container(
+                    errorWidget: (_, _, _) => Container(
                       height: 90,
                       color: AppColors.primary.withValues(alpha: 0.1),
                       child: Icon(
@@ -233,11 +237,13 @@ class StoreCard extends StatelessWidget {
                         fit: BoxFit.cover,
                         memCacheWidth: 80,
                         memCacheHeight: 80,
-                        placeholder: (_, __) => Container(
+                        placeholder: (_, _) => Container(
                           color: Colors.grey[200],
-                          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                          child: const Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
                         ),
-                        errorWidget: (_, __, ___) => Icon(
+                        errorWidget: (_, _, _) => Icon(
                           Icons.store_rounded,
                           color: AppColors.primary,
                           size: 20,
@@ -272,7 +278,12 @@ class StoreCard extends StatelessWidget {
               ],
             ),
             Padding(
-              padding: EdgeInsets.fromLTRB(context.pagePaddingH, 24, context.pagePaddingH, context.cardPadding),
+              padding: EdgeInsets.fromLTRB(
+                context.pagePaddingH,
+                24,
+                context.pagePaddingH,
+                context.cardPadding,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -338,19 +349,22 @@ class StoreCard extends StatelessWidget {
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      _buildInfoChip(context,
+                      _buildInfoChip(
+                        context,
                         Icons.people_outline_rounded,
                         '${store.formattedFollowers} takipçi',
                         isDark,
                       ),
                       const SizedBox(width: 10),
-                      _buildInfoChip(context,
+                      _buildInfoChip(
+                        context,
                         Icons.inventory_2_outlined,
                         '${store.productCount} ürün',
                         isDark,
                       ),
                       const SizedBox(width: 10),
-                      _buildInfoChip(context,
+                      _buildInfoChip(
+                        context,
                         Icons.local_shipping_outlined,
                         store.deliveryTime,
                         isDark,
@@ -393,15 +407,16 @@ class StoreCard extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoChip(BuildContext context, IconData icon, String text, bool isDark) {
+  Widget _buildInfoChip(
+    BuildContext context,
+    IconData icon,
+    String text,
+    bool isDark,
+  ) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(
-          icon,
-          size: context.captionSize,
-          color: Colors.grey[500],
-        ),
+        Icon(icon, size: context.captionSize, color: Colors.grey[500]),
         const SizedBox(width: 3),
         Text(
           text,

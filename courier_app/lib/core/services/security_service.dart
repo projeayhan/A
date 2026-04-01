@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'log_service.dart';
 import 'supabase_service.dart';
 
 /// Security service for brute force protection
@@ -14,8 +15,9 @@ class SecurityService {
         'p_app_source': appSource,
       });
       return Map<String, dynamic>.from(response ?? {'is_blocked': false});
-    } catch (e) {
-      return {'is_blocked': false};
+    } catch (e, st) {
+      LogService.error('checkLoginBlocked error', error: e, stackTrace: st, source: 'SecurityService:checkLoginBlocked');
+      return {'is_blocked': true};
     }
   }
 
@@ -31,7 +33,8 @@ class SecurityService {
         'p_app_source': appSource,
       });
       return Map<String, dynamic>.from(response ?? {});
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('trackFailedLogin error', error: e, stackTrace: st, source: 'SecurityService:trackFailedLogin');
       return {};
     }
   }
@@ -43,8 +46,8 @@ class SecurityService {
         'p_email': identifier,
         'p_app_source': appSource,
       });
-    } catch (e) {
-      // Silently fail
+    } catch (e, st) {
+      LogService.error('clearLoginBlocks error', error: e, stackTrace: st, source: 'SecurityService:clearLoginBlocks');
     }
   }
 }

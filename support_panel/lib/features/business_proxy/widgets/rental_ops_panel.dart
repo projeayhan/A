@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/business_proxy_service.dart';
 import '../../../core/services/storage_service.dart';
+import 'package:support_panel/core/services/log_service.dart';
 
 class RentalOpsPanel extends ConsumerStatefulWidget {
   final String businessId;
@@ -48,7 +49,8 @@ class _RentalOpsPanelState extends ConsumerState<RentalOpsPanel> with SingleTick
         _bookings = results[0]; _vehicles = results[1]; _locations = results[2];
         _packages = results[3]; _services = results[4]; _isLoading = false;
       });
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to load rental data', error: e, stackTrace: st, source: 'RentalOpsPanel:_loadData');
       setState(() => _isLoading = false);
     }
   }
@@ -246,7 +248,8 @@ class _RentalOpsPanelState extends ConsumerState<RentalOpsPanel> with SingleTick
                   }
                   if (ctx.mounted) Navigator.pop(ctx);
                   _loadData();
-                } catch (e) {
+                } catch (e, st) {
+                  LogService.error('Failed to save booking', error: e, stackTrace: st, source: 'RentalOpsPanel:saveBooking');
                   ss(() => isSaving = false);
                   if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error));
                 }
@@ -497,7 +500,8 @@ class _RentalOpsPanelState extends ConsumerState<RentalOpsPanel> with SingleTick
                   }
                   if (ctx.mounted) Navigator.pop(ctx);
                   _loadData();
-                } catch (e) {
+                } catch (e, st) {
+                  LogService.error('Failed to save vehicle', error: e, stackTrace: st, source: 'RentalOpsPanel:saveVehicle');
                   ss(() => isSaving = false);
                   if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error));
                 }
@@ -652,7 +656,8 @@ class _RentalOpsPanelState extends ConsumerState<RentalOpsPanel> with SingleTick
                   }
                   if (ctx.mounted) Navigator.pop(ctx);
                   _loadData();
-                } catch (e) {
+                } catch (e, st) {
+                  LogService.error('Failed to save location', error: e, stackTrace: st, source: 'RentalOpsPanel:saveLocation');
                   ss(() => isSaving = false);
                   if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error));
                 }
@@ -862,7 +867,8 @@ class _RentalOpsPanelState extends ConsumerState<RentalOpsPanel> with SingleTick
                   }
                   if (ctx.mounted) Navigator.pop(ctx);
                   _loadData();
-                } catch (e) {
+                } catch (e, st) {
+                  LogService.error('Failed to save service', error: e, stackTrace: st, source: 'RentalOpsPanel:saveService');
                   ss(() => isSaving = false);
                   if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error));
                 }

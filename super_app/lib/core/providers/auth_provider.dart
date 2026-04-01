@@ -1,9 +1,11 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/supabase_service.dart';
 import '../services/security_service.dart';
+import '../services/push_notification_service.dart';
+import '../services/order_notification_service.dart';
+import 'package:super_app/core/services/log_service.dart';
 
 // Auth State
 enum AuthStatus { initial, authenticated, unauthenticated, loading, error }
@@ -67,8 +69,34 @@ class AuthNotifier extends StateNotifier<AuthState> {
             return;
           }
 
+          // Yasaklı kullanıcı kontrolü
+          if (await _checkBanned(user.id)) {
+            await SupabaseService.signOut();
+            state = const AuthState(
+              status: AuthStatus.error,
+              errorMessage: 'Hesabınız askıya alınmıştır. Lütfen destek ile iletişime geçin.',
+            );
+            return;
+          }
+
+          // Push notification'ı başlat
+          await PushNotificationService().initialize();
+          OrderNotificationService().initialize();
+
           // Profil bilgilerini senkronize et
           await _syncUserProfile(user);
+        }
+
+        // Token yenilendiğinde ban durumunu kontrol et
+        if (authState.event == AuthChangeEvent.tokenRefreshed) {
+          if (await _checkBanned(user.id)) {
+            await SupabaseService.signOut();
+            state = const AuthState(
+              status: AuthStatus.error,
+              errorMessage: 'Hesabınız askıya alınmıştır. Lütfen destek ile iletişime geçin.',
+            );
+            return;
+          }
         }
 
         state = AuthState(
@@ -90,7 +118,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
       }
     } catch (e) {
       // Refresh token invalid - force logout
-      try { await SupabaseService.signOut(); } catch (_) {}
+      try { await SupabaseService.signOut(); } catch (e, st) { LogService.error('signOut during refresh failed', error: e, stackTrace: st, source: 'AuthProvider:_refreshSession'); }
       state = const AuthState(status: AuthStatus.unauthenticated);
     }
   }
@@ -99,6 +127,21 @@ class AuthNotifier extends StateNotifier<AuthState> {
   void dispose() {
     _authSubscription?.cancel();
     super.dispose();
+  }
+
+  // Kullanıcının yasaklı (banned) olup olmadığını kontrol et
+  Future<bool> _checkBanned(String userId) async {
+    try {
+      final response = await SupabaseService.client
+          .from('users')
+          .select('is_banned')
+          .eq('id', userId)
+          .maybeSingle();
+      return response?['is_banned'] == true;
+    } catch (e, st) {
+      LogService.error('_checkBanned error', error: e, stackTrace: st, source: 'AuthProvider:_checkBanned');
+      return false;
+    }
   }
 
   // OAuth ile giriş yapan kullanıcının profil bilgilerini veritabanına kaydet
@@ -164,9 +207,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
             .update(updates)
             .eq('id', user.id);
       }
-    } catch (e) {
+    } catch (e, st) {
       // Hata olursa sessizce devam et, giriş engellenmemeli
-      print('Profile sync error: $e');
+      LogService.error('Profile sync error', error: e, stackTrace: st, source: 'AuthProvider:_syncUserProfile');
     }
   }
 
@@ -181,8 +224,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
         return Map<String, dynamic>.from(response);
       }
       return {'role': 'none', 'message': 'Rol bulunamadı'};
-    } catch (e) {
-      debugPrint('_checkUserRole error: $e');
+    } catch (e, st) {
+      LogService.error('_checkUserRole error', error: e, stackTrace: st, source: 'AuthProvider:_checkUserRole');
       return {'role': 'none', 'message': 'Rol kontrolü başarısız'};
     }
   }
@@ -221,6 +264,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
           state = AuthState(
             status: AuthStatus.error,
             errorMessage: 'Bu hesapla müşteri uygulamasına giriş yapamazsınız.',
+          );
+          return {'success': false};
+        }
+
+        // Yasaklı kullanıcı kontrolü
+        if (await _checkBanned(user.id)) {
+          await SupabaseService.signOut();
+          state = const AuthState(
+            status: AuthStatus.error,
+            errorMessage: 'Hesabınız askıya alınmıştır. Lütfen destek ile iletişime geçin.',
           );
           return {'success': false};
         }
@@ -282,8 +335,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
         }
       }
       return true;
-    } catch (e) {
-      debugPrint('updateProfile error: $e');
+    } catch (e, st) {
+      LogService.error('updateProfile error', error: e, stackTrace: st, source: 'AuthProvider:updateProfile');
       return false;
     }
   }
@@ -327,6 +380,16 @@ class AuthNotifier extends StateNotifier<AuthState> {
           state = AuthState(
             status: AuthStatus.error,
             errorMessage: 'Bu hesapla müşteri uygulamasına giriş yapamazsınız.',
+          );
+          return false;
+        }
+
+        // Yasaklı kullanıcı kontrolü
+        if (await _checkBanned(response.user!.id)) {
+          await SupabaseService.signOut();
+          state = const AuthState(
+            status: AuthStatus.error,
+            errorMessage: 'Hesabınız askıya alınmıştır. Lütfen destek ile iletişime geçin.',
           );
           return false;
         }
@@ -460,6 +523,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   // Sign Out
   Future<void> signOut() async {
+    await PushNotificationService().deleteToken();
     await SupabaseService.signOut();
     state = const AuthState(status: AuthStatus.unauthenticated);
   }

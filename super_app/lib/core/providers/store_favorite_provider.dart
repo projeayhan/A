@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/store/store_model.dart';
 import '../services/favorites_service.dart';
 import '../services/supabase_service.dart';
+import 'package:super_app/core/services/log_service.dart';
 
 // Favori Mağaza Modeli
 class FavoriteStore {
@@ -145,8 +146,8 @@ class StoreFavoriteNotifier extends StateNotifier<StoreFavoriteState> {
             addedAt: DateTime.now(),
           ));
         }
-      } catch (e) {
-        // Skip if error
+      } catch (e, st) {
+        LogService.error('Error loading store favorite', error: e, stackTrace: st, source: 'StoreFavoriteProvider:loadFavorites');
       }
     }
 

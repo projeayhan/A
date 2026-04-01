@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -32,6 +34,9 @@ class _GroceryHomeScreenState extends ConsumerState<GroceryHomeScreen> {
   final _searchFocusNode = FocusNode();
   String _searchQuery = '';
   String _selectedSorting = 'Önerilen';
+  Timer? _searchDebounce;
+
+  static final _deliveryTimeRegex = RegExp(r'(\d+)');
 
   @override
   void initState() {
@@ -41,6 +46,7 @@ class _GroceryHomeScreenState extends ConsumerState<GroceryHomeScreen> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     _searchFocusNode.dispose();
@@ -48,8 +54,13 @@ class _GroceryHomeScreenState extends ConsumerState<GroceryHomeScreen> {
   }
 
   void _onSearchChanged() {
-    setState(() {
-      _searchQuery = _searchController.text.trim().toLowerCase();
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        setState(() {
+          _searchQuery = _searchController.text.trim().toLowerCase();
+        });
+      }
     });
   }
 
@@ -144,13 +155,15 @@ class _GroceryHomeScreenState extends ConsumerState<GroceryHomeScreen> {
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
                       final market = sortedMarkets[index];
-                      return Padding(
-                        padding: EdgeInsets.only(
-                          bottom: index < sortedMarkets.length - 1 ? 10 : 0,
-                        ),
-                        child: StoreCard(
-                          store: market,
-                          onTap: () => _navigateToMarket(market),
+                      return RepaintBoundary(
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                            bottom: index < sortedMarkets.length - 1 ? 10 : 0,
+                          ),
+                          child: StoreCard(
+                            store: market,
+                            onTap: () => _navigateToMarket(market),
+                          ),
                         ),
                       );
                     },
@@ -163,27 +176,23 @@ class _GroceryHomeScreenState extends ConsumerState<GroceryHomeScreen> {
   }
 
   List<Store> _applySorting(List<Store> markets) {
+    if (_selectedSorting == 'Önerilen') return markets;
     final sorted = List<Store>.from(markets);
     switch (_selectedSorting) {
       case 'Puana Göre':
         sorted.sort((a, b) => b.rating.compareTo(a.rating));
         break;
       case 'En Hızlı':
-        sorted.sort((a, b) {
-          final aTime = _parseDeliveryTime(a.deliveryTime);
-          final bTime = _parseDeliveryTime(b.deliveryTime);
-          return aTime.compareTo(bTime);
-        });
-        break;
-      default: // 'Önerilen'
-        // Keep default order
+        // Pre-compute delivery times once to avoid repeated parsing during sort
+        final times = {for (final m in markets) m.id: _parseDeliveryTime(m.deliveryTime)};
+        sorted.sort((a, b) => times[a.id]!.compareTo(times[b.id]!));
         break;
     }
     return sorted;
   }
 
   int _parseDeliveryTime(String time) {
-    final match = RegExp(r'(\d+)').firstMatch(time);
+    final match = _deliveryTimeRegex.firstMatch(time);
     return match != null ? int.parse(match.group(1)!) : 999;
   }
 

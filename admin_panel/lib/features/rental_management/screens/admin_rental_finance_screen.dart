@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/rental_management_providers.dart';
@@ -14,7 +13,7 @@ class AdminRentalFinanceScreen extends ConsumerStatefulWidget {
 }
 
 class _AdminRentalFinanceScreenState extends ConsumerState<AdminRentalFinanceScreen> {
-  final _currencyFormat = NumberFormat.currency(locale: 'tr_TR', symbol: '₺', decimalDigits: 2);
+  final _currencyFormat = NumberFormat.currency(locale: 'tr_TR', symbol: '\u20BA', decimalDigits: 0);
   final _dateFormat = DateFormat('dd.MM.yyyy');
   String _selectedPeriod = '30';
 
@@ -47,7 +46,7 @@ class _AdminRentalFinanceScreenState extends ConsumerState<AdminRentalFinanceScr
                     ),
                     SizedBox(height: 4),
                     Text(
-                      'Gelir ve komisyon raporları',
+                      'Gelir ve komisyon raporlari',
                       style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
                     ),
                   ],
@@ -68,43 +67,36 @@ class _AdminRentalFinanceScreenState extends ConsumerState<AdminRentalFinanceScr
 
             const SizedBox(height: 32),
 
-            // Stats Cards
+            // Revenue Stat Cards
             financeAsync.when(
-              data: (finance) => _buildStatsCards(finance),
+              data: (finance) => _buildRevenueStatCards(finance),
               loading: () => _buildStatsCardsLoading(),
               error: (e, _) => Center(child: Text('Hata: $e', style: const TextStyle(color: AppColors.error))),
             ),
 
             const SizedBox(height: 32),
 
-            // Charts Row
+            // Revenue Trend + Category Breakdown
             financeAsync.when(
               data: (finance) => Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
-                    flex: 2,
-                    child: _buildChartCard(
-                      'Aylık Gelir',
-                      'Gelir trendi',
-                      _buildRevenueChart(finance),
-                    ),
+                    flex: 3,
+                    child: _buildMonthlyRevenueTrend(finance),
                   ),
                   const SizedBox(width: 24),
                   Expanded(
-                    child: _buildChartCard(
-                      'Gelir Dağılımı',
-                      'Komisyon vs Net',
-                      _buildDistributionChart(finance),
-                    ),
+                    flex: 2,
+                    child: _buildRevenueByCategoryBreakdown(finance),
                   ),
                 ],
               ),
               loading: () => Row(
                 children: [
-                  Expanded(flex: 2, child: _buildChartCardLoading()),
+                  Expanded(flex: 3, child: _buildChartCardLoading()),
                   const SizedBox(width: 24),
-                  Expanded(child: _buildChartCardLoading()),
+                  Expanded(flex: 2, child: _buildChartCardLoading()),
                 ],
               ),
               error: (_, _) => const SizedBox.shrink(),
@@ -112,7 +104,34 @@ class _AdminRentalFinanceScreenState extends ConsumerState<AdminRentalFinanceScr
 
             const SizedBox(height: 32),
 
-            // Recent Bookings Table
+            // Payment Distribution + Top Earning Cars
+            financeAsync.when(
+              data: (finance) => Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: _buildPaymentMethodDistribution(finance),
+                  ),
+                  const SizedBox(width: 24),
+                  Expanded(
+                    flex: 2,
+                    child: _buildTopEarningCars(finance),
+                  ),
+                ],
+              ),
+              loading: () => Row(
+                children: [
+                  Expanded(child: _buildChartCardLoading()),
+                  const SizedBox(width: 24),
+                  Expanded(flex: 2, child: _buildChartCardLoading()),
+                ],
+              ),
+              error: (_, _) => const SizedBox.shrink(),
+            ),
+
+            const SizedBox(height: 32),
+
+            // Recent Transactions
             financeAsync.when(
               data: (finance) => _buildRecentBookingsCard(finance),
               loading: () => const Center(child: CircularProgressIndicator()),
@@ -125,90 +144,101 @@ class _AdminRentalFinanceScreenState extends ConsumerState<AdminRentalFinanceScr
   }
 
   Widget _buildPeriodSelector() {
-    return PopupMenuButton<String>(
-      onSelected: (value) => setState(() => _selectedPeriod = value),
-      itemBuilder: (context) => const [
-        PopupMenuItem(value: '7', child: Text('Son 7 Gün')),
-        PopupMenuItem(value: '30', child: Text('Bu Ay')),
-        PopupMenuItem(value: '90', child: Text('Son 3 Ay')),
-        PopupMenuItem(value: '365', child: Text('Bu Yıl')),
-      ],
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.surfaceLight),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.calendar_today, size: 18, color: AppColors.textSecondary),
-            const SizedBox(width: 8),
-            Text(
-              _selectedPeriod == '7' ? 'Son 7 Gün' :
-              _selectedPeriod == '30' ? 'Bu Ay' :
-              _selectedPeriod == '90' ? 'Son 3 Ay' : 'Bu Yıl',
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+    final periods = [
+      {'label': '7 Gun', 'value': '7'},
+      {'label': '30 Gun', 'value': '30'},
+      {'label': '90 Gun', 'value': '90'},
+      {'label': '1 Yıl', 'value': '365'},
+    ];
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.surfaceLight),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: periods.map((p) {
+          final isSelected = _selectedPeriod == p['value'];
+          return GestureDetector(
+            onTap: () => setState(() => _selectedPeriod = p['value']!),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: isSelected ? AppColors.primary : Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                p['label']!,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : AppColors.textSecondary,
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
             ),
-            const SizedBox(width: 8),
-            const Icon(Icons.keyboard_arrow_down, size: 18, color: AppColors.textSecondary),
-          ],
-        ),
+          );
+        }).toList(),
       ),
     );
   }
 
-  Widget _buildStatsCards(Map<String, dynamic> finance) {
+  Widget _buildRevenueStatCards(Map<String, dynamic> finance) {
     final totalRevenue = (finance['total_revenue'] as num?)?.toDouble() ?? 0;
-    final commission = (finance['commission'] as num?)?.toDouble() ?? 0;
-    final commissionRate = (finance['commission_rate'] as num?)?.toDouble() ?? 0;
     final netRevenue = (finance['net_revenue'] as num?)?.toDouble() ?? 0;
     final completedBookings = finance['completed_bookings'] as int? ?? 0;
-    final totalRentalDays = finance['total_rental_days'] as int? ?? 0;
     final avgBookingValue = (finance['avg_booking_value'] as num?)?.toDouble() ?? 0;
+
+    // Calculate this month and last month from bookings
+    final bookings = List<Map<String, dynamic>>.from(finance['bookings'] as List? ?? []);
+    final now = DateTime.now();
+    double thisMonth = 0;
+    double lastMonth = 0;
+    for (final b in bookings) {
+      final status = b['status'] as String? ?? '';
+      if (status != 'completed' && status != 'active') {
+        continue;
+      }
+      final date = DateTime.tryParse(b['created_at'] as String? ?? '');
+      if (date == null) {
+        continue;
+      }
+      final amount = (b['total_amount'] as num?)?.toDouble() ?? 0;
+      if (date.month == now.month && date.year == now.year) {
+        thisMonth += amount;
+      } else if ((date.month == now.month - 1 && date.year == now.year) ||
+          (now.month == 1 && date.month == 12 && date.year == now.year - 1)) {
+        lastMonth += amount;
+      }
+    }
 
     return Column(
       children: [
         Row(
           children: [
-            _buildFinanceCard('Toplam Gelir', _currencyFormat.format(totalRevenue), Icons.trending_up, AppColors.success),
-            const SizedBox(width: 24),
-            _buildFinanceCard('Komisyon (%${commissionRate.toStringAsFixed(0)})', _currencyFormat.format(commission), Icons.account_balance, AppColors.warning),
-            const SizedBox(width: 24),
-            _buildFinanceCard('Net Gelir', _currencyFormat.format(netRevenue), Icons.savings, AppColors.primary),
+            _buildStatCard('Toplam Gelir', _currencyFormat.format(totalRevenue), Icons.trending_up, AppColors.success),
+            const SizedBox(width: 16),
+            _buildStatCard('Bu Ay', _currencyFormat.format(thisMonth), Icons.calendar_today, AppColors.primary),
+            const SizedBox(width: 16),
+            _buildStatCard('Gecen Ay', _currencyFormat.format(lastMonth), Icons.history, AppColors.info),
           ],
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
         Row(
           children: [
-            _buildFinanceCard('Tamamlanan Rez.', completedBookings.toString(), Icons.check_circle, AppColors.success),
-            const SizedBox(width: 24),
-            _buildFinanceCard('Toplam Kiralama Günü', totalRentalDays.toString(), Icons.calendar_month, AppColors.info),
-            const SizedBox(width: 24),
-            _buildFinanceCard('Ort. Rez. Tutarı', _currencyFormat.format(avgBookingValue), Icons.analytics, AppColors.primaryLight),
+            _buildStatCard('Tamamlanan Rez.', completedBookings.toString(), Icons.check_circle, AppColors.success),
+            const SizedBox(width: 16),
+            _buildStatCard('Ortalama Deger', _currencyFormat.format(avgBookingValue), Icons.analytics, AppColors.warning),
+            const SizedBox(width: 16),
+            _buildStatCard('Net Gelir', _currencyFormat.format(netRevenue), Icons.savings, AppColors.primaryLight),
           ],
         ),
       ],
     );
   }
 
-  Widget _buildStatsCardsLoading() {
-    return Row(
-      children: List.generate(3, (_) => Expanded(
-        child: Container(
-          height: 140,
-          margin: const EdgeInsets.only(right: 24),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: const Center(child: CircularProgressIndicator()),
-        ),
-      )),
-    );
-  }
-
-  Widget _buildFinanceCard(String title, String value, IconData icon, Color color) {
+  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(24),
@@ -221,34 +251,75 @@ class _AdminRentalFinanceScreenState extends ConsumerState<AdminRentalFinanceScr
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: color, size: 24),
+              child: Icon(icon, color: color, size: 22),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             Text(
               value,
-              style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(color: AppColors.textPrimary, fontSize: 24, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4),
-            Text(
-              title,
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
-            ),
+            Text(title, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildChartCard(String title, String subtitle, Widget chart) {
+  Widget _buildStatsCardsLoading() {
+    return Row(
+      children: List.generate(3, (_) => Expanded(
+        child: Container(
+          height: 140,
+          margin: const EdgeInsets.only(right: 16),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: const Center(child: CircularProgressIndicator()),
+        ),
+      )),
+    );
+  }
+
+  Widget _buildChartCardLoading() {
+    return Container(
+      height: 300,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: const Center(child: CircularProgressIndicator()),
+    );
+  }
+
+  Widget _buildMonthlyRevenueTrend(Map<String, dynamic> finance) {
+    final bookings = List<Map<String, dynamic>>.from(finance['bookings'] as List? ?? []);
+
+    // Group by month
+    final monthlyData = <int, double>{};
+    for (final b in bookings) {
+      final status = b['status'] as String? ?? '';
+      if (status != 'completed' && status != 'active') {
+        continue;
+      }
+      final date = DateTime.tryParse(b['created_at'] as String? ?? '');
+      if (date == null) {
+        continue;
+      }
+      final monthKey = date.month;
+      monthlyData[monthKey] = (monthlyData[monthKey] ?? 0) + ((b['total_amount'] as num?)?.toDouble() ?? 0);
+    }
+
+    final months = ['Oca', 'Sub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Agu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+    final maxVal = monthlyData.values.isNotEmpty ? monthlyData.values.reduce((a, b) => a > b ? a : b) : 0.0;
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -259,207 +330,334 @@ class _AdminRentalFinanceScreenState extends ConsumerState<AdminRentalFinanceScr
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: const TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 4),
-                  Text(subtitle, style: const TextStyle(color: AppColors.textMuted, fontSize: 13)),
-                ],
-              ),
-            ],
-          ),
+          const Text('Aylık Gelir Trendi', style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 4),
+          const Text('Aylık bazda gelir dağılımı', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
           const SizedBox(height: 24),
-          chart,
+          if (monthlyData.isEmpty)
+            const SizedBox(
+              height: 200,
+              child: Center(child: Text('Henüz veri yok', style: TextStyle(color: AppColors.textMuted))),
+            )
+          else
+            SizedBox(
+              height: 200,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: List.generate(12, (index) {
+                  final monthValue = monthlyData[index + 1] ?? 0;
+                  final barHeight = maxVal > 0 ? (monthValue / maxVal * 160) : 0.0;
+                  return Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 2),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          if (monthValue > 0)
+                            Tooltip(
+                              message: '${months[index]}: ${_currencyFormat.format(monthValue)}',
+                              child: Container(
+                                height: barHeight,
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(alpha: monthValue > 0 ? 0.8 : 0.2),
+                                  borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                                ),
+                              ),
+                            ),
+                          const SizedBox(height: 8),
+                          Text(months[index], style: const TextStyle(color: AppColors.textMuted, fontSize: 10)),
+                        ],
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            ),
         ],
       ),
     );
   }
 
-  Widget _buildChartCardLoading() {
+  Widget _buildRevenueByCategoryBreakdown(Map<String, dynamic> finance) {
+    final bookings = List<Map<String, dynamic>>.from(finance['bookings'] as List? ?? []);
+
+    // This is a placeholder since we don't have category in bookings directly
+    // We group by payment_method as a proxy, or show total breakdown
+    final statusCounts = <String, double>{};
+    for (final b in bookings) {
+      final status = b['status'] as String? ?? 'unknown';
+      final amount = (b['total_amount'] as num?)?.toDouble() ?? 0;
+      statusCounts[status] = (statusCounts[status] ?? 0) + amount;
+    }
+
+    final statusLabels = {
+      'completed': 'Tamamlanan',
+      'active': 'Aktif',
+      'confirmed': 'Onaylanan',
+      'pending': 'Bekleyen',
+      'cancelled': 'İptal',
+    };
+
+    final statusColors = {
+      'completed': AppColors.success,
+      'active': AppColors.primary,
+      'confirmed': AppColors.info,
+      'pending': AppColors.warning,
+      'cancelled': AppColors.error,
+    };
+
     return Container(
-      height: 350,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.surfaceLight),
       ),
-      child: const Center(child: CircularProgressIndicator()),
-    );
-  }
-
-  Widget _buildRevenueChart(Map<String, dynamic> finance) {
-    final bookings = List<Map<String, dynamic>>.from(finance['bookings'] as List? ?? []);
-
-    // Group by month
-    final monthlyData = <int, double>{};
-    for (final b in bookings) {
-      final status = b['status'] as String? ?? '';
-      if (status != 'completed' && status != 'active') continue;
-      final date = DateTime.tryParse(b['created_at'] as String? ?? '');
-      if (date == null) continue;
-      final monthKey = date.month;
-      monthlyData[monthKey] = (monthlyData[monthKey] ?? 0) + ((b['total_amount'] as num?)?.toDouble() ?? 0);
-    }
-
-    if (monthlyData.isEmpty) {
-      return const SizedBox(
-        height: 300,
-        child: Center(child: Text('Henüz veri yok', style: TextStyle(color: AppColors.textMuted))),
-      );
-    }
-
-    final months = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
-    final maxVal = monthlyData.values.isNotEmpty ? monthlyData.values.reduce((a, b) => a > b ? a : b) : 0.0;
-    final chartMax = maxVal > 0 ? (maxVal * 1.2).ceilToDouble() : 1000.0;
-
-    return SizedBox(
-      height: 300,
-      child: BarChart(
-        BarChartData(
-          alignment: BarChartAlignment.spaceAround,
-          maxY: chartMax,
-          barTouchData: BarTouchData(
-            enabled: true,
-            touchTooltipData: BarTouchTooltipData(
-              getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                final month = months[group.x.clamp(0, 11)];
-                return BarTooltipItem(
-                  '$month\n${_currencyFormat.format(rod.toY)}',
-                  const TextStyle(color: Colors.white, fontSize: 12),
-                );
-              },
-            ),
-          ),
-          titlesData: FlTitlesData(
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 50,
-                getTitlesWidget: (value, meta) => Text(
-                  '${(value / 1000).toInt()}K',
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
-                ),
-              ),
-            ),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                getTitlesWidget: (value, meta) {
-                  final idx = value.toInt();
-                  if (idx >= 0 && idx < 12) {
-                    return Text(months[idx], style: const TextStyle(color: AppColors.textMuted, fontSize: 11));
-                  }
-                  return const Text('');
-                },
-              ),
-            ),
-            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          ),
-          gridData: FlGridData(
-            show: true,
-            drawVerticalLine: false,
-            horizontalInterval: chartMax > 0 ? chartMax / 5 : 200,
-            getDrawingHorizontalLine: (value) => FlLine(
-              color: AppColors.surfaceLight.withValues(alpha: 0.5),
-              strokeWidth: 1,
-            ),
-          ),
-          borderData: FlBorderData(show: false),
-          barGroups: monthlyData.entries.map((entry) {
-            return BarChartGroupData(
-              x: entry.key - 1,
-              barRods: [
-                BarChartRodData(
-                  toY: entry.value,
-                  color: AppColors.primary,
-                  width: 16,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(4),
-                    topRight: Radius.circular(4),
-                  ),
-                ),
-              ],
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDistributionChart(Map<String, dynamic> finance) {
-    final totalRevenue = (finance['total_revenue'] as num?)?.toDouble() ?? 0;
-    final commission = (finance['commission'] as num?)?.toDouble() ?? 0;
-    final netRevenue = (finance['net_revenue'] as num?)?.toDouble() ?? 0;
-
-    if (totalRevenue == 0) {
-      return const SizedBox(
-        height: 300,
-        child: Center(child: Text('Henüz veri yok', style: TextStyle(color: AppColors.textMuted))),
-      );
-    }
-
-    final commissionPercent = (commission / totalRevenue * 100).round();
-    final netPercent = (netRevenue / totalRevenue * 100).round();
-
-    return SizedBox(
-      height: 300,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: PieChart(
-              PieChartData(
-                sectionsSpace: 2,
-                centerSpaceRadius: 50,
-                sections: [
-                  PieChartSectionData(
-                    value: commission,
-                    title: '$commissionPercent%',
-                    color: AppColors.warning,
-                    radius: 50,
-                    titleStyle: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                  ),
-                  PieChartSectionData(
-                    value: netRevenue,
-                    title: '$netPercent%',
-                    color: AppColors.success,
-                    radius: 50,
-                    titleStyle: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildLegendItem('Komisyon', AppColors.warning),
-              const SizedBox(width: 16),
-              _buildLegendItem('Net Gelir', AppColors.success),
-            ],
-          ),
+          const Text('Gelir Dağılımı', style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 4),
+          const Text('Durum bazında gelir', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+          const SizedBox(height: 24),
+          if (statusCounts.isEmpty)
+            const SizedBox(
+              height: 200,
+              child: Center(child: Text('Henüz veri yok', style: TextStyle(color: AppColors.textMuted))),
+            )
+          else
+            ...statusCounts.entries.map((entry) {
+              final label = statusLabels[entry.key] ?? entry.key;
+              final color = statusColors[entry.key] ?? AppColors.textMuted;
+              final total = statusCounts.values.fold(0.0, (a, b) => a + b);
+              final percent = total > 0 ? (entry.value / total * 100) : 0.0;
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 10,
+                              height: 10,
+                              decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2)),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                          ],
+                        ),
+                        Text(_currencyFormat.format(entry.value), style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(3),
+                      child: LinearProgressIndicator(
+                        value: percent / 100,
+                        backgroundColor: AppColors.surfaceLight,
+                        valueColor: AlwaysStoppedAnimation<Color>(color),
+                        minHeight: 6,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
         ],
       ),
     );
   }
 
-  Widget _buildLegendItem(String label, Color color) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 12,
-          height: 12,
-          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(3)),
-        ),
-        const SizedBox(width: 6),
-        Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-      ],
+  Widget _buildPaymentMethodDistribution(Map<String, dynamic> finance) {
+    final bookings = List<Map<String, dynamic>>.from(finance['bookings'] as List? ?? []);
+
+    final methodCounts = <String, int>{};
+    for (final b in bookings) {
+      final method = b['payment_method'] as String? ?? 'other';
+      methodCounts[method] = (methodCounts[method] ?? 0) + 1;
+    }
+
+    final methodLabels = {
+      'credit_card': 'Kredi Karti',
+      'cash': 'Nakit',
+      'bank_transfer': 'Havale/EFT',
+      'other': 'Diğer',
+    };
+
+    final methodIcons = {
+      'credit_card': Icons.credit_card,
+      'cash': Icons.money,
+      'bank_transfer': Icons.account_balance,
+      'other': Icons.more_horiz,
+    };
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.surfaceLight),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Ödeme Yöntemleri', style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 4),
+          const Text('Ödeme yöntemi dağılımı', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+          const SizedBox(height: 24),
+          if (methodCounts.isEmpty)
+            const SizedBox(
+              height: 200,
+              child: Center(child: Text('Henüz veri yok', style: TextStyle(color: AppColors.textMuted))),
+            )
+          else
+            ...methodCounts.entries.map((entry) {
+              final label = methodLabels[entry.key] ?? entry.key;
+              final icon = methodIcons[entry.key] ?? Icons.payment;
+              final total = methodCounts.values.fold(0, (a, b) => a + b);
+              final percent = total > 0 ? (entry.value / total * 100).round() : 0;
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(icon, size: 18, color: AppColors.primary),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(label, style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w500)),
+                          const SizedBox(height: 4),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(3),
+                            child: LinearProgressIndicator(
+                              value: percent / 100,
+                              backgroundColor: AppColors.surfaceLight,
+                              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+                              minHeight: 6,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text('$percent%', style: const TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              );
+            }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTopEarningCars(Map<String, dynamic> finance) {
+    final bookings = List<Map<String, dynamic>>.from(finance['bookings'] as List? ?? []);
+
+    // Build car earnings map - we don't have car details in finance bookings,
+    // so we use booking_number or similar as identifier placeholder
+    // In real usage, the finance provider would need to join with rental_cars
+    final carEarnings = <String, double>{};
+    for (final b in bookings) {
+      final status = b['status'] as String? ?? '';
+      if (status != 'completed' && status != 'active') {
+        continue;
+      }
+      final bookingRef = b['booking_number'] as String? ?? b['id']?.toString().substring(0, 8) ?? '?';
+      carEarnings[bookingRef] = (carEarnings[bookingRef] ?? 0) + ((b['total_amount'] as num?)?.toDouble() ?? 0);
+    }
+
+    final sortedEntries = carEarnings.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final topCars = sortedEntries.take(5).toList();
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.surfaceLight),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('En Cok Kazandiran', style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 4),
+          const Text('En yuksek gelir getiren rezervasyonlar', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+          const SizedBox(height: 24),
+          if (topCars.isEmpty)
+            const SizedBox(
+              height: 200,
+              child: Center(child: Text('Henüz veri yok', style: TextStyle(color: AppColors.textMuted))),
+            )
+          else
+            ...topCars.asMap().entries.map((entry) {
+              final index = entry.key;
+              final carEntry = entry.value;
+              final medals = [Icons.emoji_events, Icons.workspace_premium, Icons.military_tech];
+              final medalColors = [AppColors.warning, AppColors.textMuted, const Color(0xFFCD7F32)];
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: index < 3
+                        ? medalColors[index].withValues(alpha: 0.05)
+                        : AppColors.background,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: index < 3
+                          ? medalColors[index].withValues(alpha: 0.2)
+                          : AppColors.surfaceLight,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      if (index < 3)
+                        Icon(medals[index], color: medalColors[index], size: 22)
+                      else
+                        SizedBox(
+                          width: 22,
+                          child: Center(
+                            child: Text(
+                              '#${index + 1}',
+                              style: const TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Rez. ${carEntry.key}',
+                          style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                      Text(
+                        _currencyFormat.format(carEntry.value),
+                        style: const TextStyle(color: AppColors.primary, fontSize: 14, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }),
+        ],
+      ),
     );
   }
 
@@ -497,7 +695,7 @@ class _AdminRentalFinanceScreenState extends ConsumerState<AdminRentalFinanceScr
                 DataColumn(label: Text('Tarih', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600))),
                 DataColumn(label: Text('Durum', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600))),
                 DataColumn(label: Text('Ödeme', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600))),
-                DataColumn(label: Text('Gün', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600))),
+                DataColumn(label: Text('Gun', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600))),
                 DataColumn(label: Text('Tutar', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w600))),
               ],
               rows: recentBookings.map((b) {
@@ -527,7 +725,7 @@ class _AdminRentalFinanceScreenState extends ConsumerState<AdminRentalFinanceScr
     switch (status) {
       case 'pending':
         color = AppColors.warning;
-        label = 'Beklemede';
+        label = 'Bekleyen';
         break;
       case 'confirmed':
         color = AppColors.info;
@@ -568,7 +766,7 @@ class _AdminRentalFinanceScreenState extends ConsumerState<AdminRentalFinanceScr
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
-        isPaid ? 'Ödendi' : 'Bekliyor',
+        isPaid ? 'Odendi' : 'Bekliyor',
         style: TextStyle(
           color: isPaid ? AppColors.success : AppColors.warning,
           fontSize: 11,

@@ -1,6 +1,6 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:support_panel/core/services/log_service.dart';
 import 'supabase_service.dart';
 import 'support_auth_service.dart';
 import '../utils/sla_calculator.dart';
@@ -27,10 +27,19 @@ class TicketService {
     String sortColumn = 'created_at',
     bool sortAscending = false,
   }) async {
+    final agent = _ref.read(currentAgentProvider).value;
+    // Only supervisors and managers can see all tickets; L1/L2 agents see only their own.
+    final bool canViewAll = agent != null && (agent.isSupervisor || agent.isManager);
+
     // Data query
     var query = _supabase
         .from('support_tickets')
         .select('*, assigned_agent:support_agents!assigned_agent_id(full_name)');
+
+    // Agent isolation: restrict non-supervisor/manager agents to their assigned tickets.
+    if (!canViewAll && agent != null) {
+      query = query.eq('assigned_agent_id', agent.id);
+    }
 
     if (statusFilter != null && statusFilter != 'all') {
       query = query.eq('status', statusFilter);
@@ -58,6 +67,12 @@ class TicketService {
 
     // Count query (separate)
     var countQuery = _supabase.from('support_tickets').select('id');
+
+    // Agent isolation applied to count query as well.
+    if (!canViewAll && agent != null) {
+      countQuery = countQuery.eq('assigned_agent_id', agent.id);
+    }
+
     if (statusFilter != null && statusFilter != 'all') {
       countQuery = countQuery.eq('status', statusFilter);
     }
@@ -201,8 +216,8 @@ class TicketService {
           'updated_at': DateTime.now().toIso8601String(),
         }).eq('id', ticketId);
       }
-    } catch (e) {
-      if (kDebugMode) print('Error updating first_response_at: $e');
+    } catch (e, st) {
+      LogService.error('Error updating first_response_at', error: e, stackTrace: st, source: 'TicketService:sendMessage');
     }
   }
 
@@ -247,8 +262,8 @@ class TicketService {
         'sla_breached': slaBreached.count,
         'unassigned': unassigned.count,
       };
-    } catch (e) {
-      if (kDebugMode) print('Error fetching ticket stats: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching ticket stats', error: e, stackTrace: st, source: 'TicketService:getTicketStats');
       return {'open': 0, 'my_tickets': 0, 'sla_breached': 0, 'unassigned': 0};
     }
   }

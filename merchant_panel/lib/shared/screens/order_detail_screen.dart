@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/services/log_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/models/merchant_models.dart';
 import '../../core/providers/merchant_provider.dart';
@@ -76,7 +77,7 @@ class OrderDetailScreen extends ConsumerWidget {
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: AppColors.error.withValues(alpha:0.1),
+                          color: AppColors.error.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
@@ -129,9 +130,8 @@ class OrderDetailScreen extends ConsumerWidget {
         throw 'Sipariş veritabanında bulunamadı (Detaylı Sorgu)';
       }
       return Order.fromJson(response);
-    } catch (e) {
-      debugPrint('!!! Deep fetch failed (Join Failure): $e');
-      debugPrint('!!! Switching to simple fetch strategy...');
+    } catch (e, st) {
+      LogService.error('Deep fetch failed (Join Failure), switching to simple fetch', error: e, stackTrace: st, source: 'OrderDetailScreen:_fetchOrderDeep');
 
       try {
         // 2. Deneme: Basit veri (Join olmadan)
@@ -146,8 +146,8 @@ class OrderDetailScreen extends ConsumerWidget {
           throw 'Sipariş veritabanında bulunamadı (Basit Sorgu - ID: $orderId) - RLS veya Veri Yok';
         }
         return Order.fromJson(response);
-      } catch (e2) {
-        debugPrint('!!! Simple fetch also failed: $e2');
+      } catch (e2, st2) {
+        LogService.error('Simple fetch also failed', error: e2, stackTrace: st2, source: 'OrderDetailScreen:_fetchOrderDeep');
         throw e2.toString();
       }
     }
@@ -614,16 +614,19 @@ class OrderDetailScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      order.paymentMethod == 'card' ? 'Kredi Karti' : 'Nakit',
+                      order.paymentMethod == 'online' ? 'Online Ödeme'
+                        : order.paymentMethod == 'credit_card_on_delivery' ? 'Kapıda Kredi Kartı'
+                        : order.paymentMethod == 'card' ? 'Kredi Kartı'
+                        : 'Nakit',
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
                     Text(
-                      order.paymentStatus == 'paid'
-                          ? 'Odendi'
-                          : 'Odeme Bekliyor',
+                      (order.paymentStatus == 'paid' || order.paymentMethod == 'online')
+                          ? '✅ Ödendi'
+                          : 'Ödeme Bekliyor',
                       style: TextStyle(
                         color:
-                            order.paymentStatus == 'paid'
+                            (order.paymentStatus == 'paid' || order.paymentMethod == 'online')
                                 ? AppColors.success
                                 : AppColors.warning,
                       ),
@@ -864,7 +867,7 @@ class OrderDetailScreen extends ConsumerWidget {
             // Show courier assignment options
             merchantCouriers.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (err, __) {
+              error: (err, _) {
                 debugPrint('merchantCouriers error: $err');
                 return const Text('Kuryeler yuklenemedi');
               },
@@ -1092,16 +1095,19 @@ class OrderDetailScreen extends ConsumerWidget {
     Map<String, dynamic>? feeData;
     if (order.deliveryLat != null && order.deliveryLng != null) {
       try {
-        final feeResult = await supabase.rpc('calculate_platform_delivery_fee', params: {
-          'p_merchant_id': order.merchantId,
-          'p_customer_lat': order.deliveryLat,
-          'p_customer_lon': order.deliveryLng,
-        });
+        final feeResult = await supabase.rpc(
+          'calculate_platform_delivery_fee',
+          params: {
+            'p_merchant_id': order.merchantId,
+            'p_customer_lat': order.deliveryLat,
+            'p_customer_lon': order.deliveryLng,
+          },
+        );
         if (feeResult != null && (feeResult as List).isNotEmpty) {
           feeData = feeResult[0] as Map<String, dynamic>;
         }
-      } catch (e) {
-        debugPrint('Platform fee calculation error: $e');
+      } catch (e, st) {
+        LogService.error('Platform fee calculation error', error: e, stackTrace: st, source: 'OrderDetailScreen:_showCompleteOrderDialog');
       }
     }
 
@@ -1109,78 +1115,95 @@ class OrderDetailScreen extends ConsumerWidget {
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Platform Kuryesi Çağır'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Sipariş: #${order.orderNumber}',
-              style: const TextStyle(fontWeight: FontWeight.w600),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Platform Kuryesi Çağır'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Sipariş: #${order.orderNumber}',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+                if (order.deliveryAddress.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    order.deliveryAddress,
+                    style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                  ),
+                ],
+                if (feeData != null) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.2),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        _feeRow('Mesafe', '${feeData['distance_km']} km'),
+                        const SizedBox(height: 6),
+                        _feeRow(
+                          'Tahmini Süre',
+                          '~${feeData['estimated_duration_min']} dk',
+                        ),
+                        const SizedBox(height: 6),
+                        _feeRow(
+                          'Teslimat Ücreti',
+                          '${(feeData['final_fee'] as num).toStringAsFixed(2)} TL',
+                          bold: true,
+                        ),
+                        if ((feeData['multiplier_reason'] as String?)
+                                ?.isNotEmpty ==
+                            true) ...[
+                          const SizedBox(height: 6),
+                          _feeRow(
+                            'Çarpan',
+                            '${feeData['multiplier_reason']} x${feeData['multiplier']}',
+                          ),
+                        ],
+                        const Divider(height: 16),
+                        _feeRow(
+                          'Kurye Kazancı',
+                          '${(feeData['courier_earning'] as num).toStringAsFixed(2)} TL',
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                Text(
+                  'En yakın müsait kuryeye teklif gönderilecek. '
+                  '30sn içinde kabul edilmezse sıradaki kuryeye geçilecek.',
+                  style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                ),
+              ],
             ),
-            if (order.deliveryAddress.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Text(
-                order.deliveryAddress,
-                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('İptal'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Kurye Çağır'),
               ),
             ],
-            if (feeData != null) ...[
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
-                ),
-                child: Column(
-                  children: [
-                    _feeRow('Mesafe', '${feeData['distance_km']} km'),
-                    const SizedBox(height: 6),
-                    _feeRow('Tahmini Süre', '~${feeData['estimated_duration_min']} dk'),
-                    const SizedBox(height: 6),
-                    _feeRow('Teslimat Ücreti', '${(feeData['final_fee'] as num).toStringAsFixed(2)} TL',
-                        bold: true),
-                    if ((feeData['multiplier_reason'] as String?)?.isNotEmpty == true) ...[
-                      const SizedBox(height: 6),
-                      _feeRow('Çarpan', '${feeData['multiplier_reason']} x${feeData['multiplier']}'),
-                    ],
-                    const Divider(height: 16),
-                    _feeRow('Kurye Kazancı', '${(feeData['courier_earning'] as num).toStringAsFixed(2)} TL'),
-                  ],
-                ),
-              ),
-            ],
-            const SizedBox(height: 16),
-            Text(
-              'En yakın müsait kuryeye teklif gönderilecek. '
-              '30sn içinde kabul edilmezse sıradaki kuryeye geçilecek.',
-              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('İptal'),
           ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Kurye Çağır'),
-          ),
-        ],
-      ),
     );
 
     if (confirmed != true || !context.mounted) return;
 
     try {
-      final result = await supabase.rpc('start_sequential_courier_assignment', params: {
-        'p_order_id': order.id,
-        'p_max_distance_km': 10.0,
-      });
+      final result = await supabase.rpc(
+        'start_sequential_courier_assignment',
+        params: {'p_order_id': order.id, 'p_max_distance_km': 10.0},
+      );
 
       if (context.mounted) {
         final success = result['success'] as bool? ?? false;
@@ -1459,10 +1482,7 @@ class _OrderMessagesCard extends ConsumerStatefulWidget {
   final String orderId;
   final String merchantId;
 
-  const _OrderMessagesCard({
-    required this.orderId,
-    required this.merchantId,
-  });
+  const _OrderMessagesCard({required this.orderId, required this.merchantId});
 
   @override
   ConsumerState<_OrderMessagesCard> createState() => _OrderMessagesCardState();
@@ -1519,28 +1539,29 @@ class _OrderMessagesCardState extends ConsumerState<_OrderMessagesCard> {
 
   void _setupRealtimeSubscription() {
     final supabase = ref.read(supabaseProvider);
-    _subscription = supabase
-        .channel('order_messages_${widget.orderId}')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.insert,
-          schema: 'public',
-          table: 'order_messages',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'order_id',
-            value: widget.orderId,
-          ),
-          callback: (payload) {
-            if (mounted) {
-              setState(() {
-                _messages.add(payload.newRecord);
-              });
-              _scrollToBottom();
-              _markMessagesAsRead();
-            }
-          },
-        )
-        .subscribe();
+    _subscription =
+        supabase
+            .channel('order_messages_${widget.orderId}')
+            .onPostgresChanges(
+              event: PostgresChangeEvent.insert,
+              schema: 'public',
+              table: 'order_messages',
+              filter: PostgresChangeFilter(
+                type: PostgresChangeFilterType.eq,
+                column: 'order_id',
+                value: widget.orderId,
+              ),
+              callback: (payload) {
+                if (mounted) {
+                  setState(() {
+                    _messages.add(payload.newRecord);
+                  });
+                  _scrollToBottom();
+                  _markMessagesAsRead();
+                }
+              },
+            )
+            .subscribe();
   }
 
   Future<void> _markMessagesAsRead() async {
@@ -1549,12 +1570,15 @@ class _OrderMessagesCardState extends ConsumerState<_OrderMessagesCard> {
       // Sadece müşteriden gelen okunmamış mesajları işaretle
       await supabase
           .from('order_messages')
-          .update({'is_read': true, 'read_at': DateTime.now().toIso8601String()})
+          .update({
+            'is_read': true,
+            'read_at': DateTime.now().toIso8601String(),
+          })
           .eq('order_id', widget.orderId)
           .eq('sender_type', 'customer')
           .eq('is_read', false);
-    } catch (e) {
-      debugPrint('Error marking messages as read: $e');
+    } catch (e, st) {
+      LogService.error('Error marking messages as read', error: e, stackTrace: st, source: 'OrderDetailScreen:_markMessagesAsRead');
     }
   }
 
@@ -1596,9 +1620,12 @@ class _OrderMessagesCardState extends ConsumerState<_OrderMessagesCard> {
 
   @override
   Widget build(BuildContext context) {
-    final unreadCount = _messages.where((m) =>
-      m['sender_type'] == 'customer' && m['is_read'] != true
-    ).length;
+    final unreadCount =
+        _messages
+            .where(
+              (m) => m['sender_type'] == 'customer' && m['is_read'] != true,
+            )
+            .length;
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -1622,7 +1649,10 @@ class _OrderMessagesCardState extends ConsumerState<_OrderMessagesCard> {
               if (unreadCount > 0) ...[
                 const SizedBox(width: 8),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.error,
                     borderRadius: BorderRadius.circular(12),
@@ -1644,97 +1674,106 @@ class _OrderMessagesCardState extends ConsumerState<_OrderMessagesCard> {
               color: AppColors.background,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _messages.isEmpty
+            child:
+                _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _messages.isEmpty
                     ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.chat_bubble_outline,
-                                size: 48, color: Colors.grey[400]),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Henüz mesaj yok',
-                              style: TextStyle(color: Colors.grey[500]),
-                            ),
-                          ],
-                        ),
-                      )
-                    : ListView.builder(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.all(12),
-                        itemCount: _messages.length,
-                        itemBuilder: (context, index) {
-                          final msg = _messages[index];
-                          final isFromMerchant = msg['sender_type'] == 'merchant';
-                          final time = DateTime.tryParse(msg['created_at'] ?? '');
-                          final timeStr = time != null
-                              ? DateFormat('HH:mm').format(time.toLocal())
-                              : '';
-
-                          return Align(
-                            alignment: isFromMerchant
-                                ? Alignment.centerRight
-                                : Alignment.centerLeft,
-                            child: Container(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 10,
-                              ),
-                              constraints: BoxConstraints(
-                                maxWidth: MediaQuery.of(context).size.width * 0.6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isFromMerchant
-                                    ? AppColors.primary
-                                    : Colors.white,
-                                borderRadius: BorderRadius.circular(16),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.05),
-                                    blurRadius: 5,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  if (!isFromMerchant)
-                                    Text(
-                                      msg['sender_name'] ?? 'Müşteri',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.primary,
-                                      ),
-                                    ),
-                                  Text(
-                                    msg['message'] ?? '',
-                                    style: TextStyle(
-                                      color: isFromMerchant
-                                          ? Colors.white
-                                          : AppColors.textPrimary,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    timeStr,
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: isFromMerchant
-                                          ? Colors.white70
-                                          : Colors.grey[500],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          );
-                        },
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.chat_bubble_outline,
+                            size: 48,
+                            color: Colors.grey[400],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Henüz mesaj yok',
+                            style: TextStyle(color: Colors.grey[500]),
+                          ),
+                        ],
                       ),
+                    )
+                    : ListView.builder(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.all(12),
+                      itemCount: _messages.length,
+                      itemBuilder: (context, index) {
+                        final msg = _messages[index];
+                        final isFromMerchant = msg['sender_type'] == 'merchant';
+                        final time = DateTime.tryParse(msg['created_at'] ?? '');
+                        final timeStr =
+                            time != null
+                                ? DateFormat('HH:mm').format(time.toLocal())
+                                : '';
+
+                        return Align(
+                          alignment:
+                              isFromMerchant
+                                  ? Alignment.centerRight
+                                  : Alignment.centerLeft,
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            constraints: BoxConstraints(
+                              maxWidth: MediaQuery.of(context).size.width * 0.6,
+                            ),
+                            decoration: BoxDecoration(
+                              color:
+                                  isFromMerchant
+                                      ? AppColors.primary
+                                      : Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.05),
+                                  blurRadius: 5,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (!isFromMerchant)
+                                  Text(
+                                    msg['sender_name'] ?? 'Müşteri',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                Text(
+                                  msg['message'] ?? '',
+                                  style: TextStyle(
+                                    color:
+                                        isFromMerchant
+                                            ? Colors.white
+                                            : AppColors.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  timeStr,
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color:
+                                        isFromMerchant
+                                            ? Colors.white70
+                                            : Colors.grey[500],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
           ),
           const SizedBox(height: 12),
 

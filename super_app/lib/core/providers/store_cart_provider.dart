@@ -1,7 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/store/store_product_model.dart';
 import '../services/delivery_service.dart';
+import 'package:super_app/core/services/log_service.dart';
 
 class StoreCartItem {
   final String id;
@@ -269,8 +269,8 @@ class StoreCartNotifier extends StateNotifier<StoreCartState> {
       } else {
         state = state.copyWith(deliveryFeeLoading: false);
       }
-    } catch (e) {
-      debugPrint('StoreCart calculateDeliveryFee error: $e');
+    } catch (e, st) {
+      LogService.error('StoreCart calculateDeliveryFee error', error: e, stackTrace: st, source: 'StoreCartProvider:calculateDeliveryFee');
       state = state.copyWith(deliveryFeeLoading: false);
     }
   }

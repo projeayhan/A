@@ -46,24 +46,21 @@ class OrderNotificationService {
             value: userId,
           ),
           callback: (payload) {
-            if (payload.oldRecord != null) {
-              final oldStatus = payload.oldRecord['status'] as String?;
-              final newStatus = payload.newRecord['status'] as String?;
+            final oldStatus = payload.oldRecord['status'] as String?;
+            final newStatus = payload.newRecord['status'] as String?;
 
-              if (oldStatus != newStatus && newStatus != null) {
-                final update = OrderStatusUpdate(
-                  orderId: payload.newRecord['id'] as String,
-                  orderNumber:
-                      payload.newRecord['order_number'] as String? ?? '',
-                  oldStatus: oldStatus ?? 'unknown',
-                  newStatus: newStatus,
-                  storeName: payload.newRecord['store_name'] as String?,
-                  timestamp: DateTime.now(),
-                );
+            if (oldStatus != newStatus && newStatus != null) {
+              final update = OrderStatusUpdate(
+                orderId: payload.newRecord['id'] as String,
+                orderNumber: payload.newRecord['order_number'] as String? ?? '',
+                oldStatus: oldStatus ?? 'unknown',
+                newStatus: newStatus,
+                storeName: payload.newRecord['store_name'] as String?,
+                timestamp: DateTime.now(),
+              );
 
-                _ensureController();
-                _statusController?.add(update);
-              }
+              _ensureController();
+              _statusController?.add(update);
             }
           },
         )

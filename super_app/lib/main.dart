@@ -2,7 +2,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
+import 'l10n/app_localizations.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -13,45 +15,68 @@ import 'core/services/order_notification_service.dart';
 import 'core/services/review_notification_service.dart';
 import 'core/services/push_notification_service.dart';
 import 'core/services/notification_sound_service.dart';
+import 'core/services/log_service.dart';
 import 'core/router/app_router.dart';
 import 'core/providers/settings_provider.dart';
 import 'widgets/notification_overlays.dart';
 import 'models/taxi/taxi_models.dart';
 import 'core/services/taxi_service.dart';
-import 'screens/taxi/taxi_ride_screen.dart';
-import 'screens/taxi/taxi_searching_screen.dart';
+import 'package:go_router/go_router.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+void main() {
+  runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
 
-  // Set preferred orientations
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
 
-  // Initialize date formatting for Turkish locale
-  await initializeDateFormatting('tr', null);
+    await initializeDateFormatting('tr', null);
+    await SupabaseService.initialize();
 
-  // Initialize Firebase (skip on web if no options configured)
-  try {
-    if (kIsWeb) {
-      // Web için firebase_options.dart gerekli - yoksa atla
-      debugPrint('Firebase web initialization skipped - run "flutterfire configure" to enable');
-    } else {
-      await Firebase.initializeApp();
+    try {
+      if (kIsWeb) {
+        debugPrint('Firebase web initialization skipped');
+      } else {
+        await Firebase.initializeApp();
+      }
+    } catch (e) {
+      LogService.warn('Firebase initialization error: $e', source: 'main');
     }
-  } catch (e) {
-    debugPrint('Firebase initialization error: $e');
-  }
 
-  // Initialize Supabase
-  await SupabaseService.initialize();
+    if (!kIsWeb) {
+      try {
+        final stripeKey = dotenv.env['STRIPE_PUBLISHABLE_KEY'] ?? '';
+        if (stripeKey.isNotEmpty) {
+          Stripe.publishableKey = stripeKey;
+          await Stripe.instance.applySettings();
+        }
+      } catch (e) {
+        LogService.warn('Stripe initialization error: $e', source: 'main');
+      }
+    }
 
-  // Initialize notification sound service
-  await notificationSoundService.initialize();
+    try {
+      await notificationSoundService.initialize();
+    } catch (e) {
+      LogService.warn('Notification sound init error: $e', source: 'main');
+    }
 
-  runApp(const ProviderScope(child: SuperApp()));
+    FlutterError.onError = (details) {
+      FlutterError.presentError(details);
+      LogService.error(details.exceptionAsString(),
+          error: details.exception,
+          stackTrace: details.stack,
+          source: 'FlutterError');
+    };
+
+    LogService.info('Super app started', source: 'main');
+    runApp(const ProviderScope(child: SuperApp()));
+  }, (error, stackTrace) {
+    LogService.error(error.toString(),
+        error: error, stackTrace: stackTrace, source: 'ZoneError');
+  });
 }
 
 class SuperApp extends ConsumerStatefulWidget {
@@ -130,29 +155,21 @@ class _SuperAppState extends ConsumerState<SuperApp> with WidgetsBindingObserver
               );
               final vehicleType = VehicleType.fromJson(vehicleTypeData);
 
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => TaxiSearchingScreen(
-                    pickup: ride.pickup,
-                    dropoff: ride.dropoff,
-                    vehicleType: vehicleType,
-                    fare: ride.fare,
-                    distanceKm: ride.distanceKm,
-                    durationMinutes: ride.durationMinutes,
-                    existingRide: ride,
-                  ),
-                ),
-              );
+              GoRouter.of(context).go('/taxi/searching', extra: {
+                'pickup': ride.pickup,
+                'dropoff': ride.dropoff,
+                'vehicleType': vehicleType,
+                'fare': ride.fare,
+                'distanceKm': ride.distanceKm,
+                'durationMinutes': ride.durationMinutes,
+                'existingRide': ride,
+              });
             } catch (e) {
               debugPrint('Error restoring search screen: $e');
             }
           } else if (ride.status != RideStatus.completed &&
               ride.status != RideStatus.cancelled) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => TaxiRideScreen(ride: ride)),
-            );
+            GoRouter.of(context).go('/taxi/ride', extra: {'ride': ride});
           }
         }
       }
@@ -353,12 +370,8 @@ class _SuperAppState extends ConsumerState<SuperApp> with WidgetsBindingObserver
       darkTheme: AppTheme.darkTheme,
       themeMode: settings.themeMode,
       routerConfig: router,
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      supportedLocales: supportedLocales,
+      localizationsDelegates: S.localizationsDelegates,
+      supportedLocales: S.supportedLocales,
       locale: settings.locale,
       builder: (context, child) {
         return Stack(

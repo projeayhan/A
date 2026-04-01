@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:super_app/core/services/log_service.dart';
 
 /// Sesli çıkış servisi (OpenAI TTS via Edge Function)
 class VoiceOutputService {
@@ -49,9 +50,9 @@ class VoiceOutputService {
       _isEnabled = prefs.getBool('tts_enabled') ?? false;
 
       _isInitialized = true;
-      debugPrint('OpenAI TTS initialized, enabled: $_isEnabled');
-    } catch (e) {
-      debugPrint('TTS initialization error: $e');
+      LogService.info('OpenAI TTS initialized, enabled: $_isEnabled', source: 'VoiceOutputService:initialize');
+    } catch (e, st) {
+      LogService.error('TTS initialization error', error: e, stackTrace: st, source: 'VoiceOutputService:initialize');
     }
   }
 
@@ -68,7 +69,8 @@ class VoiceOutputService {
         try {
           final refreshed = await client.auth.refreshSession();
           return refreshed.session?.accessToken;
-        } catch (_) {
+        } catch (e, st) {
+          LogService.error('Error getting preferred voice', error: e, stackTrace: st, source: 'VoiceOutputService:_getPreferredVoice');
           return null;
         }
       }
@@ -97,7 +99,7 @@ class VoiceOutputService {
 
       final token = await _getValidAccessToken();
       if (token == null) {
-        debugPrint('TTS: No valid token');
+        LogService.error('TTS: No valid token', source: 'VoiceOutputService:speak');
         _onComplete?.call();
         _onComplete = null;
         return;
@@ -110,7 +112,7 @@ class VoiceOutputService {
       );
 
       if (response.status != 200) {
-        debugPrint('TTS edge function error: ${response.status}');
+        LogService.error('TTS edge function error: ${response.status}', source: 'VoiceOutputService:speak');
         _onComplete?.call();
         _onComplete = null;
         return;
@@ -118,7 +120,7 @@ class VoiceOutputService {
 
       final data = response.data;
       if (data == null || data['audio'] == null) {
-        debugPrint('TTS: No audio in response');
+        LogService.error('TTS: No audio in response', source: 'VoiceOutputService:speak');
         _onComplete?.call();
         _onComplete = null;
         return;
@@ -129,8 +131,8 @@ class VoiceOutputService {
 
       _isSpeaking = true;
       await _player.play(BytesSource(audioBytes));
-    } catch (e) {
-      debugPrint('OpenAI TTS error: $e');
+    } catch (e, st) {
+      LogService.error('OpenAI TTS error', error: e, stackTrace: st, source: 'VoiceOutputService:speak');
       _isSpeaking = false;
       _onComplete?.call();
       _onComplete = null;
@@ -154,8 +156,8 @@ class VoiceOutputService {
       final Uint8List audioBytes = base64Decode(audioBase64);
       _isSpeaking = true;
       await _player.play(BytesSource(audioBytes));
-    } catch (e) {
-      debugPrint('Play base64 audio error: $e');
+    } catch (e, st) {
+      LogService.error('Play base64 audio error', error: e, stackTrace: st, source: 'VoiceOutputService:_playBase64Audio');
       _isSpeaking = false;
       _onComplete?.call();
       _onComplete = null;
@@ -168,8 +170,8 @@ class VoiceOutputService {
       await _player.stop();
       _isSpeaking = false;
       _onComplete = null;
-    } catch (e) {
-      debugPrint('TTS stop error: $e');
+    } catch (e, st) {
+      LogService.error('TTS stop error', error: e, stackTrace: st, source: 'VoiceOutputService:stop');
     }
   }
 

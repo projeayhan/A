@@ -1,5 +1,5 @@
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:arac_satis_panel/core/services/log_service.dart';
 import '../models/car_models.dart';
 
 /// Araç İlanı Servisi
@@ -32,8 +32,8 @@ class ListingService {
       return (response as List)
           .map((json) => CarBrand.fromJson(json))
           .toList();
-    } catch (e) {
-      debugPrint('Markalar alınamadı: $e');
+    } catch (e, st) {
+      LogService.error('Markalar alınamadı', error: e, stackTrace: st, source: 'ListingService:getBrands');
       return [];
     }
   }
@@ -55,8 +55,8 @@ class ListingService {
       return (response as List)
           .map((json) => CarFeature.fromJson(json))
           .toList();
-    } catch (e) {
-      debugPrint('Özellikler alınamadı: $e');
+    } catch (e, st) {
+      LogService.error('Özellikler alınamadı', error: e, stackTrace: st, source: 'ListingService:getFeatures');
       return [];
     }
   }
@@ -88,8 +88,8 @@ class ListingService {
       return (response as List)
           .map((json) => CarListing.fromJson(json))
           .toList();
-    } catch (e) {
-      debugPrint('İlanlar alınamadı: $e');
+    } catch (e, st) {
+      LogService.error('İlanlar alınamadı', error: e, stackTrace: st, source: 'ListingService:getUserListings');
       return [];
     }
   }
@@ -107,8 +107,8 @@ class ListingService {
           .single();
 
       return CarListing.fromJson(response);
-    } catch (e) {
-      debugPrint('İlan alınamadı: $e');
+    } catch (e, st) {
+      LogService.error('İlan alınamadı', error: e, stackTrace: st, source: 'ListingService:getListingById');
       return null;
     }
   }
@@ -144,8 +144,8 @@ class ListingService {
           .single();
 
       return CarListing.fromJson(response);
-    } catch (e) {
-      debugPrint('İlan oluşturulamadı: $e');
+    } catch (e, st) {
+      LogService.error('İlan oluşturulamadı', error: e, stackTrace: st, source: 'ListingService:createListing');
       rethrow;
     }
   }
@@ -166,8 +166,8 @@ class ListingService {
           .single();
 
       return CarListing.fromJson(response);
-    } catch (e) {
-      debugPrint('İlan güncellenemedi: $e');
+    } catch (e, st) {
+      LogService.error('İlan güncellenemedi', error: e, stackTrace: st, source: 'ListingService:updateListing');
       return null;
     }
   }
@@ -184,8 +184,8 @@ class ListingService {
           .eq('user_id', _userId!);
 
       return true;
-    } catch (e) {
-      debugPrint('İlan silinemedi: $e');
+    } catch (e, st) {
+      LogService.error('İlan silinemedi', error: e, stackTrace: st, source: 'ListingService:deleteListing');
       return false;
     }
   }
@@ -206,8 +206,8 @@ class ListingService {
           .eq('user_id', _userId!);
 
       return true;
-    } catch (e) {
-      debugPrint('İlan satıldı olarak işaretlenemedi: $e');
+    } catch (e, st) {
+      LogService.error('İlan satıldı olarak işaretlenemedi', error: e, stackTrace: st, source: 'ListingService:markAsSold');
       return false;
     }
   }
@@ -225,8 +225,8 @@ class ListingService {
           .eq('user_id', _userId!);
 
       return true;
-    } catch (e) {
-      debugPrint('İlan tekrar yayınlanamadı: $e');
+    } catch (e, st) {
+      LogService.error('İlan tekrar yayınlanamadı', error: e, stackTrace: st, source: 'ListingService:republishListing');
       return false;
     }
   }
@@ -241,8 +241,8 @@ class ListingService {
         'p_user_id': _userId,
         'p_session_id': sessionId,
       });
-    } catch (e) {
-      debugPrint('Görüntülenme kaydedilemedi: $e');
+    } catch (e, st) {
+      LogService.error('Görüntülenme kaydedilemedi', error: e, stackTrace: st, source: 'ListingService:recordView');
     }
   }
 }

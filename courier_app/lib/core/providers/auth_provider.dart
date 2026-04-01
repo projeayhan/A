@@ -1,8 +1,9 @@
-import 'package:flutter/foundation.dart';
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/supabase_service.dart';
 import '../services/courier_service.dart';
+import '../services/log_service.dart';
 import '../services/security_service.dart';
 import '../services/push_notification_service.dart';
 
@@ -43,30 +44,38 @@ class AuthState {
 }
 
 class AuthNotifier extends Notifier<AuthState> {
+  StreamSubscription? _authSub;
+
   @override
   AuthState build() {
+    ref.onDispose(() => _authSub?.cancel());
     _init();
     return const AuthState();
   }
 
   void _init() async {
-    final user = SupabaseService.currentUser;
-    if (user != null) {
-      await _loadCourierProfile(user);
-    } else {
-      state = const AuthState(status: AuthStatus.unauthenticated);
-    }
-
-    // Auth değişikliklerini dinle
-    SupabaseService.authStateChanges.listen((authState) async {
-      // Explicit auth işlemi sırasında (loading) listener'ın müdahale etmesini engelle
-      if (state.status == AuthStatus.loading) return;
-      if (authState.session != null) {
-        await _loadCourierProfile(authState.session!.user);
+    try {
+      final user = SupabaseService.currentUser;
+      if (user != null) {
+        await _loadCourierProfile(user);
       } else {
         state = const AuthState(status: AuthStatus.unauthenticated);
       }
-    });
+
+      // Auth değişikliklerini dinle
+      _authSub = SupabaseService.authStateChanges.listen((authState) async {
+        // Explicit auth işlemi sırasında (loading) listener'ın müdahale etmesini engelle
+        if (state.status == AuthStatus.loading) return;
+        if (authState.session != null) {
+          await _loadCourierProfile(authState.session!.user);
+        } else {
+          state = const AuthState(status: AuthStatus.unauthenticated);
+        }
+      });
+    } catch (e, st) {
+      LogService.error('_init error', error: e, stackTrace: st, source: 'AuthProvider:_init');
+      state = const AuthState(status: AuthStatus.unauthenticated);
+    }
   }
 
   // Kullanıcının rolünü kontrol et
@@ -80,8 +89,8 @@ class AuthNotifier extends Notifier<AuthState> {
         return Map<String, dynamic>.from(response);
       }
       return {'role': 'none', 'message': 'Rol bulunamadı'};
-    } catch (e) {
-      debugPrint('_checkUserRole error: $e');
+    } catch (e, st) {
+      LogService.error('_checkUserRole error', error: e, stackTrace: st, source: 'AuthProvider:_checkUserRole');
       return {'role': 'none', 'message': 'Rol kontrolü başarısız'};
     }
   }
@@ -187,7 +196,8 @@ class AuthNotifier extends Notifier<AuthState> {
         errorMessage: _getErrorMessage(e.message),
       );
       return false;
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('signIn error', error: e, stackTrace: st, source: 'AuthProvider:signIn');
       await SecurityService.trackFailedLogin(identifier: email, errorMessage: 'Bir hata oluştu');
       state = state.copyWith(
         status: AuthStatus.error,
@@ -202,7 +212,8 @@ class AuthNotifier extends Notifier<AuthState> {
     try {
       await SupabaseService.sendPhoneOtp(phone: phone);
       return true;
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('sendOtp error', error: e, stackTrace: st, source: 'AuthProvider:sendOtp');
       state = state.copyWith(
         errorMessage: e.toString().replaceAll('Exception: ', ''),
       );
@@ -215,7 +226,8 @@ class AuthNotifier extends Notifier<AuthState> {
     try {
       await SupabaseService.verifyPhoneOnly(phone: phone, code: code);
       return true;
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('verifyPhoneOnly error', error: e, stackTrace: st, source: 'AuthProvider:verifyPhoneOnly');
       state = state.copyWith(
         errorMessage: e.toString().replaceAll('Exception: ', ''),
       );
@@ -289,12 +301,12 @@ class AuthNotifier extends Notifier<AuthState> {
       }
 
       // 2. E-postayı onayla & telefonu kaydet
-      try { await SupabaseService.client.rpc('auto_confirm_email', params: {'p_user_id': user.id}); } catch (_) {}
-      try { await SupabaseService.client.rpc('set_user_phone', params: {'p_user_id': user.id, 'p_phone': phone}); } catch (_) {}
+      try { await SupabaseService.client.rpc('auto_confirm_email', params: {'p_user_id': user.id}); } catch (e, st) { LogService.error('auto_confirm_email error', error: e, stackTrace: st, source: 'AuthProvider:register'); }
+      try { await SupabaseService.client.rpc('set_user_phone', params: {'p_user_id': user.id, 'p_phone': phone}); } catch (e, st) { LogService.error('set_user_phone error', error: e, stackTrace: st, source: 'AuthProvider:register'); }
 
       // 3. Henüz giriş yapmamışsak (yeni kayıt), giriş yap
       if (SupabaseService.currentUser == null) {
-        try { await SupabaseService.signOut(); } catch (_) {}
+        try { await SupabaseService.signOut(); } catch (e, st) { LogService.error('signOut error', error: e, stackTrace: st, source: 'AuthProvider:register'); }
         await SupabaseService.signIn(email: email, password: password);
       }
 
@@ -327,7 +339,8 @@ class AuthNotifier extends Notifier<AuthState> {
         errorMessage: _getErrorMessage(e.message),
       );
       return false;
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('registerWithEmail error', error: e, stackTrace: st, source: 'AuthProvider:registerWithEmail');
       state = state.copyWith(
         status: AuthStatus.error,
         errorMessage: 'Bir hata oluştu: $e',
@@ -353,7 +366,7 @@ class AuthNotifier extends Notifier<AuthState> {
       // Telefonu kaydet
       final userId = SupabaseService.currentUser?.id;
       if (userId != null) {
-        try { await SupabaseService.client.rpc('set_user_phone', params: {'p_user_id': userId, 'p_phone': phone}); } catch (_) {}
+        try { await SupabaseService.client.rpc('set_user_phone', params: {'p_user_id': userId, 'p_phone': phone}); } catch (e, st) { LogService.error('set_user_phone error', error: e, stackTrace: st, source: 'AuthProvider:completeRegistration'); }
       }
 
       final success = await CourierService.createCourierProfile(
@@ -376,7 +389,8 @@ class AuthNotifier extends Notifier<AuthState> {
       }
       state = state.copyWith(status: AuthStatus.error, errorMessage: 'Profil oluşturulamadı');
       return false;
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('completeRegistration error', error: e, stackTrace: st, source: 'AuthProvider:completeRegistration');
       state = state.copyWith(status: AuthStatus.error, errorMessage: 'Bir hata oluştu: $e');
       return false;
     }
@@ -384,6 +398,8 @@ class AuthNotifier extends Notifier<AuthState> {
 
   // Çıkış yap
   Future<void> signOut() async {
+    await pushNotificationService.deleteToken();
+    CourierService.invalidateProfileCache();
     await SupabaseService.signOut();
     state = const AuthState(status: AuthStatus.unauthenticated);
   }

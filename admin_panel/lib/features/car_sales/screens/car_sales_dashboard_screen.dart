@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/router/app_router.dart';
 import '../services/car_sales_admin_service.dart';
 
 class CarSalesDashboardScreen extends ConsumerStatefulWidget {
   const CarSalesDashboardScreen({super.key});
 
   @override
-  ConsumerState<CarSalesDashboardScreen> createState() => _CarSalesDashboardScreenState();
+  ConsumerState<CarSalesDashboardScreen> createState() =>
+      _CarSalesDashboardScreenState();
 }
 
-class _CarSalesDashboardScreenState extends ConsumerState<CarSalesDashboardScreen> {
+class _CarSalesDashboardScreenState
+    extends ConsumerState<CarSalesDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final statsAsync = ref.watch(carSalesStatsProvider);
@@ -41,7 +45,10 @@ class _CarSalesDashboardScreenState extends ConsumerState<CarSalesDashboardScree
                     SizedBox(height: 4),
                     Text(
                       'İlanları, markaları ve satıcıları yönetin',
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 14,
+                      ),
                     ),
                   ],
                 ),
@@ -155,11 +162,19 @@ class _CarSalesDashboardScreenState extends ConsumerState<CarSalesDashboardScree
 
   Widget _buildStatsRowLoading() {
     return Row(
-      children: List.generate(6, (_) => Expanded(child: _buildStatCardLoading())),
+      children: List.generate(
+        6,
+        (_) => Expanded(child: _buildStatCardLoading()),
+      ),
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       width: 180,
       padding: const EdgeInsets.all(20),
@@ -191,7 +206,13 @@ class _CarSalesDashboardScreenState extends ConsumerState<CarSalesDashboardScree
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                Text(title, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
               ],
             ),
           ),
@@ -235,10 +256,7 @@ class _CarSalesDashboardScreenState extends ConsumerState<CarSalesDashboardScree
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              TextButton(
-                onPressed: () {},
-                child: const Text('Tümünü Gör'),
-              ),
+              TextButton(onPressed: () => context.go(AppRoutes.carSalesListings), child: const Text('Tümünü Gör')),
             ],
           ),
           const SizedBox(height: 16),
@@ -249,22 +267,37 @@ class _CarSalesDashboardScreenState extends ConsumerState<CarSalesDashboardScree
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.check_circle_outline, size: 48, color: AppColors.success),
+                          Icon(
+                            Icons.check_circle_outline,
+                            size: 48,
+                            color: AppColors.success,
+                          ),
                           SizedBox(height: 12),
-                          Text('Onay bekleyen ilan yok', style: TextStyle(color: AppColors.textMuted)),
+                          Text(
+                            'Onay bekleyen ilan yok',
+                            style: TextStyle(color: AppColors.textMuted),
+                          ),
                         ],
                       ),
                     )
                   : ListView.separated(
                       itemCount: listings.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.surfaceLight),
+                      separatorBuilder: (_, _) => const Divider(
+                        height: 1,
+                        color: AppColors.surfaceLight,
+                      ),
                       itemBuilder: (context, index) {
                         final listing = listings[index];
                         return _buildListingItem(listing);
                       },
                     ),
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('Hata: $e', style: const TextStyle(color: AppColors.error))),
+              error: (e, _) => Center(
+                child: Text(
+                  'Hata: $e',
+                  style: const TextStyle(color: AppColors.error),
+                ),
+              ),
             ),
           ),
         ],
@@ -291,9 +324,15 @@ class _CarSalesDashboardScreenState extends ConsumerState<CarSalesDashboardScree
                   ? Image.network(
                       listing.images.first,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const Icon(Icons.directions_car, color: AppColors.textMuted),
+                      errorBuilder: (_, _, _) => const Icon(
+                        Icons.directions_car,
+                        color: AppColors.textMuted,
+                      ),
                     )
-                  : const Icon(Icons.directions_car, color: AppColors.textMuted),
+                  : const Icon(
+                      Icons.directions_car,
+                      color: AppColors.textMuted,
+                    ),
             ),
           ),
           const SizedBox(width: 16),
@@ -313,11 +352,17 @@ class _CarSalesDashboardScreenState extends ConsumerState<CarSalesDashboardScree
                 const SizedBox(height: 4),
                 Text(
                   '${listing.brandName} ${listing.modelName} · ${listing.year}',
-                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                  ),
                 ),
                 Text(
                   '${_formatNumber(listing.mileage)} km · ${_formatFuelType(listing.fuelType)} · ${_formatTransmission(listing.transmission)}',
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                  style: const TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 12,
+                  ),
                 ),
               ],
             ),
@@ -336,7 +381,10 @@ class _CarSalesDashboardScreenState extends ConsumerState<CarSalesDashboardScree
               const SizedBox(height: 4),
               Text(
                 '${listing.city ?? ''} / ${listing.district ?? ''}',
-                style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                ),
               ),
             ],
           ),
@@ -392,28 +440,33 @@ class _CarSalesDashboardScreenState extends ConsumerState<CarSalesDashboardScree
             'Marka Ekle',
             Icons.add_circle,
             AppColors.primary,
-            () {},
+            () => context.go(AppRoutes.carSalesBrands),
           ),
           const SizedBox(height: 8),
           _buildQuickActionButton(
             'Özellik Ekle',
             Icons.add_box,
             AppColors.info,
-            () {},
+            () => context.go(AppRoutes.carSalesFeatures),
           ),
           const SizedBox(height: 8),
           _buildQuickActionButton(
             'Fiyat Ayarla',
             Icons.attach_money,
             AppColors.success,
-            () {},
+            () => context.go(AppRoutes.carSalesPricing),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildQuickActionButton(String label, IconData icon, Color color, VoidCallback onTap) {
+  Widget _buildQuickActionButton(
+    String label,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
@@ -463,7 +516,10 @@ class _CarSalesDashboardScreenState extends ConsumerState<CarSalesDashboardScree
             child: recentListingsAsync.when(
               data: (listings) => listings.isEmpty
                   ? const Center(
-                      child: Text('Henüz ilan yok', style: TextStyle(color: AppColors.textMuted)),
+                      child: Text(
+                        'Henüz ilan yok',
+                        style: TextStyle(color: AppColors.textMuted),
+                      ),
                     )
                   : ListView.builder(
                       itemCount: listings.length,
@@ -478,8 +534,12 @@ class _CarSalesDashboardScreenState extends ConsumerState<CarSalesDashboardScree
                         );
                       },
                     ),
-              loading: () => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-              error: (e, _) => Center(child: Text('Hata', style: TextStyle(color: AppColors.error))),
+              loading: () => const Center(
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              error: (e, _) => Center(
+                child: Text('Hata', style: TextStyle(color: AppColors.error)),
+              ),
             ),
           ),
         ],
@@ -489,21 +549,31 @@ class _CarSalesDashboardScreenState extends ConsumerState<CarSalesDashboardScree
 
   IconData _getStatusIcon(String status) {
     switch (status) {
-      case 'active': return Icons.check_circle;
-      case 'pending': return Icons.pending;
-      case 'sold': return Icons.sell;
-      case 'rejected': return Icons.cancel;
-      default: return Icons.directions_car;
+      case 'active':
+        return Icons.check_circle;
+      case 'pending':
+        return Icons.pending;
+      case 'sold':
+        return Icons.sell;
+      case 'rejected':
+        return Icons.cancel;
+      default:
+        return Icons.directions_car;
     }
   }
 
   Color _getStatusColor(String status) {
     switch (status) {
-      case 'active': return AppColors.success;
-      case 'pending': return AppColors.warning;
-      case 'sold': return AppColors.info;
-      case 'rejected': return AppColors.error;
-      default: return AppColors.textMuted;
+      case 'active':
+        return AppColors.success;
+      case 'pending':
+        return AppColors.warning;
+      case 'sold':
+        return AppColors.info;
+      case 'rejected':
+        return AppColors.error;
+      default:
+        return AppColors.textMuted;
     }
   }
 
@@ -522,7 +592,13 @@ class _CarSalesDashboardScreenState extends ConsumerState<CarSalesDashboardScree
     }
   }
 
-  Widget _buildActivityItem(String title, String subtitle, IconData icon, Color color, String time) {
+  Widget _buildActivityItem(
+    String title,
+    String subtitle,
+    IconData icon,
+    Color color,
+    String time,
+  ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -540,12 +616,28 @@ class _CarSalesDashboardScreenState extends ConsumerState<CarSalesDashboardScree
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w500)),
-                Text(subtitle, style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 11,
+                  ),
+                ),
               ],
             ),
           ),
-          Text(time, style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+          Text(
+            time,
+            style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+          ),
         ],
       ),
     );
@@ -569,20 +661,29 @@ class _CarSalesDashboardScreenState extends ConsumerState<CarSalesDashboardScree
 
   String _formatFuelType(String type) {
     switch (type) {
-      case 'petrol': return 'Benzin';
-      case 'diesel': return 'Dizel';
-      case 'electric': return 'Elektrik';
-      case 'hybrid': return 'Hibrit';
-      case 'lpg': return 'LPG';
-      default: return type;
+      case 'petrol':
+        return 'Benzin';
+      case 'diesel':
+        return 'Dizel';
+      case 'electric':
+        return 'Elektrik';
+      case 'hybrid':
+        return 'Hibrit';
+      case 'lpg':
+        return 'LPG';
+      default:
+        return type;
     }
   }
 
   String _formatTransmission(String type) {
     switch (type) {
-      case 'automatic': return 'Otomatik';
-      case 'manual': return 'Manuel';
-      default: return type;
+      case 'automatic':
+        return 'Otomatik';
+      case 'manual':
+        return 'Manuel';
+      default:
+        return type;
     }
   }
 
@@ -594,7 +695,10 @@ class _CarSalesDashboardScreenState extends ConsumerState<CarSalesDashboardScree
       ref.invalidate(carSalesStatsProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('İlan onaylandı'), backgroundColor: AppColors.success),
+          const SnackBar(
+            content: Text('İlan onaylandı'),
+            backgroundColor: AppColors.success,
+          ),
         );
       }
     } catch (e) {
@@ -611,9 +715,14 @@ class _CarSalesDashboardScreenState extends ConsumerState<CarSalesDashboardScree
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('İlanı Reddet'),
-        content: Text('"${listing.title}" ilanını reddetmek istediğinize emin misiniz?'),
+        content: Text(
+          '"${listing.title}" ilanını reddetmek istediğinize emin misiniz?',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('İptal'),
+          ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
@@ -631,13 +740,19 @@ class _CarSalesDashboardScreenState extends ConsumerState<CarSalesDashboardScree
         ref.invalidate(carSalesStatsProvider);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('İlan reddedildi'), backgroundColor: AppColors.warning),
+            const SnackBar(
+              content: Text('İlan reddedildi'),
+              backgroundColor: AppColors.warning,
+            ),
           );
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
+            SnackBar(
+              content: Text('Hata: $e'),
+              backgroundColor: AppColors.error,
+            ),
           );
         }
       }

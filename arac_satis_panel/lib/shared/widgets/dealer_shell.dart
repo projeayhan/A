@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:arac_satis_panel/core/services/log_service.dart';
 import '../../models/car_models.dart';
 import '../../providers/dealer_provider.dart';
 import '../../providers/chat_provider.dart';
@@ -46,7 +47,9 @@ class _DealerShellState extends ConsumerState<DealerShell> {
   Future<void> _handleIdleTimeout() async {
     try {
       await Supabase.instance.client.auth.signOut();
-    } catch (_) {}
+    } catch (e, st) {
+      LogService.error('Sign out failed', error: e, stackTrace: st, source: 'DealerShell:_handleIdleTimeout');
+    }
     if (mounted) {
       context.go('/login');
     }
@@ -95,6 +98,8 @@ class _DealerShellState extends ConsumerState<DealerShell> {
     if (route.startsWith('/performance')) return 'Performans';
     if (route.startsWith('/reviews')) return 'Değerlendirmeler';
     if (route.startsWith('/profile')) return 'Profil';
+    if (route.startsWith('/promotions')) return 'One Cikarma';
+    if (route.startsWith('/banner-ads')) return 'Banner Reklamları';
     if (route.startsWith('/settings')) return 'Ayarlar';
     return 'Dashboard';
   }
@@ -301,6 +306,22 @@ class _DealerShellState extends ConsumerState<DealerShell> {
                 showLabel: showLabels,
                 isMobileDrawer: isMobileDrawer,
               ),
+              _buildNavItem(
+                icon: Icons.star_rounded,
+                label: 'One Cikarma',
+                route: '/promotions',
+                currentRoute: currentRoute,
+                showLabel: showLabels,
+                isMobileDrawer: isMobileDrawer,
+              ),
+              _buildNavItem(
+                icon: Icons.campaign_rounded,
+                label: 'Banner Reklamları',
+                route: '/banner-ads',
+                currentRoute: currentRoute,
+                showLabel: showLabels,
+                isMobileDrawer: isMobileDrawer,
+              ),
 
               const SizedBox(height: 16),
 
@@ -335,7 +356,9 @@ class _DealerShellState extends ConsumerState<DealerShell> {
               onTap: () async {
                 try {
                   await Supabase.instance.client.auth.signOut();
-                } catch (_) {}
+                } catch (e, st) {
+                  LogService.error('Sign out failed', error: e, stackTrace: st, source: 'DealerShell:signOut');
+                }
                 if (mounted) {
                   if (isMobileDrawer) Navigator.of(context).pop();
                   context.go('/login');
@@ -758,7 +781,9 @@ class _DealerShellState extends ConsumerState<DealerShell> {
                   if (value == 'logout') {
                     try {
                       await Supabase.instance.client.auth.signOut();
-                    } catch (_) {}
+                    } catch (e, st) {
+                      LogService.error('Sign out failed', error: e, stackTrace: st, source: 'DealerShell:popupSignOut');
+                    }
                     if (mounted) context.go('/login');
                   } else if (value == 'profile') {
                     context.go('/profile');

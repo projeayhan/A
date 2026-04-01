@@ -9,11 +9,7 @@ class CarSearchScreen extends StatefulWidget {
   final String? initialBrandId;
   final CarBodyType? initialBodyType;
 
-  const CarSearchScreen({
-    super.key,
-    this.initialBrandId,
-    this.initialBodyType,
-  });
+  const CarSearchScreen({super.key, this.initialBrandId, this.initialBodyType});
 
   @override
   State<CarSearchScreen> createState() => _CarSearchScreenState();
@@ -93,7 +89,9 @@ class _CarSearchScreenState extends State<CarSearchScreen>
         listings = await service.searchListings(_searchController.text);
       } else {
         listings = await service.getActiveListings(
-          brandId: _filter.brandIds?.isNotEmpty == true ? _filter.brandIds!.first : null,
+          brandId: _filter.brandIds?.isNotEmpty == true
+              ? _filter.brandIds!.first
+              : null,
           minPrice: _filter.minPrice?.toDouble(),
           maxPrice: _filter.maxPrice?.toDouble(),
           minYear: _filter.minYear,
@@ -142,16 +140,15 @@ class _CarSearchScreenState extends State<CarSearchScreen>
               _buildSearchHeader(isDark),
 
               // Active Filters
-              if (_filter.activeFilterCount > 0)
-                _buildActiveFilters(isDark),
+              if (_filter.activeFilterCount > 0) _buildActiveFilters(isDark),
 
               // Results
               Expanded(
                 child: _isSearching
                     ? _buildLoadingState(isDark)
                     : _searchResults.isEmpty
-                        ? _buildEmptyState(isDark)
-                        : _buildResultsList(isDark),
+                    ? _buildEmptyState(isDark)
+                    : _buildResultsList(isDark),
               ),
             ],
           ),
@@ -208,9 +205,7 @@ class _CarSearchScreenState extends State<CarSearchScreen>
                     controller: _searchController,
                     focusNode: _searchFocusNode,
                     onChanged: (_) => _performSearch(),
-                    style: TextStyle(
-                      color: CarSalesColors.textPrimary(isDark),
-                    ),
+                    style: TextStyle(color: CarSalesColors.textPrimary(isDark)),
                     decoration: InputDecoration(
                       hintText: 'Marka, model veya anahtar kelime...',
                       hintStyle: TextStyle(
@@ -352,32 +347,36 @@ class _CarSearchScreenState extends State<CarSearchScreen>
           (b) => b.id == brandId,
           orElse: () => CarBrand.allBrands.first,
         );
-        chips.add(_buildFilterChip(isDark, brand.name, () {
-          setState(() {
-            final newBrands = List<String>.from(_filter.brandIds!)
-              ..remove(brandId);
-            _filter = _filter.copyWith(
-              brandIds: newBrands.isEmpty ? null : newBrands,
-            );
-          });
-          _performSearch();
-        }));
+        chips.add(
+          _buildFilterChip(isDark, brand.name, () {
+            setState(() {
+              final newBrands = List<String>.from(_filter.brandIds!)
+                ..remove(brandId);
+              _filter = _filter.copyWith(
+                brandIds: newBrands.isEmpty ? null : newBrands,
+              );
+            });
+            _performSearch();
+          }),
+        );
       }
     }
 
     // Body type chips
     if (_filter.bodyTypes?.isNotEmpty ?? false) {
       for (final bodyType in _filter.bodyTypes!) {
-        chips.add(_buildFilterChip(isDark, bodyType.label, () {
-          setState(() {
-            final newTypes = List<CarBodyType>.from(_filter.bodyTypes!)
-              ..remove(bodyType);
-            _filter = _filter.copyWith(
-              bodyTypes: newTypes.isEmpty ? null : newTypes,
-            );
-          });
-          _performSearch();
-        }));
+        chips.add(
+          _buildFilterChip(isDark, bodyType.label, () {
+            setState(() {
+              final newTypes = List<CarBodyType>.from(_filter.bodyTypes!)
+                ..remove(bodyType);
+              _filter = _filter.copyWith(
+                bodyTypes: newTypes.isEmpty ? null : newTypes,
+              );
+            });
+            _performSearch();
+          }),
+        );
       }
     }
 
@@ -386,14 +385,16 @@ class _CarSearchScreenState extends State<CarSearchScreen>
       final priceText = _filter.minPrice != null && _filter.maxPrice != null
           ? '${_formatPrice(_filter.minPrice!)} - ${_formatPrice(_filter.maxPrice!)}'
           : _filter.minPrice != null
-              ? '${_formatPrice(_filter.minPrice!)}+'
-              : '${_formatPrice(_filter.maxPrice!)} altı';
-      chips.add(_buildFilterChip(isDark, priceText, () {
-        setState(() {
-          _filter = _filter.copyWith(minPrice: null, maxPrice: null);
-        });
-        _performSearch();
-      }));
+          ? '${_formatPrice(_filter.minPrice!)}+'
+          : '${_formatPrice(_filter.maxPrice!)} altı';
+      chips.add(
+        _buildFilterChip(isDark, priceText, () {
+          setState(() {
+            _filter = _filter.copyWith(minPrice: null, maxPrice: null);
+          });
+          _performSearch();
+        }),
+      );
     }
 
     // Clear all button
@@ -429,9 +430,7 @@ class _CarSearchScreenState extends State<CarSearchScreen>
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
-        child: Row(
-          children: chips,
-        ),
+        child: Row(children: chips),
       ),
     );
   }
@@ -485,9 +484,7 @@ class _CarSearchScreenState extends State<CarSearchScreen>
           const SizedBox(height: 16),
           Text(
             'Aranıyor...',
-            style: TextStyle(
-              color: CarSalesColors.textSecondary(isDark),
-            ),
+            style: TextStyle(color: CarSalesColors.textSecondary(isDark)),
           ),
         ],
       ),
@@ -524,9 +521,7 @@ class _CarSearchScreenState extends State<CarSearchScreen>
           const SizedBox(height: 8),
           Text(
             'Farklı filtreler deneyebilirsiniz',
-            style: TextStyle(
-              color: CarSalesColors.textSecondary(isDark),
-            ),
+            style: TextStyle(color: CarSalesColors.textSecondary(isDark)),
           ),
           const SizedBox(height: 24),
           GestureDetector(
@@ -565,20 +560,23 @@ class _CarSearchScreenState extends State<CarSearchScreen>
   Widget _buildCarCard(CarListing car, bool isDark) {
     return GestureDetector(
       onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => CarDetailScreen(car: car),
-          ),
-        );
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (_) => CarDetailScreen(car: car)));
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
           color: CarSalesColors.card(isDark),
           borderRadius: BorderRadius.circular(20),
+          border: car.isFeatured && !car.isPremiumListing
+              ? Border.all(color: const Color(0xFF3B9EFF), width: 1.5)
+              : null,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
+              color: car.isFeatured && !car.isPremiumListing
+                  ? const Color(0xFF3B9EFF).withValues(alpha: 0.18)
+                  : Colors.black.withValues(alpha: 0.06),
               blurRadius: 16,
               offset: const Offset(0, 4),
             ),
@@ -599,12 +597,14 @@ class _CarSearchScreenState extends State<CarSearchScreen>
                     height: 180,
                     width: double.infinity,
                     fit: BoxFit.cover,
-                    placeholder: (_, __) => Container(
+                    placeholder: (_, _) => Container(
                       height: 180,
                       color: Colors.grey[200],
-                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                      child: const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
                     ),
-                    errorWidget: (_, __, ___) => Container(
+                    errorWidget: (_, _, _) => Container(
                       height: 180,
                       color: CarSalesColors.surface(isDark),
                       child: Icon(
@@ -638,6 +638,39 @@ class _CarSearchScreenState extends State<CarSearchScreen>
                           SizedBox(width: 4),
                           Text(
                             'Premium',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                // Featured Badge
+                if (car.isFeatured && !car.isPremiumListing)
+                  Positioned(
+                    top: 12,
+                    left: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF3B9EFF), Color(0xFF1565C0)],
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.bolt, color: Colors.white, size: 14),
+                          SizedBox(width: 4),
+                          Text(
+                            'Öne Çıkan',
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 11,
@@ -725,10 +758,26 @@ class _CarSearchScreenState extends State<CarSearchScreen>
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      _buildSpecBadge(isDark, Icons.calendar_today, '${car.year}'),
-                      _buildSpecBadge(isDark, Icons.speed, car.formattedMileage),
-                      _buildSpecBadge(isDark, car.fuelType.icon, car.fuelType.label),
-                      _buildSpecBadge(isDark, car.transmission.icon, car.transmission.label),
+                      _buildSpecBadge(
+                        isDark,
+                        Icons.calendar_today,
+                        '${car.year}',
+                      ),
+                      _buildSpecBadge(
+                        isDark,
+                        Icons.speed,
+                        car.formattedMileage,
+                      ),
+                      _buildSpecBadge(
+                        isDark,
+                        car.fuelType.icon,
+                        car.fuelType.label,
+                      ),
+                      _buildSpecBadge(
+                        isDark,
+                        car.transmission.icon,
+                        car.transmission.label,
+                      ),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -778,7 +827,9 @@ class _CarSearchScreenState extends State<CarSearchScreen>
                                 vertical: 4,
                               ),
                               decoration: BoxDecoration(
-                                color: CarSalesColors.success.withValues(alpha: 0.1),
+                                color: CarSalesColors.success.withValues(
+                                  alpha: 0.1,
+                                ),
                                 borderRadius: BorderRadius.circular(6),
                               ),
                               child: const Text(
@@ -895,7 +946,9 @@ class _CarSearchScreenState extends State<CarSearchScreen>
                     color: isSelected
                         ? CarSalesColors.primary
                         : CarSalesColors.textPrimary(isDark),
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                    fontWeight: isSelected
+                        ? FontWeight.w600
+                        : FontWeight.normal,
                   ),
                 ),
                 trailing: isSelected
@@ -1017,8 +1070,9 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                       return GestureDetector(
                         onTap: () {
                           setState(() {
-                            final newBrands =
-                                List<String>.from(_tempFilter.brandIds ?? []);
+                            final newBrands = List<String>.from(
+                              _tempFilter.brandIds ?? [],
+                            );
                             if (isSelected) {
                               newBrands.remove(brand.id);
                             } else {
@@ -1048,7 +1102,8 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                         onTap: () {
                           setState(() {
                             final newTypes = List<CarBodyType>.from(
-                                _tempFilter.bodyTypes ?? []);
+                              _tempFilter.bodyTypes ?? [],
+                            );
                             if (isSelected) {
                               newTypes.remove(type);
                             } else {
@@ -1078,7 +1133,8 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                         onTap: () {
                           setState(() {
                             final newTypes = List<CarFuelType>.from(
-                                _tempFilter.fuelTypes ?? []);
+                              _tempFilter.fuelTypes ?? [],
+                            );
                             if (isSelected) {
                               newTypes.remove(type);
                             } else {
@@ -1101,30 +1157,26 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                   Row(
                     children: [
                       Expanded(
-                        child: _buildYearDropdown(
-                          'Min',
-                          _tempFilter.minYear,
-                          (value) {
-                            setState(() {
-                              _tempFilter = _tempFilter.copyWith(minYear: value);
-                            });
-                          },
-                        ),
+                        child: _buildYearDropdown('Min', _tempFilter.minYear, (
+                          value,
+                        ) {
+                          setState(() {
+                            _tempFilter = _tempFilter.copyWith(minYear: value);
+                          });
+                        }),
                       ),
                       const Padding(
                         padding: EdgeInsets.symmetric(horizontal: 16),
                         child: Text('-'),
                       ),
                       Expanded(
-                        child: _buildYearDropdown(
-                          'Max',
-                          _tempFilter.maxYear,
-                          (value) {
-                            setState(() {
-                              _tempFilter = _tempFilter.copyWith(maxYear: value);
-                            });
-                          },
-                        ),
+                        child: _buildYearDropdown('Max', _tempFilter.maxYear, (
+                          value,
+                        ) {
+                          setState(() {
+                            _tempFilter = _tempFilter.copyWith(maxYear: value);
+                          });
+                        }),
                       ),
                     ],
                   ),
@@ -1249,15 +1301,17 @@ class _FilterBottomSheetState extends State<_FilterBottomSheet> {
                 ),
               ),
             ),
-            ...years.map((year) => DropdownMenuItem<int>(
-                  value: year,
-                  child: Text(
-                    year.toString(),
-                    style: TextStyle(
-                      color: CarSalesColors.textPrimary(widget.isDark),
-                    ),
+            ...years.map(
+              (year) => DropdownMenuItem<int>(
+                value: year,
+                child: Text(
+                  year.toString(),
+                  style: TextStyle(
+                    color: CarSalesColors.textPrimary(widget.isDark),
                   ),
-                )),
+                ),
+              ),
+            ),
           ],
           onChanged: onChanged,
         ),

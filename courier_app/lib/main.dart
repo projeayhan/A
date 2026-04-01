@@ -1,4 +1,5 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -9,36 +10,61 @@ import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'core/services/push_notification_service.dart';
 import 'core/services/notification_sound_service.dart';
+import 'core/services/log_service.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+void main() {
+  runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    await dotenv.load(fileName: '.env');
 
-  // Load environment variables
-  await dotenv.load(fileName: '.env');
+    if (!kIsWeb) {
+      try {
+        await Firebase.initializeApp();
+      } catch (e, st) {
+        LogService.error('Firebase init error', error: e, stackTrace: st, source: 'main:Firebase.initializeApp');
+      }
+    }
 
-  // Initialize Firebase (only on mobile)
-  if (!kIsWeb) {
-    await Firebase.initializeApp();
-  }
+    await Supabase.initialize(
+      url: dotenv.env['SUPABASE_URL'] ?? '',
+      anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
+    );
 
-  // Initialize Supabase
-  await Supabase.initialize(
-    url: dotenv.env['SUPABASE_URL'] ?? '',
-    anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
-  );
+    await initializeDateFormatting('tr', null);
+    await notificationSoundService.initialize();
 
-  // Initialize Turkish locale for date formatting
-  await initializeDateFormatting('tr', null);
+    if (!kIsWeb) {
+      await pushNotificationService.initialize();
+    }
 
-  // Initialize notification sound service
-  await notificationSoundService.initialize();
+    // Stripe initialization
+    if (!kIsWeb) {
+      try {
+        final stripeKey = dotenv.env['STRIPE_PUBLISHABLE_KEY'] ?? '';
+        if (stripeKey.isNotEmpty) {
+          Stripe.publishableKey = stripeKey;
+          await Stripe.instance.applySettings();
+        }
+      } catch (e, st) {
+        LogService.error('Stripe init error', error: e, stackTrace: st, source: 'main:Stripe');
+      }
+    }
 
-  // Initialize push notifications (only on mobile)
-  if (!kIsWeb) {
-    await pushNotificationService.initialize();
-  }
+    FlutterError.onError = (details) {
+      FlutterError.presentError(details);
+      LogService.error(details.exceptionAsString(),
+          error: details.exception,
+          stackTrace: details.stack,
+          source: 'FlutterError');
+    };
 
-  runApp(const ProviderScope(child: CourierApp()));
+    LogService.info('Courier app started', source: 'main');
+    runApp(const ProviderScope(child: CourierApp()));
+  }, (error, stackTrace) {
+    LogService.error(error.toString(),
+        error: error, stackTrace: stackTrace, source: 'ZoneError');
+  });
 }
 
 class CourierApp extends ConsumerWidget {

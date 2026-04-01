@@ -49,3 +49,9 @@ nul
 # Temp Claude files
 **/tmpclaude-*
 CUsers*
+
+# Environment files (contain secrets)
+**/.env
+!**/.env.example
+test_stripe_e2e.mjs
+test_stripe_webhook.mjs

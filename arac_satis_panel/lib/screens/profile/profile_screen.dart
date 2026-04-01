@@ -163,7 +163,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 _buildCard(isDark, [
                   // City dropdown
                   DropdownButtonFormField<String>(
-                    value: _kktcCities.contains(_selectedCity)
+                    initialValue: _kktcCities.contains(_selectedCity)
                         ? _selectedCity
                         : null,
                     decoration: InputDecoration(
@@ -175,10 +175,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     ),
                     dropdownColor: CarSalesColors.card(isDark),
                     items: _kktcCities.map((city) {
-                      return DropdownMenuItem(
-                        value: city,
-                        child: Text(city),
-                      );
+                      return DropdownMenuItem(value: city, child: Text(city));
                     }).toList(),
                     onChanged: (value) {
                       setState(() => _selectedCity = value);
@@ -220,12 +217,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (_, __) => Center(
+      error: (_, _) => Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error_outline,
-                size: 48, color: CarSalesColors.textTertiary(isDark)),
+            Icon(
+              Icons.error_outline,
+              size: 48,
+              color: CarSalesColors.textTertiary(isDark),
+            ),
             const SizedBox(height: 12),
             Text(
               'Profil yuklenirken hata olustu',
@@ -268,7 +268,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     child: Image.network(
                       profile.logoUrl!,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) =>
+                      errorBuilder: (_, _, _) =>
                           _buildInitials(profile.displayName),
                     ),
                   )
@@ -292,7 +292,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: CarSalesColors.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
@@ -310,7 +312,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: CarSalesColors.success.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(8),
@@ -318,8 +322,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         child: const Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.verified,
-                                size: 14, color: CarSalesColors.success),
+                            Icon(
+                              Icons.verified,
+                              size: 14,
+                              color: CarSalesColors.success,
+                            ),
                             SizedBox(width: 4),
                             Text(
                               'Onaylanmis',
@@ -374,11 +381,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         _buildMiniStat(isDark, '${profile.totalSold}', 'Satilan'),
         const SizedBox(width: 12),
         _buildMiniStat(
-            isDark,
-            profile.averageRating > 0
-                ? profile.averageRating.toStringAsFixed(1)
-                : '-',
-            'Ortalama Puan'),
+          isDark,
+          profile.averageRating > 0
+              ? profile.averageRating.toStringAsFixed(1)
+              : '-',
+          'Ortalama Puan',
+        ),
         const SizedBox(width: 12),
         _buildMiniStat(isDark, '${profile.totalReviews}', 'Degerlendirme'),
       ],
@@ -441,9 +449,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: CarSalesColors.border(isDark)),
       ),
-      child: Column(
-        children: children,
-      ),
+      child: Column(children: children),
     );
   }
 
@@ -465,12 +471,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         suffixIcon: readOnly
-            ? Icon(Icons.lock_outline,
-                size: 18, color: CarSalesColors.textTertiary(isDark))
+            ? Icon(
+                Icons.lock_outline,
+                size: 18,
+                color: CarSalesColors.textTertiary(isDark),
+              )
             : null,
       ),
     );

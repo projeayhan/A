@@ -68,7 +68,9 @@ class ConversationsState {
 class ConversationsNotifier extends StateNotifier<ConversationsState> {
   final ChatService _service;
   RealtimeChannel? _conversationsChannel;
+  RealtimeChannel? _conversationsSellerChannel;
   RealtimeChannel? _messagesChannel;
+  RealtimeChannel? _messagesSellerChannel;
 
   // Debounce timer - art arda gelen güncellemeleri birleştirmek için
   Timer? _debounceTimer;
@@ -99,8 +101,29 @@ class ConversationsNotifier extends StateNotifier<ConversationsState> {
           event: PostgresChangeEvent.all,
           schema: 'public',
           table: 'conversations',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'buyer_id',
+            value: userId,
+          ),
           callback: (payload) {
-            // Debounce ile yükle - art arda gelen eventleri birleştir
+            _debouncedLoadConversations();
+          },
+        )
+        .subscribe();
+
+    _conversationsSellerChannel = client
+        .channel('conversations_seller')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'conversations',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'seller_id',
+            value: userId,
+          ),
+          callback: (payload) {
             _debouncedLoadConversations();
           },
         )
@@ -113,8 +136,29 @@ class ConversationsNotifier extends StateNotifier<ConversationsState> {
           event: PostgresChangeEvent.insert,
           schema: 'public',
           table: 'messages',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'buyer_id',
+            value: userId,
+          ),
           callback: (payload) {
-            // Debounce ile yükle - art arda gelen eventleri birleştir
+            _debouncedLoadConversations();
+          },
+        )
+        .subscribe();
+
+    _messagesSellerChannel = client
+        .channel('messages_seller')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'messages',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'seller_id',
+            value: userId,
+          ),
+          callback: (payload) {
             _debouncedLoadConversations();
           },
         )
@@ -125,7 +169,9 @@ class ConversationsNotifier extends StateNotifier<ConversationsState> {
   void dispose() {
     _debounceTimer?.cancel();
     _conversationsChannel?.unsubscribe();
+    _conversationsSellerChannel?.unsubscribe();
     _messagesChannel?.unsubscribe();
+    _messagesSellerChannel?.unsubscribe();
     super.dispose();
   }
 
@@ -279,7 +325,7 @@ class MessagesNotifier extends StateNotifier<MessagesState> {
 }
 
 final messagesProvider =
-    StateNotifierProvider.family<MessagesNotifier, MessagesState, String>(
+    StateNotifierProvider.autoDispose.family<MessagesNotifier, MessagesState, String>(
         (ref, conversationId) {
   final service = ref.watch(chatServiceProvider);
   return MessagesNotifier(service, conversationId);
@@ -299,7 +345,7 @@ final totalUnreadMessagesProvider = FutureProvider<int>((ref) async {
 // ============================================
 
 final conversationDetailProvider =
-    FutureProvider.family<Conversation?, String>((ref, conversationId) async {
+    FutureProvider.autoDispose.family<Conversation?, String>((ref, conversationId) async {
   final service = ref.watch(chatServiceProvider);
   return service.getConversation(conversationId);
 });
@@ -308,7 +354,7 @@ final conversationDetailProvider =
 // YENİ KONUŞMA OLUŞTUR/BUL PROVIDER
 // ============================================
 
-final getOrCreateConversationProvider = FutureProvider.family<Conversation,
+final getOrCreateConversationProvider = FutureProvider.autoDispose.family<Conversation,
     ({String propertyId, String sellerId})>((ref, params) async {
   final service = ref.watch(chatServiceProvider);
   return service.getOrCreateConversation(
@@ -457,7 +503,7 @@ final pendingAppointmentsCountProvider = FutureProvider<int>((ref) async {
 // ============================================
 
 final availableTimeSlotsProvider =
-    FutureProvider.family<List<String>, ({String propertyId, DateTime date})>(
+    FutureProvider.autoDispose.family<List<String>, ({String propertyId, DateTime date})>(
         (ref, params) async {
   final service = ref.watch(appointmentServiceProvider);
   return service.getAvailableTimeSlots(params.propertyId, params.date);

@@ -455,7 +455,7 @@ class SecurityScreen extends ConsumerWidget {
       ref.invalidate(securityEventsProvider);
       ref.invalidate(securityStatsProvider);
     } catch (e) {
-      // Handle error silently
+      debugPrint('resolveSecurityEvent error: $e');
     }
   }
 
@@ -649,7 +649,7 @@ class SecurityScreen extends ConsumerWidget {
       ref.invalidate(failedLoginsProvider);
       ref.invalidate(securityStatsProvider);
     } catch (e) {
-      // Handle error silently
+      debugPrint('unblockLogin error: $e');
     }
   }
 
@@ -799,7 +799,7 @@ class SecurityScreen extends ConsumerWidget {
       ref.invalidate(systemErrorsProvider);
       ref.invalidate(securityStatsProvider);
     } catch (e) {
-      // Handle error silently
+      debugPrint('resolveSystemError error: $e');
     }
   }
 

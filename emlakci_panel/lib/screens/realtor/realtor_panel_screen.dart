@@ -6,6 +6,7 @@ import '../../models/emlak_models.dart';
 import '../../providers/property_provider.dart';
 import '../../providers/realtor_provider.dart';
 import '../../services/notification_sound_service.dart';
+import 'package:emlakci_panel/core/services/log_service.dart';
 import '../chat/chat_list_screen.dart';
 
 /// Emlakçı Panel Ana Ekranı - Responsive Web Panel
@@ -38,8 +39,7 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
       body: Row(
         children: [
           // Sidebar - Desktop & Tablet
-          if (!isMobile)
-            _buildSidebar(isCollapsed: isTablet),
+          if (!isMobile) _buildSidebar(isCollapsed: isTablet),
 
           // Main Content
           Expanded(
@@ -49,9 +49,7 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                 _buildTopBar(isMobile),
 
                 // Content
-                Expanded(
-                  child: _buildContent(),
-                ),
+                Expanded(child: _buildContent()),
               ],
             ),
           ),
@@ -93,9 +91,7 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
           height: 70,
           padding: EdgeInsets.symmetric(horizontal: isCollapsed ? 16 : 20),
           decoration: const BoxDecoration(
-            border: Border(
-              bottom: BorderSide(color: Colors.white10),
-            ),
+            border: Border(bottom: BorderSide(color: Colors.white10)),
           ),
           child: Row(
             children: [
@@ -107,7 +103,11 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                   ),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.real_estate_agent, color: Colors.white, size: 24),
+                child: const Icon(
+                  Icons.real_estate_agent,
+                  color: Colors.white,
+                  size: 24,
+                ),
               ),
               if (!isCollapsed) ...[
                 const SizedBox(width: 12),
@@ -147,9 +147,24 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                       ),
                     ),
                   ),
-                _buildNavItem(0, Icons.dashboard_rounded, 'Dashboard', isCollapsed),
-                _buildNavItem(1, Icons.home_work_rounded, 'İlanlarım', isCollapsed),
-                _buildNavItem(2, Icons.calendar_month_rounded, 'Randevular', isCollapsed),
+                _buildNavItem(
+                  0,
+                  Icons.dashboard_rounded,
+                  'Dashboard',
+                  isCollapsed,
+                ),
+                _buildNavItem(
+                  1,
+                  Icons.home_work_rounded,
+                  'İlanlarım',
+                  isCollapsed,
+                ),
+                _buildNavItem(
+                  2,
+                  Icons.calendar_month_rounded,
+                  'Randevular',
+                  isCollapsed,
+                ),
 
                 const SizedBox(height: 16),
                 if (!isCollapsed)
@@ -165,7 +180,12 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                       ),
                     ),
                   ),
-                _buildNavItem(3, Icons.analytics_rounded, 'Performans', isCollapsed),
+                _buildNavItem(
+                  3,
+                  Icons.analytics_rounded,
+                  'Performans',
+                  isCollapsed,
+                ),
 
                 const SizedBox(height: 16),
                 if (!isCollapsed)
@@ -182,7 +202,12 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                     ),
                   ),
                 _buildNavItem(4, Icons.person_rounded, 'Profil', isCollapsed),
-                _buildNavItem(5, Icons.settings_rounded, 'Ayarlar', isCollapsed),
+                _buildNavItem(
+                  5,
+                  Icons.settings_rounded,
+                  'Ayarlar',
+                  isCollapsed,
+                ),
               ],
             ),
           ),
@@ -192,9 +217,7 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
         Container(
           padding: EdgeInsets.all(isCollapsed ? 12 : 16),
           decoration: const BoxDecoration(
-            border: Border(
-              top: BorderSide(color: Colors.white10),
-            ),
+            border: Border(top: BorderSide(color: Colors.white10)),
           ),
           child: InkWell(
             onTap: _handleLogout,
@@ -209,14 +232,19 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
-                mainAxisAlignment: isCollapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
+                mainAxisAlignment: isCollapsed
+                    ? MainAxisAlignment.center
+                    : MainAxisAlignment.start,
                 children: [
                   const Icon(Icons.logout_rounded, color: Colors.red, size: 20),
                   if (!isCollapsed) ...[
                     const SizedBox(width: 12),
                     const Text(
                       'Çıkış Yap',
-                      style: TextStyle(color: Colors.red, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ],
                 ],
@@ -228,11 +256,19 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
     );
   }
 
-  Widget _buildNavItem(int index, IconData icon, String label, bool isCollapsed) {
+  Widget _buildNavItem(
+    int index,
+    IconData icon,
+    String label,
+    bool isCollapsed,
+  ) {
     final isSelected = _selectedIndex == index;
 
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: isCollapsed ? 12 : 12, vertical: 2),
+      padding: EdgeInsets.symmetric(
+        horizontal: isCollapsed ? 12 : 12,
+        vertical: 2,
+      ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -250,13 +286,21 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
               vertical: 12,
             ),
             decoration: BoxDecoration(
-              color: isSelected ? const Color(0xFF3B82F6).withValues(alpha: 0.15) : Colors.transparent,
+              color: isSelected
+                  ? const Color(0xFF3B82F6).withValues(alpha: 0.15)
+                  : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
-              border: isSelected ? Border.all(color: const Color(0xFF3B82F6).withValues(alpha: 0.3)) : null,
+              border: isSelected
+                  ? Border.all(
+                      color: const Color(0xFF3B82F6).withValues(alpha: 0.3),
+                    )
+                  : null,
             ),
             child: Row(
               mainAxisSize: isCollapsed ? MainAxisSize.min : MainAxisSize.max,
-              mainAxisAlignment: isCollapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
+              mainAxisAlignment: isCollapsed
+                  ? MainAxisAlignment.center
+                  : MainAxisAlignment.start,
               children: [
                 Icon(
                   icon,
@@ -270,7 +314,9 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                       label,
                       style: TextStyle(
                         color: isSelected ? Colors.white : Colors.white70,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.normal,
                         fontSize: 14,
                       ),
                     ),
@@ -293,9 +339,7 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 24),
       decoration: const BoxDecoration(
         color: Colors.white,
-        border: Border(
-          bottom: BorderSide(color: Color(0xFFE2E8F0)),
-        ),
+        border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
       ),
       child: Row(
         children: [
@@ -319,10 +363,17 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
 
           // Quick Actions
           if (!isMobile)
-            _buildTopBarButton(Icons.add_home_rounded, 'Yeni İlan', () => context.push('/add-property'))
+            _buildTopBarButton(
+              Icons.add_home_rounded,
+              'Yeni İlan',
+              () => context.push('/add-property'),
+            )
           else
             IconButton(
-              icon: const Icon(Icons.add_home_rounded, color: Color(0xFF3B82F6)),
+              icon: const Icon(
+                Icons.add_home_rounded,
+                color: Color(0xFF3B82F6),
+              ),
               onPressed: () => context.push('/add-property'),
             ),
           const SizedBox(width: 4),
@@ -331,7 +382,10 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
           Stack(
             children: [
               IconButton(
-                icon: const Icon(Icons.notifications_outlined, color: Color(0xFF64748B)),
+                icon: const Icon(
+                  Icons.notifications_outlined,
+                  color: Color(0xFF64748B),
+                ),
                 onPressed: () {},
               ),
               Positioned(
@@ -366,8 +420,13 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                     radius: 16,
                     backgroundColor: const Color(0xFF3B82F6),
                     child: Text(
-                      (profile?['company_name'] as String? ?? 'E')[0].toUpperCase(),
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                      (profile?['company_name'] as String? ?? 'E')[0]
+                          .toUpperCase(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
                     ),
                   ),
                   if (!isMobile) ...[
@@ -426,7 +485,14 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
             children: [
               Icon(icon, color: Colors.white, size: 18),
               const SizedBox(width: 8),
-              Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
             ],
           ),
         ),
@@ -436,25 +502,39 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
 
   String _getPageTitle() {
     switch (_selectedIndex) {
-      case 0: return 'Dashboard';
-      case 1: return 'İlanlarım';
-      case 2: return 'Randevular';
-      case 3: return 'Performans';
-      case 4: return 'Profil';
-      case 5: return 'Ayarlar';
-      default: return 'Dashboard';
+      case 0:
+        return 'Dashboard';
+      case 1:
+        return 'İlanlarım';
+      case 2:
+        return 'Randevular';
+      case 3:
+        return 'Performans';
+      case 4:
+        return 'Profil';
+      case 5:
+        return 'Ayarlar';
+      default:
+        return 'Dashboard';
     }
   }
 
   Widget _buildContent() {
     switch (_selectedIndex) {
-      case 0: return _buildDashboardContent();
-      case 1: return _buildListingsContent();
-      case 2: return _buildAppointmentsContent();
-      case 3: return _buildPerformanceContent();
-      case 4: return _buildProfileContent();
-      case 5: return _buildSettingsContent();
-      default: return _buildDashboardContent();
+      case 0:
+        return _buildDashboardContent();
+      case 1:
+        return _buildListingsContent();
+      case 2:
+        return _buildAppointmentsContent();
+      case 3:
+        return _buildPerformanceContent();
+      case 4:
+        return _buildProfileContent();
+      case 5:
+        return _buildSettingsContent();
+      default:
+        return _buildDashboardContent();
     }
   }
 
@@ -512,7 +592,11 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                     color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.trending_up, color: Colors.white, size: 32),
+                  child: const Icon(
+                    Icons.trending_up,
+                    color: Colors.white,
+                    size: 32,
+                  ),
                 ),
               ],
             ),
@@ -522,7 +606,9 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
           // Stats Grid
           LayoutBuilder(
             builder: (context, constraints) {
-              final crossAxisCount = constraints.maxWidth > 1200 ? 4 : (constraints.maxWidth > 600 ? 2 : 1);
+              final crossAxisCount = constraints.maxWidth > 1200
+                  ? 4
+                  : (constraints.maxWidth > 600 ? 2 : 1);
               return GridView.count(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
@@ -531,9 +617,27 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                 crossAxisSpacing: 16,
                 childAspectRatio: constraints.maxWidth > 600 ? 2.0 : 2.5,
                 children: [
-                  _buildStatCard('Aktif İlanlar', '${userProperties.activeProperties.length}', Icons.home_work_rounded, const Color(0xFF10B981), '+12%'),
-                  _buildStatCard('Bekleyen İlanlar', '${userProperties.pendingProperties.length}', Icons.hourglass_empty_rounded, const Color(0xFFF59E0B), ''),
-                  _buildStatCard('Bugünkü Randevu', '${stats['today_appointments'] ?? 0}', Icons.calendar_today_rounded, const Color(0xFF3B82F6), ''),
+                  _buildStatCard(
+                    'Aktif İlanlar',
+                    '${userProperties.activeProperties.length}',
+                    Icons.home_work_rounded,
+                    const Color(0xFF10B981),
+                    '+12%',
+                  ),
+                  _buildStatCard(
+                    'Bekleyen İlanlar',
+                    '${userProperties.pendingProperties.length}',
+                    Icons.hourglass_empty_rounded,
+                    const Color(0xFFF59E0B),
+                    '',
+                  ),
+                  _buildStatCard(
+                    'Bugünkü Randevu',
+                    '${stats['today_appointments'] ?? 0}',
+                    Icons.calendar_today_rounded,
+                    const Color(0xFF3B82F6),
+                    '',
+                  ),
                 ],
               );
             },
@@ -549,7 +653,10 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                   children: [
                     Expanded(flex: 2, child: _buildQuickActionsCard()),
                     const SizedBox(width: 24),
-                    Expanded(flex: 3, child: _buildTodayAppointmentsCard(appointmentsState)),
+                    Expanded(
+                      flex: 3,
+                      child: _buildTodayAppointmentsCard(appointmentsState),
+                    ),
                   ],
                 );
               }
@@ -567,7 +674,13 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color, String trend) {
+  Widget _buildStatCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+    String trend,
+  ) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -614,7 +727,10 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                     ),
                     if (trend.isNotEmpty)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFF10B981).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(4),
@@ -658,15 +774,35 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          _buildQuickActionItem(Icons.add_home_rounded, 'Yeni İlan Ekle', const Color(0xFF3B82F6), () => context.push('/add-property')),
-          _buildQuickActionItem(Icons.calendar_month_rounded, 'Randevu Oluştur', const Color(0xFFF59E0B), () => _showAddAppointmentDialog()),
-          _buildQuickActionItem(Icons.message_rounded, 'Mesajlar', const Color(0xFF10B981), () => _openMessages()),
+          _buildQuickActionItem(
+            Icons.add_home_rounded,
+            'Yeni İlan Ekle',
+            const Color(0xFF3B82F6),
+            () => context.push('/add-property'),
+          ),
+          _buildQuickActionItem(
+            Icons.calendar_month_rounded,
+            'Randevu Oluştur',
+            const Color(0xFFF59E0B),
+            () => _showAddAppointmentDialog(),
+          ),
+          _buildQuickActionItem(
+            Icons.message_rounded,
+            'Mesajlar',
+            const Color(0xFF10B981),
+            () => _openMessages(),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildQuickActionItem(IconData icon, String label, Color color, VoidCallback onTap) {
+  Widget _buildQuickActionItem(
+    IconData icon,
+    String label,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
@@ -694,7 +830,11 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                   ),
                 ),
                 const Spacer(),
-                Icon(Icons.arrow_forward_ios, color: color.withValues(alpha: 0.5), size: 14),
+                Icon(
+                  Icons.arrow_forward_ios,
+                  color: color.withValues(alpha: 0.5),
+                  size: 14,
+                ),
               ],
             ),
           ),
@@ -703,7 +843,9 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
     );
   }
 
-  Widget _buildTodayAppointmentsCard(RealtorAppointmentsState appointmentsState) {
+  Widget _buildTodayAppointmentsCard(
+    RealtorAppointmentsState appointmentsState,
+  ) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -739,7 +881,11 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
               padding: const EdgeInsets.all(24),
               child: Column(
                 children: [
-                  Icon(Icons.calendar_today_outlined, size: 48, color: Colors.grey.shade300),
+                  Icon(
+                    Icons.calendar_today_outlined,
+                    size: 48,
+                    color: Colors.grey.shade300,
+                  ),
                   const SizedBox(height: 12),
                   const Text(
                     'Bugün randevunuz yok',
@@ -749,7 +895,9 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
               ),
             )
           else
-            ...appointmentsState.todayAppointments.take(3).map((apt) => _buildAppointmentItem(apt)),
+            ...appointmentsState.todayAppointments
+                .take(3)
+                .map((apt) => _buildAppointmentItem(apt)),
         ],
       ),
     );
@@ -772,7 +920,11 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
               color: const Color(0xFF3B82F6).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.access_time, color: Color(0xFF3B82F6), size: 20),
+            child: const Icon(
+              Icons.access_time,
+              color: Color(0xFF3B82F6),
+              size: 20,
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -780,7 +932,9 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  appointment['properties']?['title'] ?? appointment['title'] ?? 'Randevu',
+                  appointment['properties']?['title'] ??
+                      appointment['title'] ??
+                      'Randevu',
                   style: const TextStyle(
                     color: Color(0xFF1E293B),
                     fontWeight: FontWeight.w600,
@@ -791,11 +945,19 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                 const SizedBox(height: 4),
                 Text(
                   appointment['appointment_time'] != null
-                      ? (appointment['appointment_time'] as String).substring(0, 5)
+                      ? (appointment['appointment_time'] as String).substring(
+                          0,
+                          5,
+                        )
                       : (appointment['scheduled_at'] != null
-                          ? DateTime.parse(appointment['scheduled_at']).toString().substring(11, 16)
-                          : ''),
-                  style: const TextStyle(color: Color(0xFF64748B), fontSize: 13),
+                            ? DateTime.parse(
+                                appointment['scheduled_at'],
+                              ).toString().substring(11, 16)
+                            : ''),
+                  style: const TextStyle(
+                    color: Color(0xFF64748B),
+                    fontSize: 13,
+                  ),
                 ),
               ],
             ),
@@ -803,7 +965,9 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: _getStatusColor(appointment['status']).withValues(alpha: 0.1),
+              color: _getStatusColor(
+                appointment['status'],
+              ).withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
@@ -822,23 +986,35 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
 
   Color _getStatusColor(String? status) {
     switch (status) {
-      case 'scheduled': return const Color(0xFF3B82F6);
-      case 'pending': return const Color(0xFFF59E0B);  // Beklemede - sarı
-      case 'confirmed': return const Color(0xFF3B82F6); // Onaylandı - mavi
-      case 'completed': return const Color(0xFF10B981);
-      case 'cancelled': return const Color(0xFFEF4444);
-      default: return const Color(0xFF64748B);
+      case 'scheduled':
+        return const Color(0xFF3B82F6);
+      case 'pending':
+        return const Color(0xFFF59E0B); // Beklemede - sarı
+      case 'confirmed':
+        return const Color(0xFF3B82F6); // Onaylandı - mavi
+      case 'completed':
+        return const Color(0xFF10B981);
+      case 'cancelled':
+        return const Color(0xFFEF4444);
+      default:
+        return const Color(0xFF64748B);
     }
   }
 
   String _getStatusLabel(String? status) {
     switch (status) {
-      case 'scheduled': return 'Planlandı';
-      case 'pending': return 'Beklemede';
-      case 'confirmed': return 'Onaylandı';
-      case 'completed': return 'Tamamlandı';
-      case 'cancelled': return 'İptal';
-      default: return status ?? '';
+      case 'scheduled':
+        return 'Planlandı';
+      case 'pending':
+        return 'Beklemede';
+      case 'confirmed':
+        return 'Onaylandı';
+      case 'completed':
+        return 'Tamamlandı';
+      case 'cancelled':
+        return 'İptal';
+      default:
+        return status ?? '';
     }
   }
 
@@ -858,20 +1034,29 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                 child: TextField(
                   decoration: InputDecoration(
                     hintText: 'İlan ara...',
-                    prefixIcon: const Icon(Icons.search, color: Color(0xFF64748B)),
+                    prefixIcon: const Icon(
+                      Icons.search,
+                      color: Color(0xFF64748B),
+                    ),
                     filled: true,
                     fillColor: const Color(0xFFF1F5F9),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: BorderSide.none,
                     ),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                   ),
                 ),
               ),
               const SizedBox(width: 16),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF1F5F9),
                   borderRadius: BorderRadius.circular(8),
@@ -880,7 +1065,10 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                   children: [
                     Icon(Icons.filter_list, color: Color(0xFF64748B), size: 20),
                     SizedBox(width: 8),
-                    Text('Filtrele', style: TextStyle(color: Color(0xFF64748B))),
+                    Text(
+                      'Filtrele',
+                      style: TextStyle(color: Color(0xFF64748B)),
+                    ),
                   ],
                 ),
               ),
@@ -893,12 +1081,18 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
           child: userProperties.isLoading
               ? const Center(child: CircularProgressIndicator())
               : userProperties.allProperties.isEmpty
-                  ? _buildEmptyState('Henüz ilanınız yok', Icons.home_work_outlined, 'Yeni İlan Ekle', () => context.push('/add-property'))
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(24),
-                      itemCount: userProperties.allProperties.length,
-                      itemBuilder: (context, index) => _buildPropertyCard(userProperties.allProperties[index]),
-                    ),
+              ? _buildEmptyState(
+                  'Henüz ilanınız yok',
+                  Icons.home_work_outlined,
+                  'Yeni İlan Ekle',
+                  () => context.push('/add-property'),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(24),
+                  itemCount: userProperties.allProperties.length,
+                  itemBuilder: (context, index) =>
+                      _buildPropertyCard(userProperties.allProperties[index]),
+                ),
         ),
       ],
     );
@@ -927,11 +1121,14 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                         width: 100,
                         height: 80,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
+                        errorBuilder: (_, _, _) => Container(
                           width: 100,
                           height: 80,
                           color: const Color(0xFFF1F5F9),
-                          child: const Icon(Icons.home, color: Color(0xFF94A3B8)),
+                          child: const Icon(
+                            Icons.home,
+                            color: Color(0xFF94A3B8),
+                          ),
                         ),
                       )
                     : Container(
@@ -959,7 +1156,10 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                     const SizedBox(height: 4),
                     Text(
                       property.location.shortAddress,
-                      style: const TextStyle(color: Color(0xFF64748B), fontSize: 13),
+                      style: const TextStyle(
+                        color: Color(0xFF64748B),
+                        fontSize: 13,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Row(
@@ -974,11 +1174,16 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                         ),
                         const Spacer(),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
                             color: property.status == PropertyStatus.active
                                 ? const Color(0xFF10B981).withValues(alpha: 0.1)
-                                : const Color(0xFFF59E0B).withValues(alpha: 0.1),
+                                : const Color(
+                                    0xFFF59E0B,
+                                  ).withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -1021,7 +1226,11 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
             children: [
               const Text(
                 'Tüm Randevular',
-                style: TextStyle(color: Color(0xFF1E293B), fontSize: 16, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  color: Color(0xFF1E293B),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const Spacer(),
               ElevatedButton.icon(
@@ -1031,8 +1240,13 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF3B82F6),
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 14,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
               ),
             ],
@@ -1044,12 +1258,19 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
           child: appointmentsState.isLoading
               ? const Center(child: CircularProgressIndicator())
               : appointmentsState.appointments.isEmpty
-                  ? _buildEmptyState('Henüz randevunuz yok', Icons.calendar_today_outlined, 'Randevu Ekle', _showAddAppointmentDialog)
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(24),
-                      itemCount: appointmentsState.appointments.length,
-                      itemBuilder: (context, index) => _buildAppointmentCard(appointmentsState.appointments[index]),
-                    ),
+              ? _buildEmptyState(
+                  'Henüz randevunuz yok',
+                  Icons.calendar_today_outlined,
+                  'Randevu Ekle',
+                  _showAddAppointmentDialog,
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(24),
+                  itemCount: appointmentsState.appointments.length,
+                  itemBuilder: (context, index) => _buildAppointmentCard(
+                    appointmentsState.appointments[index],
+                  ),
+                ),
         ),
       ],
     );
@@ -1069,10 +1290,12 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
       timeStr = scheduledAt.toString().substring(11, 16);
     }
 
-    final appointmentType = appointment['appointment_type'] as String? ?? 'showing';
+    final appointmentType =
+        appointment['appointment_type'] as String? ?? 'showing';
     final property = appointment['properties'] as Map<String, dynamic>?;
     final requester = appointment['requester'] as Map<String, dynamic>?;
-    final title = property?['title'] ?? appointment['title'] ?? 'Randevu Talebi';
+    final title =
+        property?['title'] ?? appointment['title'] ?? 'Randevu Talebi';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1091,10 +1314,15 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: _getAppointmentTypeColor(appointmentType).withValues(alpha: 0.1),
+                  color: _getAppointmentTypeColor(
+                    appointmentType,
+                  ).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(_getAppointmentTypeIcon(appointmentType), color: _getAppointmentTypeColor(appointmentType)),
+                child: Icon(
+                  _getAppointmentTypeIcon(appointmentType),
+                  color: _getAppointmentTypeColor(appointmentType),
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -1103,7 +1331,11 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.w600, fontSize: 15),
+                      style: const TextStyle(
+                        color: Color(0xFF1E293B),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -1111,32 +1343,50 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                       const SizedBox(height: 2),
                       Text(
                         requester['full_name'] ?? 'Müşteri',
-                        style: const TextStyle(color: Color(0xFF64748B), fontSize: 13),
+                        style: const TextStyle(
+                          color: Color(0xFF64748B),
+                          fontSize: 13,
+                        ),
                       ),
                     ],
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        const Icon(Icons.calendar_today, size: 14, color: Color(0xFF64748B)),
+                        const Icon(
+                          Icons.calendar_today,
+                          size: 14,
+                          color: Color(0xFF64748B),
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           scheduledAt != null
                               ? '${scheduledAt.day}.${scheduledAt.month}.${scheduledAt.year}${timeStr != null ? ' ${timeStr.length >= 5 ? timeStr.substring(0, 5) : timeStr}' : ''}'
                               : '-',
-                          style: const TextStyle(color: Color(0xFF64748B), fontSize: 13),
+                          style: const TextStyle(
+                            color: Color(0xFF64748B),
+                            fontSize: 13,
+                          ),
                         ),
                       ],
                     ),
-                    if (property?['city'] != null || property?['district'] != null) ...[
+                    if (property?['city'] != null ||
+                        property?['district'] != null) ...[
                       const SizedBox(height: 2),
                       Row(
                         children: [
-                          const Icon(Icons.location_on, size: 14, color: Color(0xFF64748B)),
+                          const Icon(
+                            Icons.location_on,
+                            size: 14,
+                            color: Color(0xFF64748B),
+                          ),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
                               '${property?['district'] ?? ''}, ${property?['city'] ?? ''}',
-                              style: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
+                              style: const TextStyle(
+                                color: Color(0xFF64748B),
+                                fontSize: 12,
+                              ),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -1146,12 +1396,19 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                       const SizedBox(height: 2),
                       Row(
                         children: [
-                          const Icon(Icons.location_on, size: 14, color: Color(0xFF64748B)),
+                          const Icon(
+                            Icons.location_on,
+                            size: 14,
+                            color: Color(0xFF64748B),
+                          ),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
                               appointment['location'],
-                              style: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
+                              style: const TextStyle(
+                                color: Color(0xFF64748B),
+                                fontSize: 12,
+                              ),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -1165,9 +1422,14 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
-                      color: _getStatusColor(appointment['status']).withValues(alpha: 0.1),
+                      color: _getStatusColor(
+                        appointment['status'],
+                      ).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
@@ -1181,27 +1443,44 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                   ),
                   const SizedBox(height: 8),
                   PopupMenuButton(
-                    icon: const Icon(Icons.more_vert, color: Color(0xFF64748B), size: 20),
+                    icon: const Icon(
+                      Icons.more_vert,
+                      color: Color(0xFF64748B),
+                      size: 20,
+                    ),
                     onSelected: (value) async {
                       switch (value) {
                         case 'complete':
-                          await ref.read(realtorAppointmentsProvider.notifier).completeAppointment(
-                            appointment['id'],
-                            'Tamamlandı',
-                          );
+                          await ref
+                              .read(realtorAppointmentsProvider.notifier)
+                              .completeAppointment(
+                                appointment['id'],
+                                'Tamamlandı',
+                              );
                           break;
                         case 'cancel':
-                          await ref.read(realtorAppointmentsProvider.notifier).cancelAppointment(
-                            appointment['id'],
-                            'Kullanıcı tarafından iptal edildi',
-                          );
+                          await ref
+                              .read(realtorAppointmentsProvider.notifier)
+                              .cancelAppointment(
+                                appointment['id'],
+                                'Kullanıcı tarafından iptal edildi',
+                              );
                           break;
                       }
                     },
                     itemBuilder: (context) => [
                       if (appointment['status'] == 'scheduled') ...[
-                        const PopupMenuItem(value: 'complete', child: Text('Tamamlandı')),
-                        const PopupMenuItem(value: 'cancel', child: Text('İptal Et', style: TextStyle(color: Colors.red))),
+                        const PopupMenuItem(
+                          value: 'complete',
+                          child: Text('Tamamlandı'),
+                        ),
+                        const PopupMenuItem(
+                          value: 'cancel',
+                          child: Text(
+                            'İptal Et',
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        ),
                       ],
                     ],
                   ),
@@ -1281,12 +1560,17 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, size: 48, color: Color(0xFFEF4444)),
+              const Icon(
+                Icons.error_outline,
+                size: 48,
+                color: Color(0xFFEF4444),
+              ),
               const SizedBox(height: 16),
               Text('Veriler yüklenirken hata oluştu: $error'),
               const SizedBox(height: 16),
               ElevatedButton(
-                onPressed: () => ref.refresh(propertyPerformanceStatsProvider(days)),
+                onPressed: () =>
+                    ref.refresh(propertyPerformanceStatsProvider(days)),
                 child: const Text('Tekrar Dene'),
               ),
             ],
@@ -1294,9 +1578,11 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
         ),
       ),
       data: (data) {
-        final propertyStatsList = (data['properties'] as List<Map<String, dynamic>>?) ?? [];
+        final propertyStatsList =
+            (data['properties'] as List<Map<String, dynamic>>?) ?? [];
         final totals = (data['totals'] as Map<String, dynamic>?) ?? {};
-        final previousTotals = (data['previousTotals'] as Map<String, dynamic>?) ?? {};
+        final previousTotals =
+            (data['previousTotals'] as Map<String, dynamic>?) ?? {};
 
         // Toplam istatistikler
         final totalViews = (totals['views'] as int?) ?? 0;
@@ -1304,19 +1590,36 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
         final totalAppointments = (totals['appointments'] as int?) ?? 0;
         final prevTotalViews = (previousTotals['views'] as int?) ?? 0;
         final prevTotalFavorites = (previousTotals['favorites'] as int?) ?? 0;
-        final prevTotalAppointments = (previousTotals['appointments'] as int?) ?? 0;
+        final prevTotalAppointments =
+            (previousTotals['appointments'] as int?) ?? 0;
 
         // Değişim oranları hesapla
-        final viewsChange = prevTotalViews > 0 ? ((totalViews - prevTotalViews) / prevTotalViews * 100) : 0.0;
-        final favoritesChange = prevTotalFavorites > 0 ? ((totalFavorites - prevTotalFavorites) / prevTotalFavorites * 100) : 0.0;
-        final appointmentsChange = prevTotalAppointments > 0 ? ((totalAppointments - prevTotalAppointments) / prevTotalAppointments * 100) : 0.0;
-        final conversionRate = totalViews > 0 ? (totalAppointments / totalViews * 100) : 0.0;
-        final prevConversionRate = prevTotalViews > 0 ? (prevTotalAppointments / prevTotalViews * 100) : 0.0;
-        final conversionChange = prevConversionRate > 0 ? ((conversionRate - prevConversionRate) / prevConversionRate * 100) : 0.0;
+        final viewsChange = prevTotalViews > 0
+            ? ((totalViews - prevTotalViews) / prevTotalViews * 100)
+            : 0.0;
+        final favoritesChange = prevTotalFavorites > 0
+            ? ((totalFavorites - prevTotalFavorites) / prevTotalFavorites * 100)
+            : 0.0;
+        final appointmentsChange = prevTotalAppointments > 0
+            ? ((totalAppointments - prevTotalAppointments) /
+                  prevTotalAppointments *
+                  100)
+            : 0.0;
+        final conversionRate = totalViews > 0
+            ? (totalAppointments / totalViews * 100)
+            : 0.0;
+        final prevConversionRate = prevTotalViews > 0
+            ? (prevTotalAppointments / prevTotalViews * 100)
+            : 0.0;
+        final conversionChange = prevConversionRate > 0
+            ? ((conversionRate - prevConversionRate) / prevConversionRate * 100)
+            : 0.0;
 
         // En iyi 5 ve düşük performanslı ilanlar
         final topPropertyStats = propertyStatsList.take(5).toList();
-        final lowPerformingStats = propertyStatsList.where((p) => (p['views'] as int? ?? 0) < 10).toList();
+        final lowPerformingStats = propertyStatsList
+            .where((p) => (p['views'] as int? ?? 0) < 10)
+            .toList();
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -1362,7 +1665,9 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
               if (lowPerformingStats.isNotEmpty) ...[
                 _buildSectionTitle('⚠️ Dikkat Gerektiren İlanlar'),
                 const SizedBox(height: 16),
-                _buildLowPerformingPropertiesSectionFromStats(lowPerformingStats),
+                _buildLowPerformingPropertiesSectionFromStats(
+                  lowPerformingStats,
+                ),
                 const SizedBox(height: 32),
               ],
 
@@ -1401,7 +1706,10 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
           const SizedBox(width: 12),
           const Text(
             'Dönem:',
-            style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w500),
+            style: TextStyle(
+              color: Color(0xFF64748B),
+              fontWeight: FontWeight.w500,
+            ),
           ),
           const SizedBox(width: 16),
           ...List.generate(periods.length, (index) {
@@ -1487,7 +1795,13 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
     );
   }
 
-  Widget _buildStatCardWithChange(String title, String value, IconData icon, Color color, double change) {
+  Widget _buildStatCardWithChange(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+    double change,
+  ) {
     final isPositive = change >= 0;
     return Container(
       padding: const EdgeInsets.all(20),
@@ -1521,7 +1835,9 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: isPositive ? const Color(0xFF10B981).withValues(alpha: 0.1) : const Color(0xFFEF4444).withValues(alpha: 0.1),
+                  color: isPositive
+                      ? const Color(0xFF10B981).withValues(alpha: 0.1)
+                      : const Color(0xFFEF4444).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
@@ -1529,13 +1845,17 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                   children: [
                     Icon(
                       isPositive ? Icons.arrow_upward : Icons.arrow_downward,
-                      color: isPositive ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                      color: isPositive
+                          ? const Color(0xFF10B981)
+                          : const Color(0xFFEF4444),
                       size: 14,
                     ),
                     Text(
                       '${change.abs().toStringAsFixed(1)}%',
                       style: TextStyle(
-                        color: isPositive ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                        color: isPositive
+                            ? const Color(0xFF10B981)
+                            : const Color(0xFFEF4444),
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
@@ -1568,7 +1888,9 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
   }
 
   // İlan Bazlı Performans Tablosu (Stats verilerinden)
-  Widget _buildPropertyPerformanceTableFromStats(List<Map<String, dynamic>> propertyStatsList) {
+  Widget _buildPropertyPerformanceTableFromStats(
+    List<Map<String, dynamic>> propertyStatsList,
+  ) {
     if (propertyStatsList.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(40),
@@ -1603,13 +1925,78 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
             ),
             child: Row(
               children: [
-                const Expanded(flex: 3, child: Text('İlan', style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF64748B)))),
-                const Expanded(child: Text('Görüntülenme', style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF64748B)), textAlign: TextAlign.center)),
-                const Expanded(child: Text('Favori', style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF64748B)), textAlign: TextAlign.center)),
-                const Expanded(child: Text('Randevu', style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF64748B)), textAlign: TextAlign.center)),
-                const Expanded(child: Text('Dönüşüm', style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF64748B)), textAlign: TextAlign.center)),
-                const SizedBox(width: 80, child: Text('Trend', style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF64748B)), textAlign: TextAlign.center)),
-                const SizedBox(width: 90, child: Text('İşlem', style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF64748B)), textAlign: TextAlign.center)),
+                const Expanded(
+                  flex: 3,
+                  child: Text(
+                    'İlan',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF64748B),
+                    ),
+                  ),
+                ),
+                const Expanded(
+                  child: Text(
+                    'Görüntülenme',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF64748B),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                const Expanded(
+                  child: Text(
+                    'Favori',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF64748B),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                const Expanded(
+                  child: Text(
+                    'Randevu',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF64748B),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                const Expanded(
+                  child: Text(
+                    'Dönüşüm',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF64748B),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                const SizedBox(
+                  width: 80,
+                  child: Text(
+                    'Trend',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF64748B),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                const SizedBox(
+                  width: 90,
+                  child: Text(
+                    'İşlem',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF64748B),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
               ],
             ),
           ),
@@ -1621,16 +2008,32 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
             final appointments = propStats['appointments'] as int? ?? 0;
             final conversion = views > 0 ? (appointments / views * 100) : 0.0;
             final prevViews = propStats['previousViews'] as int? ?? 0;
-            final trend = prevViews > 0 ? ((views - prevViews) / prevViews * 100) : 0.0;
+            final trend = prevViews > 0
+                ? ((views - prevViews) / prevViews * 100)
+                : 0.0;
 
-            return _buildPropertyTableRowFromStats(propStats, views, favorites, appointments, conversion, trend);
+            return _buildPropertyTableRowFromStats(
+              propStats,
+              views,
+              favorites,
+              appointments,
+              conversion,
+              trend,
+            );
           }),
         ],
       ),
     );
   }
 
-  Widget _buildPropertyTableRowFromStats(Map<String, dynamic> propStats, int views, int favorites, int appointments, double conversion, double trend) {
+  Widget _buildPropertyTableRowFromStats(
+    Map<String, dynamic> propStats,
+    int views,
+    int favorites,
+    int appointments,
+    double conversion,
+    double trend,
+  ) {
     final propertyId = propStats['id'] as String? ?? '';
     final images = (propStats['images'] as List?)?.cast<String>() ?? [];
     final title = propStats['title'] as String? ?? '';
@@ -1657,18 +2060,24 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                           width: 48,
                           height: 48,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
+                          errorBuilder: (_, _, _) => Container(
                             width: 48,
                             height: 48,
                             color: const Color(0xFFE2E8F0),
-                            child: const Icon(Icons.home, color: Color(0xFF94A3B8)),
+                            child: const Icon(
+                              Icons.home,
+                              color: Color(0xFF94A3B8),
+                            ),
                           ),
                         )
                       : Container(
                           width: 48,
                           height: 48,
                           color: const Color(0xFFE2E8F0),
-                          child: const Icon(Icons.home, color: Color(0xFF94A3B8)),
+                          child: const Icon(
+                            Icons.home,
+                            color: Color(0xFF94A3B8),
+                          ),
                         ),
                 ),
                 const SizedBox(width: 12),
@@ -1678,13 +2087,19 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(fontWeight: FontWeight.w500, color: Color(0xFF1E293B)),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w500,
+                          color: Color(0xFF1E293B),
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
                         '$district, $city',
-                        style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF64748B),
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -1699,9 +2114,16 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.visibility, size: 14, color: Color(0xFF3B82F6)),
+                const Icon(
+                  Icons.visibility,
+                  size: 14,
+                  color: Color(0xFF3B82F6),
+                ),
                 const SizedBox(width: 4),
-                Text('$views', style: const TextStyle(fontWeight: FontWeight.w500)),
+                Text(
+                  '$views',
+                  style: const TextStyle(fontWeight: FontWeight.w500),
+                ),
               ],
             ),
           ),
@@ -1712,7 +2134,10 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
               children: [
                 const Icon(Icons.favorite, size: 14, color: Color(0xFFEF4444)),
                 const SizedBox(width: 4),
-                Text('$favorites', style: const TextStyle(fontWeight: FontWeight.w500)),
+                Text(
+                  '$favorites',
+                  style: const TextStyle(fontWeight: FontWeight.w500),
+                ),
               ],
             ),
           ),
@@ -1721,9 +2146,16 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.calendar_today, size: 14, color: Color(0xFF8B5CF6)),
+                const Icon(
+                  Icons.calendar_today,
+                  size: 14,
+                  color: Color(0xFF8B5CF6),
+                ),
                 const SizedBox(width: 4),
-                Text('$appointments', style: const TextStyle(fontWeight: FontWeight.w500)),
+                Text(
+                  '$appointments',
+                  style: const TextStyle(fontWeight: FontWeight.w500),
+                ),
               ],
             ),
           ),
@@ -1741,7 +2173,9 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: isPositiveTrend ? const Color(0xFF10B981).withValues(alpha: 0.1) : const Color(0xFFEF4444).withValues(alpha: 0.1),
+                color: isPositiveTrend
+                    ? const Color(0xFF10B981).withValues(alpha: 0.1)
+                    : const Color(0xFFEF4444).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
@@ -1751,7 +2185,9 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                   Icon(
                     isPositiveTrend ? Icons.trending_up : Icons.trending_down,
                     size: 14,
-                    color: isPositiveTrend ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                    color: isPositiveTrend
+                        ? const Color(0xFF10B981)
+                        : const Color(0xFFEF4444),
                   ),
                   const SizedBox(width: 2),
                   Text(
@@ -1759,7 +2195,9 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: isPositiveTrend ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                      color: isPositiveTrend
+                          ? const Color(0xFF10B981)
+                          : const Color(0xFFEF4444),
                     ),
                   ),
                 ],
@@ -1773,13 +2211,22 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
               child: TextButton(
                 onPressed: () => _showPromotionModal(propertyId, title),
                 style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   backgroundColor: const Color(0xFFF59E0B),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
+                  ),
                 ),
                 child: const Text(
                   'Öne Çıkar',
-                  style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w500),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ),
@@ -1790,7 +2237,10 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
   }
 
   // En İyi 5 İlan Bölümü
-  Widget _buildTopPropertiesSection(List<Property> topProperties, Map<String, Map<String, int>> propertyStats) {
+  Widget _buildTopPropertiesSection(
+    List<Property> topProperties,
+    Map<String, Map<String, int>> propertyStats,
+  ) {
     if (topProperties.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -1799,12 +2249,17 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [const Color(0xFF3B82F6).withValues(alpha: 0.05), const Color(0xFF8B5CF6).withValues(alpha: 0.05)],
+          colors: [
+            const Color(0xFF3B82F6).withValues(alpha: 0.05),
+            const Color(0xFF8B5CF6).withValues(alpha: 0.05),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF3B82F6).withValues(alpha: 0.2)),
+        border: Border.all(
+          color: const Color(0xFF3B82F6).withValues(alpha: 0.2),
+        ),
       ),
       child: Column(
         children: topProperties.asMap().entries.map((entry) {
@@ -1816,7 +2271,9 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
           final appointments = stats['appointments'] ?? 0;
 
           return Container(
-            margin: EdgeInsets.only(bottom: index < topProperties.length - 1 ? 12 : 0),
+            margin: EdgeInsets.only(
+              bottom: index < topProperties.length - 1 ? 12 : 0,
+            ),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: Colors.white,
@@ -1840,17 +2297,20 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                       colors: index == 0
                           ? [const Color(0xFFFFD700), const Color(0xFFFFA500)]
                           : index == 1
-                              ? [const Color(0xFFC0C0C0), const Color(0xFF808080)]
-                              : index == 2
-                                  ? [const Color(0xFFCD7F32), const Color(0xFF8B4513)]
-                                  : [const Color(0xFF3B82F6), const Color(0xFF3B82F6)],
+                          ? [const Color(0xFFC0C0C0), const Color(0xFF808080)]
+                          : index == 2
+                          ? [const Color(0xFFCD7F32), const Color(0xFF8B4513)]
+                          : [const Color(0xFF3B82F6), const Color(0xFF3B82F6)],
                     ),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Center(
                     child: Text(
                       '${index + 1}',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
@@ -1864,18 +2324,24 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                           width: 56,
                           height: 56,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
+                          errorBuilder: (_, _, _) => Container(
                             width: 56,
                             height: 56,
                             color: const Color(0xFFE2E8F0),
-                            child: const Icon(Icons.home, color: Color(0xFF94A3B8)),
+                            child: const Icon(
+                              Icons.home,
+                              color: Color(0xFF94A3B8),
+                            ),
                           ),
                         )
                       : Container(
                           width: 56,
                           height: 56,
                           color: const Color(0xFFE2E8F0),
-                          child: const Icon(Icons.home, color: Color(0xFF94A3B8)),
+                          child: const Icon(
+                            Icons.home,
+                            color: Color(0xFF94A3B8),
+                          ),
                         ),
                 ),
                 const SizedBox(width: 12),
@@ -1886,13 +2352,19 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                     children: [
                       Text(
                         property.title,
-                        style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1E293B),
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
                         '${property.location.district}, ${property.location.city}',
-                        style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF64748B),
+                        ),
                       ),
                     ],
                   ),
@@ -1900,11 +2372,23 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                 // İstatistikler
                 Row(
                   children: [
-                    _buildMiniStat(Icons.visibility, '$views', const Color(0xFF3B82F6)),
+                    _buildMiniStat(
+                      Icons.visibility,
+                      '$views',
+                      const Color(0xFF3B82F6),
+                    ),
                     const SizedBox(width: 12),
-                    _buildMiniStat(Icons.favorite, '$favorites', const Color(0xFFEF4444)),
+                    _buildMiniStat(
+                      Icons.favorite,
+                      '$favorites',
+                      const Color(0xFFEF4444),
+                    ),
                     const SizedBox(width: 12),
-                    _buildMiniStat(Icons.calendar_today, '$appointments', const Color(0xFF8B5CF6)),
+                    _buildMiniStat(
+                      Icons.calendar_today,
+                      '$appointments',
+                      const Color(0xFF8B5CF6),
+                    ),
                   ],
                 ),
               ],
@@ -1920,13 +2404,22 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
       children: [
         Icon(icon, size: 14, color: color),
         const SizedBox(width: 4),
-        Text(value, style: TextStyle(fontWeight: FontWeight.w600, color: color, fontSize: 12)),
+        Text(
+          value,
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: color,
+            fontSize: 12,
+          ),
+        ),
       ],
     );
   }
 
   // En İyi 5 İlan Bölümü (Stats verilerinden)
-  Widget _buildTopPropertiesSectionFromStats(List<Map<String, dynamic>> topPropertyStats) {
+  Widget _buildTopPropertiesSectionFromStats(
+    List<Map<String, dynamic>> topPropertyStats,
+  ) {
     if (topPropertyStats.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -1935,12 +2428,17 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [const Color(0xFF3B82F6).withValues(alpha: 0.05), const Color(0xFF8B5CF6).withValues(alpha: 0.05)],
+          colors: [
+            const Color(0xFF3B82F6).withValues(alpha: 0.05),
+            const Color(0xFF8B5CF6).withValues(alpha: 0.05),
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF3B82F6).withValues(alpha: 0.2)),
+        border: Border.all(
+          color: const Color(0xFF3B82F6).withValues(alpha: 0.2),
+        ),
       ),
       child: Column(
         children: topPropertyStats.asMap().entries.map((entry) {
@@ -1956,7 +2454,9 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
           final appointments = propStats['appointments'] as int? ?? 0;
 
           return Container(
-            margin: EdgeInsets.only(bottom: index < topPropertyStats.length - 1 ? 12 : 0),
+            margin: EdgeInsets.only(
+              bottom: index < topPropertyStats.length - 1 ? 12 : 0,
+            ),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: Colors.white,
@@ -1980,17 +2480,20 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                       colors: index == 0
                           ? [const Color(0xFFFFD700), const Color(0xFFFFA500)]
                           : index == 1
-                              ? [const Color(0xFFC0C0C0), const Color(0xFF808080)]
-                              : index == 2
-                                  ? [const Color(0xFFCD7F32), const Color(0xFF8B4513)]
-                                  : [const Color(0xFF3B82F6), const Color(0xFF3B82F6)],
+                          ? [const Color(0xFFC0C0C0), const Color(0xFF808080)]
+                          : index == 2
+                          ? [const Color(0xFFCD7F32), const Color(0xFF8B4513)]
+                          : [const Color(0xFF3B82F6), const Color(0xFF3B82F6)],
                     ),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Center(
                     child: Text(
                       '${index + 1}',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
@@ -2004,18 +2507,24 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                           width: 56,
                           height: 56,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
+                          errorBuilder: (_, _, _) => Container(
                             width: 56,
                             height: 56,
                             color: const Color(0xFFE2E8F0),
-                            child: const Icon(Icons.home, color: Color(0xFF94A3B8)),
+                            child: const Icon(
+                              Icons.home,
+                              color: Color(0xFF94A3B8),
+                            ),
                           ),
                         )
                       : Container(
                           width: 56,
                           height: 56,
                           color: const Color(0xFFE2E8F0),
-                          child: const Icon(Icons.home, color: Color(0xFF94A3B8)),
+                          child: const Icon(
+                            Icons.home,
+                            color: Color(0xFF94A3B8),
+                          ),
                         ),
                 ),
                 const SizedBox(width: 12),
@@ -2026,13 +2535,19 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                     children: [
                       Text(
                         title,
-                        style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1E293B),
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
                         '$district, $city',
-                        style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF64748B),
+                        ),
                       ),
                     ],
                   ),
@@ -2044,24 +2559,45 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        _buildMiniStat(Icons.visibility, '$views', const Color(0xFF3B82F6)),
+                        _buildMiniStat(
+                          Icons.visibility,
+                          '$views',
+                          const Color(0xFF3B82F6),
+                        ),
                         const SizedBox(width: 12),
-                        _buildMiniStat(Icons.favorite, '$favorites', const Color(0xFFEF4444)),
+                        _buildMiniStat(
+                          Icons.favorite,
+                          '$favorites',
+                          const Color(0xFFEF4444),
+                        ),
                         const SizedBox(width: 12),
-                        _buildMiniStat(Icons.calendar_today, '$appointments', const Color(0xFF8B5CF6)),
+                        _buildMiniStat(
+                          Icons.calendar_today,
+                          '$appointments',
+                          const Color(0xFF8B5CF6),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 8),
                     TextButton(
                       onPressed: () => _showPromotionModal(propertyId, title),
                       style: TextButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         backgroundColor: const Color(0xFFF59E0B),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(6),
+                        ),
                       ),
                       child: const Text(
                         'Öne Çıkar',
-                        style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w500),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                   ],
@@ -2075,7 +2611,9 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
   }
 
   // Düşük Performanslı İlanlar (Stats verilerinden)
-  Widget _buildLowPerformingPropertiesSectionFromStats(List<Map<String, dynamic>> lowPerformingStats) {
+  Widget _buildLowPerformingPropertiesSectionFromStats(
+    List<Map<String, dynamic>> lowPerformingStats,
+  ) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -2094,7 +2632,11 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                   color: const Color(0xFFF59E0B).withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.warning_amber_rounded, color: Color(0xFFF59E0B), size: 20),
+                child: const Icon(
+                  Icons.warning_amber_rounded,
+                  color: Color(0xFFF59E0B),
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 12),
               const Column(
@@ -2102,7 +2644,10 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                 children: [
                   Text(
                     'Düşük Performanslı İlanlar',
-                    style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF92400E)),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF92400E),
+                    ),
                   ),
                   Text(
                     'Bu ilanlar son dönemde az ilgi gördü',
@@ -2135,18 +2680,26 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                             width: 40,
                             height: 40,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
+                            errorBuilder: (_, _, _) => Container(
                               width: 40,
                               height: 40,
                               color: const Color(0xFFE2E8F0),
-                              child: const Icon(Icons.home, size: 20, color: Color(0xFF94A3B8)),
+                              child: const Icon(
+                                Icons.home,
+                                size: 20,
+                                color: Color(0xFF94A3B8),
+                              ),
                             ),
                           )
                         : Container(
                             width: 40,
                             height: 40,
                             color: const Color(0xFFE2E8F0),
-                            child: const Icon(Icons.home, size: 20, color: Color(0xFF94A3B8)),
+                            child: const Icon(
+                              Icons.home,
+                              size: 20,
+                              color: Color(0xFF94A3B8),
+                            ),
                           ),
                   ),
                   const SizedBox(width: 12),
@@ -2156,13 +2709,19 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                       children: [
                         Text(
                           title,
-                          style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 13,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
                           'Sadece $views görüntülenme',
-                          style: const TextStyle(fontSize: 11, color: Color(0xFFB45309)),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFFB45309),
+                          ),
                         ),
                       ],
                     ),
@@ -2170,13 +2729,22 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                   TextButton(
                     onPressed: () => _showPromotionModal(propertyId, title),
                     style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       backgroundColor: const Color(0xFFF59E0B),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
+                      ),
                     ),
                     child: const Text(
                       'Öne Çıkar',
-                      style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ],
@@ -2189,9 +2757,15 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
   }
 
   // Grafik Alanı (Stats verilerinden)
-  Widget _buildViewsGraphSectionFromStats(List<Map<String, dynamic>> propertyStatsList) {
+  Widget _buildViewsGraphSectionFromStats(
+    List<Map<String, dynamic>> propertyStatsList,
+  ) {
     // Seçili ilan yoksa ilk ilanı seç
-    final selectedId = _selectedPropertyForGraph ?? (propertyStatsList.isNotEmpty ? propertyStatsList.first['id'] as String? : null);
+    final selectedId =
+        _selectedPropertyForGraph ??
+        (propertyStatsList.isNotEmpty
+            ? propertyStatsList.first['id'] as String?
+            : null);
 
     if (propertyStatsList.isEmpty || selectedId == null) {
       return Container(
@@ -2219,7 +2793,9 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
     final title = selectedPropStats['title'] as String? ?? '';
     final district = selectedPropStats['district'] as String? ?? '';
     final city = selectedPropStats['city'] as String? ?? '';
-    final dailyViews = (selectedPropStats['dailyViews'] as List?)?.cast<int>() ?? List.filled(7, 0);
+    final dailyViews =
+        (selectedPropStats['dailyViews'] as List?)?.cast<int>() ??
+        List.filled(7, 0);
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -2234,7 +2810,13 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
           // İlan Seçici
           Row(
             children: [
-              const Text('İlan:', style: TextStyle(fontWeight: FontWeight.w500, color: Color(0xFF64748B))),
+              const Text(
+                'İlan:',
+                style: TextStyle(
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF64748B),
+                ),
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Container(
@@ -2279,11 +2861,14 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                         width: 60,
                         height: 60,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
+                        errorBuilder: (_, _, _) => Container(
                           width: 60,
                           height: 60,
                           color: const Color(0xFFE2E8F0),
-                          child: const Icon(Icons.home, color: Color(0xFF94A3B8)),
+                          child: const Icon(
+                            Icons.home,
+                            color: Color(0xFF94A3B8),
+                          ),
                         ),
                       )
                     : Container(
@@ -2300,13 +2885,20 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: Color(0xFF1E293B)),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                        color: Color(0xFF1E293B),
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
                       '$district, $city',
-                      style: const TextStyle(color: Color(0xFF64748B), fontSize: 13),
+                      style: const TextStyle(
+                        color: Color(0xFF64748B),
+                        fontSize: 13,
+                      ),
                     ),
                   ],
                 ),
@@ -2317,7 +2909,11 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
           // Mini Grafik (Bar Chart)
           const Text(
             'Son 7 Günlük Görüntülenme',
-            style: TextStyle(fontWeight: FontWeight.w500, color: Color(0xFF64748B), fontSize: 13),
+            style: TextStyle(
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF64748B),
+              fontSize: 13,
+            ),
           ),
           const SizedBox(height: 12),
           SizedBox(
@@ -2327,7 +2923,9 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: List.generate(7, (index) {
                 final value = dailyViews.length > index ? dailyViews[index] : 0;
-                final maxValue = dailyViews.isNotEmpty ? dailyViews.reduce((a, b) => a > b ? a : b) : 1;
+                final maxValue = dailyViews.isNotEmpty
+                    ? dailyViews.reduce((a, b) => a > b ? a : b)
+                    : 1;
                 final heightPercent = maxValue > 0 ? value / maxValue : 0.0;
                 final days = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 
@@ -2336,7 +2934,10 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                   children: [
                     Text(
                       '$value',
-                      style: const TextStyle(fontSize: 10, color: Color(0xFF64748B)),
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: Color(0xFF64748B),
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Container(
@@ -2354,7 +2955,10 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                     const SizedBox(height: 4),
                     Text(
                       days[index],
-                      style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF64748B),
+                      ),
                     ),
                   ],
                 );
@@ -2367,7 +2971,10 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
   }
 
   // Düşük Performanslı İlanlar (Eski - Property listesi ile)
-  Widget _buildLowPerformingPropertiesSection(List<Property> lowPerformingProperties, Map<String, Map<String, int>> propertyStats) {
+  Widget _buildLowPerformingPropertiesSection(
+    List<Property> lowPerformingProperties,
+    Map<String, Map<String, int>> propertyStats,
+  ) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -2386,7 +2993,11 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                   color: const Color(0xFFF59E0B).withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.warning_amber_rounded, color: Color(0xFFF59E0B), size: 20),
+                child: const Icon(
+                  Icons.warning_amber_rounded,
+                  color: Color(0xFFF59E0B),
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 12),
               const Column(
@@ -2394,7 +3005,10 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                 children: [
                   Text(
                     'Düşük Performanslı İlanlar',
-                    style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF92400E)),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF92400E),
+                    ),
                   ),
                   Text(
                     'Bu ilanlar son dönemde az ilgi gördü',
@@ -2425,18 +3039,26 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                             width: 40,
                             height: 40,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
+                            errorBuilder: (_, _, _) => Container(
                               width: 40,
                               height: 40,
                               color: const Color(0xFFE2E8F0),
-                              child: const Icon(Icons.home, size: 20, color: Color(0xFF94A3B8)),
+                              child: const Icon(
+                                Icons.home,
+                                size: 20,
+                                color: Color(0xFF94A3B8),
+                              ),
                             ),
                           )
                         : Container(
                             width: 40,
                             height: 40,
                             color: const Color(0xFFE2E8F0),
-                            child: const Icon(Icons.home, size: 20, color: Color(0xFF94A3B8)),
+                            child: const Icon(
+                              Icons.home,
+                              size: 20,
+                              color: Color(0xFF94A3B8),
+                            ),
                           ),
                   ),
                   const SizedBox(width: 12),
@@ -2446,27 +3068,43 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                       children: [
                         Text(
                           property.title,
-                          style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w500,
+                            fontSize: 13,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
                         Text(
                           'Sadece $views görüntülenme',
-                          style: const TextStyle(fontSize: 11, color: Color(0xFFB45309)),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Color(0xFFB45309),
+                          ),
                         ),
                       ],
                     ),
                   ),
                   TextButton(
-                    onPressed: () => _showPromotionModal(property.id, property.title),
+                    onPressed: () =>
+                        _showPromotionModal(property.id, property.title),
                     style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       backgroundColor: const Color(0xFFF59E0B),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
+                      ),
                     ),
                     child: const Text(
                       'Öne Çıkar',
-                      style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ],
@@ -2481,7 +3119,9 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
   // Grafik Alanı
   Widget _buildViewsGraphSection(List<Property> properties) {
     // Seçili ilan yoksa ilk ilanı seç
-    final selectedId = _selectedPropertyForGraph ?? (properties.isNotEmpty ? properties.first.id : null);
+    final selectedId =
+        _selectedPropertyForGraph ??
+        (properties.isNotEmpty ? properties.first.id : null);
 
     if (properties.isEmpty || selectedId == null) {
       return Container(
@@ -2524,7 +3164,13 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
           // İlan Seçici
           Row(
             children: [
-              const Text('İlan:', style: TextStyle(fontWeight: FontWeight.w500, color: Color(0xFF64748B))),
+              const Text(
+                'İlan:',
+                style: TextStyle(
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF64748B),
+                ),
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Container(
@@ -2569,11 +3215,14 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                         width: 60,
                         height: 60,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
+                        errorBuilder: (_, _, _) => Container(
                           width: 60,
                           height: 60,
                           color: const Color(0xFFE2E8F0),
-                          child: const Icon(Icons.home, color: Color(0xFF94A3B8)),
+                          child: const Icon(
+                            Icons.home,
+                            color: Color(0xFF94A3B8),
+                          ),
                         ),
                       )
                     : Container(
@@ -2590,13 +3239,20 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                   children: [
                     Text(
                       selectedProperty.title,
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: Color(0xFF1E293B)),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                        color: Color(0xFF1E293B),
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
                       '${selectedProperty.location.district}, ${selectedProperty.location.city}',
-                      style: const TextStyle(color: Color(0xFF64748B), fontSize: 13),
+                      style: const TextStyle(
+                        color: Color(0xFF64748B),
+                        fontSize: 13,
+                      ),
                     ),
                   ],
                 ),
@@ -2607,7 +3263,11 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
           // Mini Grafik (Bar Chart simülasyonu)
           const Text(
             'Son 7 Günlük Görüntülenme',
-            style: TextStyle(fontWeight: FontWeight.w500, color: Color(0xFF64748B), fontSize: 13),
+            style: TextStyle(
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF64748B),
+              fontSize: 13,
+            ),
           ),
           const SizedBox(height: 12),
           SizedBox(
@@ -2626,7 +3286,10 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                   children: [
                     Text(
                       '$value',
-                      style: const TextStyle(fontSize: 10, color: Color(0xFF64748B)),
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: Color(0xFF64748B),
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Container(
@@ -2644,7 +3307,10 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                     const SizedBox(height: 4),
                     Text(
                       days[index],
-                      style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Color(0xFF64748B),
+                      ),
                     ),
                   ],
                 );
@@ -2680,18 +3346,12 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                 const SizedBox(height: 12),
                 const Text(
                   'Aktif promosyonunuz bulunmuyor',
-                  style: TextStyle(
-                    color: Color(0xFF64748B),
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: Color(0xFF64748B), fontSize: 14),
                 ),
                 const SizedBox(height: 8),
                 const Text(
                   'İlanlarınızı öne çıkararak daha fazla görüntülenme alabilirsiniz',
-                  style: TextStyle(
-                    color: Color(0xFF94A3B8),
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -2702,7 +3362,8 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
         return Column(
           children: promotions.map((promo) {
             final propertyTitle = promo['property_title'] as String? ?? 'İlan';
-            final promotionType = promo['promotion_type'] as String? ?? 'featured';
+            final promotionType =
+                promo['promotion_type'] as String? ?? 'featured';
             final startDate = promo['start_date'] != null
                 ? DateTime.parse(promo['start_date'])
                 : DateTime.now();
@@ -2714,14 +3375,18 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
             final remainingHours = endDate.difference(now).inHours % 24;
             final totalDays = endDate.difference(startDate).inDays;
             final elapsedDays = now.difference(startDate).inDays;
-            final progress = totalDays > 0 ? (elapsedDays / totalDays).clamp(0.0, 1.0) : 0.0;
+            final progress = totalDays > 0
+                ? (elapsedDays / totalDays).clamp(0.0, 1.0)
+                : 0.0;
 
             final isPremium = promotionType == 'premium';
-            final propertyImages = (promo['property_images'] as List?)?.cast<String>() ?? [];
+            final propertyImages =
+                (promo['property_images'] as List?)?.cast<String>() ?? [];
             final viewsBefore = promo['views_before'] as int? ?? 0;
             final viewsDuring = promo['views_during'] as int? ?? 0;
             final viewsIncrease = viewsBefore > 0
-                ? ((viewsDuring - viewsBefore) / viewsBefore * 100).toStringAsFixed(0)
+                ? ((viewsDuring - viewsBefore) / viewsBefore * 100)
+                      .toStringAsFixed(0)
                 : '0';
 
             return Container(
@@ -2736,12 +3401,18 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                 ),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: isPremium ? const Color(0xFFFCD34D) : const Color(0xFF7DD3FC),
+                  color: isPremium
+                      ? const Color(0xFFFCD34D)
+                      : const Color(0xFF7DD3FC),
                   width: 2,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: (isPremium ? const Color(0xFFF59E0B) : const Color(0xFF0EA5E9)).withValues(alpha: 0.1),
+                    color:
+                        (isPremium
+                                ? const Color(0xFFF59E0B)
+                                : const Color(0xFF0EA5E9))
+                            .withValues(alpha: 0.1),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -2767,14 +3438,20 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                                     width: 64,
                                     height: 64,
                                     color: const Color(0xFFE2E8F0),
-                                    child: const Icon(Icons.home, color: Color(0xFF94A3B8)),
+                                    child: const Icon(
+                                      Icons.home,
+                                      color: Color(0xFF94A3B8),
+                                    ),
                                   ),
                                 )
                               : Container(
                                   width: 64,
                                   height: 64,
                                   color: const Color(0xFFE2E8F0),
-                                  child: const Icon(Icons.home, color: Color(0xFF94A3B8)),
+                                  child: const Icon(
+                                    Icons.home,
+                                    color: Color(0xFF94A3B8),
+                                  ),
                                 ),
                         ),
                         const SizedBox(width: 12),
@@ -2786,12 +3463,21 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                               Row(
                                 children: [
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
                                     decoration: BoxDecoration(
                                       gradient: LinearGradient(
                                         colors: isPremium
-                                            ? [const Color(0xFFFFD700), const Color(0xFFFFA500)]
-                                            : [const Color(0xFF3B82F6), const Color(0xFF0EA5E9)],
+                                            ? [
+                                                const Color(0xFFFFD700),
+                                                const Color(0xFFFFA500),
+                                              ]
+                                            : [
+                                                const Color(0xFF3B82F6),
+                                                const Color(0xFF0EA5E9),
+                                              ],
                                       ),
                                       borderRadius: BorderRadius.circular(6),
                                     ),
@@ -2799,7 +3485,9 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         Icon(
-                                          isPremium ? Icons.workspace_premium : Icons.star,
+                                          isPremium
+                                              ? Icons.workspace_premium
+                                              : Icons.star,
                                           size: 12,
                                           color: Colors.white,
                                         ),
@@ -2847,11 +3535,15 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                           child: Column(
                             children: [
                               Text(
-                                remainingDays > 0 ? '$remainingDays' : '$remainingHours',
+                                remainingDays > 0
+                                    ? '$remainingDays'
+                                    : '$remainingHours',
                                 style: TextStyle(
                                   fontSize: 24,
                                   fontWeight: FontWeight.bold,
-                                  color: remainingDays <= 2 ? const Color(0xFFEF4444) : const Color(0xFF1E293B),
+                                  color: remainingDays <= 2
+                                      ? const Color(0xFFEF4444)
+                                      : const Color(0xFF1E293B),
                                 ),
                               ),
                               Text(
@@ -2900,7 +3592,9 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                             minHeight: 6,
                             backgroundColor: Colors.white,
                             valueColor: AlwaysStoppedAnimation<Color>(
-                              isPremium ? const Color(0xFFF59E0B) : const Color(0xFF3B82F6),
+                              isPremium
+                                  ? const Color(0xFFF59E0B)
+                                  : const Color(0xFF3B82F6),
                             ),
                           ),
                         ),
@@ -2945,7 +3639,9 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                           'Artış',
                           '%$viewsIncrease',
                           Icons.arrow_upward,
-                          int.parse(viewsIncrease) > 0 ? const Color(0xFF10B981) : const Color(0xFF64748B),
+                          int.parse(viewsIncrease) > 0
+                              ? const Color(0xFF10B981)
+                              : const Color(0xFF64748B),
                         ),
                       ],
                     ),
@@ -2977,7 +3673,12 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
     );
   }
 
-  Widget _buildPromoStatItem(String label, String value, IconData icon, Color color) {
+  Widget _buildPromoStatItem(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Column(
       children: [
         Icon(icon, size: 18, color: color),
@@ -2992,10 +3693,7 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
         ),
         Text(
           label,
-          style: const TextStyle(
-            fontSize: 10,
-            color: Color(0xFF94A3B8),
-          ),
+          style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
         ),
       ],
     );
@@ -3011,6 +3709,7 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
       ),
     );
   }
+
   Widget _buildProfileContent() {
     final realtorProfile = ref.watch(realtorProfileProvider);
     final profile = realtorProfile.valueOrNull;
@@ -3035,7 +3734,11 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                 CircleAvatar(
                   radius: 40,
                   backgroundColor: Colors.white.withValues(alpha: 0.2),
-                  child: const Icon(Icons.person, size: 40, color: Colors.white),
+                  child: const Icon(
+                    Icons.person,
+                    size: 40,
+                    color: Colors.white,
+                  ),
                 ),
                 const SizedBox(width: 24),
                 Expanded(
@@ -3044,17 +3747,27 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                     children: [
                       Text(
                         profile?['company_name'] ?? 'Emlakçı',
-                        style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         profile?['email'] ?? '',
-                        style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14),
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.8),
+                          fontSize: 14,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         profile?['city'] ?? '',
-                        style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14),
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.8),
+                          fontSize: 14,
+                        ),
                       ),
                     ],
                   ),
@@ -3077,14 +3790,22 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
               children: [
                 const Text(
                   'Profil Bilgileri',
-                  style: TextStyle(color: Color(0xFF1E293B), fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: Color(0xFF1E293B),
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 24),
                 _buildProfileItem('Telefon', profile?['phone'] ?? '-'),
-                _buildProfileItem('Lisans No', profile?['license_number'] ?? '-'),
+                _buildProfileItem(
+                  'Lisans No',
+                  profile?['license_number'] ?? '-',
+                ),
                 _buildProfileItem('Şehir', profile?['city'] ?? '-'),
                 _buildProfileItem('Durum', _getStatusText(profile?['status'])),
-                if (profile?['description'] != null && profile!['description'].toString().isNotEmpty)
+                if (profile?['description'] != null &&
+                    profile!['description'].toString().isNotEmpty)
                   _buildProfileItem('Hakkımda', profile['description']),
               ],
             ),
@@ -3105,7 +3826,11 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
               children: [
                 const Text(
                   'İstatistikler',
-                  style: TextStyle(color: Color(0xFF1E293B), fontSize: 18, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: Color(0xFF1E293B),
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 24),
                 Center(
@@ -3139,7 +3864,12 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
     }
   }
 
-  Widget _buildProfileStatItem(IconData icon, String value, String label, Color color) {
+  Widget _buildProfileStatItem(
+    IconData icon,
+    String value,
+    String label,
+    Color color,
+  ) {
     return Column(
       children: [
         Container(
@@ -3174,10 +3904,19 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
         children: [
           SizedBox(
             width: 120,
-            child: Text(label, style: const TextStyle(color: Color(0xFF64748B))),
+            child: Text(
+              label,
+              style: const TextStyle(color: Color(0xFF64748B)),
+            ),
           ),
           Expanded(
-            child: Text(value, style: const TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.w500)),
+            child: Text(
+              value,
+              style: const TextStyle(
+                color: Color(0xFF1E293B),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
         ],
       ),
@@ -3191,101 +3930,84 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Hesap Ayarları
-          _buildSettingsSection(
-            'Hesap Ayarları',
-            [
-              _buildSettingsTile(
-                Icons.lock_outline,
-                'Şifre Değiştir',
-                'Hesap şifrenizi değiştirin',
-                _showChangePasswordDialog,
-              ),
-              _buildSettingsTile(
-                Icons.email_outlined,
-                'E-posta Ayarları',
-                'Bildirim e-postalarını yönetin',
-                () {},
-              ),
-            ],
-          ),
+          _buildSettingsSection('Hesap Ayarları', [
+            _buildSettingsTile(
+              Icons.lock_outline,
+              'Şifre Değiştir',
+              'Hesap şifrenizi değiştirin',
+              _showChangePasswordDialog,
+            ),
+            _buildSettingsTile(
+              Icons.email_outlined,
+              'E-posta Ayarları',
+              'Bildirim e-postalarını yönetin',
+              () {},
+            ),
+          ]),
 
           const SizedBox(height: 24),
 
           // Bildirim Ayarları
-          _buildSettingsSection(
-            'Bildirimler',
-            [
-              _buildSettingsSwitch(
-                Icons.notifications_outlined,
-                'Push Bildirimleri',
-                'Yeni mesaj ve randevu bildirimleri',
-                true,
-                (value) {},
-              ),
-              _buildSettingsSwitch(
-                Icons.email_outlined,
-                'E-posta Bildirimleri',
-                'Haftalık özet ve güncellemeler',
-                true,
-                (value) {},
-              ),
-              _buildSettingsSwitch(
-                Icons.sms_outlined,
-                'SMS Bildirimleri',
-                'Önemli bildirimler için SMS',
-                false,
-                (value) {},
-              ),
-            ],
-          ),
+          _buildSettingsSection('Bildirimler', [
+            _buildSettingsSwitch(
+              Icons.notifications_outlined,
+              'Push Bildirimleri',
+              'Yeni mesaj ve randevu bildirimleri',
+              true,
+              (value) {},
+            ),
+            _buildSettingsSwitch(
+              Icons.email_outlined,
+              'E-posta Bildirimleri',
+              'Haftalık özet ve güncellemeler',
+              true,
+              (value) {},
+            ),
+            _buildSettingsSwitch(
+              Icons.sms_outlined,
+              'SMS Bildirimleri',
+              'Önemli bildirimler için SMS',
+              false,
+              (value) {},
+            ),
+          ]),
 
           const SizedBox(height: 24),
 
           // Uygulama Ayarları
-          _buildSettingsSection(
-            'Uygulama',
-            [
-              _buildSettingsTile(
-                Icons.language,
-                'Dil',
-                'Türkçe',
-                () {},
-              ),
-              _buildSettingsTile(
-                Icons.dark_mode_outlined,
-                'Tema',
-                'Sistem ayarına göre',
-                () {},
-              ),
-            ],
-          ),
+          _buildSettingsSection('Uygulama', [
+            _buildSettingsTile(Icons.language, 'Dil', 'Türkçe', () {}),
+            _buildSettingsTile(
+              Icons.dark_mode_outlined,
+              'Tema',
+              'Sistem ayarına göre',
+              () {},
+            ),
+          ]),
 
           const SizedBox(height: 24),
 
           // Destek
-          _buildSettingsSection(
-            'Destek',
-            [
-              _buildSettingsTile(
-                Icons.help_outline,
-                'Yardım Merkezi',
-                'Sık sorulan sorular ve rehberler',
-                () {},
-              ),
-              _buildSettingsTile(
-                Icons.chat_outlined,
-                'Destek Talebi',
-                'Bizimle iletişime geçin',
-                () {},
-              ),
-              _buildSettingsTile(
-                Icons.info_outline,
-                'Hakkında',
-                'Uygulama bilgileri ve sürüm',
-                _showAboutDialog,
-              ),
-            ],
-          ),
+          _buildSettingsSection('Destek', [
+            _buildSettingsTile(
+              Icons.help_outline,
+              'Yardım Merkezi',
+              'Sık sorulan sorular ve rehberler',
+              () {},
+            ),
+            _buildSettingsTile(
+              Icons.chat_outlined,
+              'Destek Talebi',
+              'Bizimle iletişime geçin',
+              () {},
+            ),
+            _buildSettingsTile(
+              Icons.info_outline,
+              'Hakkında',
+              'Uygulama bilgileri ve sürüm',
+              _showAboutDialog,
+            ),
+          ]),
 
           const SizedBox(height: 24),
 
@@ -3314,7 +4036,11 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                     SizedBox(width: 8),
                     Text(
                       'Çıkış Yap',
-                      style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600, fontSize: 16),
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
                     ),
                   ],
                 ),
@@ -3354,7 +4080,12 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
     );
   }
 
-  Widget _buildSettingsTile(IconData icon, String title, String subtitle, VoidCallback onTap) {
+  Widget _buildSettingsTile(
+    IconData icon,
+    String title,
+    String subtitle,
+    VoidCallback onTap,
+  ) {
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -3376,11 +4107,17 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.w500),
+                    style: const TextStyle(
+                      color: Color(0xFF1E293B),
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                   Text(
                     subtitle,
-                    style: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
+                    style: const TextStyle(
+                      color: Color(0xFF64748B),
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ),
@@ -3392,7 +4129,13 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
     );
   }
 
-  Widget _buildSettingsSwitch(IconData icon, String title, String subtitle, bool value, Function(bool) onChanged) {
+  Widget _buildSettingsSwitch(
+    IconData icon,
+    String title,
+    String subtitle,
+    bool value,
+    Function(bool) onChanged,
+  ) {
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Row(
@@ -3412,11 +4155,17 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.w500),
+                  style: const TextStyle(
+                    color: Color(0xFF1E293B),
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
                 Text(
                   subtitle,
-                  style: const TextStyle(color: Color(0xFF64748B), fontSize: 12),
+                  style: const TextStyle(
+                    color: Color(0xFF64748B),
+                    fontSize: 12,
+                  ),
                 ),
               ],
             ),
@@ -3447,7 +4196,10 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
             children: [
               TextField(
                 controller: currentPasswordController,
-                decoration: _dialogInputDecoration('Mevcut Şifre', Icons.lock_outline),
+                decoration: _dialogInputDecoration(
+                  'Mevcut Şifre',
+                  Icons.lock_outline,
+                ),
                 obscureText: true,
               ),
               const SizedBox(height: 16),
@@ -3459,7 +4211,10 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
               const SizedBox(height: 16),
               TextField(
                 controller: confirmPasswordController,
-                decoration: _dialogInputDecoration('Yeni Şifre (Tekrar)', Icons.lock),
+                decoration: _dialogInputDecoration(
+                  'Yeni Şifre (Tekrar)',
+                  Icons.lock,
+                ),
                 obscureText: true,
               ),
             ],
@@ -3472,7 +4227,8 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              if (newPasswordController.text != confirmPasswordController.text) {
+              if (newPasswordController.text !=
+                  confirmPasswordController.text) {
                 ScaffoldMessenger.of(dialogContext).showSnackBar(
                   const SnackBar(content: Text('Şifreler eşleşmiyor')),
                 );
@@ -3480,7 +4236,9 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
               }
               if (newPasswordController.text.length < 6) {
                 ScaffoldMessenger.of(dialogContext).showSnackBar(
-                  const SnackBar(content: Text('Şifre en az 6 karakter olmalıdır')),
+                  const SnackBar(
+                    content: Text('Şifre en az 6 karakter olmalıdır'),
+                  ),
                 );
                 return;
               }
@@ -3497,15 +4255,18 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                     ),
                   );
                 }
-              } catch (e) {
+              } catch (e, st) {
+                LogService.error('Failed to change password', error: e, stackTrace: st, source: 'RealtorPanelScreen:changePassword');
                 if (mounted) {
-                  ScaffoldMessenger.of(dialogContext).showSnackBar(
-                    SnackBar(content: Text('Hata: $e')),
-                  );
+                  ScaffoldMessenger.of(
+                    dialogContext,
+                  ).showSnackBar(SnackBar(content: Text('Hata: $e')));
                 }
               }
             },
-            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3B82F6)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF3B82F6),
+            ),
             child: const Text('Değiştir'),
           ),
         ],
@@ -3548,14 +4309,22 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
     );
   }
 
-  Widget _buildEmptyState(String message, IconData icon, String buttonText, VoidCallback onPressed) {
+  Widget _buildEmptyState(
+    String message,
+    IconData icon,
+    String buttonText,
+    VoidCallback onPressed,
+  ) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(icon, size: 64, color: Colors.grey.shade300),
           const SizedBox(height: 16),
-          Text(message, style: const TextStyle(color: Color(0xFF64748B), fontSize: 16)),
+          Text(
+            message,
+            style: const TextStyle(color: Color(0xFF64748B), fontSize: 16),
+          ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
             onPressed: onPressed,
@@ -3565,7 +4334,9 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
               backgroundColor: const Color(0xFF3B82F6),
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
           ),
         ],
@@ -3607,9 +4378,13 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
         title: Row(
           children: [
             Icon(
-              status == 'pending' ? Icons.pending_actions :
-              status == 'confirmed' ? Icons.check_circle :
-              status == 'completed' ? Icons.task_alt : Icons.cancel,
+              status == 'pending'
+                  ? Icons.pending_actions
+                  : status == 'confirmed'
+                  ? Icons.check_circle
+                  : status == 'completed'
+                  ? Icons.task_alt
+                  : Icons.cancel,
               color: _getStatusColor(status),
             ),
             const SizedBox(width: 12),
@@ -3630,7 +4405,10 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
               children: [
                 // Durum
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: _getStatusColor(status).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
@@ -3648,38 +4426,67 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
 
                 // İlan Bilgisi
                 if (property != null) ...[
-                  const Text('İlan', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF64748B), fontSize: 12)),
+                  const Text(
+                    'İlan',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF64748B),
+                      fontSize: 12,
+                    ),
+                  ),
                   const SizedBox(height: 4),
                   Text(
                     property['title'] ?? '-',
-                    style: const TextStyle(color: Color(0xFF1E293B), fontSize: 16, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                      color: Color(0xFF1E293B),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   if (property['city'] != null || property['district'] != null)
                     Text(
                       '${property['district'] ?? ''}, ${property['city'] ?? ''}',
-                      style: const TextStyle(color: Color(0xFF64748B), fontSize: 14),
+                      style: const TextStyle(
+                        color: Color(0xFF64748B),
+                        fontSize: 14,
+                      ),
                     ),
                   const SizedBox(height: 16),
                 ],
 
                 // Müşteri Bilgisi
                 if (requester != null) ...[
-                  const Text('Müşteri', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF64748B), fontSize: 12)),
+                  const Text(
+                    'Müşteri',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF64748B),
+                      fontSize: 12,
+                    ),
+                  ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
                       CircleAvatar(
                         radius: 20,
-                        backgroundColor: const Color(0xFF3B82F6).withValues(alpha: 0.1),
+                        backgroundColor: const Color(
+                          0xFF3B82F6,
+                        ).withValues(alpha: 0.1),
                         backgroundImage: requester['avatar_url'] != null
                             ? NetworkImage(requester['avatar_url'])
                             : null,
                         child: requester['avatar_url'] == null
                             ? Text(
-                                (requester['full_name'] as String?)?.isNotEmpty == true
-                                    ? (requester['full_name'] as String)[0].toUpperCase()
+                                (requester['full_name'] as String?)
+                                            ?.isNotEmpty ==
+                                        true
+                                    ? (requester['full_name'] as String)[0]
+                                          .toUpperCase()
                                     : 'M',
-                                style: const TextStyle(color: Color(0xFF3B82F6), fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                  color: Color(0xFF3B82F6),
+                                  fontWeight: FontWeight.bold,
+                                ),
                               )
                             : null,
                       ),
@@ -3690,12 +4497,18 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                           children: [
                             Text(
                               requester['full_name'] ?? 'Müşteri',
-                              style: const TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.w600),
+                              style: const TextStyle(
+                                color: Color(0xFF1E293B),
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                             if (requester['phone'] != null)
                               Text(
                                 requester['phone'],
-                                style: const TextStyle(color: Color(0xFF64748B), fontSize: 13),
+                                style: const TextStyle(
+                                  color: Color(0xFF64748B),
+                                  fontSize: 13,
+                                ),
                               ),
                           ],
                         ),
@@ -3706,15 +4519,30 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                 ],
 
                 // Tarih ve Saat
-                const Text('Tarih ve Saat', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF64748B), fontSize: 12)),
+                const Text(
+                  'Tarih ve Saat',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF64748B),
+                    fontSize: 12,
+                  ),
+                ),
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    const Icon(Icons.calendar_today, size: 18, color: Color(0xFF3B82F6)),
+                    const Icon(
+                      Icons.calendar_today,
+                      size: 18,
+                      color: Color(0xFF3B82F6),
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       dateTimeStr,
-                      style: const TextStyle(color: Color(0xFF1E293B), fontSize: 15, fontWeight: FontWeight.w500),
+                      style: const TextStyle(
+                        color: Color(0xFF1E293B),
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ],
                 ),
@@ -3722,7 +4550,14 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                 // Not
                 if (note != null && note.isNotEmpty) ...[
                   const SizedBox(height: 16),
-                  const Text('Müşteri Notu', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF64748B), fontSize: 12)),
+                  const Text(
+                    'Müşteri Notu',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF64748B),
+                      fontSize: 12,
+                    ),
+                  ),
                   const SizedBox(height: 4),
                   Container(
                     padding: const EdgeInsets.all(12),
@@ -3733,7 +4568,10 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                     ),
                     child: Text(
                       note,
-                      style: const TextStyle(color: Color(0xFF475569), fontSize: 14),
+                      style: const TextStyle(
+                        color: Color(0xFF475569),
+                        fontSize: 14,
+                      ),
                     ),
                   ),
                 ],
@@ -3753,7 +4591,9 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
             TextButton(
               onPressed: () async {
                 Navigator.pop(dialogContext);
-                await _cancelAppointmentWithConfirm(appointment['id'] as String);
+                await _cancelAppointmentWithConfirm(
+                  appointment['id'] as String,
+                );
               },
               style: TextButton.styleFrom(foregroundColor: Colors.red),
               child: const Text('Reddet'),
@@ -3776,7 +4616,9 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
             TextButton(
               onPressed: () async {
                 Navigator.pop(dialogContext);
-                await _cancelAppointmentWithConfirm(appointment['id'] as String);
+                await _cancelAppointmentWithConfirm(
+                  appointment['id'] as String,
+                );
               },
               style: TextButton.styleFrom(foregroundColor: Colors.red),
               child: const Text('İptal Et'),
@@ -3803,7 +4645,10 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
     final success = await service.confirmAppointment(appointmentId, null);
     if (success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Randevu onaylandı'), backgroundColor: Color(0xFF10B981)),
+        const SnackBar(
+          content: Text('Randevu onaylandı'),
+          backgroundColor: Color(0xFF10B981),
+        ),
       );
       ref.read(realtorAppointmentsProvider.notifier).loadAppointments();
     }
@@ -3814,7 +4659,9 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Randevuyu İptal Et'),
-        content: const Text('Bu randevuyu iptal etmek istediğinizden emin misiniz?'),
+        content: const Text(
+          'Bu randevuyu iptal etmek istediğinizden emin misiniz?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -3822,7 +4669,10 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
             child: const Text('İptal Et'),
           ),
         ],
@@ -3831,10 +4681,16 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
 
     if (confirmed == true) {
       final notifier = ref.read(realtorAppointmentsProvider.notifier);
-      await notifier.cancelAppointment(appointmentId, 'Emlakçı tarafından iptal edildi');
+      await notifier.cancelAppointment(
+        appointmentId,
+        'Emlakçı tarafından iptal edildi',
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Randevu iptal edildi'), backgroundColor: Color(0xFFEF4444)),
+          const SnackBar(
+            content: Text('Randevu iptal edildi'),
+            backgroundColor: Color(0xFFEF4444),
+          ),
         );
       }
     }
@@ -3845,15 +4701,24 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
     await notifier.completeAppointment(appointmentId, null);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Randevu tamamlandı olarak işaretlendi'), backgroundColor: Color(0xFF10B981)),
+        const SnackBar(
+          content: Text('Randevu tamamlandı olarak işaretlendi'),
+          backgroundColor: Color(0xFF10B981),
+        ),
       );
     }
   }
 
   void _showAddAppointmentDialog([Map<String, dynamic>? existingAppointment]) {
-    final titleController = TextEditingController(text: existingAppointment?['title'] ?? '');
-    final descriptionController = TextEditingController(text: existingAppointment?['description'] ?? '');
-    final locationController = TextEditingController(text: existingAppointment?['location'] ?? '');
+    final titleController = TextEditingController(
+      text: existingAppointment?['title'] ?? '',
+    );
+    final descriptionController = TextEditingController(
+      text: existingAppointment?['description'] ?? '',
+    );
+    final locationController = TextEditingController(
+      text: existingAppointment?['location'] ?? '',
+    );
 
     DateTime selectedDate = existingAppointment?['scheduled_at'] != null
         ? DateTime.parse(existingAppointment!['scheduled_at'])
@@ -3880,30 +4745,58 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                   // Başlık
                   TextField(
                     controller: titleController,
-                    decoration: _dialogInputDecoration('Randevu Başlığı *', Icons.title),
+                    decoration: _dialogInputDecoration(
+                      'Randevu Başlığı *',
+                      Icons.title,
+                    ),
                   ),
 
                   const SizedBox(height: 16),
 
                   // Randevu Türü
                   DropdownButtonFormField<String>(
-                    value: selectedType,
-                    decoration: _dialogInputDecoration('Randevu Türü', Icons.category),
+                    initialValue: selectedType,
+                    decoration: _dialogInputDecoration(
+                      'Randevu Türü',
+                      Icons.category,
+                    ),
                     items: const [
-                      DropdownMenuItem(value: 'showing', child: Text('Ev Gösterimi')),
-                      DropdownMenuItem(value: 'meeting', child: Text('Toplantı')),
-                      DropdownMenuItem(value: 'phone_call', child: Text('Telefon Görüşmesi')),
-                      DropdownMenuItem(value: 'video_call', child: Text('Video Görüşme')),
-                      DropdownMenuItem(value: 'signing', child: Text('Sözleşme İmzalama')),
+                      DropdownMenuItem(
+                        value: 'showing',
+                        child: Text('Ev Gösterimi'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'meeting',
+                        child: Text('Toplantı'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'phone_call',
+                        child: Text('Telefon Görüşmesi'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'video_call',
+                        child: Text('Video Görüşme'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'signing',
+                        child: Text('Sözleşme İmzalama'),
+                      ),
                       DropdownMenuItem(value: 'other', child: Text('Diğer')),
                     ],
-                    onChanged: (value) => setDialogState(() => selectedType = value ?? 'showing'),
+                    onChanged: (value) =>
+                        setDialogState(() => selectedType = value ?? 'showing'),
                   ),
 
                   const SizedBox(height: 16),
 
                   // Tarih ve Saat
-                  const Text('Tarih ve Saat', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E293B))),
+                  const Text(
+                    'Tarih ve Saat',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1E293B),
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   Row(
                     children: [
@@ -3914,28 +4807,43 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                               context: dialogContext,
                               initialDate: selectedDate,
                               firstDate: DateTime.now(),
-                              lastDate: DateTime.now().add(const Duration(days: 365)),
+                              lastDate: DateTime.now().add(
+                                const Duration(days: 365),
+                              ),
                             );
                             if (date != null) {
-                              setDialogState(() => selectedDate = DateTime(
-                                date.year, date.month, date.day,
-                                selectedTime.hour, selectedTime.minute,
-                              ));
+                              setDialogState(
+                                () => selectedDate = DateTime(
+                                  date.year,
+                                  date.month,
+                                  date.day,
+                                  selectedTime.hour,
+                                  selectedTime.minute,
+                                ),
+                              );
                             }
                           },
                           child: Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              border: Border.all(color: const Color(0xFFE2E8F0)),
+                              border: Border.all(
+                                color: const Color(0xFFE2E8F0),
+                              ),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.calendar_today, color: Color(0xFF64748B), size: 20),
+                                const Icon(
+                                  Icons.calendar_today,
+                                  color: Color(0xFF64748B),
+                                  size: 20,
+                                ),
                                 const SizedBox(width: 8),
                                 Text(
                                   '${selectedDate.day}.${selectedDate.month}.${selectedDate.year}',
-                                  style: const TextStyle(color: Color(0xFF1E293B)),
+                                  style: const TextStyle(
+                                    color: Color(0xFF1E293B),
+                                  ),
                                 ),
                               ],
                             ),
@@ -3954,8 +4862,11 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                               setDialogState(() {
                                 selectedTime = time;
                                 selectedDate = DateTime(
-                                  selectedDate.year, selectedDate.month, selectedDate.day,
-                                  time.hour, time.minute,
+                                  selectedDate.year,
+                                  selectedDate.month,
+                                  selectedDate.day,
+                                  time.hour,
+                                  time.minute,
                                 );
                               });
                             }
@@ -3963,16 +4874,24 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                           child: Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              border: Border.all(color: const Color(0xFFE2E8F0)),
+                              border: Border.all(
+                                color: const Color(0xFFE2E8F0),
+                              ),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.access_time, color: Color(0xFF64748B), size: 20),
+                                const Icon(
+                                  Icons.access_time,
+                                  color: Color(0xFF64748B),
+                                  size: 20,
+                                ),
                                 const SizedBox(width: 8),
                                 Text(
                                   '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}',
-                                  style: const TextStyle(color: Color(0xFF1E293B)),
+                                  style: const TextStyle(
+                                    color: Color(0xFF1E293B),
+                                  ),
                                 ),
                               ],
                             ),
@@ -3986,7 +4905,7 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
 
                   // Süre
                   DropdownButtonFormField<int>(
-                    value: duration,
+                    initialValue: duration,
                     decoration: _dialogInputDecoration('Süre', Icons.timer),
                     items: const [
                       DropdownMenuItem(value: 15, child: Text('15 dakika')),
@@ -3996,7 +4915,8 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                       DropdownMenuItem(value: 90, child: Text('1.5 saat')),
                       DropdownMenuItem(value: 120, child: Text('2 saat')),
                     ],
-                    onChanged: (value) => setDialogState(() => duration = value ?? 60),
+                    onChanged: (value) =>
+                        setDialogState(() => duration = value ?? 60),
                   ),
 
                   const SizedBox(height: 16),
@@ -4004,7 +4924,10 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                   // Konum
                   TextField(
                     controller: locationController,
-                    decoration: _dialogInputDecoration('Konum / Adres', Icons.location_on),
+                    decoration: _dialogInputDecoration(
+                      'Konum / Adres',
+                      Icons.location_on,
+                    ),
                   ),
 
                   const SizedBox(height: 16),
@@ -4012,7 +4935,10 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                   // Açıklama
                   TextField(
                     controller: descriptionController,
-                    decoration: _dialogInputDecoration('Açıklama / Notlar', Icons.note),
+                    decoration: _dialogInputDecoration(
+                      'Açıklama / Notlar',
+                      Icons.note,
+                    ),
                     maxLines: 3,
                   ),
                 ],
@@ -4027,13 +4953,18 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
             if (isEditing) ...[
               TextButton(
                 onPressed: () async {
-                  await ref.read(realtorAppointmentsProvider.notifier).cancelAppointment(
-                    existingAppointment['id'],
-                    'Kullanıcı tarafından iptal edildi',
-                  );
+                  await ref
+                      .read(realtorAppointmentsProvider.notifier)
+                      .cancelAppointment(
+                        existingAppointment['id'],
+                        'Kullanıcı tarafından iptal edildi',
+                      );
                   if (mounted) Navigator.pop(dialogContext);
                 },
-                child: const Text('İptal Et', style: TextStyle(color: Colors.red)),
+                child: const Text(
+                  'İptal Et',
+                  style: TextStyle(color: Colors.red),
+                ),
               ),
             ],
             ElevatedButton(
@@ -4046,33 +4977,50 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                 }
 
                 final scheduledAt = DateTime(
-                  selectedDate.year, selectedDate.month, selectedDate.day,
-                  selectedTime.hour, selectedTime.minute,
+                  selectedDate.year,
+                  selectedDate.month,
+                  selectedDate.day,
+                  selectedTime.hour,
+                  selectedTime.minute,
                 );
 
                 if (isEditing) {
                   // Randevu güncelleme henüz desteklenmiyor - yeni ekle
-                  await ref.read(realtorAppointmentsProvider.notifier).addAppointment(
-                    title: titleController.text,
-                    scheduledAt: scheduledAt,
-                    description: descriptionController.text.isEmpty ? null : descriptionController.text,
-                    appointmentType: selectedType,
-                    durationMinutes: duration,
-                    location: locationController.text.isEmpty ? null : locationController.text,
-                  );
+                  await ref
+                      .read(realtorAppointmentsProvider.notifier)
+                      .addAppointment(
+                        title: titleController.text,
+                        scheduledAt: scheduledAt,
+                        description: descriptionController.text.isEmpty
+                            ? null
+                            : descriptionController.text,
+                        appointmentType: selectedType,
+                        durationMinutes: duration,
+                        location: locationController.text.isEmpty
+                            ? null
+                            : locationController.text,
+                      );
                 } else {
-                  await ref.read(realtorAppointmentsProvider.notifier).addAppointment(
-                    title: titleController.text,
-                    scheduledAt: scheduledAt,
-                    description: descriptionController.text.isEmpty ? null : descriptionController.text,
-                    appointmentType: selectedType,
-                    durationMinutes: duration,
-                    location: locationController.text.isEmpty ? null : locationController.text,
-                  );
+                  await ref
+                      .read(realtorAppointmentsProvider.notifier)
+                      .addAppointment(
+                        title: titleController.text,
+                        scheduledAt: scheduledAt,
+                        description: descriptionController.text.isEmpty
+                            ? null
+                            : descriptionController.text,
+                        appointmentType: selectedType,
+                        durationMinutes: duration,
+                        location: locationController.text.isEmpty
+                            ? null
+                            : locationController.text,
+                      );
                 }
                 if (mounted) Navigator.pop(dialogContext);
               },
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3B82F6)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF3B82F6),
+              ),
               child: Text(isEditing ? 'Güncelle' : 'Kaydet'),
             ),
           ],
@@ -4109,7 +5057,10 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
         title: const Text('Çıkış Yap'),
         content: const Text('Çıkış yapmak istediğinize emin misiniz?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('İptal'),
+          ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
@@ -4127,7 +5078,10 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
 
   // ==================== ÖNE ÇIKARMA MODAL ====================
 
-  Future<void> _showPromotionModal(String propertyId, String propertyTitle) async {
+  Future<void> _showPromotionModal(
+    String propertyId,
+    String propertyTitle,
+  ) async {
     final realtorService = ref.read(realtorServiceProvider);
 
     // Fiyatları ve mevcut promosyonu yükle
@@ -4137,8 +5091,12 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
     if (!mounted) return;
 
     // Featured ve Premium fiyatlarını ayır
-    final featuredPrices = prices.where((p) => p['promotion_type'] == 'featured').toList();
-    final premiumPrices = prices.where((p) => p['promotion_type'] == 'premium').toList();
+    final featuredPrices = prices
+        .where((p) => p['promotion_type'] == 'featured')
+        .toList();
+    final premiumPrices = prices
+        .where((p) => p['promotion_type'] == 'premium')
+        .toList();
 
     String selectedType = 'featured';
     int selectedDuration = 7;
@@ -4149,15 +5107,20 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) {
           // Seçilen fiyatı bul
-          final selectedPrices = selectedType == 'featured' ? featuredPrices : premiumPrices;
+          final selectedPrices = selectedType == 'featured'
+              ? featuredPrices
+              : premiumPrices;
           final selectedPrice = selectedPrices.firstWhere(
             (p) => p['duration_days'] == selectedDuration,
-            orElse: () => selectedPrices.isNotEmpty ? selectedPrices.first : {'price': 0},
+            orElse: () =>
+                selectedPrices.isNotEmpty ? selectedPrices.first : {'price': 0},
           );
           final price = (selectedPrice['price'] as num?)?.toDouble() ?? 0;
 
           return Dialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
             child: Container(
               width: 500,
               padding: const EdgeInsets.all(24),
@@ -4176,7 +5139,11 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                           ),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Icon(Icons.rocket_launch_rounded, color: Colors.white, size: 24),
+                        child: const Icon(
+                          Icons.rocket_launch_rounded,
+                          color: Colors.white,
+                          size: 24,
+                        ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
@@ -4185,11 +5152,18 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                           children: [
                             const Text(
                               'İlanı Öne Çıkar',
-                              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1E293B),
+                              ),
                             ),
                             Text(
                               propertyTitle,
-                              style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: Color(0xFF64748B),
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -4215,7 +5189,10 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.check_circle, color: Color(0xFF22C55E)),
+                          const Icon(
+                            Icons.check_circle,
+                            color: Color(0xFF22C55E),
+                          ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
@@ -4223,11 +5200,17 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                               children: [
                                 Text(
                                   'Aktif ${activePromotion['promotion_type'] == 'premium' ? 'Premium' : 'Öne Çıkarma'} Promosyonu',
-                                  style: const TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF166534)),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xFF166534),
+                                  ),
                                 ),
                                 Text(
                                   'Bitiş: ${_formatDate(activePromotion['expires_at'])}',
-                                  style: const TextStyle(fontSize: 12, color: Color(0xFF166534)),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFF166534),
+                                  ),
                                 ),
                               ],
                             ),
@@ -4242,7 +5225,10 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                   // Promosyon Tipi Seçimi
                   const Text(
                     'Promosyon Tipi',
-                    style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1E293B),
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -4254,7 +5240,8 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                           icon: Icons.star_rounded,
                           color: const Color(0xFF3B82F6),
                           isSelected: selectedType == 'featured',
-                          onTap: () => setDialogState(() => selectedType = 'featured'),
+                          onTap: () =>
+                              setDialogState(() => selectedType = 'featured'),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -4265,7 +5252,8 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                           icon: Icons.workspace_premium_rounded,
                           color: const Color(0xFFF59E0B),
                           isSelected: selectedType == 'premium',
-                          onTap: () => setDialogState(() => selectedType = 'premium'),
+                          onTap: () =>
+                              setDialogState(() => selectedType = 'premium'),
                         ),
                       ),
                     ],
@@ -4276,7 +5264,10 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                   // Süre Seçimi
                   const Text(
                     'Süre',
-                    style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF1E293B)),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF1E293B),
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -4284,19 +5275,27 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                       Expanded(
                         child: _buildDurationCard(
                           days: 7,
-                          price: selectedPrices.firstWhere((p) => p['duration_days'] == 7, orElse: () => {'price': 0})['price'],
+                          price: selectedPrices.firstWhere(
+                            (p) => p['duration_days'] == 7,
+                            orElse: () => {'price': 0},
+                          )['price'],
                           isSelected: selectedDuration == 7,
-                          onTap: () => setDialogState(() => selectedDuration = 7),
+                          onTap: () =>
+                              setDialogState(() => selectedDuration = 7),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: _buildDurationCard(
                           days: 30,
-                          price: selectedPrices.firstWhere((p) => p['duration_days'] == 30, orElse: () => {'price': 0})['price'],
+                          price: selectedPrices.firstWhere(
+                            (p) => p['duration_days'] == 30,
+                            orElse: () => {'price': 0},
+                          )['price'],
                           isSelected: selectedDuration == 30,
                           isPopular: true,
-                          onTap: () => setDialogState(() => selectedDuration = 30),
+                          onTap: () =>
+                              setDialogState(() => selectedDuration = 30),
                         ),
                       ),
                     ],
@@ -4316,16 +5315,35 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                       children: [
                         const Text(
                           'Bu Pakette Neler Var?',
-                          style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFF1E293B), fontSize: 13),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF1E293B),
+                            fontSize: 13,
+                          ),
                         ),
                         const SizedBox(height: 12),
-                        _buildBenefitRow(Icons.visibility, 'Ana sayfada öne çıkan bölümde gösterilir'),
+                        _buildBenefitRow(
+                          Icons.visibility,
+                          'Ana sayfada öne çıkan bölümde gösterilir',
+                        ),
                         if (selectedType == 'premium') ...[
-                          _buildBenefitRow(Icons.workspace_premium, 'Altın Premium rozeti'),
-                          _buildBenefitRow(Icons.arrow_upward, 'Arama sonuçlarında her zaman üstte'),
-                          _buildBenefitRow(Icons.star, 'Detay sayfasında sponsor etiketi'),
+                          _buildBenefitRow(
+                            Icons.workspace_premium,
+                            'Altın Premium rozeti',
+                          ),
+                          _buildBenefitRow(
+                            Icons.arrow_upward,
+                            'Arama sonuçlarında her zaman üstte',
+                          ),
+                          _buildBenefitRow(
+                            Icons.star,
+                            'Detay sayfasında sponsor etiketi',
+                          ),
                         ],
-                        _buildBenefitRow(Icons.trending_up, 'Ortalama %${selectedType == 'premium' ? '300' : '150'} daha fazla görüntülenme'),
+                        _buildBenefitRow(
+                          Icons.trending_up,
+                          'Ortalama %${selectedType == 'premium' ? '300' : '150'} daha fazla görüntülenme',
+                        ),
                       ],
                     ),
                   ),
@@ -4339,7 +5357,10 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                       gradient: LinearGradient(
                         colors: selectedType == 'premium'
                             ? [const Color(0xFFF59E0B), const Color(0xFFEF4444)]
-                            : [const Color(0xFF3B82F6), const Color(0xFF8B5CF6)],
+                            : [
+                                const Color(0xFF3B82F6),
+                                const Color(0xFF8B5CF6),
+                              ],
                       ),
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -4351,7 +5372,10 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                             children: [
                               const Text(
                                 'Toplam',
-                                style: TextStyle(color: Colors.white70, fontSize: 13),
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 13,
+                                ),
                               ),
                               Text(
                                 '₺${price.toStringAsFixed(2)}',
@@ -4363,7 +5387,10 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                               ),
                               Text(
                                 '$selectedDuration gün',
-                                style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                ),
                               ),
                             ],
                           ),
@@ -4374,31 +5401,45 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                               : () async {
                                   setDialogState(() => isLoading = true);
 
-                                  final result = await realtorService.createPromotion(
-                                    propertyId: propertyId,
-                                    promotionType: selectedType,
-                                    durationDays: selectedDuration,
-                                    amountPaid: price,
-                                    paymentMethod: 'demo', // Gerçek ödeme entegrasyonu eklenecek
-                                  );
+                                  final result = await realtorService
+                                      .createPromotion(
+                                        propertyId: propertyId,
+                                        promotionType: selectedType,
+                                        durationDays: selectedDuration,
+                                        amountPaid: price,
+                                        paymentMethod:
+                                            'demo', // Gerçek ödeme entegrasyonu eklenecek
+                                      );
 
                                   if (!context.mounted) return;
 
                                   if (result != null) {
                                     Navigator.pop(dialogContext);
-                                    ScaffoldMessenger.of(this.context).showSnackBar(
+                                    ScaffoldMessenger.of(
+                                      this.context,
+                                    ).showSnackBar(
                                       SnackBar(
-                                        content: Text('${selectedType == 'premium' ? 'Premium' : 'Öne Çıkarma'} promosyonu başarıyla aktif edildi!'),
-                                        backgroundColor: const Color(0xFF22C55E),
+                                        content: Text(
+                                          '${selectedType == 'premium' ? 'Premium' : 'Öne Çıkarma'} promosyonu başarıyla aktif edildi!',
+                                        ),
+                                        backgroundColor: const Color(
+                                          0xFF22C55E,
+                                        ),
                                       ),
                                     );
                                     // Performans sayfasını yenile
-                                    ref.invalidate(propertyPerformanceStatsProvider);
+                                    ref.invalidate(
+                                      propertyPerformanceStatsProvider,
+                                    );
                                   } else {
                                     setDialogState(() => isLoading = false);
-                                    ScaffoldMessenger.of(this.context).showSnackBar(
+                                    ScaffoldMessenger.of(
+                                      this.context,
+                                    ).showSnackBar(
                                       const SnackBar(
-                                        content: Text('Promosyon oluşturulamadı. Lütfen tekrar deneyin.'),
+                                        content: Text(
+                                          'Promosyon oluşturulamadı. Lütfen tekrar deneyin.',
+                                        ),
                                         backgroundColor: Color(0xFFEF4444),
                                       ),
                                     );
@@ -4406,22 +5447,36 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                                 },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.white,
-                            foregroundColor: selectedType == 'premium' ? const Color(0xFFF59E0B) : const Color(0xFF3B82F6),
-                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            foregroundColor: selectedType == 'premium'
+                                ? const Color(0xFFF59E0B)
+                                : const Color(0xFF3B82F6),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24,
+                              vertical: 16,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
                           ),
                           child: isLoading
                               ? const SizedBox(
                                   width: 20,
                                   height: 20,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
                                 )
                               : const Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(Icons.flash_on_rounded),
                                     SizedBox(width: 8),
-                                    Text('Şimdi Başlat', style: TextStyle(fontWeight: FontWeight.bold)),
+                                    Text(
+                                      'Şimdi Başlat',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                                   ],
                                 ),
                         ),
@@ -4460,7 +5515,11 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
         ),
         child: Column(
           children: [
-            Icon(icon, color: isSelected ? color : const Color(0xFF64748B), size: 32),
+            Icon(
+              icon,
+              color: isSelected ? color : const Color(0xFF64748B),
+              size: 32,
+            ),
             const SizedBox(height: 8),
             Text(
               title,
@@ -4495,10 +5554,14 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF3B82F6).withValues(alpha: 0.1) : Colors.white,
+          color: isSelected
+              ? const Color(0xFF3B82F6).withValues(alpha: 0.1)
+              : Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? const Color(0xFF3B82F6) : const Color(0xFFE2E8F0),
+            color: isSelected
+                ? const Color(0xFF3B82F6)
+                : const Color(0xFFE2E8F0),
             width: isSelected ? 2 : 1,
           ),
         ),
@@ -4511,7 +5574,9 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: isSelected ? const Color(0xFF3B82F6) : const Color(0xFF1E293B),
+                    color: isSelected
+                        ? const Color(0xFF3B82F6)
+                        : const Color(0xFF1E293B),
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -4519,14 +5584,19 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                   '₺${priceValue.toStringAsFixed(2)}',
                   style: TextStyle(
                     fontSize: 14,
-                    color: isSelected ? const Color(0xFF3B82F6) : const Color(0xFF64748B),
+                    color: isSelected
+                        ? const Color(0xFF3B82F6)
+                        : const Color(0xFF64748B),
                   ),
                 ),
                 if (days == 30) ...[
                   const SizedBox(height: 4),
                   Text(
                     '₺${(priceValue / 30).toStringAsFixed(2)}/gün',
-                    style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF64748B),
+                    ),
                   ),
                 ],
               ],
@@ -4536,14 +5606,21 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
                 top: -8,
                 right: -8,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFEF4444),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Text(
                     'Popüler',
-                    style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
@@ -4576,7 +5653,8 @@ class _RealtorPanelScreenState extends ConsumerState<RealtorPanelScreen> {
     try {
       final date = DateTime.parse(dateStr);
       return '${date.day}.${date.month}.${date.year}';
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to parse date', error: e, stackTrace: st, source: 'RealtorPanelScreen:_formatDate');
       return dateStr;
     }
   }

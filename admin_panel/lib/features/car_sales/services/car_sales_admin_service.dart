@@ -1,6 +1,6 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/services/log_service.dart';
 
 // ==================== MODELLer ====================
 
@@ -427,8 +427,8 @@ class CarSalesAdminService {
         pendingApplications: pendingApplications.count,
         totalBrands: totalBrands.count,
       );
-    } catch (e) {
-      debugPrint('CarSalesAdminService.getStats error: $e');
+    } catch (e, st) {
+      LogService.error('Failed to fetch car sales stats', error: e, stackTrace: st, source: 'car_sales_admin_service:getStats');
       throw Exception('İstatistikler yüklenemedi: $e');
     }
   }
@@ -451,8 +451,8 @@ class CarSalesAdminService {
           .range(offset, offset + limit - 1);
 
       return (response as List).map((e) => CarListing.fromJson(e)).toList();
-    } catch (e) {
-      debugPrint('CarSalesAdminService.getListings error: $e');
+    } catch (e, st) {
+      LogService.error('Failed to fetch car listings', error: e, stackTrace: st, source: 'car_sales_admin_service:getListings');
       throw Exception('İlanlar yüklenemedi: $e');
     }
   }
@@ -495,8 +495,8 @@ class CarSalesAdminService {
           .order('sort_order');
 
       return (response as List).map((e) => CarBrand.fromJson(e)).toList();
-    } catch (e) {
-      debugPrint('CarSalesAdminService.getBrands error: $e');
+    } catch (e, st) {
+      LogService.error('Failed to fetch car brands', error: e, stackTrace: st, source: 'car_sales_admin_service:getBrands');
       throw Exception('Markalar yüklenemedi: $e');
     }
   }
@@ -523,8 +523,8 @@ class CarSalesAdminService {
           .order('sort_order');
 
       return (response as List).map((e) => CarFeature.fromJson(e)).toList();
-    } catch (e) {
-      debugPrint('CarSalesAdminService.getFeatures error: $e');
+    } catch (e, st) {
+      LogService.error('Failed to fetch car features', error: e, stackTrace: st, source: 'car_sales_admin_service:getFeatures');
       throw Exception('Özellikler yüklenemedi: $e');
     }
   }
@@ -553,8 +553,8 @@ class CarSalesAdminService {
       final response = await query.order('created_at', ascending: false);
 
       return (response as List).map((e) => CarDealer.fromJson(e)).toList();
-    } catch (e) {
-      debugPrint('CarSalesAdminService.getDealers error: $e');
+    } catch (e, st) {
+      LogService.error('Failed to fetch car dealers', error: e, stackTrace: st, source: 'car_sales_admin_service:getDealers');
       throw Exception('Satıcılar yüklenemedi: $e');
     }
   }
@@ -591,8 +591,8 @@ class CarSalesAdminService {
       final response = await query.order('created_at', ascending: false);
 
       return (response as List).map((e) => CarDealerApplication.fromJson(e)).toList();
-    } catch (e) {
-      debugPrint('CarSalesAdminService.getApplications error: $e');
+    } catch (e, st) {
+      LogService.error('Failed to fetch dealer applications', error: e, stackTrace: st, source: 'car_sales_admin_service:getApplications');
       throw Exception('Başvurular yüklenemedi: $e');
     }
   }
@@ -678,8 +678,8 @@ class CarSalesAdminService {
           .order('sort_order');
 
       return (response as List).map((e) => PromotionPrice.fromJson(e)).toList();
-    } catch (e) {
-      debugPrint('CarSalesAdminService.getPromotionPrices error: $e');
+    } catch (e, st) {
+      LogService.error('Failed to fetch promotion prices', error: e, stackTrace: st, source: 'car_sales_admin_service:getPromotionPrices');
       throw Exception('Fiyatlandırma yüklenemedi: $e');
     }
   }
@@ -706,8 +706,8 @@ class CarSalesAdminService {
           .order('sort_order');
 
       return (response as List).map((e) => CarBodyType.fromJson(e)).toList();
-    } catch (e) {
-      debugPrint('CarSalesAdminService.getBodyTypes error: $e');
+    } catch (e, st) {
+      LogService.error('Failed to fetch car body types', error: e, stackTrace: st, source: 'car_sales_admin_service:getBodyTypes');
       throw Exception('Gövde tipleri yüklenemedi: $e');
     }
   }
@@ -734,8 +734,8 @@ class CarSalesAdminService {
           .order('sort_order');
 
       return (response as List).map((e) => CarFuelType.fromJson(e)).toList();
-    } catch (e) {
-      debugPrint('CarSalesAdminService.getFuelTypes error: $e');
+    } catch (e, st) {
+      LogService.error('Failed to fetch car fuel types', error: e, stackTrace: st, source: 'car_sales_admin_service:getFuelTypes');
       throw Exception('Yakıt tipleri yüklenemedi: $e');
     }
   }
@@ -762,8 +762,8 @@ class CarSalesAdminService {
           .order('sort_order');
 
       return (response as List).map((e) => CarTransmission.fromJson(e)).toList();
-    } catch (e) {
-      debugPrint('CarSalesAdminService.getTransmissions error: $e');
+    } catch (e, st) {
+      LogService.error('Failed to fetch car transmissions', error: e, stackTrace: st, source: 'car_sales_admin_service:getTransmissions');
       throw Exception('Vites tipleri yüklenemedi: $e');
     }
   }

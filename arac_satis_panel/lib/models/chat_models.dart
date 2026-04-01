@@ -1,4 +1,5 @@
 /// Araç Satış Mesajlaşma Modelleri
+library;
 
 // ==================== CHAT MESSAGE ====================
 
@@ -167,7 +168,9 @@ class CarConversation {
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
       listing: json['car_listings'] != null
-          ? CarListingInfo.fromJson(json['car_listings'] as Map<String, dynamic>)
+          ? CarListingInfo.fromJson(
+              json['car_listings'] as Map<String, dynamic>,
+            )
           : null,
       buyerProfile: json['buyer_profile'] != null
           ? UserProfile.fromJson(json['buyer_profile'] as Map<String, dynamic>)
@@ -264,12 +267,7 @@ class UserProfile {
   final String? avatarUrl;
   final String? phone;
 
-  UserProfile({
-    required this.id,
-    this.fullName,
-    this.avatarUrl,
-    this.phone,
-  });
+  UserProfile({required this.id, this.fullName, this.avatarUrl, this.phone});
 
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     return UserProfile(

@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
+import '../../core/services/log_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_dialogs.dart';
 
@@ -137,11 +138,11 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
             timeLimit: Duration(seconds: 5),
           ),
         );
-      } catch (e) {
-        debugPrint('getCurrentPosition error: $e');
+      } catch (e, st) {
+        LogService.error('getCurrentPosition error', error: e, stackTrace: st, source: 'NavigationMapScreen:_getCurrentLocation');
       }
-    } catch (e) {
-      debugPrint('Location error: $e');
+    } catch (e, st) {
+      LogService.error('Location error', error: e, stackTrace: st, source: 'NavigationMapScreen:_getCurrentLocation');
     }
   }
 
@@ -278,8 +279,8 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       } else {
         debugPrint('Directions API HTTP error: ${response.statusCode} - trying OSRM fallback');
       }
-    } catch (e) {
-      debugPrint('Directions API error: $e - trying OSRM fallback');
+    } catch (e, st) {
+      LogService.error('Directions API error', error: e, stackTrace: st, source: 'NavigationMapScreen:_getDirections');
     }
 
     // Google başarısız olduysa OSRM dene
@@ -330,8 +331,8 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
       } else {
         debugPrint('OSRM HTTP error: ${response.statusCode}');
       }
-    } catch (e) {
-      debugPrint('OSRM error: $e');
+    } catch (e, st) {
+      LogService.error('OSRM error', error: e, stackTrace: st, source: 'NavigationMapScreen:_getOsrmDirections');
     }
 
     // OSRM de başarısız olduysa kuş uçuşu hesapla

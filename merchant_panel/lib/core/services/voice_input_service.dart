@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:speech_to_text/speech_recognition_result.dart';
+import 'package:merchant_panel/core/services/log_service.dart';
 
 /// Sesli giriş servisi (Speech-to-Text)
 class VoiceInputService {
@@ -24,24 +25,24 @@ class VoiceInputService {
     try {
       _isInitialized = await _speech.initialize(
         onError: (error) {
-          debugPrint('STT Error: ${error.errorMsg}');
+          LogService.error('STT Error: ${error.errorMsg}', source: 'voice_input_service:initialize');
           _lastError = error.errorMsg;
           _isListening = false;
         },
         onStatus: (status) {
-          debugPrint('STT Status: $status');
+          LogService.error('STT Status: $status', source: 'voice_input_service:initialize');
           if (status == 'done' || status == 'notListening') {
             _isListening = false;
           }
         },
       );
-      debugPrint('STT initialized: $_isInitialized');
+      LogService.error('STT initialized: $_isInitialized', source: 'voice_input_service:initialize');
       if (!_isInitialized) {
         _lastError = 'Ses tanima desteklenmiyor veya izin verilmedi';
       }
       return _isInitialized;
-    } catch (e) {
-      debugPrint('STT initialization error: $e');
+    } catch (e, st) {
+      LogService.error('STT initialization error', error: e, stackTrace: st, source: 'voice_input_service:initialize');
       _lastError = e.toString();
       return false;
     }
@@ -56,7 +57,7 @@ class VoiceInputService {
     if (!_isInitialized) {
       final ok = await initialize();
       if (!ok) {
-        debugPrint('STT: Failed to initialize, cannot listen');
+        LogService.error('STT: Failed to initialize, cannot listen', source: 'voice_input_service:startListening');
         return false;
       }
     }
@@ -69,7 +70,7 @@ class VoiceInputService {
     try {
       await _speech.listen(
         onResult: (SpeechRecognitionResult result) {
-          debugPrint('STT Result: "${result.recognizedWords}" final=${result.finalResult}');
+          LogService.error('STT Result: "${result.recognizedWords}" final=${result.finalResult}', source: 'voice_input_service:startListening');
           onResult(result.recognizedWords, result.finalResult);
           if (result.finalResult) {
             _isListening = false;
@@ -85,10 +86,10 @@ class VoiceInputService {
           partialResults: true,
         ),
       );
-      debugPrint('STT: Listening started');
+      LogService.error('STT: Listening started', source: 'voice_input_service:startListening');
       return true;
-    } catch (e) {
-      debugPrint('STT listen error: $e');
+    } catch (e, st) {
+      LogService.error('STT listen error', error: e, stackTrace: st, source: 'voice_input_service:startListening');
       _lastError = e.toString();
       _isListening = false;
       return false;
@@ -100,8 +101,8 @@ class VoiceInputService {
     if (!_isListening) return;
     try {
       await _speech.stop();
-    } catch (e) {
-      debugPrint('STT stop error: $e');
+    } catch (e, st) {
+      LogService.error('STT stop error', error: e, stackTrace: st, source: 'voice_input_service:stopListening');
     }
     _isListening = false;
   }

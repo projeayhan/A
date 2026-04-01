@@ -35,9 +35,10 @@ class ProfileScreen extends ConsumerWidget {
           children: [
             // Profile Header
             profileAsync.when(
-              data: (profile) => _buildProfileHeader(context, authState, profile),
+              data: (profile) =>
+                  _buildProfileHeader(context, authState, profile),
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (_, __) => _buildProfileHeader(context, authState, null),
+              error: (_, _) => _buildProfileHeader(context, authState, null),
             ),
 
             const SizedBox(height: 24),
@@ -46,7 +47,7 @@ class ProfileScreen extends ConsumerWidget {
             profileAsync.when(
               data: (profile) => _buildStatsSection(context, profile),
               loading: () => const SizedBox.shrink(),
-              error: (_, __) => const SizedBox.shrink(),
+              error: (_, _) => const SizedBox.shrink(),
             ),
 
             const SizedBox(height: 24),
@@ -61,7 +62,11 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildProfileHeader(BuildContext context, AuthState authState, Map<String, dynamic>? profile) {
+  Widget _buildProfileHeader(
+    BuildContext context,
+    AuthState authState,
+    Map<String, dynamic>? profile,
+  ) {
     final vehicleType = profile?['vehicle_type'] as String?;
     String vehicleText = '';
     IconData vehicleIcon = Icons.directions_bike;
@@ -165,7 +170,10 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatsSection(BuildContext context, Map<String, dynamic>? profile) {
+  Widget _buildStatsSection(
+    BuildContext context,
+    Map<String, dynamic>? profile,
+  ) {
     if (profile == null) return const SizedBox.shrink();
 
     final totalDeliveries = profile['total_deliveries'] as int? ?? 0;
@@ -190,11 +198,7 @@ class ProfileScreen extends ConsumerWidget {
               AppColors.primary,
             ),
           ),
-          Container(
-            width: 1,
-            height: 50,
-            color: AppColors.border,
-          ),
+          Container(width: 1, height: 50, color: AppColors.border),
           Expanded(
             child: _buildStatItem(
               context,
@@ -204,11 +208,7 @@ class ProfileScreen extends ConsumerWidget {
               AppColors.warning,
             ),
           ),
-          Container(
-            width: 1,
-            height: 50,
-            color: AppColors.border,
-          ),
+          Container(width: 1, height: 50, color: AppColors.border),
           Expanded(
             child: _buildStatItem(
               context,
@@ -223,22 +223,22 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatItem(BuildContext context, IconData icon, String value, String label, Color color) {
+  Widget _buildStatItem(
+    BuildContext context,
+    IconData icon,
+    String value,
+    String label,
+    Color color,
+  ) {
     return Column(
       children: [
         Icon(icon, color: color, size: 24),
         const SizedBox(height: 8),
         Text(
           value,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
-        Text(
-          label,
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
+        Text(label, style: Theme.of(context).textTheme.bodySmall),
       ],
     );
   }
@@ -334,10 +334,7 @@ class ProfileScreen extends ConsumerWidget {
           color: textColor ?? AppColors.textPrimary,
         ),
       ),
-      trailing: Icon(
-        Icons.chevron_right,
-        color: AppColors.textHint,
-      ),
+      trailing: Icon(Icons.chevron_right, color: AppColors.textHint),
       onTap: onTap,
     );
   }
@@ -347,7 +344,9 @@ class ProfileScreen extends ConsumerWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Çıkış Yap'),
-        content: const Text('Hesabınızdan çıkış yapmak istediğinize emin misiniz?'),
+        content: const Text(
+          'Hesabınızdan çıkış yapmak istediğinize emin misiniz?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -361,14 +360,11 @@ class ProfileScreen extends ConsumerWidget {
                 context.go('/login');
               }
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             child: const Text('Çıkış Yap'),
           ),
         ],
       ),
     );
   }
-
 }

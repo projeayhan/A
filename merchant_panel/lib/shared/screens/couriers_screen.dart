@@ -7,7 +7,9 @@ import '../../core/utils/app_dialogs.dart';
 
 // Restorana ait kuryeler (work_mode = 'restaurant' veya 'both' ve merchant_id eşleşen)
 // StreamProvider ile realtime güncellemeler
-final merchantCouriersProvider = StreamProvider<List<Map<String, dynamic>>>((ref) async* {
+final merchantCouriersProvider = StreamProvider<List<Map<String, dynamic>>>((
+  ref,
+) async* {
   final supabase = ref.watch(supabaseProvider);
   final merchant = ref.watch(currentMerchantProvider).value;
 
@@ -33,7 +35,9 @@ final merchantCouriersProvider = StreamProvider<List<Map<String, dynamic>>>((ref
 
     debugPrint('fetchCouriers: got ${response.length} couriers');
     for (var c in response) {
-      debugPrint('  - ${c['full_name']}: online=${c['is_online']}, busy=${c['is_busy']}, work_mode=${c['work_mode']}');
+      debugPrint(
+        '  - ${c['full_name']}: online=${c['is_online']}, busy=${c['is_busy']}, work_mode=${c['work_mode']}',
+      );
     }
 
     return List<Map<String, dynamic>>.from(response);
@@ -46,43 +50,48 @@ final merchantCouriersProvider = StreamProvider<List<Map<String, dynamic>>>((ref
       .from('couriers')
       .stream(primaryKey: ['id'])
       .eq('merchant_id', merchant.id)) {
-    debugPrint('merchantCouriersProvider: realtime update received, refreshing...');
+    debugPrint(
+      'merchantCouriersProvider: realtime update received, refreshing...',
+    );
     yield await fetchCouriers();
   }
 });
 
 // Platform kuryeleri (work_mode = 'platform' veya 'both', online ve müsait)
 // StreamProvider ile realtime güncellemeler
-final availablePlatformCouriersProvider = StreamProvider<List<Map<String, dynamic>>>((ref) async* {
-  final supabase = ref.watch(supabaseProvider);
+final availablePlatformCouriersProvider =
+    StreamProvider<List<Map<String, dynamic>>>((ref) async* {
+      final supabase = ref.watch(supabaseProvider);
 
-  // İlk veriyi getir
-  Future<List<Map<String, dynamic>>> fetchCouriers() async {
-    final response = await supabase
-        .from('couriers')
-        .select()
-        .eq('status', 'approved')
-        .eq('is_online', true)
-        .eq('is_busy', false) // Platform kuryeleri için müsaitlik kontrolü
-        .inFilter('work_mode', ['platform', 'both'])
-        .order('rating', ascending: false)
-        .limit(50);
-    return List<Map<String, dynamic>>.from(response);
-  }
+      // İlk veriyi getir
+      Future<List<Map<String, dynamic>>> fetchCouriers() async {
+        final response = await supabase
+            .from('couriers')
+            .select()
+            .eq('status', 'approved')
+            .eq('is_online', true)
+            .eq('is_busy', false) // Platform kuryeleri için müsaitlik kontrolü
+            .inFilter('work_mode', ['platform', 'both'])
+            .order('rating', ascending: false)
+            .limit(50);
+        return List<Map<String, dynamic>>.from(response);
+      }
 
-  yield await fetchCouriers();
+      yield await fetchCouriers();
 
-  // Tüm kuryeleri dinle (online durumu için)
-  await for (final _ in supabase
-      .from('couriers')
-      .stream(primaryKey: ['id'])) {
-    yield await fetchCouriers();
-  }
-});
+      // Tüm kuryeleri dinle (online durumu için)
+      await for (final _ in supabase
+          .from('couriers')
+          .stream(primaryKey: ['id'])) {
+        yield await fetchCouriers();
+      }
+    });
 
 // Kurye bağlantı istekleri (pending olanlar)
 // StreamProvider ile realtime güncellemeler
-final courierRequestsProvider = StreamProvider<List<Map<String, dynamic>>>((ref) async* {
+final courierRequestsProvider = StreamProvider<List<Map<String, dynamic>>>((
+  ref,
+) async* {
   final supabase = ref.watch(supabaseProvider);
   final merchant = ref.watch(currentMerchantProvider).value;
 
@@ -95,7 +104,9 @@ final courierRequestsProvider = StreamProvider<List<Map<String, dynamic>>>((ref)
   Future<List<Map<String, dynamic>>> fetchRequests() async {
     final response = await supabase
         .from('merchant_courier_requests')
-        .select('*, couriers(id, full_name, phone, vehicle_type, vehicle_plate, rating, total_deliveries, work_mode)')
+        .select(
+          '*, couriers(id, full_name, phone, vehicle_type, vehicle_plate, rating, total_deliveries, work_mode)',
+        )
         .eq('merchant_id', merchant.id)
         .eq('status', 'pending')
         .order('created_at', ascending: false);
@@ -209,7 +220,7 @@ class _CouriersScreenState extends ConsumerState<CouriersScreen>
     final requestsAsync = ref.watch(courierRequestsProvider);
     return requestsAsync.when(
       loading: () => const Tab(text: 'Istekler'),
-      error: (_, __) => const Tab(text: 'Istekler'),
+      error: (_, _) => const Tab(text: 'Istekler'),
       data: (requests) {
         if (requests.isEmpty) {
           return const Tab(text: 'Istekler');
@@ -255,7 +266,11 @@ class _CouriersScreenState extends ConsumerState<CouriersScreen>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.inbox_outlined, size: 64, color: AppColors.textMuted),
+                Icon(
+                  Icons.inbox_outlined,
+                  size: 64,
+                  color: AppColors.textMuted,
+                ),
                 const SizedBox(height: 16),
                 Text(
                   'Bekleyen kurye istegi yok',
@@ -302,7 +317,7 @@ class _CouriersScreenState extends ConsumerState<CouriersScreen>
                   child: ListView.separated(
                     padding: const EdgeInsets.all(16),
                     itemCount: requests.length,
-                    separatorBuilder: (_, __) => const Divider(),
+                    separatorBuilder: (_, _) => const Divider(),
                     itemBuilder: (context, index) {
                       final request = requests[index];
                       return _buildCourierRequestTile(request);
@@ -336,8 +351,14 @@ class _CouriersScreenState extends ConsumerState<CouriersScreen>
           CircleAvatar(
             backgroundColor: AppColors.primary.withValues(alpha: 0.1),
             child: Text(
-              (courier['full_name'] as String?)?.substring(0, 1).toUpperCase() ?? 'K',
-              style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+              (courier['full_name'] as String?)
+                      ?.substring(0, 1)
+                      .toUpperCase() ??
+                  'K',
+              style: TextStyle(
+                color: AppColors.primary,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -350,21 +371,31 @@ class _CouriersScreenState extends ConsumerState<CouriersScreen>
                   children: [
                     Text(
                       courier['full_name'] ?? 'Kurye',
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 15,
+                      ),
                     ),
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
-                        color: workMode == 'both'
-                            ? AppColors.info.withValues(alpha: 0.1)
-                            : AppColors.primary.withValues(alpha: 0.1),
+                        color:
+                            workMode == 'both'
+                                ? AppColors.info.withValues(alpha: 0.1)
+                                : AppColors.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
                         workMode == 'both' ? 'Platform+Restoran' : 'Restoran',
                         style: TextStyle(
-                          color: workMode == 'both' ? AppColors.info : AppColors.primary,
+                          color:
+                              workMode == 'both'
+                                  ? AppColors.info
+                                  : AppColors.primary,
                           fontSize: 10,
                           fontWeight: FontWeight.w500,
                         ),
@@ -402,7 +433,11 @@ class _CouriersScreenState extends ConsumerState<CouriersScreen>
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                     const SizedBox(width: 12),
-                    Icon(Icons.local_shipping, size: 14, color: AppColors.textSecondary),
+                    Icon(
+                      Icons.local_shipping,
+                      size: 14,
+                      color: AppColors.textSecondary,
+                    ),
                     const SizedBox(width: 4),
                     Text(
                       '$totalDeliveries teslimat',
@@ -420,7 +455,11 @@ class _CouriersScreenState extends ConsumerState<CouriersScreen>
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.message, size: 14, color: AppColors.textSecondary),
+                        Icon(
+                          Icons.message,
+                          size: 14,
+                          color: AppColors.textSecondary,
+                        ),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
@@ -450,7 +489,10 @@ class _CouriersScreenState extends ConsumerState<CouriersScreen>
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.success,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -461,7 +503,10 @@ class _CouriersScreenState extends ConsumerState<CouriersScreen>
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.error,
                   side: BorderSide(color: AppColors.error),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                 ),
               ),
             ],
@@ -481,7 +526,10 @@ class _CouriersScreenState extends ConsumerState<CouriersScreen>
       // İsteği onayla
       await supabase
           .from('merchant_courier_requests')
-          .update({'status': 'approved', 'updated_at': DateTime.now().toIso8601String()})
+          .update({
+            'status': 'approved',
+            'updated_at': DateTime.now().toIso8601String(),
+          })
           .eq('id', requestId);
 
       // Kurye'nin merchant_id'sini ve work_mode'unu güncelle
@@ -526,11 +574,14 @@ class _CouriersScreenState extends ConsumerState<CouriersScreen>
     try {
       final supabase = ref.read(supabaseProvider);
 
-      await supabase.from('merchant_courier_requests').update({
-        'status': 'rejected',
-        'rejection_reason': reason.isEmpty ? null : reason,
-        'updated_at': DateTime.now().toIso8601String(),
-      }).eq('id', requestId);
+      await supabase
+          .from('merchant_courier_requests')
+          .update({
+            'status': 'rejected',
+            'rejection_reason': reason.isEmpty ? null : reason,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', requestId);
 
       ref.invalidate(courierRequestsProvider);
 
@@ -558,7 +609,11 @@ class _CouriersScreenState extends ConsumerState<CouriersScreen>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.delivery_dining, size: 64, color: AppColors.textMuted),
+                Icon(
+                  Icons.delivery_dining,
+                  size: 64,
+                  color: AppColors.textMuted,
+                ),
                 const SizedBox(height: 16),
                 Text(
                   'Henuz restoraniniza bagli kurye yok',
@@ -577,7 +632,9 @@ class _CouriersScreenState extends ConsumerState<CouriersScreen>
                   decoration: BoxDecoration(
                     color: AppColors.info.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.info.withValues(alpha: 0.3)),
+                    border: Border.all(
+                      color: AppColors.info.withValues(alpha: 0.3),
+                    ),
                   ),
                   child: Column(
                     children: [
@@ -623,14 +680,20 @@ class _CouriersScreenState extends ConsumerState<CouriersScreen>
                   const SizedBox(width: 16),
                   _buildStatCard(
                     'Online',
-                    couriers.where((c) => c['is_online'] == true).length.toString(),
+                    couriers
+                        .where((c) => c['is_online'] == true)
+                        .length
+                        .toString(),
                     Icons.circle,
                     AppColors.success,
                   ),
                   const SizedBox(width: 16),
                   _buildStatCard(
                     'Teslimatta',
-                    couriers.where((c) => c['is_busy'] == true).length.toString(),
+                    couriers
+                        .where((c) => c['is_busy'] == true)
+                        .length
+                        .toString(),
                     Icons.delivery_dining,
                     AppColors.info,
                   ),
@@ -643,7 +706,7 @@ class _CouriersScreenState extends ConsumerState<CouriersScreen>
                   child: ListView.separated(
                     padding: const EdgeInsets.all(16),
                     itemCount: couriers.length,
-                    separatorBuilder: (_, __) => const Divider(),
+                    separatorBuilder: (_, _) => const Divider(),
                     itemBuilder: (context, index) {
                       final courier = couriers[index];
                       return _buildCourierTile(courier, isOwnCourier: true);
@@ -698,7 +761,10 @@ class _CouriersScreenState extends ConsumerState<CouriersScreen>
                   ),
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.success.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
@@ -714,7 +780,8 @@ class _CouriersScreenState extends ConsumerState<CouriersScreen>
                   ),
                   const Spacer(),
                   IconButton(
-                    onPressed: () => ref.invalidate(availablePlatformCouriersProvider),
+                    onPressed:
+                        () => ref.invalidate(availablePlatformCouriersProvider),
                     icon: const Icon(Icons.refresh),
                     tooltip: 'Yenile',
                   ),
@@ -727,7 +794,11 @@ class _CouriersScreenState extends ConsumerState<CouriersScreen>
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.search_off, size: 64, color: AppColors.textMuted),
+                        Icon(
+                          Icons.search_off,
+                          size: 64,
+                          color: AppColors.textMuted,
+                        ),
                         const SizedBox(height: 16),
                         Text(
                           'Su an musait platform kuryesi yok',
@@ -748,7 +819,7 @@ class _CouriersScreenState extends ConsumerState<CouriersScreen>
                     child: ListView.separated(
                       padding: const EdgeInsets.all(16),
                       itemCount: couriers.length,
-                      separatorBuilder: (_, __) => const Divider(),
+                      separatorBuilder: (_, _) => const Divider(),
                       itemBuilder: (context, index) {
                         final courier = couriers[index];
                         return _buildCourierTile(courier, isOwnCourier: false);
@@ -763,7 +834,12 @@ class _CouriersScreenState extends ConsumerState<CouriersScreen>
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(20),
@@ -796,7 +872,10 @@ class _CouriersScreenState extends ConsumerState<CouriersScreen>
     );
   }
 
-  Widget _buildCourierTile(Map<String, dynamic> courier, {required bool isOwnCourier}) {
+  Widget _buildCourierTile(
+    Map<String, dynamic> courier, {
+    required bool isOwnCourier,
+  }) {
     final isOnline = courier['is_online'] == true;
     final isBusy = courier['is_busy'] == true;
     final workMode = courier['work_mode'] as String? ?? 'platform';
@@ -809,8 +888,14 @@ class _CouriersScreenState extends ConsumerState<CouriersScreen>
           CircleAvatar(
             backgroundColor: AppColors.primary.withValues(alpha: 0.1),
             child: Text(
-              (courier['full_name'] as String?)?.substring(0, 1).toUpperCase() ?? 'K',
-              style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+              (courier['full_name'] as String?)
+                      ?.substring(0, 1)
+                      .toUpperCase() ??
+                  'K',
+              style: TextStyle(
+                color: AppColors.primary,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
           Positioned(
@@ -946,9 +1031,9 @@ class _CouriersScreenState extends ConsumerState<CouriersScreen>
 
   Future<void> _callCourier(String phone) async {
     // URL launcher ile arama yapılabilir
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Aranıyor: $phone')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('Aranıyor: $phone')));
   }
 }
 

@@ -24,7 +24,7 @@ class _RouterRefreshNotifier extends ChangeNotifier {
 
 final routerProvider = Provider<GoRouter>((ref) {
   final refreshNotifier = _RouterRefreshNotifier();
-  ref.listen(authProvider, (_, __) {
+  ref.listen(authProvider, (_, _) {
     refreshNotifier.notify();
   });
 
@@ -40,8 +40,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isRegistering = state.matchedLocation == '/register';
       final isPendingPage = state.matchedLocation == '/pending';
 
-      if (authState.status == AuthStatus.initial || authState.status == AuthStatus.loading) {
+      if (authState.status == AuthStatus.initial ||
+          authState.status == AuthStatus.loading) {
         return null;
+      }
+
+      if (authState.status == AuthStatus.error &&
+          !isLoggingIn &&
+          !isRegistering) {
+        return '/login';
       }
 
       // Kayıt gerekli → kayıt sayfasına yönlendir
@@ -55,7 +62,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
 
       // Giriş yapılmamış → login'e yönlendir
-      if (!isLoggedIn && !isPending && !needsReg && !isLoggingIn && !isRegistering) {
+      if (!isLoggedIn &&
+          !isPending &&
+          !needsReg &&
+          !isLoggingIn &&
+          !isRegistering) {
         return '/login';
       }
 
@@ -67,10 +78,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
-      GoRoute(
-        path: '/login',
-        builder: (context, state) => const LoginScreen(),
-      ),
+      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(
         path: '/register',
         builder: (context, state) => const RegisterScreen(),
@@ -86,19 +94,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       ShellRoute(
         builder: (context, state, child) => MainScaffold(child: child),
         routes: [
-          GoRoute(
-            path: '/',
-            builder: (context, state) => const HomeScreen(),
-          ),
+          GoRoute(path: '/', builder: (context, state) => const HomeScreen()),
           GoRoute(
             path: '/rides',
             builder: (context, state) => const RidesScreen(),
           ),
           GoRoute(
             path: '/rides/:id',
-            builder: (context, state) => RideDetailScreen(
-              rideId: state.pathParameters['id']!,
-            ),
+            builder: (context, state) =>
+                RideDetailScreen(rideId: state.pathParameters['id']!),
           ),
           GoRoute(
             path: '/earnings',
@@ -108,31 +112,31 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/profile',
             builder: (context, state) => const ProfileScreen(),
           ),
-          GoRoute(
-            path: '/reviews',
-            builder: (context, state) => const ReviewsScreen(),
-          ),
-          GoRoute(
-            path: '/emergency-contacts',
-            builder: (context, state) => const EmergencyContactsScreen(),
-          ),
-          GoRoute(
-            path: '/personal-info',
-            builder: (context, state) => const PersonalInfoScreen(),
-          ),
-          GoRoute(
-            path: '/vehicle-info',
-            builder: (context, state) => const VehicleInfoScreen(),
-          ),
-          GoRoute(
-            path: '/payment-info',
-            builder: (context, state) => const PaymentInfoScreen(),
-          ),
-          GoRoute(
-            path: '/notification-settings',
-            builder: (context, state) => const NotificationSettingsScreen(),
-          ),
         ],
+      ),
+      GoRoute(
+        path: '/reviews',
+        builder: (context, state) => const ReviewsScreen(),
+      ),
+      GoRoute(
+        path: '/emergency-contacts',
+        builder: (context, state) => const EmergencyContactsScreen(),
+      ),
+      GoRoute(
+        path: '/personal-info',
+        builder: (context, state) => const PersonalInfoScreen(),
+      ),
+      GoRoute(
+        path: '/vehicle-info',
+        builder: (context, state) => const VehicleInfoScreen(),
+      ),
+      GoRoute(
+        path: '/payment-info',
+        builder: (context, state) => const PaymentInfoScreen(),
+      ),
+      GoRoute(
+        path: '/notification-settings',
+        builder: (context, state) => const NotificationSettingsScreen(),
       ),
     ],
   );
@@ -145,10 +149,7 @@ class MainScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: child,
-      bottomNavigationBar: const MainBottomNav(),
-    );
+    return Scaffold(body: child, bottomNavigationBar: const MainBottomNav());
   }
 }
 
@@ -185,10 +186,42 @@ class MainBottomNav extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildNavItem(context, 0, Icons.home_outlined, Icons.home, 'Ana Sayfa', '/', currentIndex),
-              _buildNavItem(context, 1, Icons.local_taxi_outlined, Icons.local_taxi, 'Yolculuklar', '/rides', currentIndex),
-              _buildNavItem(context, 2, Icons.account_balance_wallet_outlined, Icons.account_balance_wallet, 'Kazanç', '/earnings', currentIndex),
-              _buildNavItem(context, 3, Icons.person_outline, Icons.person, 'Profil', '/profile', currentIndex),
+              _buildNavItem(
+                context,
+                0,
+                Icons.home_outlined,
+                Icons.home,
+                'Ana Sayfa',
+                '/',
+                currentIndex,
+              ),
+              _buildNavItem(
+                context,
+                1,
+                Icons.local_taxi_outlined,
+                Icons.local_taxi,
+                'Yolculuklar',
+                '/rides',
+                currentIndex,
+              ),
+              _buildNavItem(
+                context,
+                2,
+                Icons.account_balance_wallet_outlined,
+                Icons.account_balance_wallet,
+                'Kazanç',
+                '/earnings',
+                currentIndex,
+              ),
+              _buildNavItem(
+                context,
+                3,
+                Icons.person_outline,
+                Icons.person,
+                'Profil',
+                '/profile',
+                currentIndex,
+              ),
             ],
           ),
         ),
@@ -213,7 +246,9 @@ class MainBottomNav extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isActive ? const Color(0xFFFFC107).withValues(alpha: 0.15) : Colors.transparent,
+          color: isActive
+              ? const Color(0xFFFFC107).withValues(alpha: 0.15)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(

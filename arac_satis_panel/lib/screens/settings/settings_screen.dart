@@ -31,8 +31,11 @@ class SettingsScreen extends ConsumerWidget {
                   color: CarSalesColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.email_outlined,
-                    color: CarSalesColors.primary, size: 20),
+                child: const Icon(
+                  Icons.email_outlined,
+                  color: CarSalesColors.primary,
+                  size: 20,
+                ),
               ),
               title: Text(
                 'E-posta',
@@ -58,8 +61,11 @@ class SettingsScreen extends ConsumerWidget {
                   color: CarSalesColors.secondary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.lock_outline,
-                    color: CarSalesColors.secondary, size: 20),
+                child: const Icon(
+                  Icons.lock_outline,
+                  color: CarSalesColors.secondary,
+                  size: 20,
+                ),
               ),
               title: Text(
                 'Sifre Degistir',
@@ -68,8 +74,10 @@ class SettingsScreen extends ConsumerWidget {
                   fontSize: 14,
                 ),
               ),
-              trailing: Icon(Icons.chevron_right,
-                  color: CarSalesColors.textTertiary(isDark)),
+              trailing: Icon(
+                Icons.chevron_right,
+                color: CarSalesColors.textTertiary(isDark),
+              ),
               onTap: () => _showPasswordChangeDialog(context, isDark),
             ),
           ]),
@@ -84,8 +92,9 @@ class SettingsScreen extends ConsumerWidget {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: (isDark ? Colors.amber : Colors.indigo)
-                      .withValues(alpha: 0.1),
+                  color: (isDark ? Colors.amber : Colors.indigo).withValues(
+                    alpha: 0.1,
+                  ),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
@@ -113,7 +122,7 @@ class SettingsScreen extends ConsumerWidget {
                 onChanged: (_) {
                   ref.read(themeProvider.notifier).toggle();
                 },
-                activeColor: CarSalesColors.primary,
+                activeThumbColor: CarSalesColors.primary,
               ),
             ),
           ]),
@@ -153,8 +162,11 @@ class SettingsScreen extends ConsumerWidget {
                   color: CarSalesColors.success.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.help_outline,
-                    color: CarSalesColors.success, size: 20),
+                child: const Icon(
+                  Icons.help_outline,
+                  color: CarSalesColors.success,
+                  size: 20,
+                ),
               ),
               title: Text(
                 'Yardim Merkezi',
@@ -163,8 +175,11 @@ class SettingsScreen extends ConsumerWidget {
                   fontSize: 14,
                 ),
               ),
-              trailing: Icon(Icons.open_in_new,
-                  size: 18, color: CarSalesColors.textTertiary(isDark)),
+              trailing: Icon(
+                Icons.open_in_new,
+                size: 18,
+                color: CarSalesColors.textTertiary(isDark),
+              ),
               onTap: () => _launchUrl('https://supercyp.com/yardim'),
             ),
             Divider(color: CarSalesColors.border(isDark), height: 1),
@@ -176,8 +191,11 @@ class SettingsScreen extends ConsumerWidget {
                   color: CarSalesColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.support_agent,
-                    color: CarSalesColors.primary, size: 20),
+                child: const Icon(
+                  Icons.support_agent,
+                  color: CarSalesColors.primary,
+                  size: 20,
+                ),
               ),
               title: Text(
                 'Bize Ulasin',
@@ -186,8 +204,11 @@ class SettingsScreen extends ConsumerWidget {
                   fontSize: 14,
                 ),
               ),
-              trailing: Icon(Icons.open_in_new,
-                  size: 18, color: CarSalesColors.textTertiary(isDark)),
+              trailing: Icon(
+                Icons.open_in_new,
+                size: 18,
+                color: CarSalesColors.textTertiary(isDark),
+              ),
               onTap: () => _launchUrl('mailto:destek@supercyp.com'),
             ),
             Divider(color: CarSalesColors.border(isDark), height: 1),
@@ -196,12 +217,16 @@ class SettingsScreen extends ConsumerWidget {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: CarSalesColors.textTertiary(isDark)
-                      .withValues(alpha: 0.1),
+                  color: CarSalesColors.textTertiary(
+                    isDark,
+                  ).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(Icons.info_outline,
-                    color: CarSalesColors.textTertiary(isDark), size: 20),
+                child: Icon(
+                  Icons.info_outline,
+                  color: CarSalesColors.textTertiary(isDark),
+                  size: 20,
+                ),
               ),
               title: Text(
                 'Versiyon',
@@ -281,8 +306,7 @@ class SettingsScreen extends ConsumerWidget {
                 TextFormField(
                   controller: currentPasswordController,
                   obscureText: true,
-                  style:
-                      TextStyle(color: CarSalesColors.textPrimary(isDark)),
+                  style: TextStyle(color: CarSalesColors.textPrimary(isDark)),
                   decoration: InputDecoration(
                     labelText: 'Mevcut Sifre',
                     prefixIcon: const Icon(Icons.lock_outline),
@@ -301,8 +325,7 @@ class SettingsScreen extends ConsumerWidget {
                 TextFormField(
                   controller: newPasswordController,
                   obscureText: true,
-                  style:
-                      TextStyle(color: CarSalesColors.textPrimary(isDark)),
+                  style: TextStyle(color: CarSalesColors.textPrimary(isDark)),
                   decoration: InputDecoration(
                     labelText: 'Yeni Sifre',
                     prefixIcon: const Icon(Icons.lock),
@@ -321,8 +344,7 @@ class SettingsScreen extends ConsumerWidget {
                 TextFormField(
                   controller: confirmPasswordController,
                   obscureText: true,
-                  style:
-                      TextStyle(color: CarSalesColors.textPrimary(isDark)),
+                  style: TextStyle(color: CarSalesColors.textPrimary(isDark)),
                   decoration: InputDecoration(
                     labelText: 'Yeni Sifre (Tekrar)',
                     prefixIcon: const Icon(Icons.lock),
@@ -355,17 +377,14 @@ class SettingsScreen extends ConsumerWidget {
 
                       try {
                         await Supabase.instance.client.auth.updateUser(
-                          UserAttributes(
-                            password: newPasswordController.text,
-                          ),
+                          UserAttributes(password: newPasswordController.text),
                         );
 
                         if (ctx.mounted) {
                           Navigator.pop(ctx);
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content:
-                                  Text('Sifreniz basariyla guncellendi!'),
+                              content: Text('Sifreniz basariyla guncellendi!'),
                               backgroundColor: CarSalesColors.success,
                             ),
                           );
@@ -453,7 +472,7 @@ class _NotificationToggleState extends State<_NotificationToggle> {
         onChanged: (value) {
           setState(() => _enabled = value);
         },
-        activeColor: CarSalesColors.primary,
+        activeThumbColor: CarSalesColors.primary,
       ),
     );
   }

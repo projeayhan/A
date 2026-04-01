@@ -8,6 +8,7 @@ import 'package:printing/printing.dart';
 import 'package:excel/excel.dart';
 import 'package:flutter/material.dart';
 
+import 'package:merchant_panel/core/services/log_service.dart';
 import '../providers/merchant_provider.dart';
 
 /// Service for exporting reports in various formats
@@ -52,8 +53,8 @@ class ReportExportService {
       );
 
       return true;
-    } catch (e) {
-      debugPrint('PDF export error: $e');
+    } catch (e, st) {
+      LogService.error('PDF export error', error: e, stackTrace: st, source: 'report_export_service:exportPdf');
       return false;
     }
   }
@@ -458,8 +459,8 @@ class ReportExportService {
       }
 
       return true;
-    } catch (e) {
-      debugPrint('Excel export error: $e');
+    } catch (e, st) {
+      LogService.error('Excel export error', error: e, stackTrace: st, source: 'report_export_service:exportExcel');
       return false;
     }
   }
@@ -537,8 +538,8 @@ class ReportExportService {
       }
 
       return true;
-    } catch (e) {
-      debugPrint('CSV export error: $e');
+    } catch (e, st) {
+      LogService.error('CSV export error', error: e, stackTrace: st, source: 'report_export_service:exportCsv');
       return false;
     }
   }

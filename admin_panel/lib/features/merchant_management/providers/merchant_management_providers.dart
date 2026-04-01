@@ -41,8 +41,29 @@ final merchantMenuItemsProvider = FutureProvider.family<List<Map<String, dynamic
         .from('menu_items')
         .select('*, menu_categories(name)')
         .eq('merchant_id', merchantId)
-        .order('created_at', ascending: false);
+        .order('sort_order', ascending: true);
     return List<Map<String, dynamic>>.from(response);
+  },
+);
+
+// Option groups for a menu item
+final menuItemOptionGroupsProvider = FutureProvider.family<List<Map<String, dynamic>>, String>(
+  (ref, menuItemId) async {
+    final client = ref.watch(supabaseProvider);
+    final links = await client
+        .from('menu_item_option_groups')
+        .select('option_group_id')
+        .eq('menu_item_id', menuItemId);
+    final linkList = List<Map<String, dynamic>>.from(links);
+    if (linkList.isEmpty) return [];
+
+    final groupIds = linkList.map((l) => l['option_group_id'] as String).toList();
+    final groups = await client
+        .from('product_option_groups')
+        .select('*, product_options(*)')
+        .inFilter('id', groupIds)
+        .order('sort_order', ascending: true);
+    return List<Map<String, dynamic>>.from(groups);
   },
 );
 
@@ -81,14 +102,14 @@ final merchantInventoryProvider = FutureProvider.family<List<Map<String, dynamic
     try {
       final response = await client
           .from('products')
-          .select('id, name, stock_quantity, min_stock_level, price, is_active, image_url')
+          .select('id, name, stock, low_stock_threshold, price, is_available, image_url')
           .eq('merchant_id', merchantId)
-          .order('stock_quantity', ascending: true);
+          .order('stock', ascending: true);
       return List<Map<String, dynamic>>.from(response);
     } catch (_) {
       final response = await client
           .from('menu_items')
-          .select('id, name, stock_quantity, min_stock_level, price, is_available, image_url')
+          .select('id, name, price, is_available, image_url')
           .eq('merchant_id', merchantId)
           .order('name', ascending: true);
       return List<Map<String, dynamic>>.from(response);
@@ -104,19 +125,43 @@ final merchantFinanceProvider = FutureProvider.family<Map<String, dynamic>, Fina
   (ref, params) async {
     final client = ref.watch(supabaseProvider);
 
+    // Calculate date filter based on period
+    DateTime? startDate;
+    final now = DateTime.now();
+    switch (params.period) {
+      case 'week':
+        startDate = now.subtract(const Duration(days: 7));
+        break;
+      case 'month':
+        startDate = now.subtract(const Duration(days: 30));
+        break;
+      case 'quarter':
+        startDate = now.subtract(const Duration(days: 90));
+        break;
+      case 'year':
+        startDate = now.subtract(const Duration(days: 365));
+        break;
+    }
+
     // Get orders for revenue calculation
-    final orders = await client
+    var query = client
         .from('orders')
-        .select('total_amount, commission_amount, status, created_at')
+        .select('total_amount, commission_rate, status, created_at')
         .eq('merchant_id', params.merchantId)
-        .eq('status', 'completed');
+        .eq('status', 'delivered');
+    if (startDate != null) {
+      query = query.gte('created_at', startDate.toIso8601String());
+    }
+    final orders = await query;
 
     final orderList = List<Map<String, dynamic>>.from(orders);
     double totalRevenue = 0;
     double totalCommission = 0;
     for (final order in orderList) {
-      totalRevenue += (order['total_amount'] as num?)?.toDouble() ?? 0;
-      totalCommission += (order['commission_amount'] as num?)?.toDouble() ?? 0;
+      final amount = (order['total_amount'] as num?)?.toDouble() ?? 0;
+      final rate = (order['commission_rate'] as num?)?.toDouble() ?? 0;
+      totalRevenue += amount;
+      totalCommission += amount * rate / 100;
     }
 
     return {
@@ -136,11 +181,11 @@ typedef ReviewParams = ({String entityType, String entityId});
 final entityReviewsProvider = FutureProvider.family<List<Map<String, dynamic>>, ReviewParams>(
   (ref, params) async {
     final client = ref.watch(supabaseProvider);
+    // reviews tablosu merchant_id kullanıyor
     final response = await client
         .from('reviews')
-        .select('*, users(full_name, avatar_url)')
-        .eq('entity_type', params.entityType)
-        .eq('entity_id', params.entityId)
+        .select()
+        .eq('merchant_id', params.entityId)
         .order('created_at', ascending: false);
     return List<Map<String, dynamic>>.from(response);
   },
@@ -152,9 +197,10 @@ final merchantCouriersProvider = FutureProvider.family<List<Map<String, dynamic>
   (ref, merchantId) async {
     final client = ref.watch(supabaseProvider);
     final response = await client
-        .from('courier_assignments')
-        .select('*, couriers(full_name, phone, status, avatar_url, rating, total_deliveries)')
-        .eq('merchant_id', merchantId);
+        .from('couriers')
+        .select()
+        .eq('merchant_id', merchantId)
+        .order('created_at', ascending: false);
     return List<Map<String, dynamic>>.from(response);
   },
 );
@@ -166,11 +212,12 @@ typedef MessageParams = ({String entityType, String entityId});
 final entityConversationsProvider = FutureProvider.family<List<Map<String, dynamic>>, MessageParams>(
   (ref, params) async {
     final client = ref.watch(supabaseProvider);
+    // conversations tablosu property_id, buyer_id, seller_id kullanıyor
+    // entityType'a göre farklı filtre uygula
     final response = await client
         .from('conversations')
-        .select('*, messages(id, message, sender_type, sender_name, created_at, is_read)')
-        .eq('entity_type', params.entityType)
-        .eq('entity_id', params.entityId)
+        .select('*, messages(id, content, sender_id, message_type, created_at, is_read)')
+        .or('buyer_id.eq.${params.entityId},seller_id.eq.${params.entityId}')
         .order('updated_at', ascending: false);
     return List<Map<String, dynamic>>.from(response);
   },

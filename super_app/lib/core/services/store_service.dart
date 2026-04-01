@@ -5,6 +5,7 @@ import '../../models/store/store_category_model.dart';
 import '../../models/store/store_product_model.dart';
 import 'supabase_service.dart';
 import '../utils/cache_helper.dart';
+import 'package:super_app/core/services/log_service.dart';
 
 class StoreService {
   static SupabaseClient get _client => SupabaseService.client;
@@ -26,8 +27,8 @@ class StoreService {
           return (response as List)
               .map((json) => StoreCategory.fromJson(json))
               .toList();
-        } catch (e) {
-          if (kDebugMode) print('Error fetching categories: $e');
+        } catch (e, st) {
+          LogService.error('Error fetching categories', error: e, stackTrace: st, source: 'StoreService:getCategories');
           return [];
         }
       },
@@ -55,8 +56,8 @@ class StoreService {
           return (response as List)
               .map((json) => Store.fromMerchant(json))
               .toList();
-        } catch (e) {
-          if (kDebugMode) print('Error fetching stores: $e');
+        } catch (e, st) {
+          LogService.error('Error fetching stores', error: e, stackTrace: st, source: 'StoreService:getStores');
           return [];
         }
       },
@@ -82,8 +83,8 @@ class StoreService {
       return (response as List)
           .map((json) => Store.fromMerchant(json))
           .toList();
-    } catch (e) {
-      if (kDebugMode) print('Error fetching stores by category: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching stores by category', error: e, stackTrace: st, source: 'StoreService:getStoresByCategory');
       return [];
     }
   }
@@ -110,8 +111,8 @@ class StoreService {
           return (response as List)
               .map((json) => Store.fromMerchant(json))
               .toList();
-        } catch (e) {
-          if (kDebugMode) print('Error fetching featured stores: $e');
+        } catch (e, st) {
+          LogService.error('Error fetching featured stores', error: e, stackTrace: st, source: 'StoreService:getFeaturedStores');
           return [];
         }
       },
@@ -128,8 +129,8 @@ class StoreService {
           .eq('is_approved', true);
 
       return (response as List).map((json) => json['id'] as String).toList();
-    } catch (e) {
-      if (kDebugMode) print('Error fetching store ids: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching store ids', error: e, stackTrace: st, source: 'StoreService:_getStoreIds');
       return [];
     }
   }
@@ -150,8 +151,8 @@ class StoreService {
           final merchantData = response['merchants'];
           final storeName = merchantData != null ? merchantData['business_name'] as String? ?? '' : '';
           return StoreProduct.fromJson(response, storeName: storeName);
-        } catch (e) {
-          if (kDebugMode) print('Error fetching product by id: $e');
+        } catch (e, st) {
+          LogService.error('Error fetching product by id', error: e, stackTrace: st, source: 'StoreService:getProductById');
           return null;
         }
       },
@@ -173,8 +174,8 @@ class StoreService {
               .maybeSingle();
           if (response == null) return null;
           return Store.fromJson(response);
-        } catch (e) {
-          if (kDebugMode) print('Error fetching store by id: $e');
+        } catch (e, st) {
+          LogService.error('Error fetching store by id', error: e, stackTrace: st, source: 'StoreService:getStoreById');
           return null;
         }
       },
@@ -197,8 +198,8 @@ class StoreService {
       return (response as List).map((json) {
         return StoreProduct.fromJson(json, storeName: '');
       }).toList();
-    } catch (e) {
-      if (kDebugMode) print('Error fetching products: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching products', error: e, stackTrace: st, source: 'StoreService:getProducts');
       return [];
     }
   }
@@ -229,8 +230,8 @@ class StoreService {
               categorySortOrder: categorySortOrder,
             );
           }).toList();
-        } catch (e) {
-          if (kDebugMode) print('Error fetching products by store: $e');
+        } catch (e, st) {
+          LogService.error('Error fetching products by store', error: e, stackTrace: st, source: 'StoreService:getProductsByStore');
           return [];
         }
       },
@@ -254,8 +255,8 @@ class StoreService {
       return (response as List).map((json) {
         return StoreProduct.fromJson(json, storeName: '');
       }).toList();
-    } catch (e) {
-      if (kDebugMode) print('Error fetching products by category: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching products by category', error: e, stackTrace: st, source: 'StoreService:getProductsByCategory');
       return [];
     }
   }
@@ -282,8 +283,8 @@ class StoreService {
           return (response as List).map((json) {
             return StoreProduct.fromJson(json, storeName: '');
           }).toList();
-        } catch (e) {
-          if (kDebugMode) print('Error fetching flash deals: $e');
+        } catch (e, st) {
+          LogService.error('Error fetching flash deals', error: e, stackTrace: st, source: 'StoreService:getFlashDeals');
           return [];
         }
       },
@@ -311,8 +312,8 @@ class StoreService {
           return (response as List).map((json) {
             return StoreProduct.fromJson(json, storeName: '');
           }).toList();
-        } catch (e) {
-          if (kDebugMode) print('Error fetching best sellers: $e');
+        } catch (e, st) {
+          LogService.error('Error fetching best sellers', error: e, stackTrace: st, source: 'StoreService:getBestSellers');
           return [];
         }
       },
@@ -341,8 +342,8 @@ class StoreService {
           return (response as List).map((json) {
             return StoreProduct.fromJson(json, storeName: '');
           }).toList();
-        } catch (e) {
-          if (kDebugMode) print('Error fetching recommended: $e');
+        } catch (e, st) {
+          LogService.error('Error fetching recommended', error: e, stackTrace: st, source: 'StoreService:getRecommended');
           return [];
         }
       },
@@ -367,8 +368,8 @@ class StoreService {
       return (response as List).map((json) {
         return StoreProduct.fromJson(json, storeName: '');
       }).toList();
-    } catch (e) {
-      if (kDebugMode) print('Error searching products: $e');
+    } catch (e, st) {
+      LogService.error('Error searching products', error: e, stackTrace: st, source: 'StoreService:searchProducts');
       return [];
     }
   }
@@ -393,8 +394,8 @@ class StoreService {
       return (response as List)
           .map((json) => Store.fromMerchant(json))
           .toList();
-    } catch (e) {
-      if (kDebugMode) print('Error searching stores: $e');
+    } catch (e, st) {
+      LogService.error('Error searching stores', error: e, stackTrace: st, source: 'StoreService:searchStores');
       return [];
     }
   }
@@ -411,6 +412,7 @@ class StoreService {
     double? deliveryLongitude,
     String? deliveryInstructions,
     String paymentMethod = 'card',
+    String paymentStatus = 'paid',
   }) async {
     try {
       final userId = _client.auth.currentUser?.id;
@@ -423,6 +425,39 @@ class StoreService {
       final orderNumber = 'SP${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
 
       if (kDebugMode) print('StoreService.createOrder: Creating order $orderNumber for merchant $merchantId');
+
+      // Komisyon oranını belirle
+      double commissionRate = 10.0;
+      try {
+        // Önce işletme özel oranı kontrol et
+        final overrideResult = await _client
+            .from('merchant_commission_overrides')
+            .select('custom_rate')
+            .eq('merchant_id', merchantId)
+            .maybeSingle();
+        if (overrideResult != null) {
+          commissionRate = double.tryParse(overrideResult['custom_rate'].toString()) ?? 10.0;
+        } else {
+          // Merchant tipini al ve sektör bazlı oran bul
+          final merchantResult = await _client
+              .from('merchants')
+              .select('type')
+              .eq('id', merchantId)
+              .single();
+          final sector = merchantResult['type'] == 'market' ? 'market' : 'store';
+          final rateResult = await _client
+              .from('commission_rates')
+              .select('default_rate')
+              .eq('sector', sector)
+              .eq('is_active', true)
+              .maybeSingle();
+          if (rateResult != null) {
+            commissionRate = double.tryParse(rateResult['default_rate'].toString()) ?? 10.0;
+          }
+        }
+      } catch (e, st) {
+        LogService.error('Commission rate lookup failed', error: e, stackTrace: st, source: 'StoreService:createOrder');
+      }
 
       final response = await _client
           .from('orders')
@@ -439,17 +474,39 @@ class StoreService {
             'delivery_longitude': deliveryLongitude,
             'delivery_instructions': deliveryInstructions,
             'payment_method': paymentMethod,
-            'payment_status': 'paid',
+            'payment_status': paymentStatus,
             'status': 'pending',
+            'commission_rate': commissionRate,
           })
           .select()
           .single();
 
       if (kDebugMode) print('StoreService.createOrder: Order created successfully - $orderNumber');
       return response;
-    } catch (e) {
-      if (kDebugMode) print('StoreService.createOrder Error: $e');
+    } catch (e, st) {
+      LogService.error('StoreService.createOrder Error', error: e, stackTrace: st, source: 'StoreService:createOrder');
       rethrow;
+    }
+  }
+
+  /// Online ödeme onaylandıktan sonra sipariş ödeme durumunu güncelle.
+  static Future<void> updateOrderPaymentStatus(String orderId, String status) async {
+    try {
+      await _client.from('orders').update({'payment_status': status}).eq('id', orderId);
+    } catch (e, st) {
+      LogService.error('updateOrderPaymentStatus Error', error: e, stackTrace: st, source: 'StoreService:updateOrderPaymentStatus');
+    }
+  }
+
+  /// Online ödeme başarısız olduğunda bekleyen siparişi iptal et.
+  static Future<void> cancelOrder(String orderId) async {
+    try {
+      await _client.from('orders').update({
+        'status': 'cancelled',
+        'payment_status': 'failed',
+      }).eq('id', orderId);
+    } catch (e, st) {
+      LogService.error('cancelOrder Error', error: e, stackTrace: st, source: 'StoreService:cancelOrder');
     }
   }
 

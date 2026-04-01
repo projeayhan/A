@@ -51,15 +51,19 @@ class ProductCard extends StatelessWidget {
                   child: AspectRatio(
                     aspectRatio: 1.0, // Kare görsel - kompakt kart
                     child: CachedNetworkImage(
-                      imageUrl: ImageUtils.getProductThumbnail(product.imageUrl),
+                      imageUrl: ImageUtils.getProductThumbnail(
+                        product.imageUrl,
+                      ),
                       fit: BoxFit.cover,
                       memCacheWidth: 300,
                       memCacheHeight: 300,
-                      placeholder: (_, __) => Container(
+                      placeholder: (_, _) => Container(
                         color: Colors.grey[200],
-                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                        child: const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
                       ),
-                      errorWidget: (_, __, ___) => Container(
+                      errorWidget: (_, _, _) => Container(
                         color: StoreColors.primary.withValues(alpha: 0.1),
                         child: Icon(
                           Icons.image_outlined,
@@ -123,8 +127,7 @@ class ProductCard extends StatelessWidget {
                         isFavorite
                             ? Icons.favorite_rounded
                             : Icons.favorite_border_rounded,
-                        color:
-                            isFavorite ? Colors.red : Colors.grey[400],
+                        color: isFavorite ? Colors.red : Colors.grey[400],
                         size: 16,
                       ),
                     ),
@@ -175,16 +178,14 @@ class ProductCard extends StatelessWidget {
                     child: Row(
                       children: [
                         if (product.freeShipping)
-                          _buildBadge(context,
+                          _buildBadge(
+                            context,
                             'Ücretsiz Kargo',
                             const Color(0xFF10B981),
                           ),
                         if (product.fastDelivery) ...[
                           if (product.freeShipping) const SizedBox(width: 4),
-                          _buildBadge(context,
-                            'Hızlı',
-                            StoreColors.primary,
-                          ),
+                          _buildBadge(context, 'Hızlı', StoreColors.primary),
                         ],
                       ],
                     ),

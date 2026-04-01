@@ -4,6 +4,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../widgets/macro_builder.dart';
+import 'package:support_panel/core/services/log_service.dart';
 
 class MacrosScreen extends ConsumerStatefulWidget {
   const MacrosScreen({super.key});
@@ -37,7 +38,8 @@ class _MacrosScreenState extends ConsumerState<MacrosScreen> {
 
       final data = await query.order('usage_count', ascending: false);
       setState(() { _macros = List<Map<String, dynamic>>.from(data); _isLoading = false; });
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to load macros', error: e, stackTrace: st, source: 'MacrosScreen:_loadMacros');
       setState(() => _isLoading = false);
     }
   }

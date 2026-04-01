@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
-const SUPABASE_URL = 'https://mzgtvdgwxrlhgjboolys.supabase.co';
-const MAPS_API_KEY = 'AIzaSyDKGWWyuU8vbE_8H50XaFCi7exSSFolLnQ';
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL') ?? Deno.env.get('SUPABASE_PROJECT_URL') ?? '';
+const MAPS_API_KEY = Deno.env.get('MAPS_API_KEY') ?? '';
 
 Deno.serve(async (req: Request) => {
   const url = new URL(req.url);

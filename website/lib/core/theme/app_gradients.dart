@@ -9,7 +9,7 @@ class AppGradients {
   );
 
   static const LinearGradient hero = LinearGradient(
-    colors: [AppColors.background, Color(0xFF0A1628), AppColors.background],
+    colors: [AppColors.backgroundDark, Color(0xFF0A1628), AppColors.backgroundDark],
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
   );

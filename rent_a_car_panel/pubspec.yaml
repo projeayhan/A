@@ -24,14 +24,19 @@ dependencies:
 
   # Supabase
   supabase_flutter: ^2.9.0
+  flutter_dotenv: ^5.2.1
 
   # Audio
   audioplayers: ^6.1.0
+
+  # Payment
+  flutter_stripe: ^11.5.0
 
   # Utils
   intl: ^0.20.2
   shared_preferences: ^2.5.3
   file_picker: ^10.0.0
+  image_picker: ^1.1.2
   url_launcher: ^6.3.1
 
   # PDF & Excel
@@ -49,4 +54,5 @@ flutter:
   uses-material-design: true
 
   assets:
+    - .env
     - assets/images/

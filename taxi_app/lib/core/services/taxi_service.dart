@@ -1,7 +1,9 @@
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'log_service.dart';
 import 'supabase_service.dart';
+import '../../models/ride_models.dart';
 
 /// Taksi Surucu Servisi - Modern ve Temiz
 class TaxiService {
@@ -11,7 +13,7 @@ class TaxiService {
 
   static Map<String, dynamic>? _cachedDriverProfile;
   static DateTime? _cacheTimestamp;
-  static const _cacheTtl = Duration(seconds: 60);
+  static const _cacheTtl = Duration(seconds: 300);
 
   /// Cache'i temizle (profil guncellemelerinde kullanilir)
   static void invalidateProfileCache() {
@@ -44,8 +46,8 @@ class TaxiService {
       _cachedDriverProfile = response;
       _cacheTimestamp = DateTime.now();
       return response;
-    } catch (e) {
-      debugPrint('getDriverProfile error: $e');
+    } catch (e, st) {
+      LogService.error('getDriverProfile error', error: e, stackTrace: st, source: 'TaxiService:getDriverProfile');
       return null;
     }
   }
@@ -63,20 +65,28 @@ class TaxiService {
     required List<String> vehicleTypes,
     String? email,
   }) async {
-    // Oturumun kurulması için kısa bekleme
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    // Oturumu yenile
-    await SupabaseService.client.auth.refreshSession();
+    // Oturumun kurulmasını bekle (max 3 saniye)
+    for (var i = 0; i < 6; i++) {
+      if (SupabaseService.currentUser != null) break;
+      await Future.delayed(const Duration(milliseconds: 500));
+    }
+    // Hala oturum yoksa yenilemeyi dene
+    if (SupabaseService.currentUser == null) {
+      try {
+        await SupabaseService.client.auth.refreshSession();
+      } catch (e, st) { LogService.error('refreshSession error', error: e, stackTrace: st, source: 'TaxiService:createDriverProfile'); }
+    }
 
     final userId = SupabaseService.currentUser?.id;
     if (userId == null) {
-      debugPrint('createDriverProfile error: userId is null - session not established');
+      LogService.error('createDriverProfile error: userId is null - session not established', source: 'TaxiService:createDriverProfile');
       return null;
     }
 
     final userEmail = email ?? SupabaseService.currentUser?.email;
-    debugPrint('Creating driver profile for userId: $userId, email: $userEmail');
+    if (kDebugMode) {
+      debugPrint('Creating driver profile for userId: $userId, email: $userEmail');
+    }
 
     try {
       // taxi_drivers tablosuna ekle
@@ -105,7 +115,9 @@ class TaxiService {
           .select()
           .single();
 
-      debugPrint('Driver profile created successfully: ${response['id']}');
+      if (kDebugMode) {
+        debugPrint('Driver profile created successfully: ${response['id']}');
+      }
 
       // users tablosunda ad soyad güncelle (super_app girişinde yönlendirme kontrolü için)
       try {
@@ -120,8 +132,8 @@ class TaxiService {
               'phone': phone,
             })
             .eq('id', userId);
-      } catch (_) {
-        // users kaydı yoksa veya hata olursa devam et
+      } catch (e, st) {
+        LogService.error('users table update error', error: e, stackTrace: st, source: 'TaxiService:createDriverProfile');
       }
 
       // Admin panel icin partner_applications tablosuna da ekle
@@ -141,34 +153,45 @@ class TaxiService {
           'vehicle_year': vehicleYear,
           'vehicle_type': vehicleTypes.join(','),
         });
-        debugPrint('Partner application created for taxi driver');
-      } catch (e) {
-        debugPrint('Partner application insert error (non-critical): $e');
+        LogService.info('Partner application created for taxi driver', source: 'TaxiService:createDriverProfile');
+      } catch (e, st) {
+        LogService.error('Partner application insert error (non-critical)', error: e, stackTrace: st, source: 'TaxiService:createDriverProfile');
       }
 
       return response;
-    } catch (e) {
-      debugPrint('createDriverProfile error: $e');
-      debugPrint('userId was: $userId');
+    } catch (e, st) {
+      LogService.error('createDriverProfile error', error: e, stackTrace: st, source: 'TaxiService:createDriverProfile');
       return null;
     }
   }
 
   /// Surucu profilini guncelle
   static Future<bool> updateDriverProfile(Map<String, dynamic> updates) async {
+    const allowedFields = {
+      'bank_name', 'bank_iban', 'bank_account_holder', 'phone',
+      'vehicle_brand', 'vehicle_model', 'vehicle_plate', 'vehicle_color',
+      'vehicle_year', 'vehicle_types', 'profile_photo_url',
+      'notification_settings',
+    };
+
+    final filtered = Map<String, dynamic>.fromEntries(
+      updates.entries.where((e) => allowedFields.contains(e.key)),
+    );
+    if (filtered.isEmpty) return false;
+
     final driver = await getDriverProfile();
     if (driver == null) return false;
 
     try {
       await _client
           .from('taxi_drivers')
-          .update({...updates, 'updated_at': DateTime.now().toIso8601String()})
+          .update({...filtered, 'updated_at': DateTime.now().toIso8601String()})
           .eq('id', driver['id']);
 
       invalidateProfileCache();
       return true;
-    } catch (e) {
-      debugPrint('updateDriverProfile error: $e');
+    } catch (e, st) {
+      LogService.error('updateDriverProfile error', error: e, stackTrace: st, source: 'TaxiService:updateDriverProfile');
       return false;
     }
   }
@@ -191,8 +214,8 @@ class TaxiService {
 
       invalidateProfileCache();
       return true;
-    } catch (e) {
-      debugPrint('updateOnlineStatus error: $e');
+    } catch (e, st) {
+      LogService.error('updateOnlineStatus error', error: e, stackTrace: st, source: 'TaxiService:updateOnlineStatus');
       return false;
     }
   }
@@ -213,8 +236,8 @@ class TaxiService {
           .eq('id', driver['id']);
 
       return true;
-    } catch (e) {
-      debugPrint('updateLocation error: $e');
+    } catch (e, st) {
+      LogService.error('updateLocation error', error: e, stackTrace: st, source: 'TaxiService:updateLocation');
       return false;
     }
   }
@@ -246,8 +269,8 @@ class TaxiService {
       final response = await query.order('created_at', ascending: false);
 
       return List<Map<String, dynamic>>.from(response);
-    } catch (e) {
-      debugPrint('getPendingRides error: $e');
+    } catch (e, st) {
+      LogService.error('getPendingRides error', error: e, stackTrace: st, source: 'TaxiService:getPendingRides');
       return [];
     }
   }
@@ -266,8 +289,8 @@ class TaxiService {
           .order('created_at', ascending: false);
 
       return List<Map<String, dynamic>>.from(response);
-    } catch (e) {
-      debugPrint('getActiveRides error: $e');
+    } catch (e, st) {
+      LogService.error('getActiveRides error', error: e, stackTrace: st, source: 'TaxiService:getActiveRides');
       return [];
     }
   }
@@ -288,8 +311,8 @@ class TaxiService {
           .maybeSingle();
 
       return response;
-    } catch (e) {
-      debugPrint('getRide error: $e');
+    } catch (e, st) {
+      LogService.error('getRide error', error: e, stackTrace: st, source: 'TaxiService:getRide');
       return null;
     }
   }
@@ -300,7 +323,7 @@ class TaxiService {
   static Future<bool> acceptRide(String rideId) async {
     final driver = await getDriverProfile();
     if (driver == null) {
-      debugPrint('acceptRide: Driver profile not found');
+      LogService.error('acceptRide: Driver profile not found', source: 'TaxiService:acceptRide');
       return false;
     }
 
@@ -308,11 +331,11 @@ class TaxiService {
       // Once surusun hala pending oldugundan emin ol
       final ride = await getRide(rideId);
       if (ride == null || ride['status'] != 'pending') {
-        debugPrint('acceptRide: Ride not pending or not found');
+        LogService.error('acceptRide: Ride not pending or not found', source: 'TaxiService:acceptRide');
         return false;
       }
 
-      await _client
+      final result = await _client
           .from('taxi_rides')
           .update({
             'driver_id': driver['id'],
@@ -321,102 +344,136 @@ class TaxiService {
             'updated_at': DateTime.now().toIso8601String(),
           })
           .eq('id', rideId)
-          .eq('status', 'pending'); // Sadece pending ise guncelle
+          .eq('status', 'pending') // Sadece pending ise guncelle
+          .select('id');
 
-      debugPrint(
-        'acceptRide: Success - ride $rideId accepted by driver ${driver['id']}',
-      );
+      if ((result as List).isEmpty) {
+        LogService.error('acceptRide: Ride already taken or not found', source: 'TaxiService:acceptRide');
+        return false;
+      }
+
+      LogService.info('acceptRide: Success - ride $rideId accepted by driver ${driver['id']}', source: 'TaxiService:acceptRide');
       return true;
-    } catch (e) {
-      debugPrint('acceptRide error: $e');
+    } catch (e, st) {
+      LogService.error('acceptRide error', error: e, stackTrace: st, source: 'TaxiService:acceptRide');
       return false;
     }
   }
 
   /// Varisa ulasti (Musteri bekleme noktasina)
   static Future<bool> arriveAtPickup(String rideId) async {
+    final driver = await getDriverProfile();
+    if (driver == null) return false;
+
     try {
-      await _client
+      final result = await _client
           .from('taxi_rides')
           .update({
             'status': 'arrived',
             'arrived_at': DateTime.now().toIso8601String(),
             'updated_at': DateTime.now().toIso8601String(),
           })
-          .eq('id', rideId);
+          .eq('id', rideId)
+          .eq('driver_id', driver['id'])
+          .select('id');
 
+      if ((result as List).isEmpty) return false;
       return true;
-    } catch (e) {
-      debugPrint('arriveAtPickup error: $e');
+    } catch (e, st) {
+      LogService.error('arriveAtPickup error', error: e, stackTrace: st, source: 'TaxiService:arriveAtPickup');
       return false;
     }
   }
 
   /// Yolculugu baslat (Musteri alindi)
   static Future<bool> startRide(String rideId) async {
+    final driver = await getDriverProfile();
+    if (driver == null) return false;
+
     try {
-      await _client
+      final now = DateTime.now().toIso8601String();
+      final result = await _client
           .from('taxi_rides')
           .update({
             'status': 'in_progress',
-            'picked_up_at': DateTime.now().toIso8601String(),
-            'updated_at': DateTime.now().toIso8601String(),
+            'picked_up_at': now,  // taxi_app native field
+            'started_at': now,    // super_app compatibility
+            'updated_at': now,
           })
-          .eq('id', rideId);
+          .eq('id', rideId)
+          .eq('driver_id', driver['id'])
+          .select('id');
 
+      if ((result as List).isEmpty) return false;
       return true;
-    } catch (e) {
-      debugPrint('startRide error: $e');
+    } catch (e, st) {
+      LogService.error('startRide error', error: e, stackTrace: st, source: 'TaxiService:startRide');
       return false;
     }
   }
 
-  /// Yolculugu tamamla
+  /// Yolculugu tamamla (atomik RPC ile race condition onlenir)
   static Future<bool> completeRide(String rideId) async {
+    final driver = await getDriverProfile();
+    if (driver == null) return false;
+
     try {
-      // Surus detayini al
-      final ride = await getRide(rideId);
-      if (ride == null) return false;
+      // Surusi tamamla ve istatistikleri atomik olarak guncelle (tek DB transaction)
+      await _client.rpc('complete_ride_and_update_stats', params: {
+        'p_ride_id': rideId,
+        'p_driver_id': driver['id'],
+      });
 
-      final fare = (ride['fare'] as num?)?.toDouble() ?? 0;
-
-      // Surusi tamamla
-      await _client
-          .from('taxi_rides')
-          .update({
-            'status': 'completed',
-            'completed_at': DateTime.now().toIso8601String(),
-            'updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', rideId);
-
-      // Surucu istatistiklerini guncelle
-      final driver = await getDriverProfile();
-      if (driver != null) {
-        await _client
-            .from('taxi_drivers')
-            .update({
-              'total_rides': (driver['total_rides'] ?? 0) + 1,
-              'total_earnings':
-                  ((driver['total_earnings'] as num?)?.toDouble() ?? 0) + fare,
-              'updated_at': DateTime.now().toIso8601String(),
-            })
-            .eq('id', driver['id']);
-
-        invalidateProfileCache();
-      }
+      invalidateProfileCache();
 
       return true;
-    } catch (e) {
-      debugPrint('completeRide error: $e');
-      return false;
+    } catch (e, st) {
+      LogService.error('completeRide error', error: e, stackTrace: st, source: 'TaxiService:completeRide');
+
+      // RPC mevcut degil veya basarisiz olduysa fallback: en azindan ride'i tamamla
+      try {
+        final result = await _client
+            .from('taxi_rides')
+            .update({
+              'status': 'completed',
+              'completed_at': DateTime.now().toIso8601String(),
+              'updated_at': DateTime.now().toIso8601String(),
+            })
+            .eq('id', rideId)
+            .eq('driver_id', driver['id'])
+            .select('id, fare');
+
+        if ((result as List).isEmpty) return false;
+
+        final fare = (result.first['fare'] as num?)?.toDouble() ?? 0;
+
+        // Atomik kazanc guncellemesi (total_rides ayri RPC ile)
+        try {
+          await _client.rpc('increment_driver_stats', params: {
+            'p_driver_id': driver['id'],
+            'p_amount': fare,
+          });
+        } catch (rpcError, st) {
+          LogService.error('increment_driver_stats error (non-critical)', error: rpcError, stackTrace: st, source: 'TaxiService:completeRide');
+          // Stat guncelleme basarisiz olsa bile ride tamamlandi sayilir
+        }
+
+        invalidateProfileCache();
+        return true;
+      } catch (fallbackError, st) {
+        LogService.error('completeRide fallback error', error: fallbackError, stackTrace: st, source: 'TaxiService:completeRide');
+        return false;
+      }
     }
   }
 
   /// Surusi iptal et (surucu tarafindan)
   static Future<bool> cancelRide(String rideId, {String? reason}) async {
+    final driver = await getDriverProfile();
+    if (driver == null) return false;
+
     try {
-      await _client
+      final result = await _client
           .from('taxi_rides')
           .update({
             'status': 'cancelled_by_driver',
@@ -424,11 +481,14 @@ class TaxiService {
             'cancellation_reason': reason ?? 'Surucu tarafindan iptal edildi',
             'updated_at': DateTime.now().toIso8601String(),
           })
-          .eq('id', rideId);
+          .eq('id', rideId)
+          .eq('driver_id', driver['id'])
+          .select('id');
 
+      if ((result as List).isEmpty) return false;
       return true;
-    } catch (e) {
-      debugPrint('cancelRide error: $e');
+    } catch (e, st) {
+      LogService.error('cancelRide error', error: e, stackTrace: st, source: 'TaxiService:cancelRide');
       return false;
     }
   }
@@ -453,8 +513,8 @@ class TaxiService {
           .range(offset, offset + limit - 1);
 
       return List<Map<String, dynamic>>.from(response);
-    } catch (e) {
-      debugPrint('getCompletedRides error: $e');
+    } catch (e, st) {
+      LogService.error('getCompletedRides error', error: e, stackTrace: st, source: 'TaxiService:getCompletedRides');
       return [];
     }
   }
@@ -476,8 +536,8 @@ class TaxiService {
           .range(offset, offset + limit - 1);
 
       return List<Map<String, dynamic>>.from(response);
-    } catch (e) {
-      debugPrint('getRideHistory error: $e');
+    } catch (e, st) {
+      LogService.error('getRideHistory error', error: e, stackTrace: st, source: 'TaxiService:getRideHistory');
       return [];
     }
   }
@@ -495,30 +555,17 @@ class TaxiService {
         return double.tryParse(response['value'].toString()) ?? 20.0;
       }
       return 20.0; // Varsayilan %20
-    } catch (e) {
-      debugPrint('getCommissionRate error: $e');
+    } catch (e, st) {
+      LogService.error('getCommissionRate error', error: e, stackTrace: st, source: 'TaxiService:getCommissionRate');
       return 20.0;
     }
   }
 
   /// Kazanc ozeti
-  static Future<Map<String, dynamic>> getEarningsSummary() async {
+  static Future<EarningsSummary> getEarningsSummary() async {
     final driver = await getDriverProfile();
     if (driver == null) {
-      return {
-        'today': 0.0,
-        'week': 0.0,
-        'month': 0.0,
-        'total': 0.0,
-        'commission_rate': 20.0,
-        'commission_amount': 0.0,
-        'net_earnings': 0.0,
-        'today_rides': 0,
-        'week_rides': 0,
-        'month_rides': 0,
-        'total_rides': 0,
-        'rating': 5.0,
-      };
+      return EarningsSummary.empty();
     }
 
     try {
@@ -572,36 +619,36 @@ class TaxiService {
       final commissionAmount = totalEarnings * (commissionRate / 100);
       final netEarnings = totalEarnings - commissionAmount;
 
-      return {
-        'today': calculateTotal(todayRides),
-        'week': calculateTotal(weekRides),
-        'month': calculateTotal(monthRides),
-        'total': totalEarnings,
-        'commission_rate': commissionRate,
-        'commission_amount': commissionAmount,
-        'net_earnings': netEarnings,
-        'today_rides': todayRides.length,
-        'week_rides': weekRides.length,
-        'month_rides': monthRides.length,
-        'total_rides': driver['total_rides'] ?? 0,
-        'rating': (driver['rating'] as num?)?.toDouble() ?? 0.0,
-      };
-    } catch (e) {
-      debugPrint('getEarningsSummary error: $e');
-      return {
-        'today': 0.0,
-        'week': 0.0,
-        'month': 0.0,
-        'total': (driver['total_earnings'] as num?)?.toDouble() ?? 0.0,
-        'commission_rate': 20.0,
-        'commission_amount': 0.0,
-        'net_earnings': 0.0,
-        'today_rides': 0,
-        'week_rides': 0,
-        'month_rides': 0,
-        'total_rides': driver['total_rides'] ?? 0,
-        'rating': (driver['rating'] as num?)?.toDouble() ?? 0.0,
-      };
+      return EarningsSummary(
+        today: calculateTotal(todayRides),
+        week: calculateTotal(weekRides),
+        month: calculateTotal(monthRides),
+        total: totalEarnings,
+        commissionRate: commissionRate,
+        commissionAmount: commissionAmount,
+        netEarnings: netEarnings,
+        todayRides: todayRides.length,
+        weekRides: weekRides.length,
+        monthRides: monthRides.length,
+        totalRides: driver['total_rides'] as int? ?? 0,
+        rating: (driver['rating'] as num?)?.toDouble() ?? 0.0,
+      );
+    } catch (e, st) {
+      LogService.error('getEarningsSummary error', error: e, stackTrace: st, source: 'TaxiService:getEarningsSummary');
+      return EarningsSummary(
+        today: 0.0,
+        week: 0.0,
+        month: 0.0,
+        total: (driver['total_earnings'] as num?)?.toDouble() ?? 0.0,
+        commissionRate: 20.0,
+        commissionAmount: 0.0,
+        netEarnings: 0.0,
+        todayRides: 0,
+        weekRides: 0,
+        monthRides: 0,
+        totalRides: driver['total_rides'] as int? ?? 0,
+        rating: (driver['rating'] as num?)?.toDouble() ?? 0.0,
+      );
     }
   }
 
@@ -636,31 +683,36 @@ class TaxiService {
       return dailyTotals.entries
           .map((e) => {'date': e.key, 'amount': e.value})
           .toList();
-    } catch (e) {
-      debugPrint('getDailyEarnings error: $e');
+    } catch (e, st) {
+      LogService.error('getDailyEarnings error', error: e, stackTrace: st, source: 'TaxiService:getDailyEarnings');
       return [];
     }
   }
 
   // ==================== REALTIME SUBSCRIPTIONS ====================
 
-  /// Yeni surus taleplerine abone ol
+  /// Yeni surus taleplerine abone ol (sunucu tarafinda filtre ile bant genisligi azaltilir)
   static RealtimeChannel subscribeToNewRides(
     void Function(Map<String, dynamic> ride) onNewRide,
   ) {
     return _client
-        .channel(
-          'driver_pending_rides_${DateTime.now().millisecondsSinceEpoch}',
-        )
+        .channel('driver_pending_rides')
         .onPostgresChanges(
           event: PostgresChangeEvent.insert,
           schema: 'public',
           table: 'taxi_rides',
+          // Sunucu tarafinda filtre: sadece 'pending' durumundaki surusler iletilir
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'status',
+            value: 'pending',
+          ),
           callback: (payload) {
             final newRide = payload.newRecord;
+            // Istemci tarafinda ek dogrulama (sunucu filtresi yeterli olmayan durumlarda)
             if (newRide['status'] == 'pending' &&
                 newRide['driver_id'] == null) {
-              debugPrint('New ride request received: ${newRide['id']}');
+              LogService.info('New ride request received: ${newRide['id']}', source: 'TaxiService:subscribeToNewRides');
               onNewRide(newRide);
             }
           },
@@ -685,7 +737,7 @@ class TaxiService {
             value: rideId,
           ),
           callback: (payload) {
-            debugPrint('Ride $rideId updated: ${payload.newRecord['status']}');
+            LogService.info('Ride $rideId updated: ${payload.newRecord['status']}', source: 'TaxiService:subscribeToRide');
             onUpdate(payload.newRecord);
           },
         )
@@ -735,8 +787,8 @@ class TaxiService {
           .order('completed_at', ascending: false);
 
       return List<Map<String, dynamic>>.from(response);
-    } catch (e) {
-      debugPrint('getDriverReviews error: $e');
+    } catch (e, st) {
+      LogService.error('getDriverReviews error', error: e, stackTrace: st, source: 'TaxiService:getDriverReviews');
       return [];
     }
   }
@@ -759,29 +811,41 @@ class TaxiService {
           .maybeSingle();
 
       if (existing == null) {
-        debugPrint('replyToReview: Ride not found or not belonging to driver');
+        LogService.error('replyToReview: Ride not found or not belonging to driver', source: 'TaxiService:replyToReview');
         return false;
       }
 
       // Zaten cevap verilmiş mi?
       if (existing['driver_reply'] != null && existing['driver_reply'].toString().isNotEmpty) {
-        debugPrint('replyToReview: Already replied to this review');
+        LogService.error('replyToReview: Already replied to this review', source: 'TaxiService:replyToReview');
         return false;
       }
 
-      // Cevabı kaydet
+      final replyData = {
+        'driver_reply': reply,
+        'driver_reply_at': DateTime.now().toIso8601String(),
+      };
+
+      // taxi_rides tablosuna yaz (taxi_app kendi okumasi icin)
       await _client
           .from('taxi_rides')
-          .update({
-            'driver_reply': reply,
-            'driver_reply_at': DateTime.now().toIso8601String(),
-          })
+          .update(replyData)
           .eq('id', rideId)
           .eq('driver_id', driver['id']);
 
+      // super_app driver_review_details tablosuna da yaz (musteri gorsun)
+      try {
+        await _client
+            .from('driver_review_details')
+            .update(replyData)
+            .eq('ride_id', rideId);
+      } catch (e, st) {
+        LogService.error('replyToReview driver_review_details update error', error: e, stackTrace: st, source: 'TaxiService:replyToReview');
+      }
+
       return true;
-    } catch (e) {
-      debugPrint('replyToReview error: $e');
+    } catch (e, st) {
+      LogService.error('replyToReview error', error: e, stackTrace: st, source: 'TaxiService:replyToReview');
       return false;
     }
   }
@@ -812,8 +876,8 @@ class TaxiService {
           },
         ),
       );
-    } catch (e) {
-      debugPrint('getEarningsHistory error: $e');
+    } catch (e, st) {
+      LogService.error('getEarningsHistory error', error: e, stackTrace: st, source: 'TaxiService:getEarningsHistory');
       return [];
     }
   }
@@ -834,8 +898,8 @@ class TaxiService {
           .maybeSingle();
 
       return response?['id'] as String?;
-    } catch (e) {
-      debugPrint('getApplicationId error: $e');
+    } catch (e, st) {
+      LogService.error('getApplicationId error', error: e, stackTrace: st, source: 'TaxiService:getApplicationId');
       return null;
     }
   }
@@ -853,8 +917,8 @@ class TaxiService {
           .order('created_at');
 
       return List<Map<String, dynamic>>.from(response);
-    } catch (e) {
-      debugPrint('getDocuments error: $e');
+    } catch (e, st) {
+      LogService.error('getDocuments error', error: e, stackTrace: st, source: 'TaxiService:getDocuments');
       return [];
     }
   }
@@ -907,8 +971,8 @@ class TaxiService {
       }
 
       return true;
-    } catch (e) {
-      debugPrint('uploadDocument error: $e');
+    } catch (e, st) {
+      LogService.error('uploadDocument error', error: e, stackTrace: st, source: 'TaxiService:uploadDocument');
       return false;
     }
   }

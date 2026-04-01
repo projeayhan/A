@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:rent_a_car_panel/core/services/log_service.dart';
 
 import '../../core/theme.dart';
 
@@ -112,7 +113,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _error = _getErrorMessage(e.message);
         _isLoading = false;
       });
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Registration failed', error: e, stackTrace: st, source: 'RegisterScreen:_handleRegister');
       setState(() {
         _error = 'Bir hata oluştu: $e';
         _isLoading = false;
@@ -145,10 +147,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              AppColors.background,
-              AppColors.surface,
-            ],
+            colors: [AppColors.background, AppColors.surface],
           ),
         ),
         child: Center(
@@ -194,9 +193,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         const SizedBox(height: 8),
                         const Text(
                           'Kiralama şirketinizi kaydedin',
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                          ),
+                          style: TextStyle(color: AppColors.textSecondary),
                         ),
                         const SizedBox(height: 24),
 
@@ -273,7 +270,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                         ),
                                       )
                                     : Text(
-                                        _currentStep < 2 ? 'Devam' : 'Başvuru Yap',
+                                        _currentStep < 2
+                                            ? 'Devam'
+                                            : 'Başvuru Yap',
                                       ),
                               ),
                             ),
@@ -598,22 +597,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
           decoration: BoxDecoration(
             color: AppColors.info.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: AppColors.info.withValues(alpha: 0.3),
-            ),
+            border: Border.all(color: AppColors.info.withValues(alpha: 0.3)),
           ),
-          child: Row(
+          child: const Row(
             children: [
-              const Icon(Icons.info_outline, color: AppColors.info),
-              const SizedBox(width: 12),
+              Icon(Icons.info_outline, color: AppColors.info),
+              SizedBox(width: 12),
               Expanded(
                 child: Text(
                   'Başvurunuz admin onayından sonra aktif olacaktır. '
                   'Onay durumu e-posta ile bildirilecektir.',
-                  style: TextStyle(
-                    color: AppColors.info,
-                    fontSize: 13,
-                  ),
+                  style: TextStyle(color: AppColors.info, fontSize: 13),
                 ),
               ),
             ],
@@ -671,10 +665,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              AppColors.background,
-              AppColors.surface,
-            ],
+            colors: [AppColors.background, AppColors.surface],
           ),
         ),
         child: Center(

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:rent_a_car_panel/core/services/log_service.dart';
 
 import '../../core/theme.dart';
 import '../../core/services/notification_sound_service.dart';
@@ -79,8 +80,8 @@ class _AppShellState extends State<AppShell> {
           _pendingBookingsCount = (response as List).length;
         });
       }
-    } catch (e) {
-      debugPrint('Error loading pending bookings count: $e');
+    } catch (e, st) {
+      LogService.error('Error loading pending bookings count', error: e, stackTrace: st, source: 'AppShell:_loadPendingBookingsCount');
     }
   }
 
@@ -89,7 +90,7 @@ class _AppShellState extends State<AppShell> {
     if (_companyId == null) return;
 
     _bookingChannel = Supabase.instance.client
-        .channel('booking_notifications_${_companyId}')
+        .channel('booking_notifications_$_companyId')
         .onPostgresChanges(
           event: PostgresChangeEvent.insert,
           schema: 'public',
@@ -261,15 +262,17 @@ class _AppShellState extends State<AppShell> {
   Future<void> _playNotificationSound() async {
     try {
       await _audioPlayer.play(AssetSource('sounds/notification.mp3'));
-    } catch (e) {
-      debugPrint('Error playing notification sound: $e');
+    } catch (e, st) {
+      LogService.error('Error playing notification sound', error: e, stackTrace: st, source: 'AppShell:_playNotificationSound');
       // Ses dosyası yoksa URL'den çal
       try {
-        await _audioPlayer.play(UrlSource(
-          'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3',
-        ));
-      } catch (e2) {
-        debugPrint('Error playing fallback sound: $e2');
+        await _audioPlayer.play(
+          UrlSource(
+            'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3',
+          ),
+        );
+      } catch (e2, st2) {
+        LogService.error('Error playing fallback sound', error: e2, stackTrace: st2, source: 'AppShell:_playNotificationSound');
       }
     }
   }
@@ -293,233 +296,241 @@ class _AppShellState extends State<AppShell> {
             children: [
               // Sidebar
               AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            width: _isCollapsed ? 70 : 260,
-            child: Container(
-              color: AppColors.surface,
-              child: Column(
-                children: [
-                  // Header
-                  Container(
-                    height: 70,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: _isCollapsed ? 12 : 20,
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [AppColors.primary, AppColors.secondary],
-                            ),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.car_rental,
-                            color: Colors.white,
-                            size: 22,
-                          ),
+                duration: const Duration(milliseconds: 200),
+                width: _isCollapsed ? 70 : 260,
+                child: Container(
+                  color: AppColors.surface,
+                  child: Column(
+                    children: [
+                      // Header
+                      Container(
+                        height: 70,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: _isCollapsed ? 12 : 20,
                         ),
-                        if (!_isCollapsed) ...[
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  _companyName ?? 'Rent a Car',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    AppColors.primary,
+                                    AppColors.secondary,
+                                  ],
                                 ),
-                                const Text(
-                                  'Yönetim Paneli',
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(
+                                Icons.car_rental,
+                                color: Colors.white,
+                                size: 22,
+                              ),
+                            ),
+                            if (!_isCollapsed) ...[
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _companyName ?? 'Rent a Car',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const Text(
+                                      'Yönetim Paneli',
+                                      style: TextStyle(
+                                        color: AppColors.textMuted,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+
+                      const Divider(height: 1),
+
+                      // Menu items
+                      Expanded(
+                        child: ListView(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          children: [
+                            _buildMenuItem(
+                              icon: Icons.dashboard_outlined,
+                              activeIcon: Icons.dashboard,
+                              label: 'Dashboard',
+                              path: '/dashboard',
+                              currentPath: currentPath,
+                            ),
+                            _buildMenuItem(
+                              icon: Icons.directions_car_outlined,
+                              activeIcon: Icons.directions_car,
+                              label: 'Araçlar',
+                              path: '/cars',
+                              currentPath: currentPath,
+                            ),
+                            _buildMenuItem(
+                              icon: Icons.book_outlined,
+                              activeIcon: Icons.book,
+                              label: 'Rezervasyonlar',
+                              path: '/bookings',
+                              currentPath: currentPath,
+                              badgeCount: _pendingBookingsCount,
+                              showPulse: _hasNewBooking,
+                            ),
+                            _buildMenuItem(
+                              icon: Icons.calendar_month_outlined,
+                              activeIcon: Icons.calendar_month,
+                              label: 'Takvim',
+                              path: '/calendar',
+                              currentPath: currentPath,
+                            ),
+                            _buildMenuItem(
+                              icon: Icons.location_on_outlined,
+                              activeIcon: Icons.location_on,
+                              label: 'Lokasyonlar',
+                              path: '/locations',
+                              currentPath: currentPath,
+                            ),
+                            _buildMenuItem(
+                              icon: Icons.account_balance_wallet_outlined,
+                              activeIcon: Icons.account_balance_wallet,
+                              label: 'Finans',
+                              path: '/finance',
+                              currentPath: currentPath,
+                            ),
+                            _buildMenuItem(
+                              icon: Icons.star_outline,
+                              activeIcon: Icons.star,
+                              label: 'Yorumlar',
+                              path: '/reviews',
+                              currentPath: currentPath,
+                              badgeCount: _newReviewsCount,
+                              showPulse: _hasNewReview,
+                            ),
+                            _buildMenuItem(
+                              icon: Icons.inventory_2_outlined,
+                              activeIcon: Icons.inventory_2,
+                              label: 'Paketler',
+                              path: '/packages',
+                              currentPath: currentPath,
+                            ),
+                            _buildMenuItem(
+                              icon: Icons.build_outlined,
+                              activeIcon: Icons.build,
+                              label: 'Ek Hizmetler',
+                              path: '/services',
+                              currentPath: currentPath,
+                            ),
+                            _buildMenuItem(
+                              icon: Icons.campaign_outlined,
+                              activeIcon: Icons.campaign,
+                              label: 'Banner Reklamları',
+                              path: '/banner-ads',
+                              currentPath: currentPath,
+                            ),
+
+                            const SizedBox(height: 16),
+                            if (!_isCollapsed)
+                              const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 20),
+                                child: Text(
+                                  'AYARLAR',
                                   style: TextStyle(
                                     color: AppColors.textMuted,
                                     fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 1,
                                   ),
                                 ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-
-                  const Divider(height: 1),
-
-                  // Menu items
-                  Expanded(
-                    child: ListView(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      children: [
-                        _buildMenuItem(
-                          icon: Icons.dashboard_outlined,
-                          activeIcon: Icons.dashboard,
-                          label: 'Dashboard',
-                          path: '/dashboard',
-                          currentPath: currentPath,
-                        ),
-                        _buildMenuItem(
-                          icon: Icons.directions_car_outlined,
-                          activeIcon: Icons.directions_car,
-                          label: 'Araçlar',
-                          path: '/cars',
-                          currentPath: currentPath,
-                        ),
-                        _buildMenuItem(
-                          icon: Icons.book_outlined,
-                          activeIcon: Icons.book,
-                          label: 'Rezervasyonlar',
-                          path: '/bookings',
-                          currentPath: currentPath,
-                          badgeCount: _pendingBookingsCount,
-                          showPulse: _hasNewBooking,
-                        ),
-                        _buildMenuItem(
-                          icon: Icons.calendar_month_outlined,
-                          activeIcon: Icons.calendar_month,
-                          label: 'Takvim',
-                          path: '/calendar',
-                          currentPath: currentPath,
-                        ),
-                        _buildMenuItem(
-                          icon: Icons.location_on_outlined,
-                          activeIcon: Icons.location_on,
-                          label: 'Lokasyonlar',
-                          path: '/locations',
-                          currentPath: currentPath,
-                        ),
-                        _buildMenuItem(
-                          icon: Icons.account_balance_wallet_outlined,
-                          activeIcon: Icons.account_balance_wallet,
-                          label: 'Finans',
-                          path: '/finance',
-                          currentPath: currentPath,
-                        ),
-                        _buildMenuItem(
-                          icon: Icons.star_outline,
-                          activeIcon: Icons.star,
-                          label: 'Yorumlar',
-                          path: '/reviews',
-                          currentPath: currentPath,
-                          badgeCount: _newReviewsCount,
-                          showPulse: _hasNewReview,
-                        ),
-                        _buildMenuItem(
-                          icon: Icons.inventory_2_outlined,
-                          activeIcon: Icons.inventory_2,
-                          label: 'Paketler',
-                          path: '/packages',
-                          currentPath: currentPath,
-                        ),
-                        _buildMenuItem(
-                          icon: Icons.build_outlined,
-                          activeIcon: Icons.build,
-                          label: 'Ek Hizmetler',
-                          path: '/services',
-                          currentPath: currentPath,
-                        ),
-
-                        const SizedBox(height: 16),
-                        if (!_isCollapsed)
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            child: Text(
-                              'AYARLAR',
-                              style: TextStyle(
-                                color: AppColors.textMuted,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 1,
                               ),
+                            const SizedBox(height: 8),
+
+                            _buildMenuItem(
+                              icon: Icons.settings_outlined,
+                              activeIcon: Icons.settings,
+                              label: 'Ayarlar',
+                              path: '/settings',
+                              currentPath: currentPath,
                             ),
-                          ),
-                        const SizedBox(height: 8),
-
-                        _buildMenuItem(
-                          icon: Icons.settings_outlined,
-                          activeIcon: Icons.settings,
-                          label: 'Ayarlar',
-                          path: '/settings',
-                          currentPath: currentPath,
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+
+                      // Collapse button & Logout
+                      const Divider(height: 1),
+                      Padding(
+                        padding: const EdgeInsets.all(8),
+                        child: Column(
+                          children: [
+                            // Collapse toggle
+                            ListTile(
+                              dense: true,
+                              leading: Icon(
+                                _isCollapsed
+                                    ? Icons.chevron_right
+                                    : Icons.chevron_left,
+                                color: AppColors.textMuted,
+                              ),
+                              title: _isCollapsed
+                                  ? null
+                                  : const Text(
+                                      'Daralt',
+                                      style: TextStyle(
+                                        color: AppColors.textMuted,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                              onTap: () {
+                                setState(() {
+                                  _isCollapsed = !_isCollapsed;
+                                });
+                              },
+                            ),
+
+                            // Logout
+                            ListTile(
+                              dense: true,
+                              leading: const Icon(
+                                Icons.logout,
+                                color: AppColors.error,
+                              ),
+                              title: _isCollapsed
+                                  ? null
+                                  : const Text(
+                                      'Çıkış Yap',
+                                      style: TextStyle(
+                                        color: AppColors.error,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                              onTap: () => _logout(context),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-
-                  // Collapse button & Logout
-                  const Divider(height: 1),
-                  Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Column(
-                      children: [
-                        // Collapse toggle
-                        ListTile(
-                          dense: true,
-                          leading: Icon(
-                            _isCollapsed
-                                ? Icons.chevron_right
-                                : Icons.chevron_left,
-                            color: AppColors.textMuted,
-                          ),
-                          title: _isCollapsed
-                              ? null
-                              : const Text(
-                                  'Daralt',
-                                  style: TextStyle(
-                                    color: AppColors.textMuted,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                          onTap: () {
-                            setState(() {
-                              _isCollapsed = !_isCollapsed;
-                            });
-                          },
-                        ),
-
-                        // Logout
-                        ListTile(
-                          dense: true,
-                          leading: const Icon(
-                            Icons.logout,
-                            color: AppColors.error,
-                          ),
-                          title: _isCollapsed
-                              ? null
-                              : const Text(
-                                  'Çıkış Yap',
-                                  style: TextStyle(
-                                    color: AppColors.error,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                          onTap: () => _logout(context),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+                ),
               ),
-            ),
-          ),
 
-          // Main content
-          Expanded(
-            child: widget.child,
+              // Main content
+              Expanded(child: widget.child),
+            ],
           ),
-        ],
-      ),
-    ),
-    // Floating AI Assistant
-    const FloatingAIAssistant(),
+        ),
+        // Floating AI Assistant
+        const FloatingAIAssistant(),
       ],
     );
   }
@@ -563,9 +574,7 @@ class _AppShellState extends State<AppShell> {
           },
           child: Container(
             height: 44,
-            padding: EdgeInsets.symmetric(
-              horizontal: _isCollapsed ? 12 : 16,
-            ),
+            padding: EdgeInsets.symmetric(horizontal: _isCollapsed ? 12 : 16),
             child: Row(
               children: [
                 // Icon with badge
@@ -579,7 +588,9 @@ class _AppShellState extends State<AppShell> {
                               shape: BoxShape.circle,
                               boxShadow: [
                                 BoxShadow(
-                                  color: AppColors.warning.withValues(alpha: 0.6),
+                                  color: AppColors.warning.withValues(
+                                    alpha: 0.6,
+                                  ),
                                   blurRadius: 8,
                                   spreadRadius: 2,
                                 ),
@@ -588,7 +599,9 @@ class _AppShellState extends State<AppShell> {
                           : null,
                       child: Icon(
                         isActive ? activeIcon : icon,
-                        color: isActive ? AppColors.primary : AppColors.textSecondary,
+                        color: isActive
+                            ? AppColors.primary
+                            : AppColors.textSecondary,
                         size: 22,
                       ),
                     ),
@@ -607,9 +620,12 @@ class _AppShellState extends State<AppShell> {
                     child: Text(
                       label,
                       style: TextStyle(
-                        color:
-                            isActive ? AppColors.primary : AppColors.textSecondary,
-                        fontWeight: isActive ? FontWeight.w600 : FontWeight.normal,
+                        color: isActive
+                            ? AppColors.primary
+                            : AppColors.textSecondary,
+                        fontWeight: isActive
+                            ? FontWeight.w600
+                            : FontWeight.normal,
                         fontSize: 14,
                       ),
                     ),
@@ -666,9 +682,7 @@ class _AppShellState extends State<AppShell> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
             child: const Text('Çıkış Yap'),
           ),
         ],

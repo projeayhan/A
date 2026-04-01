@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/providers/auth_provider.dart';
+import '../../core/services/log_service.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_dialogs.dart';
@@ -139,7 +140,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
       await SupabaseService.resetPassword(email);
       if (!mounted) return;
       AppDialogs.showSuccess(context, 'Şifre sıfırlama bağlantısı $email adresine gönderildi.', title: 'Bağlantı Gönderildi');
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('resetPassword error', error: e, stackTrace: st, source: 'LoginScreen:_showResetPasswordDialog');
       if (!mounted) return;
       AppDialogs.showError(context, 'Şifre sıfırlama bağlantısı gönderilemedi.');
     }

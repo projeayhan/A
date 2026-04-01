@@ -94,7 +94,9 @@ class _RentalHeroBannerState extends State<RentalHeroBanner> {
     if (_isLoading) {
       return SizedBox(
         height: widget.height,
-        child: const Center(child: CircularProgressIndicator(color: Colors.white)),
+        child: const Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        ),
       );
     }
 
@@ -138,21 +140,34 @@ class _RentalHeroBannerState extends State<RentalHeroBanner> {
         fit: StackFit.expand,
         children: [
           CachedNetworkImage(
-            imageUrl: 'https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=800',
+            imageUrl:
+                'https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=800',
             fit: BoxFit.cover,
             memCacheWidth: 400,
             memCacheHeight: 200,
-            placeholder: (_, __) => Container(
+            placeholder: (_, _) => Container(
               color: Colors.grey[800],
-              child: const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white24)),
+              child: const Center(
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white24,
+                ),
+              ),
             ),
-            errorWidget: (_, __, ___) => Container(
+            errorWidget: (_, _, _) => Container(
               color: Colors.grey[800],
-              child: const Icon(Icons.directions_car, size: 80, color: Colors.white24),
+              child: const Icon(
+                Icons.directions_car,
+                size: 80,
+                color: Colors.white24,
+              ),
             ),
           ),
           _buildGradientOverlay(),
-          _buildBannerContent('Premium Araç Kiralama', 'Lüks deneyim, uygun fiyat'),
+          _buildBannerContent(
+            'Premium Araç Kiralama',
+            'Lüks deneyim, uygun fiyat',
+          ),
         ],
       ),
     );
@@ -173,19 +188,32 @@ class _RentalHeroBannerState extends State<RentalHeroBanner> {
             fit: BoxFit.cover,
             memCacheWidth: 400,
             memCacheHeight: 200,
-            placeholder: (_, __) => Container(
+            placeholder: (_, _) => Container(
               color: Colors.grey[800],
-              child: const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white24)),
+              child: const Center(
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white24,
+                ),
+              ),
             ),
-            errorWidget: (_, __, ___) => Container(
+            errorWidget: (_, _, _) => Container(
               color: Colors.grey[800],
-              child: const Icon(Icons.directions_car, size: 80, color: Colors.white24),
+              child: const Icon(
+                Icons.directions_car,
+                size: 80,
+                color: Colors.white24,
+              ),
             ),
           )
         else
           Container(
             color: Colors.grey[800],
-            child: const Icon(Icons.directions_car, size: 80, color: Colors.white24),
+            child: const Icon(
+              Icons.directions_car,
+              size: 80,
+              color: Colors.white24,
+            ),
           ),
 
         // Gradient Overlay

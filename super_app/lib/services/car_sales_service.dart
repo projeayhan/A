@@ -1,9 +1,9 @@
-import 'dart:typed_data';
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/utils/cache_helper.dart';
 import '../models/car_sales/car_sales_models.dart';
+import 'package:super_app/core/services/log_service.dart';
 
 /// AI Moderasyon sonucu
 class CarModerationResult {
@@ -28,10 +28,17 @@ class CarModerationResult {
   factory CarModerationResult.fromJson(Map<String, dynamic> json) {
     return CarModerationResult(
       success: json['success'] as bool? ?? false,
-      result: json['result'] as String? ?? json['moderation_status'] as String? ?? 'pending',
+      result:
+          json['result'] as String? ??
+          json['moderation_status'] as String? ??
+          'pending',
       score: json['score'] as int? ?? json['ai_score'] as int?,
       isAppropriate: json['is_appropriate'] as bool?,
-      flags: (json['flags'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+      flags:
+          (json['flags'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
       reason: json['reason'] as String? ?? json['ai_reason'] as String?,
       autoApproved: json['auto_approved'] as bool? ?? false,
     );
@@ -63,10 +70,7 @@ class CarSalesService {
       ttl: const Duration(hours: 48),
       fetcher: () async {
         try {
-          var query = _client
-              .from('car_brands')
-              .select()
-              .eq('is_active', true);
+          var query = _client.from('car_brands').select().eq('is_active', true);
 
           if (popularOnly) {
             query = query.eq('is_popular', true);
@@ -77,8 +81,8 @@ class CarSalesService {
           return (response as List)
               .map((json) => CarBrandData.fromJson(json))
               .toList();
-        } catch (e) {
-          debugPrint('CarSalesService.getBrands error: $e');
+        } catch (e, st) {
+          LogService.error('getBrands error', error: e, stackTrace: st, source: 'CarSalesService:getBrands');
           return [];
         }
       },
@@ -108,8 +112,8 @@ class CarSalesService {
           return (response as List)
               .map((json) => CarFeatureData.fromJson(json))
               .toList();
-        } catch (e) {
-          debugPrint('CarSalesService.getFeatures error: $e');
+        } catch (e, st) {
+          LogService.error('getFeatures error', error: e, stackTrace: st, source: 'CarSalesService:getFeatures');
           return [];
         }
       },
@@ -134,8 +138,8 @@ class CarSalesService {
           return (response as List)
               .map((json) => CarBodyTypeData.fromJson(json))
               .toList();
-        } catch (e) {
-          debugPrint('CarSalesService.getBodyTypes error: $e');
+        } catch (e, st) {
+          LogService.error('getBodyTypes error', error: e, stackTrace: st, source: 'CarSalesService:getBodyTypes');
           return [];
         }
       },
@@ -158,8 +162,8 @@ class CarSalesService {
           return (response as List)
               .map((json) => CarFuelTypeData.fromJson(json))
               .toList();
-        } catch (e) {
-          debugPrint('CarSalesService.getFuelTypes error: $e');
+        } catch (e, st) {
+          LogService.error('getFuelTypes error', error: e, stackTrace: st, source: 'CarSalesService:getFuelTypes');
           return [];
         }
       },
@@ -182,8 +186,8 @@ class CarSalesService {
           return (response as List)
               .map((json) => CarTransmissionData.fromJson(json))
               .toList();
-        } catch (e) {
-          debugPrint('CarSalesService.getTransmissions error: $e');
+        } catch (e, st) {
+          LogService.error('getTransmissions error', error: e, stackTrace: st, source: 'CarSalesService:getTransmissions');
           return [];
         }
       },
@@ -209,7 +213,8 @@ class CarSalesService {
     int offset = 0,
   }) async {
     // Only cache when called with all default params (no filters)
-    final bool isDefaultParams = brandId == null &&
+    final bool isDefaultParams =
+        brandId == null &&
         bodyType == null &&
         fuelType == null &&
         city == null &&
@@ -227,11 +232,8 @@ class CarSalesService {
       return _cache.getOrFetch<List<CarListingData>>(
         'car_active_listings',
         ttl: const Duration(minutes: 10),
-        fetcher: () => _fetchActiveListings(
-          sortBy: sortBy,
-          limit: limit,
-          offset: offset,
-        ),
+        fetcher: () =>
+            _fetchActiveListings(sortBy: sortBy, limit: limit, offset: offset),
       );
     }
 
@@ -314,16 +316,24 @@ class CarSalesService {
       dynamic response;
       switch (sortBy) {
         case 'price_asc':
-          response = await query.order('price', ascending: true).range(offset, offset + limit - 1);
+          response = await query
+              .order('price', ascending: true)
+              .range(offset, offset + limit - 1);
           break;
         case 'price_desc':
-          response = await query.order('price', ascending: false).range(offset, offset + limit - 1);
+          response = await query
+              .order('price', ascending: false)
+              .range(offset, offset + limit - 1);
           break;
         case 'year_desc':
-          response = await query.order('year', ascending: false).range(offset, offset + limit - 1);
+          response = await query
+              .order('year', ascending: false)
+              .range(offset, offset + limit - 1);
           break;
         case 'mileage_asc':
-          response = await query.order('mileage', ascending: true).range(offset, offset + limit - 1);
+          response = await query
+              .order('mileage', ascending: true)
+              .range(offset, offset + limit - 1);
           break;
         case 'newest':
         default:
@@ -337,8 +347,8 @@ class CarSalesService {
       return (response as List)
           .map((json) => CarListingData.fromJson(json))
           .toList();
-    } catch (e) {
-      debugPrint('CarSalesService.getActiveListings error: $e');
+    } catch (e, st) {
+      LogService.error('getActiveListings error', error: e, stackTrace: st, source: 'CarSalesService:getActiveListings');
       return [];
     }
   }
@@ -371,8 +381,8 @@ class CarSalesService {
           return (response as List)
               .map((json) => CarListingData.fromJson(json))
               .toList();
-        } catch (e) {
-          debugPrint('CarSalesService.getPremiumListings error: $e');
+        } catch (e, st) {
+          LogService.error('getPremiumListings error', error: e, stackTrace: st, source: 'CarSalesService:getPremiumListings');
           return [];
         }
       },
@@ -399,8 +409,8 @@ class CarSalesService {
           _recordView(listingId);
 
           return CarListingData.fromJson(response);
-        } catch (e) {
-          debugPrint('CarSalesService.getListingById error: $e');
+        } catch (e, st) {
+          LogService.error('getListingById error', error: e, stackTrace: st, source: 'CarSalesService:getListingById');
           return null;
         }
       },
@@ -410,12 +420,13 @@ class CarSalesService {
   /// Görüntülenme kaydet (internal)
   Future<void> _recordView(String listingId) async {
     try {
-      await _client.rpc('increment_car_listing_view', params: {
-        'p_listing_id': listingId,
-        'p_user_id': _userId,
-      });
-    } catch (e) {
-      // Sessiz hata - görüntülenme kaydı kritik değil
+      await _client.rpc(
+        'increment_car_listing_view',
+        params: {'p_listing_id': listingId, 'p_user_id': _userId},
+      );
+    } catch (e, st) {
+      // Görüntülenme kaydı kritik değil
+      LogService.error('recordView error', error: e, stackTrace: st, source: 'CarSalesService:_recordView');
     }
   }
 
@@ -432,10 +443,7 @@ class CarSalesService {
     if (_userId == null) return [];
 
     try {
-      var query = _client
-          .from('car_listings')
-          .select()
-          .eq('user_id', _userId!);
+      var query = _client.from('car_listings').select().eq('user_id', _userId!);
 
       if (status != null) {
         query = query.eq('status', status.name);
@@ -448,8 +456,8 @@ class CarSalesService {
       return (response as List)
           .map((json) => CarListingData.fromJson(json))
           .toList();
-    } catch (e) {
-      debugPrint('CarSalesService.getMyListings error: $e');
+    } catch (e, st) {
+      LogService.error('getMyListings error', error: e, stackTrace: st, source: 'CarSalesService:getMyListings');
       return [];
     }
   }
@@ -483,8 +491,8 @@ class CarSalesService {
       _moderateListing(listing.id);
 
       return listing;
-    } catch (e) {
-      debugPrint('CarSalesService.createListing error: $e');
+    } catch (e, st) {
+      LogService.error('createListing error', error: e, stackTrace: st, source: 'CarSalesService:createListing');
       rethrow;
     }
   }
@@ -498,13 +506,17 @@ class CarSalesService {
       );
 
       if (response.status == 200 && response.data != null) {
-        return CarModerationResult.fromJson(response.data as Map<String, dynamic>);
+        return CarModerationResult.fromJson(
+          response.data as Map<String, dynamic>,
+        );
       }
 
-      debugPrint('Car moderation response: ${response.status} - ${response.data}');
+      debugPrint(
+        'Car moderation response: ${response.status} - ${response.data}',
+      );
       return null;
-    } catch (e) {
-      debugPrint('CarSalesService._moderateListing error: $e');
+    } catch (e, st) {
+      LogService.error('_moderateListing error', error: e, stackTrace: st, source: 'CarSalesService:_moderateListing');
       return null;
     }
   }
@@ -523,8 +535,8 @@ class CarSalesService {
 
       if (response == null) return null;
       return CarModerationResult.fromJson(response);
-    } catch (e) {
-      debugPrint('CarSalesService.getModerationResult error: $e');
+    } catch (e, st) {
+      LogService.error('getModerationResult error', error: e, stackTrace: st, source: 'CarSalesService:getModerationResult');
       return null;
     }
   }
@@ -537,22 +549,27 @@ class CarSalesService {
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final path = 'car_listings/$_userId/${timestamp}_$fileName';
 
-      await _client.storage.from('images').uploadBinary(
-        path,
-        bytes,
-        fileOptions: const FileOptions(contentType: 'image/jpeg'),
-      );
+      await _client.storage
+          .from('images')
+          .uploadBinary(
+            path,
+            bytes,
+            fileOptions: const FileOptions(contentType: 'image/jpeg'),
+          );
 
       final publicUrl = _client.storage.from('images').getPublicUrl(path);
       return publicUrl;
-    } catch (e) {
-      debugPrint('CarSalesService.uploadCarImage error: $e');
+    } catch (e, st) {
+      LogService.error('uploadCarImage error', error: e, stackTrace: st, source: 'CarSalesService:uploadCarImage');
       return null;
     }
   }
 
   /// İlanı güncelle
-  Future<CarListingData?> updateListing(String listingId, Map<String, dynamic> updates) async {
+  Future<CarListingData?> updateListing(
+    String listingId,
+    Map<String, dynamic> updates,
+  ) async {
     if (_userId == null) return null;
 
     try {
@@ -567,8 +584,8 @@ class CarSalesService {
           .single();
 
       return CarListingData.fromJson(response);
-    } catch (e) {
-      debugPrint('CarSalesService.updateListing error: $e');
+    } catch (e, st) {
+      LogService.error('updateListing error', error: e, stackTrace: st, source: 'CarSalesService:updateListing');
       return null;
     }
   }
@@ -585,8 +602,8 @@ class CarSalesService {
           .eq('user_id', _userId!);
 
       return true;
-    } catch (e) {
-      debugPrint('CarSalesService.deleteListing error: $e');
+    } catch (e, st) {
+      LogService.error('deleteListing error', error: e, stackTrace: st, source: 'CarSalesService:deleteListing');
       return false;
     }
   }
@@ -606,8 +623,8 @@ class CarSalesService {
           .eq('user_id', _userId!);
 
       return true;
-    } catch (e) {
-      debugPrint('CarSalesService.markAsSold error: $e');
+    } catch (e, st) {
+      LogService.error('markAsSold error', error: e, stackTrace: st, source: 'CarSalesService:markAsSold');
       return false;
     }
   }
@@ -624,8 +641,8 @@ class CarSalesService {
         'user_id': _userId,
       });
       return true;
-    } catch (e) {
-      debugPrint('CarSalesService.addToFavorites error: $e');
+    } catch (e, st) {
+      LogService.error('addToFavorites error', error: e, stackTrace: st, source: 'CarSalesService:addToFavorites');
       return false;
     }
   }
@@ -641,8 +658,8 @@ class CarSalesService {
           .eq('listing_id', listingId)
           .eq('user_id', _userId!);
       return true;
-    } catch (e) {
-      debugPrint('CarSalesService.removeFromFavorites error: $e');
+    } catch (e, st) {
+      LogService.error('removeFromFavorites error', error: e, stackTrace: st, source: 'CarSalesService:removeFromFavorites');
       return false;
     }
   }
@@ -660,7 +677,8 @@ class CarSalesService {
           .maybeSingle();
 
       return response != null;
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('isFavorite error', error: e, stackTrace: st, source: 'CarSalesService:isFavorite');
       return false;
     }
   }
@@ -687,8 +705,8 @@ class CarSalesService {
           .where((item) => item['listing'] != null)
           .map((item) => CarListingData.fromJson(item['listing']))
           .toList();
-    } catch (e) {
-      debugPrint('CarSalesService.getFavoriteListings error: $e');
+    } catch (e, st) {
+      LogService.error('getFavoriteListings error', error: e, stackTrace: st, source: 'CarSalesService:getFavoriteListings');
       return [];
     }
   }
@@ -714,8 +732,8 @@ class CarSalesService {
         'status': 'new',
       });
       return true;
-    } catch (e) {
-      debugPrint('CarSalesService.sendContactRequest error: $e');
+    } catch (e, st) {
+      LogService.error('sendContactRequest error', error: e, stackTrace: st, source: 'CarSalesService:sendContactRequest');
       return false;
     }
   }
@@ -723,7 +741,10 @@ class CarSalesService {
   // ==================== ARAMA ====================
 
   /// Araç ara
-  Future<List<CarListingData>> searchListings(String query, {int limit = 20}) async {
+  Future<List<CarListingData>> searchListings(
+    String query, {
+    int limit = 20,
+  }) async {
     try {
       final response = await _client
           .from('car_listings')
@@ -734,7 +755,9 @@ class CarSalesService {
             )
           ''')
           .eq('status', 'active')
-          .or('title.ilike.%$query%,brand_name.ilike.%$query%,model_name.ilike.%$query%')
+          .or(
+            'title.ilike.%$query%,brand_name.ilike.%$query%,model_name.ilike.%$query%',
+          )
           .order('is_premium', ascending: false)
           .order('is_featured', ascending: false)
           .order('created_at', ascending: false)
@@ -743,8 +766,8 @@ class CarSalesService {
       return (response as List)
           .map((json) => CarListingData.fromJson(json))
           .toList();
-    } catch (e) {
-      debugPrint('CarSalesService.searchListings error: $e');
+    } catch (e, st) {
+      LogService.error('searchListings error', error: e, stackTrace: st, source: 'CarSalesService:searchListings');
       return [];
     }
   }
@@ -838,7 +861,9 @@ class CarBodyTypeData {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is CarBodyTypeData && runtimeType == other.runtimeType && id == other.id;
+      other is CarBodyTypeData &&
+          runtimeType == other.runtimeType &&
+          id == other.id;
 
   @override
   int get hashCode => id.hashCode;
@@ -877,7 +902,8 @@ class CarFuelTypeData {
     if (color == null || color!.isEmpty) return const Color(0xFF6B7280);
     try {
       return Color(int.parse(color!.replaceFirst('#', '0xFF')));
-    } catch (_) {
+    } catch (e, st) {
+      LogService.error('Error parsing color', error: e, stackTrace: st, source: 'CarSalesService:_parseColor');
       return const Color(0xFF6B7280);
     }
   }
@@ -885,7 +911,9 @@ class CarFuelTypeData {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is CarFuelTypeData && runtimeType == other.runtimeType && id == other.id;
+      other is CarFuelTypeData &&
+          runtimeType == other.runtimeType &&
+          id == other.id;
 
   @override
   int get hashCode => id.hashCode;
@@ -920,7 +948,9 @@ class CarTransmissionData {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is CarTransmissionData && runtimeType == other.runtimeType && id == other.id;
+      other is CarTransmissionData &&
+          runtimeType == other.runtimeType &&
+          id == other.id;
 
   @override
   int get hashCode => id.hashCode;
@@ -1075,10 +1105,12 @@ class CarListingData {
 
   /// Formatlı fiyat
   String get formattedPrice {
-    final formatted = price.toStringAsFixed(0).replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]}.',
-    );
+    final formatted = price
+        .toStringAsFixed(0)
+        .replaceAllMapped(
+          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+          (Match m) => '${m[1]}.',
+        );
     return '$formatted TL';
   }
 
@@ -1111,7 +1143,8 @@ class CarListingData {
   CarBodyType get bodyTypeEnum {
     try {
       return CarBodyType.values.firstWhere((e) => e.name == bodyType);
-    } catch (_) {
+    } catch (e, st) {
+      LogService.error('Error parsing body type', error: e, stackTrace: st, source: 'CarSalesService:_parseBodyType');
       return CarBodyType.sedan;
     }
   }
@@ -1120,7 +1153,8 @@ class CarListingData {
   CarFuelType get fuelTypeEnum {
     try {
       return CarFuelType.values.firstWhere((e) => e.name == fuelType);
-    } catch (_) {
+    } catch (e, st) {
+      LogService.error('Error parsing fuel type', error: e, stackTrace: st, source: 'CarSalesService:_parseFuelType');
       return CarFuelType.petrol;
     }
   }
@@ -1129,7 +1163,8 @@ class CarListingData {
   CarTransmission get transmissionEnum {
     try {
       return CarTransmission.values.firstWhere((e) => e.name == transmission);
-    } catch (_) {
+    } catch (e, st) {
+      LogService.error('Error parsing transmission', error: e, stackTrace: st, source: 'CarSalesService:_parseTransmission');
       return CarTransmission.manual;
     }
   }
@@ -1138,7 +1173,8 @@ class CarListingData {
   CarListingStatus get statusEnum {
     try {
       return CarListingStatus.values.firstWhere((e) => e.name == status);
-    } catch (_) {
+    } catch (e, st) {
+      LogService.error('Error parsing listing status', error: e, stackTrace: st, source: 'CarSalesService:_parseListingStatus');
       return CarListingStatus.pending;
     }
   }
@@ -1149,12 +1185,7 @@ class CarListingData {
       id: id,
       title: title,
       description: description ?? '',
-      brand: CarBrand(
-        id: brandId,
-        name: brandName,
-        logoUrl: '',
-        country: '',
-      ),
+      brand: CarBrand(id: brandId, name: brandName, logoUrl: '', country: ''),
       modelName: modelName,
       year: year,
       mileage: mileage,
@@ -1187,7 +1218,9 @@ class CarListingData {
         id: dealer?.id ?? userId,
         name: dealer?.displayName ?? '',
         phone: dealer?.phone ?? '',
-        type: dealer?.businessName != null ? SellerType.dealer : SellerType.individual,
+        type: dealer?.businessName != null
+            ? SellerType.dealer
+            : SellerType.individual,
         isVerified: dealer?.isVerified ?? false,
         memberSince: DateTime.now(),
         rating: 0,

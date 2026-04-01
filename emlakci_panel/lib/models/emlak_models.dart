@@ -844,3 +844,125 @@ class EmlakColors {
   static Color shimmerBase(bool isDark) => isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0);
   static Color shimmerHighlight(bool isDark) => isDark ? const Color(0xFF334155) : const Color(0xFFF8FAFC);
 }
+
+// ==================== PROMOTION MODELS ====================
+
+/// Promotion price option for properties (mirrors car_promotion_prices).
+class PropertyPromotionPrice {
+  final String id;
+  final String promotionType; // 'featured' | 'premium'
+  final int durationDays;
+  final double price;
+  final double? discountedPrice;
+  final String? label;
+  final String? description;
+  final bool isActive;
+  final int sortOrder;
+
+  const PropertyPromotionPrice({
+    required this.id,
+    required this.promotionType,
+    required this.durationDays,
+    required this.price,
+    this.discountedPrice,
+    this.label,
+    this.description,
+    this.isActive = true,
+    this.sortOrder = 0,
+  });
+
+  factory PropertyPromotionPrice.fromJson(Map<String, dynamic> json) {
+    return PropertyPromotionPrice(
+      id: json['id'] as String,
+      promotionType: json['promotion_type'] as String,
+      durationDays: json['duration_days'] as int,
+      price: (json['price'] as num).toDouble(),
+      discountedPrice: (json['discounted_price'] as num?)?.toDouble(),
+      label: json['label'] as String?,
+      description: json['description'] as String?,
+      isActive: json['is_active'] as bool? ?? true,
+      sortOrder: json['sort_order'] as int? ?? 0,
+    );
+  }
+
+  double get effectivePrice => discountedPrice ?? price;
+  bool get hasDiscount => discountedPrice != null && discountedPrice! < price;
+}
+
+/// A property promotion request/record.
+class PropertyPromotion {
+  final String id;
+  final String listingId;
+  final String userId;
+  final String promotionType; // 'featured' | 'premium'
+  final int durationDays;
+  final double amountPaid;
+  final String status; // 'pending' | 'active' | 'expired' | 'cancelled'
+  final String paymentStatus;
+  final DateTime? startedAt;
+  final DateTime? expiresAt;
+  final DateTime? cancelledAt;
+  final String? cancellationReason;
+  final String? adminNote;
+  final DateTime createdAt;
+  // Joined listing data
+  final String? listingTitle;
+  final List<dynamic>? listingImages;
+
+  const PropertyPromotion({
+    required this.id,
+    required this.listingId,
+    required this.userId,
+    required this.promotionType,
+    required this.durationDays,
+    required this.amountPaid,
+    required this.status,
+    required this.paymentStatus,
+    required this.createdAt,
+    this.startedAt,
+    this.expiresAt,
+    this.cancelledAt,
+    this.cancellationReason,
+    this.adminNote,
+    this.listingTitle,
+    this.listingImages,
+  });
+
+  factory PropertyPromotion.fromJson(Map<String, dynamic> json) {
+    final listingData = json['property_listings'] as Map<String, dynamic>?;
+    return PropertyPromotion(
+      id: json['id'] as String,
+      listingId: json['listing_id'] as String,
+      userId: json['user_id'] as String,
+      promotionType: json['promotion_type'] as String,
+      durationDays: json['duration_days'] as int,
+      amountPaid: (json['amount_paid'] as num?)?.toDouble() ?? 0,
+      status: json['status'] as String? ?? 'pending',
+      paymentStatus: json['payment_status'] as String? ?? 'pending',
+      createdAt: DateTime.parse(json['created_at'] as String),
+      startedAt: json['started_at'] != null
+          ? DateTime.parse(json['started_at'] as String)
+          : null,
+      expiresAt: json['expires_at'] != null
+          ? DateTime.parse(json['expires_at'] as String)
+          : null,
+      cancelledAt: json['cancelled_at'] != null
+          ? DateTime.parse(json['cancelled_at'] as String)
+          : null,
+      cancellationReason: json['cancellation_reason'] as String?,
+      adminNote: json['admin_note'] as String?,
+      listingTitle: listingData?['title'] as String?,
+      listingImages: listingData?['images'] as List<dynamic>?,
+    );
+  }
+
+  String get statusLabel {
+    switch (status) {
+      case 'pending': return 'Bekliyor';
+      case 'active': return 'Aktif';
+      case 'expired': return 'Sona Erdi';
+      case 'cancelled': return 'İptal';
+      default: return status;
+    }
+  }
+}

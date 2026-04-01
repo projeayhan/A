@@ -1,6 +1,7 @@
-import 'package:flutter/foundation.dart';
+import 'dart:math' as math;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supabase_service.dart';
+import 'package:super_app/core/services/log_service.dart';
 import '../utils/cache_helper.dart';
 
 /// Taksi servisi - Supabase ile iletişim
@@ -16,13 +17,17 @@ class TaxiService {
       'taxi_vehicle_types',
       ttl: const Duration(hours: 24),
       fetcher: () async {
-        final response = await _client
-            .from('vehicle_types')
-            .select()
-            .eq('is_active', true)
-            .order('sort_order');
+        try {
+          final response = await _client
+              .from('vehicle_types')
+              .select()
+              .eq('is_active', true)
+              .order('sort_order');
 
-        return List<Map<String, dynamic>>.from(response);
+          return List<Map<String, dynamic>>.from(response);
+        } catch (e) {
+          throw Exception('Araç tipleri alınamadı: $e');
+        }
       },
     );
   }
@@ -77,13 +82,17 @@ class TaxiService {
       'vehicle_type': vehicleTypeName,
     };
 
-    final response = await _client
-        .from('taxi_rides')
-        .insert(rideData)
-        .select()
-        .single();
+    try {
+      final response = await _client
+          .from('taxi_rides')
+          .insert(rideData)
+          .select()
+          .single();
 
-    return response;
+      return response;
+    } catch (e) {
+      throw Exception('Sürüş talebi oluşturulamadı: $e');
+    }
   }
 
   /// Sürüş detaylarını getir
@@ -152,6 +161,20 @@ class TaxiService {
 
   /// Sürüşü iptal et
   static Future<void> cancelRide(String rideId, {String? reason}) async {
+    final currentUserId = SupabaseService.currentUser?.id;
+    if (currentUserId == null) throw Exception('Kullanıcı oturumu bulunamadı');
+
+    final ride = await _client
+        .from('taxi_rides')
+        .select('user_id')
+        .eq('id', rideId)
+        .maybeSingle();
+
+    if (ride == null) throw Exception('Sürüş bulunamadı');
+    if (ride['user_id'] != currentUserId) {
+      throw Exception('Bu sürüşü iptal etme yetkiniz yok');
+    }
+
     await _client
         .from('taxi_rides')
         .update({
@@ -176,7 +199,8 @@ class TaxiService {
           'rating_comment': comment,
           if (tipAmount != null) 'tip_amount': tipAmount,
         })
-        .eq('id', rideId);
+        .eq('id', rideId)
+        .eq('user_id', SupabaseService.currentUser!.id);
 
     // Sürücü rating'ini güncelle
     final ride = await getRide(rideId);
@@ -282,18 +306,7 @@ class TaxiService {
 
   /// Cos fonksiyonu (derece cinsinden)
   static double cosDegrees(double degrees) {
-    return cos(degrees * 3.141592653589793 / 180);
-  }
-
-  static double cos(double radians) {
-    // Taylor serisi yaklaşımı
-    double result = 1.0;
-    double term = 1.0;
-    for (int i = 1; i <= 10; i++) {
-      term *= -radians * radians / ((2 * i - 1) * (2 * i));
-      result += term;
-    }
-    return result;
+    return math.cos(degrees * math.pi / 180);
   }
 
   // ==================== REALTIME SUBSCRIPTIONS ====================
@@ -303,7 +316,7 @@ class TaxiService {
     String rideId,
     void Function(Map<String, dynamic>) onUpdate,
   ) {
-    debugPrint('Subscribing to ride updates for: $rideId');
+    LogService.info('Subscribing to ride updates for: $rideId', source: 'TaxiService:subscribeToRide');
 
     return _client
         .channel('ride_$rideId')
@@ -317,7 +330,7 @@ class TaxiService {
             value: rideId,
           ),
           callback: (payload) {
-            debugPrint('Ride update payload received: ${payload.newRecord}');
+            LogService.info('Ride update payload received', source: 'TaxiService:subscribeToRide');
             onUpdate(payload.newRecord);
           },
         )
@@ -341,8 +354,8 @@ class TaxiService {
             value: driverId,
           ),
           callback: (payload) {
-            final lat = payload.newRecord['current_latitude'] as double?;
-            final lng = payload.newRecord['current_longitude'] as double?;
+            final lat = (payload.newRecord['current_latitude'] as num?)?.toDouble();
+            final lng = (payload.newRecord['current_longitude'] as num?)?.toDouble();
             if (lat != null && lng != null) {
               onLocationUpdate(lat, lng);
             }
@@ -406,7 +419,11 @@ class TaxiService {
 
   /// Kayıtlı konumu sil
   static Future<void> deleteSavedLocation(String locationId) async {
-    await _client.from('saved_locations').delete().eq('id', locationId);
+    await _client
+        .from('saved_locations')
+        .delete()
+        .eq('id', locationId)
+        .eq('user_id', SupabaseService.currentUser!.id);
   }
 
   // ==================== FARE CALCULATION ====================
@@ -492,46 +509,11 @@ class TaxiService {
     return R * c;
   }
 
-  static double _toRadians(double deg) => deg * 3.141592653589793 / 180;
-  static double _sin(double x) {
-    double result = x;
-    double term = x;
-    for (int i = 1; i <= 10; i++) {
-      term *= -x * x / ((2 * i) * (2 * i + 1));
-      result += term;
-    }
-    return result;
-  }
-
-  static double _cos(double x) =>
-      cos(x * 3.141592653589793 / 180 * 180 / 3.141592653589793);
-  static double _sqrt(double x) {
-    if (x <= 0) return 0;
-    double guess = x / 2;
-    for (int i = 0; i < 20; i++) {
-      guess = (guess + x / guess) / 2;
-    }
-    return guess;
-  }
-
-  static double _atan2(double y, double x) {
-    if (x > 0) return _atan(y / x);
-    if (x < 0 && y >= 0) return _atan(y / x) + 3.141592653589793;
-    if (x < 0 && y < 0) return _atan(y / x) - 3.141592653589793;
-    if (x == 0 && y > 0) return 3.141592653589793 / 2;
-    if (x == 0 && y < 0) return -3.141592653589793 / 2;
-    return 0;
-  }
-
-  static double _atan(double x) {
-    double result = x;
-    double term = x;
-    for (int i = 1; i <= 20; i++) {
-      term *= -x * x;
-      result += term / (2 * i + 1);
-    }
-    return result;
-  }
+  static double _toRadians(double deg) => deg * math.pi / 180;
+  static double _sin(double x) => math.sin(x);
+  static double _cos(double x) => math.cos(x);
+  static double _sqrt(double x) => x <= 0 ? 0 : math.sqrt(x);
+  static double _atan2(double y, double x) => math.atan2(y, x);
 
   // ==================== LEGACY COMPATIBILITY ====================
 
@@ -625,7 +607,8 @@ class TaxiService {
       }
 
       return result;
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Error fetching recent locations', error: e, stackTrace: st, source: 'TaxiService:getRecentLocations');
       return [];
     }
   }
@@ -638,7 +621,7 @@ class TaxiService {
       'taxi_feedback_tags_${category ?? 'all'}',
       ttl: const Duration(hours: 24),
       fetcher: () async {
-        debugPrint('TaxiService: getFeedbackTags called with category: $category');
+        LogService.info('getFeedbackTags called with category: $category', source: 'TaxiService:getFeedbackTags');
         try {
           var query = _client
               .from('taxi_feedback_tags')
@@ -649,14 +632,15 @@ class TaxiService {
             query = query.eq('category', category);
           }
 
-          debugPrint('TaxiService: Executing feedback tags query...');
+          LogService.info('Executing feedback tags query...', source: 'TaxiService:getFeedbackTags');
           final response = await query.order('sort_order');
-          debugPrint(
-            'TaxiService: Feedback tags query completed. Count: ${response.length}',
+          LogService.info(
+            'Feedback tags query completed. Count: ${response.length}',
+            source: 'TaxiService:getFeedbackTags',
           );
           return List<Map<String, dynamic>>.from(response);
-        } catch (e) {
-          debugPrint('TaxiService: Error fetching feedback tags: $e');
+        } catch (e, st) {
+          LogService.error('Error fetching feedback tags', error: e, stackTrace: st, source: 'TaxiService:getFeedbackTags');
           // Fallback - varsayılan etiketler
           return [
             {
@@ -725,8 +709,8 @@ class TaxiService {
           .maybeSingle();
 
       return response;
-    } catch (e) {
-      debugPrint('TaxiService: Error getting driver by ID: $e');
+    } catch (e, st) {
+      LogService.error('Error getting driver by ID', error: e, stackTrace: st, source: 'TaxiService:getDriverById');
       return null;
     }
   }
@@ -774,14 +758,19 @@ class TaxiService {
     required double latitude,
     required double longitude,
   }) async {
-    await _client
-        .from('taxi_drivers')
-        .update({
-          'current_latitude': latitude,
-          'current_longitude': longitude,
-          'last_location_update': DateTime.now().toIso8601String(),
-        })
-        .eq('id', driverId);
+    try {
+      await _client
+          .from('taxi_drivers')
+          .update({
+            'current_latitude': latitude,
+            'current_longitude': longitude,
+            'last_location_update': DateTime.now().toIso8601String(),
+          })
+          .eq('id', driverId)
+          .eq('user_id', SupabaseService.currentUser!.id);
+    } catch (e) {
+      throw Exception('Sürücü konumu güncellenemedi: $e');
+    }
   }
 
   /// Sürücü online durumunu güncelle
@@ -789,13 +778,20 @@ class TaxiService {
     required String driverId,
     required bool isOnline,
   }) async {
-    await _client
-        .from('taxi_drivers')
-        .update({
-          'is_online': isOnline,
-          if (isOnline) 'last_online_at': DateTime.now().toIso8601String(),
-        })
-        .eq('id', driverId);
+    final userId = SupabaseService.currentUser?.id;
+    if (userId == null) throw Exception('Kullanıcı oturumu bulunamadı');
+    try {
+      await _client
+          .from('taxi_drivers')
+          .update({
+            'is_online': isOnline,
+            if (isOnline) 'last_online_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', driverId)
+          .eq('user_id', userId);
+    } catch (e) {
+      throw Exception('Sürücü durumu güncellenemedi: $e');
+    }
   }
 
   /// Bekleyen sürüş taleplerini getir (sürücü için, kategori eşleştirmeli)
@@ -889,37 +885,67 @@ class TaxiService {
     return response;
   }
 
+  /// Mevcut kullanıcının taxi_drivers.id değerini getirir
+  static Future<String> _getCurrentDriverId() async {
+    final userId = SupabaseService.currentUser?.id;
+    if (userId == null) throw Exception('Kullanıcı oturumu bulunamadı');
+    final profile = await _client
+        .from('taxi_drivers')
+        .select('id')
+        .eq('user_id', userId)
+        .single();
+    return profile['id'] as String;
+  }
+
   /// Müşteriye vardığını bildir (sürücü)
   static Future<void> arriveAtPickup(String rideId) async {
-    await _client
-        .from('taxi_rides')
-        .update({
-          'status': 'arrived',
-          'arrived_at': DateTime.now().toIso8601String(),
-        })
-        .eq('id', rideId);
+    try {
+      final driverId = await _getCurrentDriverId();
+      await _client
+          .from('taxi_rides')
+          .update({
+            'status': 'arrived',
+            'arrived_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', rideId)
+          .eq('driver_id', driverId);
+    } catch (e) {
+      throw Exception('İşlem başarısız: $e');
+    }
   }
 
   /// Yolculuğu başlat (sürücü)
   static Future<void> startRide(String rideId) async {
-    await _client
-        .from('taxi_rides')
-        .update({
-          'status': 'in_progress',
-          'started_at': DateTime.now().toIso8601String(),
-        })
-        .eq('id', rideId);
+    try {
+      final driverId = await _getCurrentDriverId();
+      await _client
+          .from('taxi_rides')
+          .update({
+            'status': 'in_progress',
+            'started_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', rideId)
+          .eq('driver_id', driverId);
+    } catch (e) {
+      throw Exception('İşlem başarısız: $e');
+    }
   }
 
   /// Yolculuğu tamamla (sürücü)
   static Future<void> completeRide(String rideId) async {
-    await _client
-        .from('taxi_rides')
-        .update({
-          'status': 'completed',
-          'completed_at': DateTime.now().toIso8601String(),
-        })
-        .eq('id', rideId);
+    try {
+      final driverId = await _getCurrentDriverId();
+      await _client
+          .from('taxi_rides')
+          .update({
+            'status': 'completed',
+            'completed_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', rideId)
+          .eq('driver_id', driverId);
+    } catch (e) {
+      throw Exception('İşlem başarısız: $e');
+    }
   }
 
   /// Sürücünün aktif sürüşünü getir
@@ -975,14 +1001,22 @@ class TaxiService {
 
   /// Yeni sürüş taleplerini dinle (sürücü için)
   static RealtimeChannel subscribeToNewRideRequests(
-    void Function(Map<String, dynamic>) onNewRide,
-  ) {
+    void Function(Map<String, dynamic>) onNewRide, {
+    String? vehicleType,
+  }) {
     return _client
-        .channel('new_rides')
+        .channel('new_rides_${vehicleType ?? 'all'}')
         .onPostgresChanges(
           event: PostgresChangeEvent.insert,
           schema: 'public',
           table: 'taxi_rides',
+          filter: vehicleType != null
+              ? PostgresChangeFilter(
+                  type: PostgresChangeFilterType.eq,
+                  column: 'vehicle_type',
+                  value: vehicleType,
+                )
+              : null,
           callback: (payload) {
             if (payload.newRecord['status'] == 'pending') {
               onNewRide(payload.newRecord);
@@ -1013,7 +1047,8 @@ class TaxiService {
           'rating_comment': comment,
           if (tipAmount != null && tipAmount > 0) 'tip_amount': tipAmount,
         })
-        .eq('id', rideId);
+        .eq('id', rideId)
+        .eq('user_id', userId);
 
     // Ride bilgilerini al
     final ride = await getRide(rideId);
@@ -1110,6 +1145,7 @@ class TaxiService {
     required String reviewId,
     required String reply,
   }) async {
+    final driverId = await _getCurrentDriverId();
     await _client
         .from('driver_review_details')
         .update({
@@ -1117,7 +1153,8 @@ class TaxiService {
           'driver_replied_at': DateTime.now().toIso8601String(),
           'updated_at': DateTime.now().toIso8601String(),
         })
-        .eq('id', reviewId);
+        .eq('id', reviewId)
+        .eq('driver_id', driverId);
   }
 
   /// Cevabı güncelle

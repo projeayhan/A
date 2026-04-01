@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:super_app/core/services/log_service.dart';
 
 // Taksi için Kayıtlı Konum Modeli
 class TaxiSavedLocation {
@@ -96,7 +97,8 @@ class TaxiLocationState {
   TaxiSavedLocation? get homeLocation {
     try {
       return savedLocations.firstWhere((l) => l.type == 'home');
-    } catch (_) {
+    } catch (e, st) {
+      LogService.error('No home location found', error: e, stackTrace: st, source: 'TaxiSavedLocationProvider:homeLocation');
       return null;
     }
   }
@@ -104,7 +106,8 @@ class TaxiLocationState {
   TaxiSavedLocation? get workLocation {
     try {
       return savedLocations.firstWhere((l) => l.type == 'work');
-    } catch (_) {
+    } catch (e, st) {
+      LogService.error('No work location found', error: e, stackTrace: st, source: 'TaxiSavedLocationProvider:workLocation');
       return null;
     }
   }

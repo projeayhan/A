@@ -6,6 +6,7 @@ import '../../core/providers/store_cart_provider.dart';
 import '../../core/providers/address_provider.dart';
 import '../../core/providers/payment_method_provider.dart';
 import '../../core/services/store_service.dart';
+import '../../core/services/stripe_service.dart';
 import '../../core/theme/app_responsive.dart';
 import '../../core/theme/store_colors.dart';
 import '../../core/utils/app_dialogs.dart';
@@ -25,6 +26,7 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
   bool _isProcessing = false;
   bool _orderComplete = false;
   String? _orderId;
+  String? _orderUUID;
   int _selectedPaymentMethod = 0;
 
   late AnimationController _progressController;
@@ -79,47 +81,64 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
   }
 
   Future<void> _processOrder() async {
-    setState(() => _isProcessing = true);
-
     final cartState = ref.read(storeCartProvider);
     final selectedAddress = ref.read(selectedAddressProvider);
 
     if (selectedAddress == null) {
-      setState(() => _isProcessing = false);
-      if (mounted) {
-        AppDialogs.showWarning(context, 'Lütfen bir adres seçin');
-      }
+      if (mounted) AppDialogs.showWarning(context, 'Lütfen bir adres seçin');
       return;
     }
+
+    final paymentKey = PaymentOptions.resolvePaymentMethod(
+      _getAvailableStorePaymentOptions(),
+      _selectedPaymentMethod,
+    );
+    final total = cartState.subtotal >= 500
+        ? cartState.subtotal
+        : cartState.subtotal + cartState.deliveryFee;
+
+    setState(() => _isProcessing = true);
 
     try {
       // Her mağaza için ayrı sipariş oluştur
       final itemsByStore = cartState.itemsByStore;
       String? lastOrderId;
+      String? lastOrderUUID;
       bool hasError = false;
       String? errorMessage;
+      final List<String> createdOrderUUIDs = [];
 
       for (final entry in itemsByStore.entries) {
         final storeId = entry.key;
         final storeItems = entry.value;
 
         // Sipariş items listesi oluştur
-        final items = storeItems.map((item) => {
-          'product_id': item.productId,
-          'name': item.name,
-          'price': item.price,
-          'quantity': item.quantity,
-          'total': item.totalPrice,
-          'image_url': item.imageUrl,
-        }).toList();
+        final items = storeItems
+            .map(
+              (item) => {
+                'product_id': item.productId,
+                'name': item.name,
+                'price': item.price,
+                'quantity': item.quantity,
+                'total': item.totalPrice,
+                'image_url': item.imageUrl,
+              },
+            )
+            .toList();
 
         // Mağaza için ara toplam hesapla
         final storeSubtotal = storeItems.fold<double>(
-          0, (sum, item) => sum + item.totalPrice);
-        final deliveryFee = cartState.subtotal >= 500 ? 0.0 : cartState.deliveryFee;
-        final storeTotal = storeSubtotal + (itemsByStore.length == 1 ? deliveryFee : 0);
+          0,
+          (sum, item) => sum + item.totalPrice,
+        );
+        final deliveryFee = cartState.subtotal >= 500
+            ? 0.0
+            : cartState.deliveryFee;
+        final storeTotal =
+            storeSubtotal + (itemsByStore.length == 1 ? deliveryFee : 0);
 
         // Siparişi veritabanına kaydet
+        // Online ödemede pending olarak oluştur, ödeme sonrası güncellenir
         try {
           final result = await StoreService.createOrder(
             merchantId: storeId,
@@ -130,12 +149,14 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
             deliveryAddress: selectedAddress.fullAddress,
             deliveryLatitude: selectedAddress.latitude,
             deliveryLongitude: selectedAddress.longitude,
-            paymentMethod: PaymentOptions.resolvePaymentMethod(
-              _getAvailableStorePaymentOptions(), _selectedPaymentMethod),
+            paymentMethod: paymentKey,
+            paymentStatus: paymentKey == 'online' ? 'pending' : 'paid',
           );
 
           if (result != null) {
             lastOrderId = result['order_number'] as String?;
+            lastOrderUUID = result['id'] as String?;
+            if (lastOrderUUID != null) createdOrderUUIDs.add(lastOrderUUID);
           } else {
             hasError = true;
             errorMessage = 'Sipariş oluşturulamadı';
@@ -147,7 +168,7 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
       }
 
       // Sipariş oluşturulamadıysa hata göster
-      if (hasError || lastOrderId == null) {
+      if (hasError || createdOrderUUIDs.isEmpty) {
         setState(() => _isProcessing = false);
         if (mounted) {
           AppDialogs.showError(
@@ -158,7 +179,43 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
         return;
       }
 
+      // Online ödeme: Stripe payment sheet — order_ids metadata'ya ekleniyor (webhook için)
+      if (paymentKey == 'online') {
+        final result = await StripeService.instance.processPayment(
+          amount: total,
+          description: 'Market/Mağaza siparişi',
+          metadata: {
+            'type': 'store_order',
+            'order_ids': createdOrderUUIDs.join(','),
+          },
+        );
+        if (!mounted) return;
+        if (result.paymentReference == 'checkout_redirect') {
+          ref.read(storeCartProvider.notifier).clearCart();
+          return;
+        }
+        if (!result.success) {
+          // İptal: tüm pending siparişleri temizle
+          for (final id in createdOrderUUIDs) {
+            await StoreService.cancelOrder(id);
+          }
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Ödeme tamamlanamadı.'), backgroundColor: Colors.orange),
+            );
+            setState(() => _isProcessing = false);
+          }
+          return;
+        }
+        // Ödeme onaylandı → tüm siparişleri güncelle
+        // (webhook da aynısını yapacak — güvenlik ağı olarak)
+        for (final id in createdOrderUUIDs) {
+          await StoreService.updateOrderPaymentStatus(id, 'paid');
+        }
+      }
+
       _orderId = lastOrderId;
+      _orderUUID = lastOrderUUID;
 
       setState(() {
         _isProcessing = false;
@@ -166,6 +223,14 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
       });
 
       _checkController.forward();
+
+      // Navigate to order tracking after animation
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        if (mounted) {
+          ref.read(storeCartProvider.notifier).clearCart();
+          context.go('/store/order-tracking/${_orderUUID ?? _orderId ?? ''}');
+        }
+      });
     } catch (e) {
       setState(() => _isProcessing = false);
       if (mounted) {
@@ -250,7 +315,10 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
                 ),
                 Text(
                   'Adım ${_currentStep + 1}/${_steps.length}',
-                  style: TextStyle(fontSize: context.bodySmallSize, color: Colors.grey[500]),
+                  style: TextStyle(
+                    fontSize: context.bodySmallSize,
+                    color: Colors.grey[500],
+                  ),
                 ),
               ],
             ),
@@ -337,7 +405,9 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
                         : Text(
                             '${stepIndex + 1}',
                             style: TextStyle(
-                              fontSize: isActive ? context.bodySize : context.captionSize,
+                              fontSize: isActive
+                                  ? context.bodySize
+                                  : context.captionSize,
                               fontWeight: FontWeight.bold,
                               color: isActive
                                   ? Colors.white
@@ -419,13 +489,15 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
                       width: 60,
                       height: 60,
                       fit: BoxFit.cover,
-                      placeholder: (_, __) => Container(
+                      placeholder: (_, _) => Container(
                         width: 60,
                         height: 60,
                         color: Colors.grey[200],
-                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                        child: const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
                       ),
-                      errorWidget: (_, __, ___) => Container(
+                      errorWidget: (_, _, _) => Container(
                         width: 60,
                         height: 60,
                         color: Colors.grey[300],
@@ -472,7 +544,10 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
                       ),
                       Text(
                         '${item.quantity} adet',
-                        style: TextStyle(fontSize: context.captionSize, color: Colors.grey[500]),
+                        style: TextStyle(
+                          fontSize: context.captionSize,
+                          color: Colors.grey[500],
+                        ),
                       ),
                     ],
                   ),
@@ -550,14 +625,19 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
           const SizedBox(height: 8),
           Text(
             'Siparişinizin teslim edileceği adresi seçin',
-            style: TextStyle(fontSize: context.bodySize, color: Colors.grey[500]),
+            style: TextStyle(
+              fontSize: context.bodySize,
+              color: Colors.grey[500],
+            ),
           ),
           const SizedBox(height: 20),
           ...addresses.map((address) {
             final isSelected = selectedAddress?.id == address.id;
             return GestureDetector(
               onTap: () {
-                ref.read(addressProvider.notifier).setDefaultAddress(address.id);
+                ref
+                    .read(addressProvider.notifier)
+                    .setDefaultAddress(address.id);
               },
               child: Container(
                 margin: const EdgeInsets.only(bottom: 12),
@@ -686,31 +766,49 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
     final options = <PaymentOption>[];
     int idx = 0;
     if (paymentState.creditCardOnDeliveryEnabled) {
-      options.add(PaymentOption(
-        index: idx++,
-        icon: Icons.credit_card,
-        title: 'Kredi/Banka Kartı',
-        subtitle: 'Kapıda Kredi Kartı',
-        paymentMethodKey: 'credit_card_on_delivery',
-      ));
+      options.add(
+        PaymentOption(
+          index: idx++,
+          icon: Icons.credit_card,
+          title: 'Kredi/Banka Kartı',
+          subtitle: 'Kapıda Kredi Kartı',
+          paymentMethodKey: 'credit_card_on_delivery',
+        ),
+      );
     }
     if (paymentState.cashEnabled) {
-      options.add(PaymentOption(
-        index: idx++,
-        icon: Icons.payments_outlined,
-        title: 'Kapıda Ödeme',
-        subtitle: 'Nakit Ödeme',
-        paymentMethodKey: 'cash',
-      ));
+      options.add(
+        PaymentOption(
+          index: idx++,
+          icon: Icons.payments_outlined,
+          title: 'Kapıda Ödeme',
+          subtitle: 'Nakit Ödeme',
+          paymentMethodKey: 'cash',
+        ),
+      );
     }
+    if (paymentState.onlinePaymentEnabled) {
+      options.add(
+        PaymentOption(
+          index: idx++,
+          icon: Icons.payment_rounded,
+          title: 'Online Ödeme',
+          subtitle: 'Stripe ile Güvenli Ödeme',
+          paymentMethodKey: 'online',
+        ),
+      );
+    }
+
     if (options.isEmpty) {
-      options.add(const PaymentOption(
-        index: 0,
-        icon: Icons.payments_outlined,
-        title: 'Kapıda Ödeme',
-        subtitle: 'Nakit Ödeme',
-        paymentMethodKey: 'cash',
-      ));
+      options.add(
+        const PaymentOption(
+          index: 0,
+          icon: Icons.payments_outlined,
+          title: 'Kapıda Ödeme',
+          subtitle: 'Nakit Ödeme',
+          paymentMethodKey: 'cash',
+        ),
+      );
     }
     return options;
   }
@@ -719,7 +817,9 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
     final options = _getAvailableStorePaymentOptions();
     if (!options.any((o) => o.index == _selectedPaymentMethod)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _selectedPaymentMethod = options.first.index);
+        if (mounted) {
+          setState(() => _selectedPaymentMethod = options.first.index);
+        }
       });
     }
 
@@ -739,12 +839,16 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
           const SizedBox(height: 8),
           Text(
             'Güvenli ödeme yönteminizi seçin',
-            style: TextStyle(fontSize: context.bodySize, color: Colors.grey[500]),
+            style: TextStyle(
+              fontSize: context.bodySize,
+              color: Colors.grey[500],
+            ),
           ),
           const SizedBox(height: 20),
           PaymentMethodSelector(
             selectedIndex: _selectedPaymentMethod,
-            onChanged: (index) => setState(() => _selectedPaymentMethod = index),
+            onChanged: (index) =>
+                setState(() => _selectedPaymentMethod = index),
             primaryColor: StoreColors.primary,
             isDark: isDark,
             options: options,
@@ -817,7 +921,10 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
           const SizedBox(height: 8),
           Text(
             'Lütfen siparişinizi kontrol edin',
-            style: TextStyle(fontSize: context.bodySize, color: Colors.grey[500]),
+            style: TextStyle(
+              fontSize: context.bodySize,
+              color: Colors.grey[500],
+            ),
           ),
           const SizedBox(height: 20),
           // Teslimat Bilgileri
@@ -860,7 +967,10 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
                   children: [
                     Text(
                       'Ürünler (${cartState.itemCount})',
-                      style: TextStyle(fontSize: context.bodySize, color: Colors.grey[500]),
+                      style: TextStyle(
+                        fontSize: context.bodySize,
+                        color: Colors.grey[500],
+                      ),
                     ),
                     Text(
                       '₺${cartState.subtotal.toStringAsFixed(2)}',
@@ -877,7 +987,10 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
                   children: [
                     Text(
                       'Kargo',
-                      style: TextStyle(fontSize: context.bodySize, color: Colors.grey[500]),
+                      style: TextStyle(
+                        fontSize: context.bodySize,
+                        color: Colors.grey[500],
+                      ),
                     ),
                     Text(
                       cartState.subtotal >= 500
@@ -937,7 +1050,10 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
                 Expanded(
                   child: Text(
                     'Siparişi onayladığınızda ödeme işlemi başlayacaktır.',
-                    style: TextStyle(fontSize: context.bodySmallSize, color: Colors.green[700]),
+                    style: TextStyle(
+                      fontSize: context.bodySmallSize,
+                      color: Colors.green[700],
+                    ),
                   ),
                 ),
               ],
@@ -981,7 +1097,10 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
               children: [
                 Text(
                   title,
-                  style: TextStyle(fontSize: context.captionSize, color: Colors.grey[500]),
+                  style: TextStyle(
+                    fontSize: context.captionSize,
+                    color: Colors.grey[500],
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -1067,7 +1186,10 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
               children: [
                 Text(
                   'Toplam',
-                  style: TextStyle(fontSize: context.captionSize, color: Colors.grey[500]),
+                  style: TextStyle(
+                    fontSize: context.captionSize,
+                    color: Colors.grey[500],
+                  ),
                 ),
                 Text(
                   '₺${total.toStringAsFixed(2)}',
@@ -1147,7 +1269,10 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
             const SizedBox(height: 12),
             Text(
               'Lütfen bekleyin, ödemeniz onaylanıyor',
-              style: TextStyle(fontSize: context.bodySize, color: Colors.grey[500]),
+              style: TextStyle(
+                fontSize: context.bodySize,
+                color: Colors.grey[500],
+              ),
             ),
             const SizedBox(height: 32),
             _buildProcessingStep(
@@ -1237,7 +1362,10 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
                 const SizedBox(height: 12),
                 Text(
                   'Sipariş numaranız:',
-                  style: TextStyle(fontSize: context.bodySize, color: Colors.grey[500]),
+                  style: TextStyle(
+                    fontSize: context.bodySize,
+                    color: Colors.grey[500],
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Container(
@@ -1291,7 +1419,10 @@ class _StoreCheckoutScreenState extends ConsumerState<StoreCheckoutScreen>
                       Text(
                         'Siparişiniz hazırlandığında ve kargoya verildiğinde\nsize bildirim göndereceğiz.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: context.bodySmallSize, color: Colors.grey[500]),
+                        style: TextStyle(
+                          fontSize: context.bodySmallSize,
+                          color: Colors.grey[500],
+                        ),
                       ),
                     ],
                   ),

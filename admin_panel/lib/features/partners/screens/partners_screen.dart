@@ -4,17 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:data_table_2/data_table_2.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
-
-// Partners provider
-final partnersProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
-  final supabase = ref.watch(supabaseProvider);
-  final response = await supabase
-      .from('partners')
-      .select()
-      .order('created_at', ascending: false)
-      .limit(100);
-  return List<Map<String, dynamic>>.from(response);
-});
+import '../../../shared/widgets/pagination_controls.dart';
 
 class PartnersScreen extends ConsumerStatefulWidget {
   const PartnersScreen({super.key});
@@ -29,16 +19,61 @@ class _PartnersScreenState extends ConsumerState<PartnersScreen> {
   String _roleFilter = 'all';
   Timer? _debounce;
 
+  // Pagination
+  int _currentPage = 0;
+  final int _pageSize = 25;
+  int _totalCount = 0;
+
+  // Data
+  List<Map<String, dynamic>> _partners = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchPartners();
+  }
+
   @override
   void dispose() {
     _debounce?.cancel();
     super.dispose();
   }
 
+  Future<void> _fetchPartners() async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+
+    try {
+      final supabase = ref.read(supabaseProvider);
+
+      final countResponse = await supabase.from('partners').select('id').count();
+      _totalCount = countResponse.count;
+
+      final from = _currentPage * _pageSize;
+      final to = from + _pageSize - 1;
+
+      final response = await supabase
+          .from('partners')
+          .select()
+          .order('created_at', ascending: false)
+          .range(from, to);
+
+      if (!mounted) return;
+      setState(() {
+        _partners = List<Map<String, dynamic>>.from(response);
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+    }
+  }
+
+  int get _totalPages => (_totalCount / _pageSize).ceil().clamp(1, 999999);
+
   @override
   Widget build(BuildContext context) {
-    final partnersAsync = ref.watch(partnersProvider);
-
     return Scaffold(
       backgroundColor: AppColors.background,
       body: Padding(
@@ -54,7 +89,7 @@ class _PartnersScreenState extends ConsumerState<PartnersScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Partnerler',
+                      'Sürücü Yönetimi',
                       style: TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 28,
@@ -71,7 +106,7 @@ class _PartnersScreenState extends ConsumerState<PartnersScreen> {
                 Row(
                   children: [
                     OutlinedButton.icon(
-                      onPressed: () => ref.invalidate(partnersProvider),
+                      onPressed: _fetchPartners,
                       icon: const Icon(Icons.refresh, size: 18),
                       label: const Text('Yenile'),
                     ),
@@ -79,7 +114,7 @@ class _PartnersScreenState extends ConsumerState<PartnersScreen> {
                     ElevatedButton.icon(
                       onPressed: _showAddPartnerInfo,
                       icon: const Icon(Icons.add, size: 18),
-                      label: const Text('Partner Ekle'),
+                      label: const Text('Sürücü Ekle'),
                     ),
                   ],
                 ),
@@ -89,7 +124,7 @@ class _PartnersScreenState extends ConsumerState<PartnersScreen> {
             const SizedBox(height: 24),
 
             // Stats Cards
-            _buildStatsRow(partnersAsync),
+            _buildStatsRow(),
 
             const SizedBox(height: 24),
 
@@ -187,25 +222,27 @@ class _PartnersScreenState extends ConsumerState<PartnersScreen> {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppColors.surfaceLight),
                 ),
-                child: partnersAsync.when(
-                  data: (partners) => _buildDataTable(partners),
-                  loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (e, _) => Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.delivery_dining, size: 64, color: AppColors.textMuted),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'Henüz partner yok',
-                          style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
-                        ),
-                        const SizedBox(height: 8),
-                        Text('Hata: $e', style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
-                      ],
-                    ),
-                  ),
-                ),
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : Column(
+                        children: [
+                          Expanded(child: _buildDataTable()),
+                          PaginationControls(
+                            currentPage: _currentPage,
+                            totalPages: _totalPages,
+                            totalCount: _totalCount,
+                            pageSize: _pageSize,
+                            onPrevious: () {
+                              setState(() => _currentPage--);
+                              _fetchPartners();
+                            },
+                            onNext: () {
+                              setState(() => _currentPage++);
+                              _fetchPartners();
+                            },
+                          ),
+                        ],
+                      ),
               ),
             ),
           ],
@@ -350,7 +387,7 @@ class _PartnersScreenState extends ConsumerState<PartnersScreen> {
         ),
       );
 
-      ref.invalidate(partnersProvider);
+      _fetchPartners();
     } catch (e) {
       if (!mounted) return;
 
@@ -382,7 +419,7 @@ class _PartnersScreenState extends ConsumerState<PartnersScreen> {
           width: 500,
           child: SingleChildScrollView(
             child: StatefulBuilder(
-              builder: (context, setState) => Column(
+              builder: (context, setDialogState) => Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   TextField(
@@ -434,20 +471,21 @@ class _PartnersScreenState extends ConsumerState<PartnersScreen> {
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
-                    value: selectedStatus,
+                    initialValue: selectedStatus,
                     decoration: const InputDecoration(
                       labelText: 'Durum',
                       border: OutlineInputBorder(),
                     ),
                     dropdownColor: AppColors.surface,
                     items: const [
+                      DropdownMenuItem(value: 'active', child: Text('Aktif')),
                       DropdownMenuItem(value: 'pending', child: Text('Bekleyen')),
                       DropdownMenuItem(value: 'approved', child: Text('Onaylı')),
                       DropdownMenuItem(value: 'rejected', child: Text('Reddedildi')),
                       DropdownMenuItem(value: 'suspended', child: Text('Askıda')),
                     ],
                     onChanged: (value) {
-                      setState(() {
+                      setDialogState(() {
                         selectedStatus = value!;
                         if (value == 'approved') {
                           isApproved = true;
@@ -460,7 +498,7 @@ class _PartnersScreenState extends ConsumerState<PartnersScreen> {
                     title: const Text('Onaylı', style: TextStyle(color: AppColors.textPrimary)),
                     value: isApproved,
                     onChanged: (value) {
-                      setState(() {
+                      setDialogState(() {
                         isApproved = value ?? false;
                       });
                     },
@@ -533,7 +571,7 @@ class _PartnersScreenState extends ConsumerState<PartnersScreen> {
         ),
       );
 
-      ref.invalidate(partnersProvider);
+      _fetchPartners();
     } catch (e) {
       if (!mounted) return;
 
@@ -546,38 +584,36 @@ class _PartnersScreenState extends ConsumerState<PartnersScreen> {
     }
   }
 
-  Widget _buildStatsRow(AsyncValue<List<Map<String, dynamic>>> partnersAsync) {
-    return partnersAsync.when(
-      data: (partners) {
-        final couriers = partners.where((p) {
-          final roles = p['roles'];
-          if (roles is List) return roles.contains('courier');
-          return false;
-        }).length;
-        final taxis = partners.where((p) {
-          final roles = p['roles'];
-          if (roles is List) return roles.contains('taxi');
-          return false;
-        }).length;
-        final online = partners.where((p) => p['is_online'] == true).length;
-        final pending = partners.where((p) => p['status'] == 'pending').length;
+  Widget _buildStatsRow() {
+    if (_isLoading) {
+      return Row(children: List.generate(5, (_) => Expanded(child: _buildStatCardLoading())));
+    }
 
-        return Row(
-          children: [
-            _buildStatCard('Toplam Partner', partners.length.toString(), Icons.people, AppColors.primary),
-            const SizedBox(width: 16),
-            _buildStatCard('Kurye', couriers.toString(), Icons.delivery_dining, AppColors.success),
-            const SizedBox(width: 16),
-            _buildStatCard('Taksi', taxis.toString(), Icons.local_taxi, AppColors.warning),
-            const SizedBox(width: 16),
-            _buildStatCard('Online', online.toString(), Icons.circle, AppColors.info, showDot: true),
-            const SizedBox(width: 16),
-            _buildStatCard('Onay Bekleyen', pending.toString(), Icons.pending, AppColors.error),
-          ],
-        );
-      },
-      loading: () => Row(children: List.generate(5, (_) => Expanded(child: _buildStatCardLoading()))),
-      error: (_, __) => const SizedBox(),
+    final couriers = _partners.where((p) {
+      final roles = p['roles'];
+      if (roles is List) return roles.contains('courier');
+      return false;
+    }).length;
+    final taxis = _partners.where((p) {
+      final roles = p['roles'];
+      if (roles is List) return roles.contains('taxi');
+      return false;
+    }).length;
+    final online = _partners.where((p) => p['is_online'] == true).length;
+    final pending = _partners.where((p) => p['status'] == 'pending').length;
+
+    return Row(
+      children: [
+        _buildStatCard('Toplam Partner', _totalCount.toString(), Icons.people, AppColors.primary),
+        const SizedBox(width: 16),
+        _buildStatCard('Kurye', couriers.toString(), Icons.delivery_dining, AppColors.success),
+        const SizedBox(width: 16),
+        _buildStatCard('Taksi', taxis.toString(), Icons.local_taxi, AppColors.warning),
+        const SizedBox(width: 16),
+        _buildStatCard('Online', online.toString(), Icons.circle, AppColors.info, showDot: true),
+        const SizedBox(width: 16),
+        _buildStatCard('Onay Bekleyen', pending.toString(), Icons.pending, AppColors.error),
+      ],
     );
   }
 
@@ -643,9 +679,10 @@ class _PartnersScreenState extends ConsumerState<PartnersScreen> {
     );
   }
 
-  Widget _buildDataTable(List<Map<String, dynamic>> partners) {
-    var filteredPartners = partners.where((partner) {
-      final matchesSearch = _searchQuery.isEmpty;
+  Widget _buildDataTable() {
+    var filteredPartners = _partners.where((partner) {
+      final name = (partner['full_name'] ?? '').toString().toLowerCase();
+      final matchesSearch = _searchQuery.isEmpty || name.contains(_searchQuery.toLowerCase());
       final matchesStatus = _statusFilter == 'all' || partner['status'] == _statusFilter;
       final roles = partner['roles'];
       final matchesRole = _roleFilter == 'all' ||

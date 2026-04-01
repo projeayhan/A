@@ -1,5 +1,5 @@
 import 'package:audioplayers/audioplayers.dart';
-import 'package:flutter/foundation.dart';
+import 'log_service.dart';
 
 /// Bildirim sesi servisi - yeni siparis ve bildirim sesleri calar
 class NotificationSoundService {
@@ -20,9 +20,9 @@ class NotificationSoundService {
     try {
       await _orderPlayer.setSource(AssetSource('sounds/order_notification.wav'));
       await _generalPlayer.setSource(AssetSource('sounds/notification.wav'));
-      debugPrint('NotificationSoundService initialized');
-    } catch (e) {
-      debugPrint('NotificationSoundService init error: $e');
+      LogService.info('NotificationSoundService initialized', source: 'NotificationSoundService:initialize');
+    } catch (e, st) {
+      LogService.error('NotificationSoundService init error', error: e, stackTrace: st, source: 'NotificationSoundService:initialize');
     }
   }
 
@@ -31,8 +31,8 @@ class NotificationSoundService {
     try {
       _orderPlayer.stop();
       _orderPlayer.play(AssetSource('sounds/order_notification.wav'));
-    } catch (e) {
-      debugPrint('Error playing order sound: $e');
+    } catch (e, st) {
+      LogService.error('Error playing order sound', error: e, stackTrace: st, source: 'NotificationSoundService:playOrderSound');
     }
   }
 
@@ -41,8 +41,8 @@ class NotificationSoundService {
     try {
       _generalPlayer.stop();
       _generalPlayer.play(AssetSource('sounds/notification.wav'));
-    } catch (e) {
-      debugPrint('Error playing notification sound: $e');
+    } catch (e, st) {
+      LogService.error('Error playing notification sound', error: e, stackTrace: st, source: 'NotificationSoundService:playNotificationSound');
     }
   }
 }

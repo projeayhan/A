@@ -46,13 +46,13 @@ class BusinessOverviewScreen extends ConsumerWidget {
               // Info Cards Row
               Row(
                 children: [
-                  Expanded(child: _buildInfoCard('Durum', business['status'] ?? '-', Icons.circle, AppColors.success, isDark)),
+                  Expanded(child: _buildInfoCard('Durum', business['status'] as String? ?? (business['is_approved'] == true ? 'Aktif' : 'Pasif'), Icons.circle, AppColors.success, isDark)),
                   const SizedBox(width: 16),
                   Expanded(child: _buildInfoCard('Kayıt Tarihi', _formatDate(business['created_at']), Icons.calendar_today_outlined, AppColors.primary, isDark)),
                   const SizedBox(width: 16),
-                  Expanded(child: _buildInfoCard('Puan', '${business['rating'] ?? '-'}', Icons.star_outline, AppColors.warning, isDark)),
+                  Expanded(child: _buildInfoCard('Puan', '${(business['_live_rating'] as num?)?.toStringAsFixed(1) ?? business['rating'] ?? '-'}', Icons.star_outline, AppColors.warning, isDark)),
                   const SizedBox(width: 16),
-                  Expanded(child: _buildInfoCard(sector.countLabel, '${business['order_count'] ?? business['listing_count'] ?? 0}', Icons.trending_up_outlined, AppColors.info, isDark)),
+                  Expanded(child: _buildInfoCard(sector.countLabel, '${sector.countField != null ? (business[sector.countField] ?? 0) : 0}', Icons.trending_up_outlined, AppColors.info, isDark)),
                 ],
               ),
               const SizedBox(height: 24),
@@ -71,7 +71,7 @@ class BusinessOverviewScreen extends ConsumerWidget {
                     children: [
                       Text('Temel Bilgiler', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
                       const SizedBox(height: 16),
-                      _buildDetailRow('Ad', business['name'] ?? business['full_name'] ?? business['company_name'] ?? '-', isDark),
+                      _buildDetailRow('Ad', business[sector.nameField] ?? business['name'] ?? business['full_name'] ?? business['company_name'] ?? business['business_name'] ?? '-', isDark),
                       _buildDetailRow('Email', business['email'] ?? '-', isDark),
                       _buildDetailRow('Telefon', business['phone'] ?? '-', isDark),
                       _buildDetailRow('Adres', business['address'] ?? '-', isDark),

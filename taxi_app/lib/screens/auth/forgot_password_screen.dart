@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/services/log_service.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/theme/app_theme.dart';
 
@@ -36,7 +37,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       if (mounted) {
         setState(() => _emailSent = true);
       }
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('resetPassword error', error: e, stackTrace: st, source: 'ForgotPasswordScreen:_resetPassword');
       if (mounted) {
         setState(() => _error = 'Bir hata oluştu. Lütfen tekrar deneyin.');
       }

@@ -65,7 +65,7 @@ final featuredStoresProvider = FutureProvider<List<Store>>((ref) async {
 });
 
 // Kategoriye göre mağazalar provider (realtime ile)
-final storesByCategoryProvider = FutureProvider.family<List<Store>, String>((ref, categoryId) async {
+final storesByCategoryProvider = FutureProvider.autoDispose.family<List<Store>, String>((ref, categoryId) async {
   ref.watch(_storesChangeProvider);
   final selectedAddress = ref.watch(selectedAddressProvider);
   if (categoryId.isEmpty || categoryId == 'all') {
@@ -88,13 +88,13 @@ final storeProductsProvider = FutureProvider<List<StoreProduct>>((ref) async {
 });
 
 // Mağazaya göre ürünler provider (realtime ile)
-final productsByStoreProvider = FutureProvider.family<List<StoreProduct>, String>((ref, storeId) async {
+final productsByStoreProvider = FutureProvider.autoDispose.family<List<StoreProduct>, String>((ref, storeId) async {
   ref.watch(_storeProductsChangeProvider);
   return await StoreService.getProductsByStore(storeId);
 });
 
 // Kategoriye göre ürünler provider
-final productsByCategoryProvider = FutureProvider.family<List<StoreProduct>, String>((ref, categoryId) async {
+final productsByCategoryProvider = FutureProvider.autoDispose.family<List<StoreProduct>, String>((ref, categoryId) async {
   ref.watch(_storeProductsChangeProvider);
   return await StoreService.getProductsByCategory(categoryId);
 });
@@ -118,14 +118,14 @@ final recommendedProductsProvider = FutureProvider<List<StoreProduct>>((ref) asy
 });
 
 // Arama provider
-final productSearchProvider = FutureProvider.family<List<StoreProduct>, String>((ref, query) async {
-  if (query.isEmpty) return [];
+final productSearchProvider = FutureProvider.autoDispose.family<List<StoreProduct>, String>((ref, query) async {
+  if (query.length < 3) return [];
   return await StoreService.searchProducts(query);
 });
 
 // Mağaza arama provider (teslimat bölgesi filtreli)
-final storeSearchProvider = FutureProvider.family<List<Store>, String>((ref, query) async {
-  if (query.isEmpty) return [];
+final storeSearchProvider = FutureProvider.autoDispose.family<List<Store>, String>((ref, query) async {
+  if (query.length < 3) return [];
   final selectedAddress = ref.watch(selectedAddressProvider);
   return await StoreService.searchStores(
     query,

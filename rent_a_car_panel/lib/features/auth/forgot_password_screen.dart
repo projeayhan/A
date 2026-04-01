@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:rent_a_car_panel/core/services/log_service.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -41,7 +42,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       if (mounted) {
         setState(() => _emailSent = true);
       }
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Password reset failed', error: e, stackTrace: st, source: 'ForgotPasswordScreen:_handleReset');
       if (mounted) {
         setState(() => _error = 'Bir hata oluştu. Lütfen tekrar deneyin.');
       }

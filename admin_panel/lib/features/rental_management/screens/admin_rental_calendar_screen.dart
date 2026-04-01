@@ -15,6 +15,7 @@ class AdminRentalCalendarScreen extends ConsumerStatefulWidget {
 class _AdminRentalCalendarScreenState extends ConsumerState<AdminRentalCalendarScreen> {
   late DateTime _currentMonth;
   String? _selectedCarFilter;
+  int? _selectedDay;
   final _dateFormat = DateFormat('MMMM yyyy', 'tr_TR');
 
   @override
@@ -29,12 +30,14 @@ class _AdminRentalCalendarScreenState extends ConsumerState<AdminRentalCalendarS
   void _previousMonth() {
     setState(() {
       _currentMonth = DateTime(_currentMonth.year, _currentMonth.month - 1, 1);
+      _selectedDay = null;
     });
   }
 
   void _nextMonth() {
     setState(() {
       _currentMonth = DateTime(_currentMonth.year, _currentMonth.month + 1, 1);
+      _selectedDay = null;
     });
   }
 
@@ -149,19 +152,37 @@ class _AdminRentalCalendarScreenState extends ConsumerState<AdminRentalCalendarS
 
             const SizedBox(height: 16),
 
-            // Status Legend
-            _buildStatusLegend(),
+            // Legend
+            _buildLegend(),
 
             const SizedBox(height: 16),
 
-            // Calendar Grid
+            // Calendar Grid + Day Detail
             Expanded(
               child: bookingsAsync.when(
                 data: (bookings) {
                   final filtered = _selectedCarFilter != null
                       ? bookings.where((b) => b['car_id'] == _selectedCarFilter).toList()
                       : bookings;
-                  return _buildCalendarGrid(filtered);
+                  final totalCars = carsAsync.valueOrNull?.length ?? 1;
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Calendar
+                      Expanded(
+                        flex: 3,
+                        child: _buildCalendarGrid(filtered, totalCars),
+                      ),
+                      // Day detail panel
+                      if (_selectedDay != null) ...[
+                        const SizedBox(width: 16),
+                        Expanded(
+                          flex: 2,
+                          child: _buildDayDetailPanel(filtered),
+                        ),
+                      ],
+                    ],
+                  );
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Center(child: Text('Hata: $e', style: const TextStyle(color: AppColors.error))),
@@ -173,28 +194,28 @@ class _AdminRentalCalendarScreenState extends ConsumerState<AdminRentalCalendarS
     );
   }
 
-  Widget _buildStatusLegend() {
+  Widget _buildLegend() {
     final items = [
-      {'label': 'Beklemede', 'color': AppColors.warning},
-      {'label': 'Onaylandı', 'color': AppColors.info},
-      {'label': 'Aktif', 'color': AppColors.primary},
-      {'label': 'Tamamlandı', 'color': AppColors.success},
-      {'label': 'İptal', 'color': AppColors.error},
+      {'label': 'Müsait', 'color': AppColors.success},
+      {'label': 'Kısmi Dolu', 'color': AppColors.warning},
+      {'label': 'Tamamen Dolu', 'color': AppColors.error},
+      {'label': 'Bugün', 'color': AppColors.primary},
     ];
 
     return Row(
       children: items.map((item) {
         return Padding(
-          padding: const EdgeInsets.only(right: 16),
+          padding: const EdgeInsets.only(right: 20),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 12,
-                height: 12,
+                width: 14,
+                height: 14,
                 decoration: BoxDecoration(
-                  color: item['color'] as Color,
-                  borderRadius: BorderRadius.circular(3),
+                  color: (item['color'] as Color).withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: item['color'] as Color, width: 1.5),
                 ),
               ),
               const SizedBox(width: 6),
@@ -209,7 +230,7 @@ class _AdminRentalCalendarScreenState extends ConsumerState<AdminRentalCalendarS
     );
   }
 
-  Widget _buildCalendarGrid(List<Map<String, dynamic>> bookings) {
+  Widget _buildCalendarGrid(List<Map<String, dynamic>> bookings, int totalCars) {
     final daysInMonth = DateTime(_currentMonth.year, _currentMonth.month + 1, 0).day;
     final firstWeekday = DateTime(_currentMonth.year, _currentMonth.month, 1).weekday; // 1=Mon
 
@@ -218,7 +239,9 @@ class _AdminRentalCalendarScreenState extends ConsumerState<AdminRentalCalendarS
     for (final b in bookings) {
       final pickup = DateTime.tryParse(b['pickup_date'] as String? ?? '');
       final dropoff = DateTime.tryParse(b['dropoff_date'] as String? ?? '');
-      if (pickup == null || dropoff == null) continue;
+      if (pickup == null || dropoff == null) {
+        continue;
+      }
 
       final startDay = pickup.month == _currentMonth.month && pickup.year == _currentMonth.year
           ? pickup.day
@@ -233,7 +256,10 @@ class _AdminRentalCalendarScreenState extends ConsumerState<AdminRentalCalendarS
       }
     }
 
-    final dayNames = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+    final dayNames = ['Pzt', 'Sal', 'Car', 'Per', 'Cum', 'Cmt', 'Paz'];
+    final totalCells = ((firstWeekday - 1) + daysInMonth);
+    final rows = ((totalCells + 6) ~/ 7);
+    final gridItemCount = rows * 7;
 
     return Container(
       decoration: BoxDecoration(
@@ -260,9 +286,9 @@ class _AdminRentalCalendarScreenState extends ConsumerState<AdminRentalCalendarS
             child: GridView.builder(
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 7,
-                childAspectRatio: 1.0,
+                childAspectRatio: 1.2,
               ),
-              itemCount: ((firstWeekday - 1) + daysInMonth + (7 - ((firstWeekday - 1 + daysInMonth) % 7)) % 7),
+              itemCount: gridItemCount,
               itemBuilder: (context, index) {
                 final dayOffset = index - (firstWeekday - 1);
                 if (dayOffset < 0 || dayOffset >= daysInMonth) {
@@ -275,58 +301,91 @@ class _AdminRentalCalendarScreenState extends ConsumerState<AdminRentalCalendarS
 
                 final day = dayOffset + 1;
                 final dayData = dayBookings[day] ?? [];
+                final bookingCount = dayData.length;
                 final isToday = DateTime.now().day == day &&
                     DateTime.now().month == _currentMonth.month &&
                     DateTime.now().year == _currentMonth.year;
+                final isSelected = _selectedDay == day;
 
-                return Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: AppColors.surfaceLight.withValues(alpha: 0.3), width: 0.5),
-                    color: isToday ? AppColors.primary.withValues(alpha: 0.05) : null,
-                  ),
-                  padding: const EdgeInsets.all(4),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '$day',
-                        style: TextStyle(
-                          color: isToday ? AppColors.primary : AppColors.textSecondary,
-                          fontSize: 12,
-                          fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
-                        ),
+                // Color coding based on availability
+                Color dayColor;
+                if (bookingCount == 0) {
+                  dayColor = AppColors.success;
+                } else if (bookingCount >= totalCars && totalCars > 0) {
+                  dayColor = AppColors.error;
+                } else {
+                  dayColor = AppColors.warning;
+                }
+
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _selectedDay = day;
+                    });
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(
+                        color: isSelected
+                            ? AppColors.primary
+                            : AppColors.surfaceLight.withValues(alpha: 0.3),
+                        width: isSelected ? 2 : 0.5,
                       ),
-                      const SizedBox(height: 2),
-                      ...dayData.take(3).map((b) {
-                        final car = b['rental_cars'] as Map<String, dynamic>?;
-                        final carLabel = car != null ? '${car['brand']} ${car['model']}' : '?';
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 2),
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: _statusColor(b['status'] as String? ?? '').withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(3),
-                            ),
-                            child: Text(
-                              carLabel,
-                              style: TextStyle(
-                                color: _statusColor(b['status'] as String? ?? ''),
-                                fontSize: 9,
-                                fontWeight: FontWeight.w500,
+                      color: isToday
+                          ? AppColors.primary.withValues(alpha: 0.08)
+                          : isSelected
+                              ? AppColors.primary.withValues(alpha: 0.05)
+                              : null,
+                    ),
+                    padding: const EdgeInsets.all(6),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: isToday
+                                  ? BoxDecoration(
+                                      color: AppColors.primary,
+                                      borderRadius: BorderRadius.circular(10),
+                                    )
+                                  : null,
+                              child: Text(
+                                '$day',
+                                style: TextStyle(
+                                  color: isToday ? Colors.white : AppColors.textSecondary,
+                                  fontSize: 12,
+                                  fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+                                ),
                               ),
-                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                        );
-                      }),
-                      if (dayData.length > 3)
-                        Text(
-                          '+${dayData.length - 3}',
-                          style: const TextStyle(color: AppColors.textMuted, fontSize: 9),
+                            if (bookingCount > 0)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: dayColor.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  '$bookingCount',
+                                  style: TextStyle(color: dayColor, fontSize: 11, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                          ],
                         ),
-                    ],
+                        const Spacer(),
+                        // Color indicator bar
+                        Container(
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: dayColor.withValues(alpha: 0.4),
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 );
               },
@@ -337,14 +396,164 @@ class _AdminRentalCalendarScreenState extends ConsumerState<AdminRentalCalendarS
     );
   }
 
+  Widget _buildDayDetailPanel(List<Map<String, dynamic>> allBookings) {
+    final day = _selectedDay!;
+    final dayBookings = allBookings.where((b) {
+      final pickup = DateTime.tryParse(b['pickup_date'] as String? ?? '');
+      final dropoff = DateTime.tryParse(b['dropoff_date'] as String? ?? '');
+      if (pickup == null || dropoff == null) {
+        return false;
+      }
+      final dayDate = DateTime(_currentMonth.year, _currentMonth.month, day);
+      return !dayDate.isBefore(DateTime(pickup.year, pickup.month, pickup.day)) &&
+          !dayDate.isAfter(DateTime(dropoff.year, dropoff.month, dropoff.day));
+    }).toList();
+
+    final dateStr = DateFormat('dd MMMM yyyy', 'tr_TR').format(
+      DateTime(_currentMonth.year, _currentMonth.month, day),
+    );
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.surfaceLight),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(dateStr, style: const TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
+              IconButton(
+                onPressed: () => setState(() => _selectedDay = null),
+                icon: const Icon(Icons.close, size: 18, color: AppColors.textMuted),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${dayBookings.length} rezervasyon',
+            style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+          ),
+          const SizedBox(height: 16),
+          const Divider(color: AppColors.surfaceLight),
+          const SizedBox(height: 8),
+          Expanded(
+            child: dayBookings.isEmpty
+                ? const Center(
+                    child: Text('Bu gün için rezervasyon yok', style: TextStyle(color: AppColors.textMuted)),
+                  )
+                : ListView.separated(
+                    itemCount: dayBookings.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 10),
+                    itemBuilder: (context, index) {
+                      final b = dayBookings[index];
+                      final car = b['rental_cars'] as Map<String, dynamic>?;
+                      final carLabel = car != null ? '${car['brand']} ${car['model']}' : '?';
+                      final customerName = b['customer_name'] as String? ?? '-';
+                      final status = b['status'] as String? ?? '';
+                      final pickupDate = DateTime.tryParse(b['pickup_date'] as String? ?? '');
+                      final dropoffDate = DateTime.tryParse(b['dropoff_date'] as String? ?? '');
+
+                      return Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: _statusColor(status).withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: _statusColor(status).withValues(alpha: 0.2)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(carLabel, style: const TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600)),
+                                _buildMiniStatusBadge(status),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                const Icon(Icons.person, size: 14, color: AppColors.textMuted),
+                                const SizedBox(width: 4),
+                                Text(customerName, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                const Icon(Icons.date_range, size: 14, color: AppColors.textMuted),
+                                const SizedBox(width: 4),
+                                Text(
+                                  pickupDate != null && dropoffDate != null
+                                      ? '${DateFormat('dd.MM').format(pickupDate)} - ${DateFormat('dd.MM').format(dropoffDate)}'
+                                      : '-',
+                                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMiniStatusBadge(String status) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: _statusColor(status).withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        _statusLabel(status),
+        style: TextStyle(color: _statusColor(status), fontSize: 10, fontWeight: FontWeight.w600),
+      ),
+    );
+  }
+
   Color _statusColor(String status) {
     switch (status) {
-      case 'pending': return AppColors.warning;
-      case 'confirmed': return AppColors.info;
-      case 'active': return AppColors.primary;
-      case 'completed': return AppColors.success;
-      case 'cancelled': return AppColors.error;
-      default: return AppColors.textMuted;
+      case 'pending':
+        return AppColors.warning;
+      case 'confirmed':
+        return AppColors.info;
+      case 'active':
+        return AppColors.primary;
+      case 'completed':
+        return AppColors.success;
+      case 'cancelled':
+        return AppColors.error;
+      default:
+        return AppColors.textMuted;
+    }
+  }
+
+  String _statusLabel(String status) {
+    switch (status) {
+      case 'pending':
+        return 'Bekleyen';
+      case 'confirmed':
+        return 'Onaylandı';
+      case 'active':
+        return 'Aktif';
+      case 'completed':
+        return 'Tamamlandı';
+      case 'cancelled':
+        return 'İptal';
+      default:
+        return status;
     }
   }
 }

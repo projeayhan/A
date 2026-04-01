@@ -6,6 +6,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'log_service.dart';
 import 'supabase_service.dart';
 import 'notification_sound_service.dart';
 
@@ -13,7 +14,7 @@ import 'notification_sound_service.dart';
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
-  debugPrint('Background message: ${message.messageId}');
+  LogService.info('Background message: ${message.messageId}', source: 'PushNotificationService:backgroundHandler');
 }
 
 /// Push Notification Service for Courier App
@@ -27,6 +28,7 @@ class PushNotificationService {
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
 
   StreamController<Map<String, dynamic>>? _notificationController;
+  StreamSubscription<String>? _tokenRefreshSub;
   String? _fcmToken;
 
   /// Stream of notification data when user taps on notification
@@ -55,7 +57,7 @@ class PushNotificationService {
       await _getAndSaveToken();
 
       // Listen for token refresh
-      _messaging.onTokenRefresh.listen(_saveTokenToSupabase);
+      _tokenRefreshSub = _messaging.onTokenRefresh.listen(_saveTokenToSupabase);
 
       // Handle foreground messages
       FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
@@ -69,9 +71,9 @@ class PushNotificationService {
         _handleNotificationTap(initialMessage);
       }
 
-      debugPrint('Push notification service initialized');
-    } catch (e) {
-      debugPrint('Error initializing push notifications: $e');
+      LogService.info('Push notification service initialized', source: 'PushNotificationService:initialize');
+    } catch (e, st) {
+      LogService.error('Error initializing push notifications', error: e, stackTrace: st, source: 'PushNotificationService:initialize');
     }
   }
 
@@ -87,7 +89,7 @@ class PushNotificationService {
       sound: true,
     );
 
-    debugPrint('Notification permission status: ${settings.authorizationStatus}');
+    LogService.info('Notification permission status: ${settings.authorizationStatus}', source: 'PushNotificationService:_requestPermission');
   }
 
   /// Initialize local notifications for foreground display
@@ -112,8 +114,8 @@ class PushNotificationService {
           try {
             final data = jsonDecode(response.payload!);
             _notificationController?.add(data);
-          } catch (e) {
-            debugPrint('Error parsing notification payload: $e');
+          } catch (e, st) {
+            LogService.error('Error parsing notification payload', error: e, stackTrace: st, source: 'PushNotificationService:onDidReceiveNotificationResponse');
           }
         }
       },
@@ -164,10 +166,10 @@ class PushNotificationService {
       _fcmToken = await _messaging.getToken();
       if (_fcmToken != null) {
         await _saveTokenToSupabase(_fcmToken!);
-        debugPrint('FCM Token: $_fcmToken');
+        if (kDebugMode) debugPrint('FCM Token: $_fcmToken');
       }
-    } catch (e) {
-      debugPrint('Error getting FCM token: $e');
+    } catch (e, st) {
+      LogService.error('Error getting FCM token', error: e, stackTrace: st, source: 'PushNotificationService:_getAndSaveToken');
     }
   }
 
@@ -195,16 +197,16 @@ class PushNotificationService {
           'updated_at': DateTime.now().toIso8601String(),
         }, onConflict: 'courier_id');
 
-        debugPrint('Courier FCM token saved to Supabase');
+        LogService.info('Courier FCM token saved to Supabase', source: 'PushNotificationService:_saveTokenToSupabase');
       }
-    } catch (e) {
-      debugPrint('Error saving FCM token: $e');
+    } catch (e, st) {
+      LogService.error('Error saving FCM token', error: e, stackTrace: st, source: 'PushNotificationService:_saveTokenToSupabase');
     }
   }
 
   /// Handle foreground message - show local notification
   Future<void> _handleForegroundMessage(RemoteMessage message) async {
-    debugPrint('Foreground message received: ${message.messageId}');
+    LogService.info('Foreground message received: ${message.messageId}', source: 'PushNotificationService:_handleForegroundMessage');
 
     final notification = message.notification;
     if (notification == null) return;
@@ -255,7 +257,7 @@ class PushNotificationService {
 
   /// Handle notification tap
   void _handleNotificationTap(RemoteMessage message) {
-    debugPrint('Notification tapped: ${message.messageId}');
+    LogService.info('Notification tapped: ${message.messageId}', source: 'PushNotificationService:_handleNotificationTap');
     _notificationController?.add(message.data);
   }
 
@@ -378,14 +380,16 @@ class PushNotificationService {
       await _messaging.deleteToken();
       _fcmToken = null;
 
-      debugPrint('FCM token deleted');
-    } catch (e) {
-      debugPrint('Error deleting FCM token: $e');
+      LogService.info('FCM token deleted', source: 'PushNotificationService:deleteToken');
+    } catch (e, st) {
+      LogService.error('Error deleting FCM token', error: e, stackTrace: st, source: 'PushNotificationService:deleteToken');
     }
   }
 
   /// Dispose
   void dispose() {
+    _tokenRefreshSub?.cancel();
+    _tokenRefreshSub = null;
     _notificationController?.close();
     _notificationController = null;
   }

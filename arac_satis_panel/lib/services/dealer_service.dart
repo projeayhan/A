@@ -1,5 +1,5 @@
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:arac_satis_panel/core/services/log_service.dart';
 import '../models/car_models.dart';
 
 /// Araç Satıcısı (Dealer) Servisi
@@ -191,8 +191,8 @@ class DealerService {
         'active_promotions': activePromotions.count,
         'today_messages': todayMessages.count,
       };
-    } catch (e) {
-      debugPrint('Dashboard istatistikleri alınamadı: $e');
+    } catch (e, st) {
+      LogService.error('Dashboard istatistikleri alınamadı', error: e, stackTrace: st, source: 'DealerService:getDashboardStats');
       return _emptyStats();
     }
   }
@@ -222,8 +222,8 @@ class DealerService {
       return (response as List)
           .map((json) => PromotionPrice.fromJson(json))
           .toList();
-    } catch (e) {
-      debugPrint('Promosyon fiyatları alınamadı: $e');
+    } catch (e, st) {
+      LogService.error('Promosyon fiyatları alınamadı', error: e, stackTrace: st, source: 'DealerService:getPromotionPrices');
       return [];
     }
   }
@@ -247,13 +247,15 @@ class DealerService {
       return (response as List)
           .map((json) => CarListingPromotion.fromJson(json))
           .toList();
-    } catch (e) {
-      debugPrint('Aktif promosyonlar alınamadı: $e');
+    } catch (e, st) {
+      LogService.error('Aktif promosyonlar alınamadı', error: e, stackTrace: st, source: 'DealerService:getActivePromotions');
       return [];
     }
   }
 
-  /// Promosyon oluştur
+  /// Promosyon oluştur.
+  /// [status] = 'pending_payment' → sadece kayıt oluşturur, ilanı aktifleştirmez.
+  /// [status] = 'active' (varsayılan) → kayıt + anında aktivasyon.
   Future<CarListingPromotion?> createPromotion({
     required String listingId,
     String? priceId,
@@ -262,6 +264,7 @@ class DealerService {
     double? amountPaid,
     String? paymentMethod,
     String? paymentReference,
+    String status = 'active',
   }) async {
     if (_userId == null) return null;
 
@@ -284,12 +287,16 @@ class DealerService {
             (priceData['price'] as num).toDouble();
       }
 
-      // Mevcut istatistikleri al
+      // İlanın mevcut kullanıcıya ait olduğunu doğrula
       final listing = await _client
           .from('car_listings')
-          .select('view_count, favorite_count, contact_count, dealer_id')
+          .select('view_count, favorite_count, contact_count, dealer_id, user_id')
           .eq('id', listingId)
           .single();
+
+      if (listing['user_id'] != _userId) {
+        throw Exception('Bu ilana promosyon ekleme yetkiniz yok');
+      }
 
       final expiresAt = DateTime.now().add(Duration(days: finalDurationDays));
 
@@ -305,37 +312,75 @@ class DealerService {
             'amount_paid': finalAmountPaid,
             'payment_method': paymentMethod,
             'payment_reference': paymentReference,
-            'status': 'active',
+            'status': status,
+            'payment_status': status == 'active' ? 'completed' : 'pending',
             'views_before': listing['view_count'] ?? 0,
             'contacts_before': listing['contact_count'] ?? 0,
           })
           .select()
           .single();
 
-      // İlanı güncelle
-      final updateData = <String, dynamic>{
-        'updated_at': DateTime.now().toIso8601String(),
-      };
-
-      if (finalPromotionType == 'featured') {
-        updateData['is_featured'] = true;
-        updateData['featured_until'] = expiresAt.toIso8601String();
-      } else if (finalPromotionType == 'premium') {
-        updateData['is_featured'] = true;
-        updateData['is_premium'] = true;
-        updateData['featured_until'] = expiresAt.toIso8601String();
-        updateData['premium_until'] = expiresAt.toIso8601String();
+      // Sadece status 'active' ise ilanı hemen öne çıkar
+      if (status == 'active') {
+        await _client.from('car_listings').update({
+          'is_featured': true,
+          if (finalPromotionType == 'premium') 'is_premium': true,
+          'updated_at': DateTime.now().toIso8601String(),
+        }).eq('id', listingId);
       }
 
-      await _client
-          .from('car_listings')
-          .update(updateData)
-          .eq('id', listingId);
-
       return CarListingPromotion.fromJson(response);
-    } catch (e) {
-      debugPrint('Promosyon oluşturulamadı: $e');
+    } catch (e, st) {
+      LogService.error('Promosyon oluşturulamadı', error: e, stackTrace: st, source: 'DealerService:createPromotion');
       return null;
+    }
+  }
+
+  /// Bekleyen bir promosyonu aktifleştirir (webhook güvenlik ağı ile birlikte kullanılır).
+  Future<bool> activatePromotion(
+    String promotionId,
+    String listingId,
+    String promotionType,
+  ) async {
+    try {
+      await _client
+          .from('car_listing_promotions')
+          .update({'status': 'active', 'payment_status': 'completed'})
+          .eq('id', promotionId);
+
+      await _client.from('car_listings').update({
+        'is_featured': true,
+        if (promotionType == 'premium') 'is_premium': true,
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', listingId);
+
+      return true;
+    } catch (e, st) {
+      LogService.error('Promosyon aktifleştirilemedi', error: e, stackTrace: st, source: 'DealerService:activatePromotion');
+      return false;
+    }
+  }
+
+  /// Tüm promosyonları getir (tüm statuslar, ilan başlığı join'li)
+  Future<List<CarListingPromotion>> getAllPromotions() async {
+    if (_userId == null) return [];
+
+    try {
+      final response = await _client
+          .from('car_listing_promotions')
+          .select('''
+            *,
+            car_listings:listing_id (id, title, brand_name, model_name, year)
+          ''')
+          .eq('user_id', _userId!)
+          .order('created_at', ascending: false);
+
+      return (response as List)
+          .map((json) => CarListingPromotion.fromJson(json))
+          .toList();
+    } catch (e, st) {
+      LogService.error('Tüm promosyonlar alınamadı', error: e, stackTrace: st, source: 'DealerService:getAllPromotions');
+      return [];
     }
   }
 
@@ -361,8 +406,8 @@ class DealerService {
       await _updateListingPromotionStatus(promotion['listing_id'] as String);
 
       return true;
-    } catch (e) {
-      debugPrint('Promosyon iptal edilemedi: $e');
+    } catch (e, st) {
+      LogService.error('Promosyon iptal edilemedi', error: e, stackTrace: st, source: 'DealerService:cancelPromotion');
       return false;
     }
   }
@@ -397,8 +442,8 @@ class DealerService {
             'updated_at': DateTime.now().toIso8601String(),
           })
           .eq('id', listingId);
-    } catch (e) {
-      debugPrint('İlan promosyon durumu güncellenemedi: $e');
+    } catch (e, st) {
+      LogService.error('İlan promosyon durumu güncellenemedi', error: e, stackTrace: st, source: 'DealerService:_updateListingPromotionStatus');
     }
   }
 
@@ -585,8 +630,8 @@ class DealerService {
           'contacts': prevTotalContacts,
         },
       };
-    } catch (e) {
-      debugPrint('Performans istatistikleri alınamadı: $e');
+    } catch (e, st) {
+      LogService.error('Performans istatistikleri alınamadı', error: e, stackTrace: st, source: 'DealerService:getListingPerformanceStats');
       return {'listings': [], 'totals': {}, 'previousTotals': {}};
     }
   }
@@ -616,8 +661,8 @@ class DealerService {
       return (response as List)
           .map((json) => CarDealerReview.fromJson(json))
           .toList();
-    } catch (e) {
-      debugPrint('Değerlendirmeler alınamadı: $e');
+    } catch (e, st) {
+      LogService.error('Değerlendirmeler alınamadı', error: e, stackTrace: st, source: 'DealerService:getDealerReviews');
       return [];
     }
   }
@@ -656,8 +701,8 @@ class DealerService {
         'total': dealer['total_reviews'] as int? ?? 0,
         'distribution': distribution,
       };
-    } catch (e) {
-      debugPrint('Değerlendirme istatistikleri alınamadı: $e');
+    } catch (e, st) {
+      LogService.error('Değerlendirme istatistikleri alınamadı', error: e, stackTrace: st, source: 'DealerService:getReviewStats');
       return {'average': 0.0, 'total': 0, 'distribution': <int, int>{}};
     }
   }

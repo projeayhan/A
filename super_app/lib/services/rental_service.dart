@@ -1,6 +1,6 @@
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/utils/cache_helper.dart';
+import 'package:super_app/core/services/log_service.dart';
 
 class RentalService {
   static final RentalService _instance = RentalService._internal();
@@ -347,8 +347,8 @@ class RentalService {
           .inFilter('status', ['pending', 'confirmed']);
 
       return true;
-    } catch (e) {
-      if (kDebugMode) print('Error cancelling booking: $e');
+    } catch (e, st) {
+      LogService.error('Error cancelling booking', error: e, stackTrace: st, source: 'RentalService:cancelBooking');
       return false;
     }
   }
@@ -391,8 +391,8 @@ class RentalService {
       });
 
       return true;
-    } catch (e) {
-      if (kDebugMode) print('Error creating review: $e');
+    } catch (e, st) {
+      LogService.error('Error creating review', error: e, stackTrace: st, source: 'RentalService:createReview');
       return false;
     }
   }

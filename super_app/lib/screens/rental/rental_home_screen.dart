@@ -179,8 +179,9 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
 
   void _startBannerAutoScroll() {
     _bannerAutoScrollTimer?.cancel();
-    _bannerAutoScrollTimer =
-        Timer.periodic(const Duration(seconds: 3), (timer) {
+    _bannerAutoScrollTimer = Timer.periodic(const Duration(seconds: 3), (
+      timer,
+    ) {
       if (_bannerPageController.hasClients &&
           _heroBanners.isNotEmpty &&
           mounted) {
@@ -221,10 +222,7 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
       animation: _heroAnimation,
       builder: (context, child) {
         return Transform.translate(
-          offset: Offset(
-            50 * (1 - _heroAnimation.value),
-            -_scrollOffset * 0.3,
-          ),
+          offset: Offset(50 * (1 - _heroAnimation.value), -_scrollOffset * 0.3),
           child: Opacity(
             opacity: _heroAnimation.value,
             child: CachedNetworkImage(
@@ -232,11 +230,16 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
               fit: BoxFit.cover,
               memCacheWidth: 400,
               memCacheHeight: 200,
-              placeholder: (_, __) => Container(
+              placeholder: (_, _) => Container(
                 color: Colors.grey[900],
-                child: const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white24)),
+                child: const Center(
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Colors.white24,
+                  ),
+                ),
               ),
-              errorWidget: (_, __, ___) => Container(
+              errorWidget: (_, _, _) => Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
@@ -307,7 +310,8 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
 
             // Bottom Spacing
             SliverToBoxAdapter(
-                child: SizedBox(height: context.bottomNavPadding)),
+              child: SizedBox(height: context.bottomNavPadding),
+            ),
           ],
         ),
       ),
@@ -334,7 +338,8 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
             // Banner Carousel
             _heroBanners.isEmpty
                 ? _buildSingleBannerImage(
-                    'https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=800')
+                    'https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=800',
+                  )
                 : GestureDetector(
                     onPanDown: (_) => _stopBannerAutoScroll(),
                     onPanEnd: (_) => _resumeBannerAutoScroll(),
@@ -348,7 +353,8 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
                       },
                       itemBuilder: (context, index) {
                         final banner = _heroBanners[index];
-                        final imageUrl = banner['image_url'] as String? ??
+                        final imageUrl =
+                            banner['image_url'] as String? ??
                             'https://images.unsplash.com/photo-1618843479313-40f8afb4b4d8?w=800';
                         return _buildSingleBannerImage(imageUrl);
                       },
@@ -473,7 +479,20 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
   }
 
   String _formatShortDate(DateTime date) {
-    final months = ['Oca', 'Sub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Agu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+    final months = [
+      'Oca',
+      'Sub',
+      'Mar',
+      'Nis',
+      'May',
+      'Haz',
+      'Tem',
+      'Agu',
+      'Eyl',
+      'Eki',
+      'Kas',
+      'Ara',
+    ];
     return '${date.day} ${months[date.month - 1]}';
   }
 
@@ -504,7 +523,11 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
                 children: [
-                  Icon(Icons.search, color: theme.colorScheme.primary, size: 22),
+                  Icon(
+                    Icons.search,
+                    color: theme.colorScheme.primary,
+                    size: 22,
+                  ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -537,7 +560,11 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
                       color: theme.colorScheme.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Icon(Icons.tune, color: theme.colorScheme.primary, size: 18),
+                    child: Icon(
+                      Icons.tune,
+                      color: theme.colorScheme.primary,
+                      size: 18,
+                    ),
                   ),
                 ],
               ),
@@ -590,7 +617,10 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
                     const Spacer(),
                     IconButton(
                       onPressed: () => Navigator.pop(context),
-                      icon: Icon(Icons.close, color: theme.colorScheme.onSurfaceVariant),
+                      icon: Icon(
+                        Icons.close,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
@@ -604,12 +634,17 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
                       // Pickup Location
                       _buildSheetField(
                         theme: theme,
-                        icon: _isPickupCustomAddress ? Icons.home : Icons.location_on,
-                        iconColor: _isPickupCustomAddress ? theme.colorScheme.primary : AppColors.success,
+                        icon: _isPickupCustomAddress
+                            ? Icons.home
+                            : Icons.location_on,
+                        iconColor: _isPickupCustomAddress
+                            ? theme.colorScheme.primary
+                            : AppColors.success,
                         label: 'Alis Noktasi',
                         value: _isPickupCustomAddress
                             ? _pickupCustomAddress
-                            : (_selectedPickupLocation?.name ?? 'Lokasyon Secin'),
+                            : (_selectedPickupLocation?.name ??
+                                  'Lokasyon Secin'),
                         onTap: () {
                           Navigator.pop(context);
                           _handleShowLocationPicker(true);
@@ -620,11 +655,14 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
                       _buildSheetField(
                         theme: theme,
                         icon: _isDropoffCustomAddress ? Icons.home : Icons.flag,
-                        iconColor: _isDropoffCustomAddress ? theme.colorScheme.primary : AppColors.error,
+                        iconColor: _isDropoffCustomAddress
+                            ? theme.colorScheme.primary
+                            : AppColors.error,
                         label: 'Teslim Noktasi',
                         value: _isDropoffCustomAddress
                             ? _dropoffCustomAddress
-                            : (_selectedDropoffLocation?.name ?? 'Lokasyon Secin'),
+                            : (_selectedDropoffLocation?.name ??
+                                  'Lokasyon Secin'),
                         onTap: () {
                           Navigator.pop(context);
                           _handleShowLocationPicker(false);
@@ -638,7 +676,8 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
                             child: _buildSheetDateField(
                               theme: theme,
                               label: 'Alis Tarihi',
-                              value: '${_pickupDate.day}/${_pickupDate.month}/${_pickupDate.year}',
+                              value:
+                                  '${_pickupDate.day}/${_pickupDate.month}/${_pickupDate.year}',
                               onTap: () async {
                                 Navigator.pop(context);
                                 await _selectDate(true);
@@ -651,7 +690,8 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
                             child: _buildSheetDateField(
                               theme: theme,
                               label: 'Teslim Tarihi',
-                              value: '${_dropoffDate.day}/${_dropoffDate.month}/${_dropoffDate.year}',
+                              value:
+                                  '${_dropoffDate.day}/${_dropoffDate.month}/${_dropoffDate.year}',
                               onTap: () async {
                                 Navigator.pop(context);
                                 await _selectDate(false);
@@ -665,15 +705,24 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
                       // Duration info
                       Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 10,
+                          horizontal: 14,
+                        ),
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                          color: theme.colorScheme.primary.withValues(
+                            alpha: 0.08,
+                          ),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.access_time, color: theme.colorScheme.primary, size: 18),
+                            Icon(
+                              Icons.access_time,
+                              color: theme.colorScheme.primary,
+                              size: 18,
+                            ),
                             const SizedBox(width: 8),
                             Text(
                               'Toplam $_rentalDays gun',
@@ -694,7 +743,8 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
               // Search button
               Padding(
                 padding: EdgeInsets.only(
-                  left: 20, right: 20,
+                  left: 20,
+                  right: 20,
                   top: 8,
                   bottom: MediaQuery.of(context).padding.bottom + 16,
                 ),
@@ -709,12 +759,17 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
                     icon: const Icon(Icons.search, size: 20),
                     label: const Text(
                       'Arac Ara',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: theme.colorScheme.primary,
                       foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       elevation: 0,
                     ),
                   ),
@@ -753,18 +808,32 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant)),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                   const SizedBox(height: 2),
                   Text(
                     value,
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: theme.colorScheme.onSurface),
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: theme.colorScheme.onSurface,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
-            Icon(Icons.chevron_right, color: theme.colorScheme.onSurfaceVariant, size: 20),
+            Icon(
+              Icons.chevron_right,
+              color: theme.colorScheme.onSurfaceVariant,
+              size: 20,
+            ),
           ],
         ),
       ),
@@ -790,15 +859,29 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant)),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
             const SizedBox(height: 4),
             Row(
               children: [
-                Icon(Icons.calendar_today, color: theme.colorScheme.primary, size: 16),
+                Icon(
+                  Icons.calendar_today,
+                  color: theme.colorScheme.primary,
+                  size: 16,
+                ),
                 const SizedBox(width: 8),
                 Text(
                   value,
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: theme.colorScheme.onSurface),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: theme.colorScheme.onSurface,
+                  ),
                 ),
               ],
             ),
@@ -869,8 +952,9 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
                         category['name'],
                         style: TextStyle(
                           fontSize: 13,
-                          fontWeight:
-                              isSelected ? FontWeight.bold : FontWeight.w500,
+                          fontWeight: isSelected
+                              ? FontWeight.bold
+                              : FontWeight.w500,
                           color: isSelected
                               ? Colors.white
                               : theme.colorScheme.onSurfaceVariant,
@@ -908,7 +992,11 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
         itemCount: premiumCars.length,
         itemBuilder: (context, index) {
           final car = premiumCars[index];
-          return buildFeaturedCarCard(car, theme, onTap: () => _navigateToCarDetail(car));
+          return buildFeaturedCarCard(
+            car,
+            theme,
+            onTap: () => _navigateToCarDetail(car),
+          );
         },
       ),
     );
@@ -948,11 +1036,20 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
           child: Center(
             child: Column(
               children: [
-                Icon(Icons.directions_car, size: 56, color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.3)),
+                Icon(
+                  Icons.directions_car,
+                  size: 56,
+                  color: theme.colorScheme.onSurfaceVariant.withValues(
+                    alpha: 0.3,
+                  ),
+                ),
                 const SizedBox(height: 12),
                 Text(
                   'Arac bulunamadi',
-                  style: TextStyle(fontSize: 16, color: theme.colorScheme.onSurfaceVariant),
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -964,13 +1061,15 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
     return SliverPadding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       sliver: SliverList(
-        delegate: SliverChildBuilderDelegate(
-          (context, index) {
-            final car = _filteredCars[index];
-            return buildCarListItem(car, theme, index, onTap: () => _navigateToCarDetail(car));
-          },
-          childCount: _filteredCars.length,
-        ),
+        delegate: SliverChildBuilderDelegate((context, index) {
+          final car = _filteredCars[index];
+          return buildCarListItem(
+            car,
+            theme,
+            index,
+            onTap: () => _navigateToCarDetail(car),
+          );
+        }, childCount: _filteredCars.length),
       ),
     );
   }
@@ -1020,9 +1119,18 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
           context: context,
           isPickup: isPickup,
           address: address,
-          onConfirm: ({required bool isPickup, required String address, required String note}) {
-            _setCustomAddress(isPickup: isPickup, address: address, note: note);
-          },
+          onConfirm:
+              ({
+                required bool isPickup,
+                required String address,
+                required String note,
+              }) {
+                _setCustomAddress(
+                  isPickup: isPickup,
+                  address: address,
+                  note: note,
+                );
+              },
           onEdit: (isPickup) => _handleShowManualAddress(isPickup),
         );
       },
@@ -1034,9 +1142,14 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
     showSavedAddressesDialog(
       context: context,
       isPickup: isPickup,
-      onAddressSelected: ({required bool isPickup, required String address, required String note}) {
-        _setCustomAddress(isPickup: isPickup, address: address, note: note);
-      },
+      onAddressSelected:
+          ({
+            required bool isPickup,
+            required String address,
+            required String note,
+          }) {
+            _setCustomAddress(isPickup: isPickup, address: address, note: note);
+          },
       onShowManualEntry: (isPickup, {bool saveAddress = false}) =>
           _handleShowManualAddress(isPickup, saveAddress: saveAddress),
     );
@@ -1047,11 +1160,18 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
       context: context,
       isPickup: isPickup,
       currentAddress: isPickup ? _pickupCustomAddress : _dropoffCustomAddress,
-      currentNote: isPickup ? _pickupCustomAddressNote : _dropoffCustomAddressNote,
+      currentNote: isPickup
+          ? _pickupCustomAddressNote
+          : _dropoffCustomAddressNote,
       saveAddress: saveAddress,
-      onAddressConfirmed: ({required bool isPickup, required String address, required String note}) {
-        _setCustomAddress(isPickup: isPickup, address: address, note: note);
-      },
+      onAddressConfirmed:
+          ({
+            required bool isPickup,
+            required String address,
+            required String note,
+          }) {
+            _setCustomAddress(isPickup: isPickup, address: address, note: note);
+          },
     );
   }
 
@@ -1124,24 +1244,21 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
       context: context,
       barrierDismissible: false,
       useRootNavigator: true,
-      builder: (ctx) => const Center(
-        child: CircularProgressIndicator(color: Colors.white),
-      ),
+      builder: (ctx) =>
+          const Center(child: CircularProgressIndicator(color: Colors.white)),
     );
 
     List<RentalCar> availableCars = [];
 
     try {
       // Gercek verilerden musait araclari getir
-      debugPrint(
-          'Searching cars for dates: $_pickupDate - $_dropoffDate');
+      debugPrint('Searching cars for dates: $_pickupDate - $_dropoffDate');
       availableCars = await RentalService.getAvailableCarsForDates(
         pickupDate: _pickupDate,
         dropoffDate: _dropoffDate,
         category: _selectedCategory,
       );
-      debugPrint(
-          'Found ${availableCars.length} available cars from Supabase');
+      debugPrint('Found ${availableCars.length} available cars from Supabase');
     } catch (e) {
       debugPrint('Error searching cars: $e');
       availableCars = [];
@@ -1175,32 +1292,32 @@ class _RentalHomeScreenState extends State<RentalHomeScreen>
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
             CarDetailScreen(
-          car: car,
-          pickupLocation: _selectedPickupLocation,
-          dropoffLocation: _selectedDropoffLocation,
-          pickupDate: _pickupDate,
-          dropoffDate: _dropoffDate,
-          isPickupCustomAddress: _isPickupCustomAddress,
-          isDropoffCustomAddress: _isDropoffCustomAddress,
-          pickupCustomAddress: _pickupCustomAddress,
-          dropoffCustomAddress: _dropoffCustomAddress,
-          pickupCustomAddressNote: _pickupCustomAddressNote,
-          dropoffCustomAddressNote: _dropoffCustomAddressNote,
-        ),
-        transitionsBuilder:
-            (context, animation, secondaryAnimation, child) {
+              car: car,
+              pickupLocation: _selectedPickupLocation,
+              dropoffLocation: _selectedDropoffLocation,
+              pickupDate: _pickupDate,
+              dropoffDate: _dropoffDate,
+              isPickupCustomAddress: _isPickupCustomAddress,
+              isDropoffCustomAddress: _isDropoffCustomAddress,
+              pickupCustomAddress: _pickupCustomAddress,
+              dropoffCustomAddress: _dropoffCustomAddress,
+              pickupCustomAddressNote: _pickupCustomAddressNote,
+              dropoffCustomAddressNote: _dropoffCustomAddressNote,
+            ),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(
             opacity: animation,
             child: SlideTransition(
-              position: Tween<Offset>(
-                begin: const Offset(0.1, 0),
-                end: Offset.zero,
-              ).animate(
-                CurvedAnimation(
-                  parent: animation,
-                  curve: Curves.easeOutCubic,
-                ),
-              ),
+              position:
+                  Tween<Offset>(
+                    begin: const Offset(0.1, 0),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeOutCubic,
+                    ),
+                  ),
               child: child,
             ),
           );

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/router/app_router.dart';
+import 'package:support_panel/core/services/log_service.dart';
 
 class GlobalSearchDialog extends ConsumerStatefulWidget {
   const GlobalSearchDialog({super.key});
@@ -101,7 +102,8 @@ class _GlobalSearchDialogState extends ConsumerState<GlobalSearchDialog> {
       }
 
       setState(() { _results = all; _isSearching = false; });
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Global search failed', error: e, stackTrace: st, source: 'GlobalSearchDialog:_search');
       setState(() => _isSearching = false);
     }
   }

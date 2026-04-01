@@ -259,8 +259,8 @@ class _BusinessListingScreenState extends ConsumerState<BusinessListingScreen> {
           DataColumn2(label: Text(widget.sector.countLabel, style: const TextStyle(fontWeight: FontWeight.bold)), size: ColumnSize.S),
         ],
         rows: _businesses.map((business) {
-          final name = business['name'] ?? business['full_name'] ?? business['company_name'] ?? '-';
-          final status = business['status'] ?? 'unknown';
+          final name = business[widget.sector.nameField] ?? business['name'] ?? business['full_name'] ?? business['company_name'] ?? business['business_name'] ?? '-';
+          final status = business['status'] as String? ?? (business['is_approved'] == true ? 'active' : (business['is_approved'] == false ? 'inactive' : 'unknown'));
           final createdAt = business['created_at'] ?? '';
           final dateStr = createdAt.toString().length >= 10 ? createdAt.toString().substring(0, 10) : '-';
 
@@ -297,7 +297,7 @@ class _BusinessListingScreenState extends ConsumerState<BusinessListingScreen> {
               ),
               DataCell(_buildStatusChip(status)),
               DataCell(Text(dateStr)),
-              DataCell(Text('${business['order_count'] ?? business['listing_count'] ?? 0}')),
+              DataCell(Text('${widget.sector.countField != null ? (business[widget.sector.countField] ?? 0) : 0}')),
             ],
           );
         }).toList(),

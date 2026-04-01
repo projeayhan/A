@@ -41,17 +41,15 @@ class FoodPromoBanner extends StatelessWidget {
               child: CachedNetworkImage(
                 imageUrl: imageUrl,
                 fit: BoxFit.cover,
-                placeholder: (_, __) => Container(
+                placeholder: (_, _) => Container(
                   color: Colors.grey[200],
-                  child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                ),
-                errorWidget: (_, __, ___) => Container(
-                  color: Colors.grey[800],
-                  child: const Icon(
-                    Icons.image,
-                    color: Colors.grey,
-                    size: 48,
+                  child: const Center(
+                    child: CircularProgressIndicator(strokeWidth: 2),
                   ),
+                ),
+                errorWidget: (_, _, _) => Container(
+                  color: Colors.grey[800],
+                  child: const Icon(Icons.image, color: Colors.grey, size: 48),
                 ),
               ),
             ),
@@ -83,7 +81,10 @@ class FoodPromoBanner extends StatelessWidget {
                 children: [
                   // Badge
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: badgeColor,
                       borderRadius: BorderRadius.circular(4),

@@ -1,9 +1,24 @@
-import 'package:flutter/foundation.dart';
+import 'log_service.dart';
 import 'supabase_service.dart';
 
 class CourierService {
+  static Map<String, dynamic>? _cachedCourierProfile;
+  static DateTime? _cacheTimestamp;
+  static const _cacheTtl = Duration(seconds: 300);
+
+  static void invalidateProfileCache() {
+    _cachedCourierProfile = null;
+    _cacheTimestamp = null;
+  }
+
   // Kurye bilgilerini getir
   static Future<Map<String, dynamic>?> getCourierProfile() async {
+    if (_cachedCourierProfile != null &&
+        _cacheTimestamp != null &&
+        DateTime.now().difference(_cacheTimestamp!) < _cacheTtl) {
+      return _cachedCourierProfile;
+    }
+
     final userId = SupabaseService.currentUser?.id;
     if (userId == null) return null;
 
@@ -14,9 +29,11 @@ class CourierService {
           .eq('user_id', userId)
           .maybeSingle();
 
+      _cachedCourierProfile = response;
+      _cacheTimestamp = DateTime.now();
       return response;
-    } catch (e) {
-      debugPrint('getCourierProfile error: $e');
+    } catch (e, st) {
+      LogService.error('getCourierProfile error', error: e, stackTrace: st, source: 'CourierService:getCourierProfile');
       return null;
     }
   }
@@ -52,7 +69,7 @@ class CourierService {
         'status': 'pending',
         'is_online': false,
         'rating': 5.0,
-        'total_deliveries': 0,
+        'month_deliveries': 0,
         'total_earnings': 0,
       }, onConflict: 'user_id').select('id').single();
 
@@ -69,8 +86,8 @@ class CourierService {
               'phone': phone,
             })
             .eq('id', userId);
-      } catch (_) {
-        // users kaydı yoksa veya hata olursa devam et
+      } catch (e, st) {
+        LogService.error('users table update error', error: e, stackTrace: st, source: 'CourierService:createCourierProfile');
       }
 
       // Eğer restoran seçildiyse bağlantı isteği gönder
@@ -82,8 +99,8 @@ class CourierService {
       }
 
       return true;
-    } catch (e) {
-      debugPrint('createCourierProfile error: $e');
+    } catch (e, st) {
+      LogService.error('createCourierProfile error', error: e, stackTrace: st, source: 'CourierService:createCourierProfile');
       rethrow;
     }
   }
@@ -102,8 +119,8 @@ class CourierService {
         'message': message,
       });
       return true;
-    } catch (e) {
-      debugPrint('sendMerchantConnectionRequest error: $e');
+    } catch (e, st) {
+      LogService.error('sendMerchantConnectionRequest error', error: e, stackTrace: st, source: 'CourierService:sendMerchantConnectionRequest');
       return false;
     }
   }
@@ -121,8 +138,8 @@ class CourierService {
           .order('created_at', ascending: false);
 
       return List<Map<String, dynamic>>.from(response);
-    } catch (e) {
-      debugPrint('getMerchantConnectionRequests error: $e');
+    } catch (e, st) {
+      LogService.error('getMerchantConnectionRequests error', error: e, stackTrace: st, source: 'CourierService:getMerchantConnectionRequests');
       return [];
     }
   }
@@ -147,8 +164,8 @@ class CourierService {
           })
           .eq('user_id', userId);
       return true;
-    } catch (e) {
-      debugPrint('updateProfile error: $e');
+    } catch (e, st) {
+      LogService.error('updateProfile error', error: e, stackTrace: st, source: 'CourierService:updateProfile');
       return false;
     }
   }
@@ -171,8 +188,8 @@ class CourierService {
           })
           .eq('user_id', userId);
       return true;
-    } catch (e) {
-      debugPrint('updateVehicleInfo error: $e');
+    } catch (e, st) {
+      LogService.error('updateVehicleInfo error', error: e, stackTrace: st, source: 'CourierService:updateVehicleInfo');
       return false;
     }
   }
@@ -195,8 +212,8 @@ class CourierService {
           })
           .eq('user_id', userId);
       return true;
-    } catch (e) {
-      debugPrint('updatePaymentInfo error: $e');
+    } catch (e, st) {
+      LogService.error('updatePaymentInfo error', error: e, stackTrace: st, source: 'CourierService:updatePaymentInfo');
       return false;
     }
   }
@@ -221,8 +238,8 @@ class CourierService {
           })
           .eq('user_id', userId);
       return true;
-    } catch (e) {
-      debugPrint('updateNotificationSettings error: $e');
+    } catch (e, st) {
+      LogService.error('updateNotificationSettings error', error: e, stackTrace: st, source: 'CourierService:updateNotificationSettings');
       return false;
     }
   }
@@ -241,8 +258,8 @@ class CourierService {
           })
           .eq('user_id', userId);
       return true;
-    } catch (e) {
-      debugPrint('updateOnlineStatus error: $e');
+    } catch (e, st) {
+      LogService.error('updateOnlineStatus error', error: e, stackTrace: st, source: 'CourierService:updateOnlineStatus');
       return false;
     }
   }
@@ -262,8 +279,8 @@ class CourierService {
           })
           .eq('user_id', userId);
       return true;
-    } catch (e) {
-      debugPrint('updateLocation error: $e');
+    } catch (e, st) {
+      LogService.error('updateLocation error', error: e, stackTrace: st, source: 'CourierService:updateLocation');
       return false;
     }
   }
@@ -304,32 +321,26 @@ class CourierService {
       final response = await query.order('created_at', ascending: true);
 
       return List<Map<String, dynamic>>.from(response);
-    } catch (e) {
-      debugPrint('getPendingOrders error: $e');
+    } catch (e, st) {
+      LogService.error('getPendingOrders error', error: e, stackTrace: st, source: 'CourierService:getPendingOrders');
       return [];
     }
   }
 
   // Aktif siparişleri getir (kuryenin üzerindeki)
-  static Future<List<Map<String, dynamic>>> getActiveOrders() async {
-    final userId = SupabaseService.currentUser?.id;
-    if (userId == null) return [];
-
+  // courierId: CourierDataNotifier'daki profile['id'] doğrudan geçilir, tekrar profil sorgusu yapılmaz
+  static Future<List<Map<String, dynamic>>> getActiveOrders(String courierId) async {
     try {
-      // Önce courier_id'yi al
-      final courier = await getCourierProfile();
-      if (courier == null) return [];
-
       final response = await SupabaseService.client
           .from('orders')
           .select('*, merchants(business_name, address, logo_url, phone)')
-          .eq('courier_id', courier['id'])
+          .eq('courier_id', courierId)
           .inFilter('status', ['picked_up', 'delivering'])
           .order('created_at', ascending: false);
 
       return List<Map<String, dynamic>>.from(response);
-    } catch (e) {
-      debugPrint('getActiveOrders error: $e');
+    } catch (e, st) {
+      LogService.error('getActiveOrders error', error: e, stackTrace: st, source: 'CourierService:getActiveOrders');
       return [];
     }
   }
@@ -337,25 +348,39 @@ class CourierService {
   // Siparişi teslim edildi olarak işaretle
   static Future<bool> completeDelivery(String orderId) async {
     try {
-      await SupabaseService.client.from('orders').update({
+      final courier = await getCourierProfile();
+      if (courier == null) return false;
+
+      // IDOR koruması + courier_earnings al
+      final updated = await SupabaseService.client.from('orders').update({
         'status': 'delivered',
         'delivery_status': 'delivered',
         'delivered_at': DateTime.now().toIso8601String(),
-      }).eq('id', orderId);
+      }).eq('id', orderId).eq('courier_id', courier['id'])
+          .select('id, courier_earnings')
+          .maybeSingle();
+
+      if (updated == null) return false; // Sipariş bu kuryeye ait değil
 
       // Kurye istatistiklerini güncelle ve müsait yap
-      final courier = await getCourierProfile();
-      if (courier != null) {
-        await SupabaseService.client.from('couriers').update({
-          'total_deliveries': (courier['total_deliveries'] ?? 0) + 1,
-          'is_busy': false,
-          'current_order_id': null,
-        }).eq('id', courier['id']);
+      await SupabaseService.client.from('couriers').update({
+        'total_deliveries': (courier['total_deliveries'] ?? 0) + 1,
+        'is_busy': false,
+        'current_order_id': null,
+      }).eq('id', courier['id']);
+
+      // Atomik kazanç güncellemesi (updateOrderStatus ile aynı RPC)
+      final courierEarning = (updated['courier_earnings'] as num?)?.toDouble() ?? 0.0;
+      if (courierEarning > 0) {
+        await SupabaseService.client.rpc('increment_courier_earnings', params: {
+          'p_courier_id': courier['id'],
+          'p_amount': courierEarning,
+        });
       }
 
       return true;
-    } catch (e) {
-      debugPrint('completeDelivery error: $e');
+    } catch (e, st) {
+      LogService.error('completeDelivery error', error: e, stackTrace: st, source: 'CourierService:completeDelivery');
       return false;
     }
   }
@@ -378,8 +403,8 @@ class CourierService {
           .range(offset, offset + limit - 1);
 
       return List<Map<String, dynamic>>.from(response);
-    } catch (e) {
-      debugPrint('getCompletedOrders error: $e');
+    } catch (e, st) {
+      LogService.error('getCompletedOrders error', error: e, stackTrace: st, source: 'CourierService:getCompletedOrders');
       return [];
     }
   }
@@ -397,8 +422,8 @@ class CourierService {
           .maybeSingle();
 
       return response;
-    } catch (e) {
-      debugPrint('getOrderDetail error: $e');
+    } catch (e, st) {
+      LogService.error('getOrderDetail error', error: e, stackTrace: st, source: 'CourierService:getOrderDetail');
       return null;
     }
   }
@@ -406,6 +431,9 @@ class CourierService {
   // Sipariş durumunu güncelle
   static Future<bool> updateOrderStatus(String orderId, String status) async {
     try {
+      final courier = await getCourierProfile();
+      if (courier == null) return false;
+
       final updateData = <String, dynamic>{
         'status': status,
       };
@@ -421,31 +449,33 @@ class CourierService {
         case 'delivered':
           updateData['delivered_at'] = DateTime.now().toIso8601String();
           updateData['delivery_status'] = 'delivered';
-          // Kurye istatistiklerini güncelle ve müsait yap
-          final courier = await getCourierProfile();
-          if (courier != null) {
-            // Kurye kazancını al (courier_earnings, delivery_fee değil)
-            final order = await getOrderDetail(orderId);
-            final courierEarning = (order?['courier_earnings'] as num?)?.toDouble() ?? 0;
-
-            await SupabaseService.client.from('couriers').update({
-              'total_deliveries': (courier['total_deliveries'] ?? 0) + 1,
-              'total_earnings': (courier['total_earnings'] ?? 0) + courierEarning,
-              'is_busy': false,
-              'current_order_id': null,
-            }).eq('id', courier['id']);
-          }
           break;
       }
 
-      await SupabaseService.client
+      // Siparişi güncelle; courier_id koşulu ile IDOR önlenir
+      final updated = await SupabaseService.client
           .from('orders')
           .update(updateData)
-          .eq('id', orderId);
+          .eq('id', orderId)
+          .eq('courier_id', courier['id'])
+          .select('id, courier_id, courier_earnings')
+          .maybeSingle();
+
+      // Teslim edildi → atomik kurye kazanç güncellemesi (RPC ile race-condition olmaz)
+      if (status == 'delivered' && updated != null) {
+        final courierId = updated['courier_id'] as String?;
+        final courierEarning = (updated['courier_earnings'] as num?)?.toDouble() ?? 0.0;
+        if (courierId != null) {
+          await SupabaseService.client.rpc('increment_courier_earnings', params: {
+            'p_courier_id': courierId,
+            'p_amount': courierEarning,
+          });
+        }
+      }
 
       return true;
-    } catch (e) {
-      debugPrint('updateOrderStatus error: $e');
+    } catch (e, st) {
+      LogService.error('updateOrderStatus error', error: e, stackTrace: st, source: 'CourierService:updateOrderStatus');
       return false;
     }
   }
@@ -482,8 +512,8 @@ class CourierService {
           'created_at': order['delivered_at'] ?? order['created_at'],
         };
       }).toList();
-    } catch (e) {
-      debugPrint('getEarningsHistory error: $e');
+    } catch (e, st) {
+      LogService.error('getEarningsHistory error', error: e, stackTrace: st, source: 'CourierService:getEarningsHistory');
       return [];
     }
   }
@@ -502,8 +532,8 @@ class CourierService {
           })
           .eq('user_id', userId);
       return true;
-    } catch (e) {
-      debugPrint('updateWorkMode error: $e');
+    } catch (e, st) {
+      LogService.error('updateWorkMode error', error: e, stackTrace: st, source: 'CourierService:updateWorkMode');
       return false;
     }
   }
@@ -525,20 +555,23 @@ class CourierService {
 
       final success = result['success'] as bool? ?? false;
       if (!success) {
-        debugPrint('acceptCourierRequest failed: ${result['error']}');
+        LogService.error('acceptCourierRequest failed: ${result['error']}', source: 'CourierService:acceptCourierRequest');
         return null;
       }
 
       // Sipariş detaylarını döndür
       return result['order'] as Map<String, dynamic>?;
-    } catch (e) {
-      debugPrint('acceptCourierRequest error: $e');
+    } catch (e, st) {
+      LogService.error('acceptCourierRequest error', error: e, stackTrace: st, source: 'CourierService:acceptCourierRequest');
       return null;
     }
   }
 
   // Sipariş teklifini reddet
   static Future<bool> rejectCourierRequest(String requestId) async {
+    final courier = await getCourierProfile();
+    if (courier == null) return false;
+
     try {
       await SupabaseService.client
           .from('courier_requests')
@@ -546,10 +579,11 @@ class CourierService {
             'status': 'rejected',
             'responded_at': DateTime.now().toIso8601String(),
           })
-          .eq('id', requestId);
+          .eq('id', requestId)
+          .eq('courier_id', courier['id']); // IDOR koruması
       return true;
-    } catch (e) {
-      debugPrint('rejectCourierRequest error: $e');
+    } catch (e, st) {
+      LogService.error('rejectCourierRequest error', error: e, stackTrace: st, source: 'CourierService:rejectCourierRequest');
       return false;
     }
   }
@@ -563,7 +597,7 @@ class CourierService {
         'week': 0.0,
         'month': 0.0,
         'total': 0.0,
-        'total_deliveries': 0,
+        'month_deliveries': 0,
         'avg_rating': 0.0,
         'avg_delivery_time': 0,
       };
@@ -625,18 +659,18 @@ class CourierService {
         'week': calculateTotal(weekOrders),
         'month': calculateTotal(monthOrders),
         'total': (courier['total_earnings'] as num?)?.toDouble() ?? 0.0,
-        'total_deliveries': monthOrders.length,
+        'month_deliveries': monthOrders.length,
         'avg_rating': (courier['avg_rating'] as num?)?.toDouble() ?? 0.0,
         'avg_delivery_time': courier['avg_delivery_time'] as int? ?? 0,
       };
-    } catch (e) {
-      debugPrint('getEarningsSummary error: $e');
+    } catch (e, st) {
+      LogService.error('getEarningsSummary error', error: e, stackTrace: st, source: 'CourierService:getEarningsSummary');
       return {
         'today': 0.0,
         'week': 0.0,
         'month': 0.0,
         'total': 0.0,
-        'total_deliveries': 0,
+        'month_deliveries': 0,
         'avg_rating': 0.0,
         'avg_delivery_time': 0,
       };

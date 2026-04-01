@@ -17,6 +17,8 @@ class SupabaseService {
     );
   }
 
+  static String get supabaseUrl => dotenv.env['SUPABASE_URL'] ?? '';
+
   // Auth Methods
   static User? get currentUser => client.auth.currentUser;
   static Session? get currentSession => client.auth.currentSession;
@@ -79,14 +81,19 @@ class SupabaseService {
 
   // Phone OTP - Send code via Twilio Verify (edge function)
   static Future<void> sendPhoneOtp({required String phone}) async {
-    final response = await client.functions.invoke(
-      'phone-verify',
-      body: {'action': 'send', 'phone': phone},
-    );
+    try {
+      final response = await client.functions.invoke(
+        'phone-verify',
+        body: {'action': 'send', 'phone': phone},
+      );
 
-    final data = response.data as Map<String, dynamic>?;
-    if (data == null || data['success'] != true) {
-      throw Exception(data?['error'] ?? 'SMS gönderilemedi');
+      final data = response.data as Map<String, dynamic>?;
+      if (data == null || data['success'] != true) {
+        throw Exception(data?['error'] ?? 'SMS gönderilemedi');
+      }
+    } catch (e) {
+      if (e is Exception) rethrow;
+      throw Exception('SMS gönderilirken hata oluştu: $e');
     }
   }
 
@@ -106,7 +113,10 @@ class SupabaseService {
     }
 
     // Set session from edge function tokens
-    final refreshToken = data['refresh_token'] as String;
+    final refreshToken = data['refresh_token'] as String?;
+    if (refreshToken == null) {
+      throw Exception('Oturum token\'ı alınamadı');
+    }
     await client.auth.setSession(refreshToken);
 
     return {
@@ -185,6 +195,15 @@ class SupabaseService {
 
     // Email provider yoksa OAuth kullanıcısıdır
     return !identities.any((i) => i.provider == 'email');
+  }
+
+  // Kullanıcının onaylanmış e-postası var mı
+  static String? get userEmail => currentUser?.email;
+  static bool get hasConfirmedEmail => currentUser?.emailConfirmedAt != null;
+
+  // E-posta güncelleme (doğrulama maili gönderir)
+  static Future<void> updateEmail(String newEmail) async {
+    await client.auth.updateUser(UserAttributes(email: newEmail));
   }
 
   // OAuth kullanıcısı için şifre belirleme

@@ -478,11 +478,17 @@ class _TaxiDriverScreenState extends ConsumerState<TaxiDriverScreen>
   }
 
   void _subscribeToNewRides() {
-    _newRidesChannel = TaxiService.subscribeToNewRideRequests((rideData) {
-      if (mounted && _activeRide == null) {
-        _loadPendingRequests();
-      }
-    });
+    final vehicleType = _driverProfile?['vehicle_types'] != null
+        ? (List<String>.from(_driverProfile!['vehicle_types'])).firstOrNull
+        : null;
+    _newRidesChannel = TaxiService.subscribeToNewRideRequests(
+      (rideData) {
+        if (mounted && _activeRide == null) {
+          _loadPendingRequests();
+        }
+      },
+      vehicleType: vehicleType,
+    );
   }
 
   void _subscribeToRideUpdates(String rideId) {

@@ -1,5 +1,5 @@
 import 'package:audioplayers/audioplayers.dart';
-import 'package:flutter/foundation.dart';
+import 'package:merchant_panel/core/services/log_service.dart';
 
 enum NotificationSoundType {
   order,
@@ -30,9 +30,9 @@ class NotificationSoundService {
       await _messagePlayer
           .setSource(AssetSource('sounds/message_notification.wav'));
       await _generalPlayer.setSource(AssetSource('sounds/notification.wav'));
-      debugPrint('NotificationSoundService initialized with audioplayers');
-    } catch (e) {
-      debugPrint('NotificationSoundService init error: $e');
+      LogService.error('NotificationSoundService initialized with audioplayers', source: 'notification_sound_service:initialize');
+    } catch (e, st) {
+      LogService.error('NotificationSoundService init error', error: e, stackTrace: st, source: 'notification_sound_service:initialize');
     }
   }
 
@@ -60,8 +60,8 @@ class NotificationSoundService {
           _generalPlayer.stop();
           _generalPlayer.play(AssetSource('sounds/notification.wav'));
       }
-    } catch (e) {
-      debugPrint('Error playing notification sound: $e');
+    } catch (e, st) {
+      LogService.error('Error playing notification sound', error: e, stackTrace: st, source: 'notification_sound_service:playSound');
     }
   }
 

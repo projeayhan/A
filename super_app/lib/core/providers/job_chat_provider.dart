@@ -182,7 +182,7 @@ class JobMessagesNotifier extends StateNotifier<JobMessagesState> {
 }
 
 final jobMessagesProvider =
-    StateNotifierProvider.family<JobMessagesNotifier, JobMessagesState, String>(
+    StateNotifierProvider.autoDispose.family<JobMessagesNotifier, JobMessagesState, String>(
   (ref, conversationId) {
     final service = ref.watch(jobChatServiceProvider);
     return JobMessagesNotifier(service, conversationId);

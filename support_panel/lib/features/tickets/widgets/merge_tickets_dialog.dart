@@ -4,6 +4,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/services/ticket_service.dart';
 import '../../../core/providers/auth_provider.dart';
+import 'package:support_panel/core/services/log_service.dart';
 
 class MergeTicketsDialog extends ConsumerStatefulWidget {
   final String primaryTicketId;
@@ -42,7 +43,8 @@ class _MergeTicketsDialogState extends ConsumerState<MergeTicketsDialog> {
 
       final data = await query.order('created_at', ascending: false).limit(20);
       setState(() { _candidates = List<Map<String, dynamic>>.from(data); _isLoading = false; });
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to load merge candidates', error: e, stackTrace: st, source: 'MergeTicketsDialog:_loadCandidates');
       setState(() => _isLoading = false);
     }
   }
@@ -94,7 +96,8 @@ class _MergeTicketsDialogState extends ConsumerState<MergeTicketsDialog> {
       );
 
       if (mounted) Navigator.pop(context, true);
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to merge tickets', error: e, stackTrace: st, source: 'MergeTicketsDialog:_mergTickets');
       setState(() => _isMerging = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

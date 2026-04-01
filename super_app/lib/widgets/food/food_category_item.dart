@@ -40,11 +40,13 @@ class FoodCategoryItem extends StatelessWidget {
               child: CachedNetworkImage(
                 imageUrl: imageUrl,
                 fit: BoxFit.cover,
-                placeholder: (_, __) => Container(
+                placeholder: (_, _) => Container(
                   color: Colors.grey[200],
-                  child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                  child: const Center(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
                 ),
-                errorWidget: (_, __, ___) => Icon(
+                errorWidget: (_, _, _) => Icon(
                   Icons.restaurant,
                   color: isDark ? Colors.orange[300] : Colors.orange[600],
                   size: 28,

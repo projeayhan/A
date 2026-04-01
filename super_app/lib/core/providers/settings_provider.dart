@@ -106,14 +106,6 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     switch (code) {
       case 'en':
         return const Locale('en', 'US');
-      case 'de':
-        return const Locale('de', 'DE');
-      case 'fr':
-        return const Locale('fr', 'FR');
-      case 'es':
-        return const Locale('es', 'ES');
-      case 'ar':
-        return const Locale('ar', 'SA');
       case 'tr':
       default:
         return const Locale('tr', 'TR');
@@ -140,14 +132,6 @@ String getLanguageName(Locale locale) {
   switch (locale.languageCode) {
     case 'en':
       return 'English';
-    case 'de':
-      return 'Deutsch';
-    case 'fr':
-      return 'Français';
-    case 'es':
-      return 'Español';
-    case 'ar':
-      return 'العربية';
     case 'tr':
     default:
       return 'Türkçe';
@@ -158,8 +142,4 @@ String getLanguageName(Locale locale) {
 const supportedLocales = [
   Locale('tr', 'TR'),
   Locale('en', 'US'),
-  Locale('de', 'DE'),
-  Locale('fr', 'FR'),
-  Locale('es', 'ES'),
-  Locale('ar', 'SA'),
 ];

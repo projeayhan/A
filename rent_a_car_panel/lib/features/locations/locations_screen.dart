@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme.dart';
 import '../../core/supabase_config.dart';
+import 'package:rent_a_car_panel/core/services/log_service.dart';
 
 // Locations provider - fetches locations with car counts and active booking counts
 final companyLocationsProvider = FutureProvider.autoDispose((ref) async {
@@ -185,8 +186,8 @@ class LocationsScreen extends ConsumerWidget {
           .eq('id', location['id']);
 
       ref.invalidate(companyLocationsProvider);
-    } catch (e) {
-      debugPrint('Error toggling location: $e');
+    } catch (e, st) {
+      LogService.error('Error toggling location', error: e, stackTrace: st, source: 'LocationsScreen:_toggleLocation');
     }
   }
 
@@ -215,7 +216,8 @@ class LocationsScreen extends ConsumerWidget {
         final client = ref.read(supabaseClientProvider);
         await client.from('rental_locations').delete().eq('id', locationId);
         ref.invalidate(companyLocationsProvider);
-      } catch (e) {
+      } catch (e, st) {
+        LogService.error('Failed to delete location', error: e, stackTrace: st, source: 'LocationsScreen:_deleteLocation');
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Hata: $e')),
@@ -241,7 +243,8 @@ class LocationsScreen extends ConsumerWidget {
 
             ref.invalidate(companyLocationsProvider);
             if (context.mounted) Navigator.pop(context);
-          } catch (e) {
+          } catch (e, st) {
+            LogService.error('Failed to add location', error: e, stackTrace: st, source: 'LocationsScreen:_showAddLocationDialog');
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('Hata: $e')),
@@ -268,7 +271,8 @@ class LocationsScreen extends ConsumerWidget {
 
             ref.invalidate(companyLocationsProvider);
             if (context.mounted) Navigator.pop(context);
-          } catch (e) {
+          } catch (e, st) {
+            LogService.error('Failed to edit location', error: e, stackTrace: st, source: 'LocationsScreen:_showEditLocationDialog');
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('Hata: $e')),

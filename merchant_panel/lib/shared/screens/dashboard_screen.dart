@@ -32,9 +32,11 @@ class DashboardScreen extends ConsumerWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.error.withValues(alpha:0.1),
+                color: AppColors.error.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.error.withValues(alpha:0.3)),
+                border: Border.all(
+                  color: AppColors.error.withValues(alpha: 0.3),
+                ),
               ),
               child: Row(
                 children: [
@@ -60,7 +62,7 @@ class DashboardScreen extends ConsumerWidget {
                         Text(
                           'Isletmenizin onaylanmasi icin lutfen dogrulama belgelerini yukleyin.',
                           style: TextStyle(
-                            color: AppColors.error.withValues(alpha:0.8),
+                            color: AppColors.error.withValues(alpha: 0.8),
                           ),
                         ),
                       ],
@@ -205,9 +207,11 @@ class DashboardScreen extends ConsumerWidget {
     final reviews = ref.watch(reviewsProvider).valueOrNull ?? [];
 
     // Okunmamış mesaj sayısı
-    final unreadMessages = merchant != null
-        ? ref.watch(unreadMessagesCountProvider(merchant.id)).valueOrNull ?? 0
-        : 0;
+    final unreadMessages =
+        merchant != null
+            ? ref.watch(unreadMessagesCountProvider(merchant.id)).valueOrNull ??
+                0
+            : 0;
 
     return Row(
       children: [
@@ -268,9 +272,10 @@ class DashboardScreen extends ConsumerWidget {
 
   Widget _buildRevenueChart(BuildContext context, WidgetRef ref) {
     final merchant = ref.watch(currentMerchantProvider).valueOrNull;
-    final dashboardStats = merchant != null
-        ? ref.watch(dashboardStatsProvider(merchant.id))
-        : null;
+    final dashboardStats =
+        merchant != null
+            ? ref.watch(dashboardStatsProvider(merchant.id))
+            : null;
 
     // Supabase'den gelen haftalik gelir verileri
     final weeklyRevenue = dashboardStats?.valueOrNull?.weeklyRevenue ?? [];
@@ -323,7 +328,11 @@ class DashboardScreen extends ConsumerWidget {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.calendar_today, size: 16, color: AppColors.textSecondary),
+                    Icon(
+                      Icons.calendar_today,
+                      size: 16,
+                      color: AppColors.textSecondary,
+                    ),
                     const SizedBox(width: 8),
                     Text(
                       'Bu Hafta',
@@ -653,7 +662,7 @@ class DashboardScreen extends ConsumerWidget {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: orders.take(5).length,
-              separatorBuilder: (_, __) => const Divider(height: 24),
+              separatorBuilder: (_, _) => const Divider(height: 24),
               itemBuilder: (context, index) {
                 final order = orders[index];
                 return _PendingOrderItem(order: order);
@@ -667,9 +676,10 @@ class DashboardScreen extends ConsumerWidget {
   Widget _buildRecentActivityCard(BuildContext context, WidgetRef ref) {
     final merchant = ref.watch(currentMerchantProvider).valueOrNull;
     final isRestaurant = merchant?.type == MerchantType.restaurant;
-    final dashboardStats = merchant != null
-        ? ref.watch(dashboardStatsProvider(merchant.id))
-        : null;
+    final dashboardStats =
+        merchant != null
+            ? ref.watch(dashboardStatsProvider(merchant.id))
+            : null;
 
     final activities = dashboardStats?.valueOrNull?.recentActivities ?? [];
 
@@ -693,11 +703,7 @@ class DashboardScreen extends ConsumerWidget {
               padding: const EdgeInsets.all(24),
               child: Column(
                 children: [
-                  Icon(
-                    Icons.history,
-                    size: 40,
-                    color: AppColors.textMuted,
-                  ),
+                  Icon(Icons.history, size: 40, color: AppColors.textMuted),
                   const SizedBox(height: 8),
                   Text(
                     'Henuz aktivite yok',
@@ -720,7 +726,8 @@ class DashboardScreen extends ConsumerWidget {
                     icon: Icons.star,
                     iconColor: AppColors.warning,
                     title: 'Yeni Yorum',
-                    subtitle: '${data['customer_name'] ?? 'Anonim'} - ${data['overall_rating']?.toInt() ?? 0} yildiz',
+                    subtitle:
+                        '${data['customer_name'] ?? 'Anonim'} - ${data['overall_rating']?.toInt() ?? 0} yildiz',
                     time: timeAgo,
                   ),
                 );
@@ -770,7 +777,8 @@ class DashboardScreen extends ConsumerWidget {
                 }
 
                 final orderNumber = data['order_number'] ?? '';
-                final total = (data['total_amount'] ?? data['total'] ?? 0) as num;
+                final total =
+                    (data['total_amount'] ?? data['total'] ?? 0) as num;
 
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),
@@ -837,15 +845,16 @@ class _StatCard extends StatelessWidget {
           color: isHighlighted ? color : AppColors.border,
           width: isHighlighted ? 2 : 1,
         ),
-        boxShadow: isHighlighted
-            ? [
-                BoxShadow(
-                  color: color.withValues(alpha: 0.3),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ]
-            : null,
+        boxShadow:
+            isHighlighted
+                ? [
+                  BoxShadow(
+                    color: color.withValues(alpha: 0.3),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+                : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

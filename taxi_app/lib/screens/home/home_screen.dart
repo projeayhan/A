@@ -6,37 +6,11 @@ import 'package:go_router/go_router.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 import '../../core/providers/auth_provider.dart';
+import '../../core/providers/home_providers.dart';
+import '../../core/services/log_service.dart';
 import '../../core/services/taxi_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/ride_models.dart';
-
-// ==================== PROVIDERS ====================
-
-class OnlineNotifier extends Notifier<bool> {
-  @override
-  bool build() => false;
-
-  void toggle(bool value) => state = value;
-}
-
-final isOnlineProvider = NotifierProvider<OnlineNotifier, bool>(() => OnlineNotifier());
-
-final pendingRidesProvider = FutureProvider<List<Ride>>((ref) async {
-  final driver = ref.watch(driverProfileProvider).asData?.value;
-  final vehicleTypes = driver?.vehicleTypes;
-  final rides = await TaxiService.getPendingRides(driverVehicleTypes: vehicleTypes);
-  return rides.map((e) => Ride.fromJson(e)).toList();
-});
-
-final activeRideProvider = FutureProvider<Ride?>((ref) async {
-  final ride = await TaxiService.getActiveRide();
-  return ride != null ? Ride.fromJson(ride) : null;
-});
-
-final driverProfileProvider = FutureProvider<Driver?>((ref) async {
-  final driver = await TaxiService.getDriverProfile();
-  return driver != null ? Driver.fromJson(driver) : null;
-});
 
 // ==================== HOME SCREEN ====================
 
@@ -52,6 +26,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   final AudioPlayer _audioPlayer = AudioPlayer();
   RealtimeChannel? _ridesChannel;
   Timer? _pollingTimer;
+  bool _isDialogShowing = false;
 
   late AnimationController _pulseController;
   late AnimationController _slideController;
@@ -82,13 +57,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       duration: const Duration(milliseconds: 600),
     );
 
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _slideController,
-      curve: Curves.easeOutCubic,
-    ));
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
+          CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic),
+        );
 
     _slideController.forward();
   }
@@ -102,6 +74,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   void _setupRealtimeSubscription() {
     _ridesChannel = TaxiService.subscribeToNewRides((newRide) {
+      if (!ref.read(isOnlineProvider)) return;
       // Filter by driver's vehicle types
       final driver = ref.read(driverProfileProvider).asData?.value;
       final driverTypes = driver?.vehicleTypes;
@@ -134,26 +107,35 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   void _showNewRideNotification(Map<String, dynamic> ride) {
+    final activeRide = ref.read(activeRideProvider).asData?.value;
+    if (activeRide != null && activeRide.isActive) return;
+
+    if (_isDialogShowing) return;
+    _isDialogShowing = true;
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => _NewRideDialog(
+      builder: (ctx) => _NewRideDialog(
         ride: ride,
         onAccept: () async {
-          Navigator.pop(context);
+          Navigator.pop(ctx);
+          _isDialogShowing = false;
           await _acceptRide(ride['id']);
         },
-        onDecline: () => Navigator.pop(context),
+        onDecline: () {
+          Navigator.pop(ctx);
+          _isDialogShowing = false;
+        },
       ),
-    );
+    ).then((_) => _isDialogShowing = false);
   }
 
   Future<void> _playNotificationSound() async {
     try {
       await _audioPlayer.setVolume(1.0);
       await _audioPlayer.play(AssetSource('sounds/notification.wav'));
-    } catch (e) {
-      debugPrint('Notification sound error: $e');
+    } catch (e, st) {
+      LogService.error('Notification sound error', error: e, stackTrace: st, source: 'HomeScreen:_playNotificationSound');
       HapticFeedback.vibrate();
     }
   }
@@ -175,7 +157,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           ),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
 
@@ -240,14 +224,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   }
                   return const SliverToBoxAdapter(child: SizedBox.shrink());
                 },
-                loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
-                error: (_, __) => const SliverToBoxAdapter(child: SizedBox.shrink()),
+                loading: () =>
+                    const SliverToBoxAdapter(child: SizedBox.shrink()),
+                error: (_, _) =>
+                    const SliverToBoxAdapter(child: SizedBox.shrink()),
               ),
 
               // Stats Cards
-              SliverToBoxAdapter(
-                child: _buildQuickStats(driverProfile),
-              ),
+              SliverToBoxAdapter(child: _buildQuickStats(driverProfile)),
 
               // Section Title
               SliverToBoxAdapter(
@@ -274,7 +258,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                                   height: 8,
                                   decoration: BoxDecoration(
                                     color: AppColors.success.withValues(
-                                      alpha: 0.5 + (_pulseController.value * 0.5),
+                                      alpha:
+                                          0.5 + (_pulseController.value * 0.5),
                                     ),
                                     shape: BoxShape.circle,
                                   ),
@@ -283,7 +268,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                             ),
                           const SizedBox(width: 8),
                           IconButton(
-                            onPressed: () => ref.invalidate(pendingRidesProvider),
+                            onPressed: () =>
+                                ref.invalidate(pendingRidesProvider),
                             icon: const Icon(Icons.refresh, size: 20),
                           ),
                         ],
@@ -335,7 +321,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  Widget _buildHeader(AuthState authState, bool isOnline, AsyncValue<Driver?> driverProfile) {
+  Widget _buildHeader(
+    AuthState authState,
+    bool isOnline,
+    AsyncValue<Driver?> driverProfile,
+  ) {
     return Container(
       padding: const EdgeInsets.all(20),
       child: Row(
@@ -413,7 +403,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       isOnline ? 'Cevrimici' : 'Cevrimdisi',
                       style: TextStyle(
                         fontSize: 14,
-                        color: isOnline ? AppColors.success : AppColors.textHint,
+                        color: isOnline
+                            ? AppColors.success
+                            : AppColors.textHint,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -427,7 +419,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             data: (driver) {
               if (driver == null) return const SizedBox.shrink();
               return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20),
@@ -448,7 +443,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               );
             },
             loading: () => const SizedBox.shrink(),
-            error: (_, __) => const SizedBox.shrink(),
+            error: (_, _) => const SizedBox.shrink(),
           ),
         ],
       ),
@@ -467,8 +462,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: isOnline
-                    ? [AppColors.success, AppColors.success.withValues(alpha: 0.8)]
-                    : [AppColors.secondary, AppColors.secondary.withValues(alpha: 0.9)],
+                    ? [
+                        AppColors.success,
+                        AppColors.success.withValues(alpha: 0.8),
+                      ]
+                    : [
+                        AppColors.secondary,
+                        AppColors.secondary.withValues(alpha: 0.9),
+                      ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -560,7 +561,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [ride.status.color, ride.status.color.withValues(alpha: 0.8)],
+            colors: [
+              ride.status.color,
+              ride.status.color.withValues(alpha: 0.8),
+            ],
           ),
           borderRadius: BorderRadius.circular(16),
         ),
@@ -644,7 +648,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         );
       },
       loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
     );
   }
 
@@ -675,18 +679,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           const SizedBox(height: 20),
           const Text(
             'Cevrimdisiniz',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
             'Yolculuk talebi gormek icin cevrimici olun',
-            style: TextStyle(
-              fontSize: 14,
-              color: AppColors.textSecondary,
-            ),
+            style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
             textAlign: TextAlign.center,
           ),
         ],
@@ -721,18 +719,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           const SizedBox(height: 20),
           const Text(
             'Bekleyen yolculuk yok',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
             'Yeni yolculuk talepleri geldiginde\nburada gorunecek',
-            style: TextStyle(
-              fontSize: 14,
-              color: AppColors.textSecondary,
-            ),
+            style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
             textAlign: TextAlign.center,
           ),
         ],
@@ -764,10 +756,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           const SizedBox(height: 8),
           Text(
             error,
-            style: TextStyle(
-              fontSize: 12,
-              color: AppColors.textSecondary,
-            ),
+            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
             textAlign: TextAlign.center,
           ),
         ],
@@ -870,13 +859,15 @@ class _RideRequestCardState extends State<_RideRequestCard>
       duration: Duration(milliseconds: 400 + (widget.index * 100)),
     );
 
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOutBack),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
 
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
 
     _controller.forward();
   }
@@ -924,7 +915,10 @@ class _RideRequestCardState extends State<_RideRequestCard>
                           height: 48,
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
-                              colors: [AppColors.primary, AppColors.primaryDark],
+                              colors: [
+                                AppColors.primary,
+                                AppColors.primaryDark,
+                              ],
                             ),
                             borderRadius: BorderRadius.circular(14),
                           ),
@@ -993,10 +987,15 @@ class _RideRequestCardState extends State<_RideRequestCard>
                               decoration: BoxDecoration(
                                 color: AppColors.success,
                                 shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 2),
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 2,
+                                ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: AppColors.success.withValues(alpha: 0.3),
+                                    color: AppColors.success.withValues(
+                                      alpha: 0.3,
+                                    ),
                                     blurRadius: 4,
                                   ),
                                 ],
@@ -1019,10 +1018,15 @@ class _RideRequestCardState extends State<_RideRequestCard>
                               decoration: BoxDecoration(
                                 color: AppColors.error,
                                 shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 2),
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 2,
+                                ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: AppColors.error.withValues(alpha: 0.3),
+                                    color: AppColors.error.withValues(
+                                      alpha: 0.3,
+                                    ),
                                     blurRadius: 4,
                                   ),
                                 ],
@@ -1247,16 +1251,16 @@ class _NewRideDialogState extends State<_NewRideDialog>
               // Title
               const Text(
                 'Yeni Yolculuk Talebi!',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
 
               // Fare
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.success.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(16),
@@ -1283,7 +1287,11 @@ class _NewRideDialogState extends State<_NewRideDialog>
                   children: [
                     Row(
                       children: [
-                        Icon(Icons.trip_origin, size: 16, color: AppColors.success),
+                        Icon(
+                          Icons.trip_origin,
+                          size: 16,
+                          color: AppColors.success,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -1298,7 +1306,11 @@ class _NewRideDialogState extends State<_NewRideDialog>
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        Icon(Icons.location_on, size: 16, color: AppColors.error),
+                        Icon(
+                          Icons.location_on,
+                          size: 16,
+                          color: AppColors.error,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -1324,10 +1336,7 @@ class _NewRideDialogState extends State<_NewRideDialog>
                     label: '${distance.toStringAsFixed(1)} km',
                   ),
                   const SizedBox(width: 12),
-                  _InfoChip(
-                    icon: Icons.access_time,
-                    label: '$duration dk',
-                  ),
+                  _InfoChip(icon: Icons.access_time, label: '$duration dk'),
                 ],
               ),
               const SizedBox(height: 24),
@@ -1370,4 +1379,3 @@ class _NewRideDialogState extends State<_NewRideDialog>
     );
   }
 }
-

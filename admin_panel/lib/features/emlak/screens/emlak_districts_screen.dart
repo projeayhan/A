@@ -7,7 +7,8 @@ class EmlakDistrictsScreen extends ConsumerStatefulWidget {
   const EmlakDistrictsScreen({super.key});
 
   @override
-  ConsumerState<EmlakDistrictsScreen> createState() => _EmlakDistrictsScreenState();
+  ConsumerState<EmlakDistrictsScreen> createState() =>
+      _EmlakDistrictsScreenState();
 }
 
 class _EmlakDistrictsScreenState extends ConsumerState<EmlakDistrictsScreen> {
@@ -44,14 +45,19 @@ class _EmlakDistrictsScreenState extends ConsumerState<EmlakDistrictsScreen> {
                     SizedBox(height: 4),
                     Text(
                       'Şehirlere bağlı ilçeleri yönetin',
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 14,
+                      ),
                     ),
                   ],
                 ),
                 Row(
                   children: [
                     OutlinedButton.icon(
-                      onPressed: () => ref.invalidate(emlakDistrictsProvider(_selectedCityId)),
+                      onPressed: () => ref.invalidate(
+                        emlakDistrictsProvider(_selectedCityId),
+                      ),
                       icon: const Icon(Icons.refresh, size: 18),
                       label: const Text('Yenile'),
                     ),
@@ -101,17 +107,19 @@ class _EmlakDistrictsScreenState extends ConsumerState<EmlakDistrictsScreen> {
                             value: null,
                             child: Text('Tüm Şehirler'),
                           ),
-                          ...cities.map((city) => DropdownMenuItem<String?>(
-                                value: city.id,
-                                child: Text(city.name),
-                              )),
+                          ...cities.map(
+                            (city) => DropdownMenuItem<String?>(
+                              value: city.id,
+                              child: Text(city.name),
+                            ),
+                          ),
                         ],
                         onChanged: (value) {
                           setState(() => _selectedCityId = value);
                         },
                       ),
                       loading: () => const CircularProgressIndicator(),
-                      error: (_, __) => const Text('Şehirler yüklenemedi'),
+                      error: (_, _) => const Text('Şehirler yüklenemedi'),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -119,17 +127,24 @@ class _EmlakDistrictsScreenState extends ConsumerState<EmlakDistrictsScreen> {
                   Expanded(
                     flex: 2,
                     child: TextField(
-                      onChanged: (value) => setState(() => _searchQuery = value),
+                      onChanged: (value) =>
+                          setState(() => _searchQuery = value),
                       decoration: InputDecoration(
                         hintText: 'İlçe ara...',
-                        prefixIcon: const Icon(Icons.search, color: AppColors.textMuted),
+                        prefixIcon: const Icon(
+                          Icons.search,
+                          color: AppColors.textMuted,
+                        ),
                         filled: true,
                         fillColor: AppColors.background,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                           borderSide: BorderSide.none,
                         ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
                       ),
                     ),
                   ),
@@ -149,14 +164,24 @@ class _EmlakDistrictsScreenState extends ConsumerState<EmlakDistrictsScreen> {
                 ),
                 child: districtsAsync.when(
                   data: (districts) => _buildDistrictsTable(districts),
-                  loading: () => const Center(child: CircularProgressIndicator()),
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
                   error: (e, _) => Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.error_outline, size: 64, color: AppColors.error),
+                        const Icon(
+                          Icons.error_outline,
+                          size: 64,
+                          color: AppColors.error,
+                        ),
                         const SizedBox(height: 16),
-                        Text('Hata: $e', style: const TextStyle(color: AppColors.textSecondary)),
+                        Text(
+                          'Hata: $e',
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -171,7 +196,8 @@ class _EmlakDistrictsScreenState extends ConsumerState<EmlakDistrictsScreen> {
 
   Widget _buildDistrictsTable(List<EmlakDistrict> districts) {
     final filteredDistricts = districts.where((district) {
-      return _searchQuery.isEmpty || district.name.toLowerCase().contains(_searchQuery.toLowerCase());
+      return _searchQuery.isEmpty ||
+          district.name.toLowerCase().contains(_searchQuery.toLowerCase());
     }).toList();
 
     if (filteredDistricts.isEmpty) {
@@ -181,7 +207,10 @@ class _EmlakDistrictsScreenState extends ConsumerState<EmlakDistrictsScreen> {
           children: [
             const Icon(Icons.map, size: 64, color: AppColors.textMuted),
             const SizedBox(height: 16),
-            const Text('İlçe bulunamadı', style: TextStyle(color: AppColors.textSecondary, fontSize: 16)),
+            const Text(
+              'İlçe bulunamadı',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
+            ),
             if (_searchQuery.isNotEmpty)
               TextButton(
                 onPressed: () => setState(() => _searchQuery = ''),
@@ -202,11 +231,56 @@ class _EmlakDistrictsScreenState extends ConsumerState<EmlakDistrictsScreen> {
           ),
           child: const Row(
             children: [
-              Expanded(flex: 3, child: Text('İlçe Adı', style: TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.w600))),
-              Expanded(flex: 2, child: Text('Şehir', style: TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.w600))),
-              Expanded(flex: 1, child: Text('Sıra', style: TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.w600))),
-              Expanded(flex: 1, child: Text('Durum', style: TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.w600))),
-              SizedBox(width: 100, child: Text('İşlemler', style: TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.w600))),
+              Expanded(
+                flex: 3,
+                child: Text(
+                  'İlçe Adı',
+                  style: TextStyle(
+                    color: AppColors.textMuted,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  'Şehir',
+                  style: TextStyle(
+                    color: AppColors.textMuted,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 1,
+                child: Text(
+                  'Sıra',
+                  style: TextStyle(
+                    color: AppColors.textMuted,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 1,
+                child: Text(
+                  'Durum',
+                  style: TextStyle(
+                    color: AppColors.textMuted,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 100,
+                child: Text(
+                  'İşlemler',
+                  style: TextStyle(
+                    color: AppColors.textMuted,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -228,8 +302,12 @@ class _EmlakDistrictsScreenState extends ConsumerState<EmlakDistrictsScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
-        color: index.isEven ? Colors.transparent : AppColors.background.withValues(alpha: 0.5),
-        border: const Border(bottom: BorderSide(color: AppColors.surfaceLight, width: 0.5)),
+        color: index.isEven
+            ? Colors.transparent
+            : AppColors.background.withValues(alpha: 0.5),
+        border: const Border(
+          bottom: BorderSide(color: AppColors.surfaceLight, width: 0.5),
+        ),
       ),
       child: Row(
         children: [
@@ -249,7 +327,10 @@ class _EmlakDistrictsScreenState extends ConsumerState<EmlakDistrictsScreen> {
                 const SizedBox(width: 12),
                 Text(
                   district.name,
-                  style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w500),
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
@@ -284,7 +365,9 @@ class _EmlakDistrictsScreenState extends ConsumerState<EmlakDistrictsScreen> {
               child: Text(
                 district.isActive ? 'Aktif' : 'Pasif',
                 style: TextStyle(
-                  color: district.isActive ? AppColors.success : AppColors.error,
+                  color: district.isActive
+                      ? AppColors.success
+                      : AppColors.error,
                   fontSize: 12,
                   fontWeight: FontWeight.w500,
                 ),
@@ -343,14 +426,19 @@ class _EmlakDistrictsScreenState extends ConsumerState<EmlakDistrictsScreen> {
                         labelText: 'Şehir Seçin',
                         border: OutlineInputBorder(),
                       ),
-                      items: cities.map((city) => DropdownMenuItem<String>(
-                            value: city.id,
-                            child: Text(city.name),
-                          )).toList(),
-                      onChanged: (value) => setDialogState(() => selectedCityId = value),
+                      items: cities
+                          .map(
+                            (city) => DropdownMenuItem<String>(
+                              value: city.id,
+                              child: Text(city.name),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) =>
+                          setDialogState(() => selectedCityId = value),
                     ),
                     loading: () => const CircularProgressIndicator(),
-                    error: (_, __) => const Text('Şehirler yüklenemedi'),
+                    error: (_, _) => const Text('Şehirler yüklenemedi'),
                   ),
                   const SizedBox(height: 16),
                   TextField(
@@ -375,10 +463,15 @@ class _EmlakDistrictsScreenState extends ConsumerState<EmlakDistrictsScreen> {
               ),
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('İptal')),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('İptal'),
+              ),
               ElevatedButton(
                 onPressed: () async {
-                  if (nameController.text.isEmpty || selectedCityId == null) return;
+                  if (nameController.text.isEmpty || selectedCityId == null) {
+                    return;
+                  }
 
                   final service = ref.read(emlakAdminServiceProvider);
                   try {
@@ -391,13 +484,19 @@ class _EmlakDistrictsScreenState extends ConsumerState<EmlakDistrictsScreen> {
                     if (mounted) {
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('İlçe eklendi'), backgroundColor: AppColors.success),
+                        const SnackBar(
+                          content: Text('İlçe eklendi'),
+                          backgroundColor: AppColors.success,
+                        ),
                       );
                     }
                   } catch (e) {
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
+                        SnackBar(
+                          content: Text('Hata: $e'),
+                          backgroundColor: AppColors.error,
+                        ),
                       );
                     }
                   }
@@ -413,7 +512,9 @@ class _EmlakDistrictsScreenState extends ConsumerState<EmlakDistrictsScreen> {
 
   void _showEditDistrictDialog(EmlakDistrict district) {
     final nameController = TextEditingController(text: district.name);
-    final sortController = TextEditingController(text: district.sortOrder.toString());
+    final sortController = TextEditingController(
+      text: district.sortOrder.toString(),
+    );
     bool isActive = district.isActive;
 
     showDialog(
@@ -452,7 +553,10 @@ class _EmlakDistrictsScreenState extends ConsumerState<EmlakDistrictsScreen> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('İptal')),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('İptal'),
+            ),
             ElevatedButton(
               onPressed: () async {
                 if (nameController.text.isEmpty) return;
@@ -469,13 +573,19 @@ class _EmlakDistrictsScreenState extends ConsumerState<EmlakDistrictsScreen> {
                   if (mounted) {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('İlçe güncellendi'), backgroundColor: AppColors.success),
+                      const SnackBar(
+                        content: Text('İlçe güncellendi'),
+                        backgroundColor: AppColors.success,
+                      ),
                     );
                   }
                 } catch (e) {
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
+                      SnackBar(
+                        content: Text('Hata: $e'),
+                        backgroundColor: AppColors.error,
+                      ),
                     );
                   }
                 }
@@ -493,9 +603,14 @@ class _EmlakDistrictsScreenState extends ConsumerState<EmlakDistrictsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('İlçeyi Sil'),
-        content: Text('"${district.name}" ilçesini silmek istediğinize emin misiniz?'),
+        content: Text(
+          '"${district.name}" ilçesini silmek istediğinize emin misiniz?',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('İptal')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('İptal'),
+          ),
           ElevatedButton(
             onPressed: () async {
               final service = ref.read(emlakAdminServiceProvider);
@@ -511,7 +626,10 @@ class _EmlakDistrictsScreenState extends ConsumerState<EmlakDistrictsScreen> {
               } catch (e) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
+                    SnackBar(
+                      content: Text('Hata: $e'),
+                      backgroundColor: AppColors.error,
+                    ),
                   );
                 }
               }

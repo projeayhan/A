@@ -32,6 +32,7 @@ dependencies:
   google_sign_in: ^6.2.2
   sign_in_with_apple: ^6.1.4
   http: ^1.2.2
+  flutter_stripe: ^11.1.0
   image_picker: ^1.1.2
   cached_network_image: ^3.4.1
 
@@ -71,6 +72,7 @@ dev_dependencies:
   flutter_lints: ^6.0.0
 
 flutter:
+  generate: true
   uses-material-design: true
   assets:
     - .env

@@ -11,7 +11,8 @@ class PropertyDetailScreen extends ConsumerStatefulWidget {
   const PropertyDetailScreen({super.key, required this.propertyId});
 
   @override
-  ConsumerState<PropertyDetailScreen> createState() => _PropertyDetailScreenState();
+  ConsumerState<PropertyDetailScreen> createState() =>
+      _PropertyDetailScreenState();
 }
 
 class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
@@ -20,12 +21,12 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final userProperties = ref.watch(userPropertiesProvider);
-    final property = userProperties.allProperties.where((p) => p.id == widget.propertyId).firstOrNull;
+    final property = userProperties.allProperties
+        .where((p) => p.id == widget.propertyId)
+        .firstOrNull;
 
     if (userProperties.isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     if (property == null) {
@@ -87,14 +88,19 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                   if (property.images.isNotEmpty)
                     PageView.builder(
                       itemCount: property.images.length,
-                      onPageChanged: (index) => setState(() => _currentImageIndex = index),
+                      onPageChanged: (index) =>
+                          setState(() => _currentImageIndex = index),
                       itemBuilder: (context, index) {
                         return Image.network(
                           property.images[index],
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
+                          errorBuilder: (_, _, _) => Container(
                             color: const Color(0xFF1E293B),
-                            child: const Icon(Icons.home, size: 64, color: Colors.white24),
+                            child: const Icon(
+                              Icons.home,
+                              size: 64,
+                              color: Colors.white24,
+                            ),
                           ),
                         );
                       },
@@ -102,7 +108,11 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                   else
                     Container(
                       color: const Color(0xFF1E293B),
-                      child: const Icon(Icons.home, size: 64, color: Colors.white24),
+                      child: const Icon(
+                        Icons.home,
+                        size: 64,
+                        color: Colors.white24,
+                      ),
                     ),
 
                   // Image Indicator
@@ -135,14 +145,21 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                     top: 100,
                     left: 16,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: _getStatusColor(property.status),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
                         property.status.label,
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                   ),
@@ -167,9 +184,14 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
-                                color: property.listingType.color.withValues(alpha: 0.1),
+                                color: property.listingType.color.withValues(
+                                  alpha: 0.1,
+                                ),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
@@ -207,7 +229,10 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                           if (property.listingType == ListingType.rent)
                             const Text(
                               '/ay',
-                              style: TextStyle(color: Color(0xFF64748B), fontSize: 14),
+                              style: TextStyle(
+                                color: Color(0xFF64748B),
+                                fontSize: 14,
+                              ),
                             ),
                         ],
                       ),
@@ -219,12 +244,19 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                   // Location
                   Row(
                     children: [
-                      const Icon(Icons.location_on, color: Color(0xFF64748B), size: 20),
+                      const Icon(
+                        Icons.location_on,
+                        color: Color(0xFF64748B),
+                        size: 20,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           property.location.fullAddress,
-                          style: const TextStyle(color: Color(0xFF64748B), fontSize: 15),
+                          style: const TextStyle(
+                            color: Color(0xFF64748B),
+                            fontSize: 15,
+                          ),
                         ),
                       ),
                     ],
@@ -277,7 +309,11 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildStatItem(Icons.square_foot, '${property.squareMeters} m²', 'Alan'),
+          _buildStatItem(
+            Icons.square_foot,
+            '${property.squareMeters} m²',
+            'Alan',
+          ),
           _buildStatDivider(),
           _buildStatItem(Icons.bed, '${property.rooms}', 'Oda'),
           _buildStatDivider(),
@@ -313,11 +349,7 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
   }
 
   Widget _buildStatDivider() {
-    return Container(
-      width: 1,
-      height: 50,
-      color: const Color(0xFFE2E8F0),
-    );
+    return Container(width: 1, height: 50, color: const Color(0xFFE2E8F0));
   }
 
   Widget _buildSection(String title, String content) {
@@ -342,7 +374,11 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
           const SizedBox(height: 12),
           Text(
             content,
-            style: const TextStyle(color: Color(0xFF64748B), fontSize: 14, height: 1.6),
+            style: const TextStyle(
+              color: Color(0xFF64748B),
+              fontSize: 14,
+              height: 1.6,
+            ),
           ),
         ],
       ),
@@ -352,14 +388,28 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
   Widget _buildFeaturesSection(Property property) {
     final features = <MapEntry<IconData, String>>[];
 
-    if (property.hasParking) features.add(const MapEntry(Icons.local_parking, 'Otopark'));
-    if (property.hasBalcony) features.add(const MapEntry(Icons.balcony, 'Balkon'));
-    if (property.hasFurniture) features.add(const MapEntry(Icons.chair, 'Eşyalı'));
+    if (property.hasParking) {
+      features.add(const MapEntry(Icons.local_parking, 'Otopark'));
+    }
+    if (property.hasBalcony) {
+      features.add(const MapEntry(Icons.balcony, 'Balkon'));
+    }
+    if (property.hasFurniture) {
+      features.add(const MapEntry(Icons.chair, 'Eşyalı'));
+    }
     if (property.hasPool) features.add(const MapEntry(Icons.pool, 'Havuz'));
-    if (property.hasGym) features.add(const MapEntry(Icons.fitness_center, 'Spor Salonu'));
-    if (property.hasSecurity) features.add(const MapEntry(Icons.security, 'Güvenlik'));
-    if (property.hasElevator) features.add(const MapEntry(Icons.elevator, 'Asansör'));
-    if (property.isSmartHome) features.add(const MapEntry(Icons.home_max, 'Akıllı Ev'));
+    if (property.hasGym) {
+      features.add(const MapEntry(Icons.fitness_center, 'Spor Salonu'));
+    }
+    if (property.hasSecurity) {
+      features.add(const MapEntry(Icons.security, 'Güvenlik'));
+    }
+    if (property.hasElevator) {
+      features.add(const MapEntry(Icons.elevator, 'Asansör'));
+    }
+    if (property.isSmartHome) {
+      features.add(const MapEntry(Icons.home_max, 'Akıllı Ev'));
+    }
 
     if (features.isEmpty) return const SizedBox();
 
@@ -387,7 +437,10 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
             runSpacing: 12,
             children: features.map((feature) {
               return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF1F5F9),
                   borderRadius: BorderRadius.circular(8),
@@ -399,7 +452,10 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                     const SizedBox(width: 8),
                     Text(
                       feature.value,
-                      style: const TextStyle(color: Color(0xFF1E293B), fontSize: 13),
+                      style: const TextStyle(
+                        color: Color(0xFF1E293B),
+                        fontSize: 13,
+                      ),
                     ),
                   ],
                 ),
@@ -455,7 +511,13 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: const TextStyle(color: Color(0xFF64748B))),
-          Text(value, style: const TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.w500)),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Color(0xFF1E293B),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ],
       ),
     );
@@ -560,7 +622,9 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
               label: const Text('Durumu Değiştir'),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
             ),
           ),
@@ -574,7 +638,9 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                 backgroundColor: const Color(0xFF3B82F6),
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
             ),
           ),
@@ -641,17 +707,24 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.visibility_off, color: Color(0xFFF59E0B)),
+              leading: const Icon(
+                Icons.visibility_off,
+                color: Color(0xFFF59E0B),
+              ),
               title: const Text('İlanı Rezerve Et'),
               onTap: () async {
                 Navigator.pop(context);
-                await ref.read(userPropertiesProvider.notifier)
+                await ref
+                    .read(userPropertiesProvider.notifier)
                     .updatePropertyStatus(property.id, PropertyStatus.reserved);
               },
             ),
             ListTile(
               leading: const Icon(Icons.delete, color: Colors.red),
-              title: const Text('İlanı Sil', style: TextStyle(color: Colors.red)),
+              title: const Text(
+                'İlanı Sil',
+                style: TextStyle(color: Colors.red),
+              ),
               onTap: () => _confirmDelete(property),
             ),
           ],
@@ -690,7 +763,8 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                     : null,
                 onTap: () async {
                   Navigator.pop(context);
-                  await ref.read(userPropertiesProvider.notifier)
+                  await ref
+                      .read(userPropertiesProvider.notifier)
                       .updatePropertyStatus(property.id, status);
                 },
               );
@@ -707,7 +781,9 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('İlanı Sil'),
-        content: const Text('Bu ilanı silmek istediğinize emin misiniz? Bu işlem geri alınamaz.'),
+        content: const Text(
+          'Bu ilanı silmek istediğinize emin misiniz? Bu işlem geri alınamaz.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -716,7 +792,9 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(context);
-              await ref.read(userPropertiesProvider.notifier).deleteProperty(property.id);
+              await ref
+                  .read(userPropertiesProvider.notifier)
+                  .deleteProperty(property.id);
               if (mounted) context.pop();
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),

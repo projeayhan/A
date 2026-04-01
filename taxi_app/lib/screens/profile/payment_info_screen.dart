@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/services/taxi_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../../models/ride_models.dart';
 import 'profile_screen.dart';
 
-final _earningsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+final _earningsProvider = FutureProvider<EarningsSummary>((ref) async {
   return await TaxiService.getEarningsSummary();
 });
 
@@ -148,10 +149,8 @@ class _PaymentInfoScreenState extends ConsumerState<PaymentInfoScreen> {
     );
   }
 
-  Widget _buildEarningsSummary(BuildContext context, Map<String, dynamic> earnings) {
-    final total = (earnings['total'] as num?)?.toDouble() ?? 0;
-    final commissionRate = (earnings['commission_rate'] as num?)?.toDouble() ?? 20;
-    final netTotal = total * (1 - commissionRate / 100);
+  Widget _buildEarningsSummary(BuildContext context, EarningsSummary earnings) {
+    final netTotal = earnings.netEarnings;
 
     return Container(
       width: double.infinity,
@@ -187,15 +186,15 @@ class _PaymentInfoScreenState extends ConsumerState<PaymentInfoScreen> {
             children: [
               _buildMiniStat(
                 'Bugun',
-                '\u20BA${((earnings['today'] as num?)?.toDouble() ?? 0).toStringAsFixed(0)}',
+                '\u20BA${earnings.today.toStringAsFixed(0)}',
               ),
               _buildMiniStat(
                 'Bu Hafta',
-                '\u20BA${((earnings['week'] as num?)?.toDouble() ?? 0).toStringAsFixed(0)}',
+                '\u20BA${earnings.week.toStringAsFixed(0)}',
               ),
               _buildMiniStat(
                 'Bu Ay',
-                '\u20BA${((earnings['month'] as num?)?.toDouble() ?? 0).toStringAsFixed(0)}',
+                '\u20BA${earnings.month.toStringAsFixed(0)}',
               ),
             ],
           ),
@@ -229,9 +228,9 @@ class _PaymentInfoScreenState extends ConsumerState<PaymentInfoScreen> {
     );
   }
 
-  Widget _buildCommissionCard(BuildContext context, AsyncValue<Map<String, dynamic>> earningsAsync) {
+  Widget _buildCommissionCard(BuildContext context, AsyncValue<EarningsSummary> earningsAsync) {
     final rate = earningsAsync.whenOrNull(
-      data: (e) => (e['commission_rate'] as num?)?.toDouble() ?? 20,
+      data: (e) => e.commissionRate,
     ) ?? 20.0;
 
     return Container(

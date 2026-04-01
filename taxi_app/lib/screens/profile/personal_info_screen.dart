@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/services/log_service.dart';
 import '../../core/services/taxi_service.dart';
 import '../../core/theme/app_theme.dart';
 import 'profile_screen.dart';
@@ -356,7 +357,8 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
     try {
       final date = DateTime.parse(dateStr);
       return '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
-    } catch (_) {
+    } catch (e, st) {
+      LogService.error('formatDate error', error: e, stackTrace: st, source: 'PersonalInfoScreen:_formatDate');
       return '-';
     }
   }

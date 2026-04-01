@@ -78,17 +78,18 @@ class _FlyingCartItemState extends State<FlyingCartItem>
     // Boyut animasyonu - başta büyüsün, sonra küçülsün
     _scaleAnimation = TweenSequence<double>([
       TweenSequenceItem(
-        tween: Tween(begin: 0.3, end: 1.2)
-            .chain(CurveTween(curve: Curves.easeOutBack)),
+        tween: Tween(
+          begin: 0.3,
+          end: 1.2,
+        ).chain(CurveTween(curve: Curves.easeOutBack)),
         weight: 30,
       ),
+      TweenSequenceItem(tween: Tween(begin: 1.2, end: 1.0), weight: 20),
       TweenSequenceItem(
-        tween: Tween(begin: 1.2, end: 1.0),
-        weight: 20,
-      ),
-      TweenSequenceItem(
-        tween: Tween(begin: 1.0, end: 0.4)
-            .chain(CurveTween(curve: Curves.easeInCubic)),
+        tween: Tween(
+          begin: 1.0,
+          end: 0.4,
+        ).chain(CurveTween(curve: Curves.easeInCubic)),
         weight: 50,
       ),
     ]).animate(_controller);
@@ -97,10 +98,7 @@ class _FlyingCartItemState extends State<FlyingCartItem>
     _rotationAnimation = Tween<double>(
       begin: 0,
       end: 2 * math.pi,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeInOut,
-    ));
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
 
     // Opaklık - son %20'de kaybolsun
     _opacityAnimation = TweenSequence<double>([
@@ -189,15 +187,22 @@ class _FlyingCartItemState extends State<FlyingCartItem>
                     children: [
                       // Ürün resmi veya ikon
                       Positioned.fill(
-                        child: widget.imageUrl != null && widget.imageUrl!.isNotEmpty
+                        child:
+                            widget.imageUrl != null &&
+                                widget.imageUrl!.isNotEmpty
                             ? CachedNetworkImage(
                                 imageUrl: widget.imageUrl!,
                                 fit: BoxFit.cover,
-                                placeholder: (_, __) => Container(
+                                placeholder: (_, _) => Container(
                                   color: Colors.grey[200],
-                                  child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                  child: const Center(
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
                                 ),
-                                errorWidget: (_, __, ___) => _buildFallbackIcon(size),
+                                errorWidget: (_, _, _) =>
+                                    _buildFallbackIcon(size),
                               )
                             : _buildFallbackIcon(size),
                       ),
@@ -246,11 +251,7 @@ class CartIconBounce extends StatefulWidget {
   final Widget child;
   final AnimationController? controller;
 
-  const CartIconBounce({
-    super.key,
-    required this.child,
-    this.controller,
-  });
+  const CartIconBounce({super.key, required this.child, this.controller});
 
   @override
   State<CartIconBounce> createState() => CartIconBounceState();
@@ -265,7 +266,8 @@ class CartIconBounceState extends State<CartIconBounce>
   @override
   void initState() {
     super.initState();
-    _controller = widget.controller ??
+    _controller =
+        widget.controller ??
         AnimationController(
           duration: const Duration(milliseconds: 500),
           vsync: this,
@@ -274,23 +276,31 @@ class CartIconBounceState extends State<CartIconBounce>
     // Daha belirgin bounce efekti
     _scaleAnimation = TweenSequence<double>([
       TweenSequenceItem(
-        tween: Tween(begin: 1.0, end: 1.25)
-            .chain(CurveTween(curve: Curves.easeOut)),
+        tween: Tween(
+          begin: 1.0,
+          end: 1.25,
+        ).chain(CurveTween(curve: Curves.easeOut)),
         weight: 25,
       ),
       TweenSequenceItem(
-        tween: Tween(begin: 1.25, end: 0.9)
-            .chain(CurveTween(curve: Curves.easeIn)),
+        tween: Tween(
+          begin: 1.25,
+          end: 0.9,
+        ).chain(CurveTween(curve: Curves.easeIn)),
         weight: 25,
       ),
       TweenSequenceItem(
-        tween: Tween(begin: 0.9, end: 1.1)
-            .chain(CurveTween(curve: Curves.easeOut)),
+        tween: Tween(
+          begin: 0.9,
+          end: 1.1,
+        ).chain(CurveTween(curve: Curves.easeOut)),
         weight: 25,
       ),
       TweenSequenceItem(
-        tween: Tween(begin: 1.1, end: 1.0)
-            .chain(CurveTween(curve: Curves.easeIn)),
+        tween: Tween(
+          begin: 1.1,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.easeIn)),
         weight: 25,
       ),
     ]).animate(_controller);
@@ -365,14 +375,14 @@ class _CartAddParticlesState extends State<CartAddParticles>
     // Rastgele parçacıklar oluştur
     final random = math.Random();
     for (int i = 0; i < 12; i++) {
-      _particles.add(_Particle(
-        angle: (i / 12) * 2 * math.pi + random.nextDouble() * 0.3,
-        speed: 80 + random.nextDouble() * 60,
-        size: 6 + random.nextDouble() * 6,
-        color: i % 2 == 0
-            ? const Color(0xFFEC6D13)
-            : const Color(0xFFFFA726),
-      ));
+      _particles.add(
+        _Particle(
+          angle: (i / 12) * 2 * math.pi + random.nextDouble() * 0.3,
+          speed: 80 + random.nextDouble() * 60,
+          size: 6 + random.nextDouble() * 6,
+          color: i % 2 == 0 ? const Color(0xFFEC6D13) : const Color(0xFFFFA726),
+        ),
+      );
     }
 
     _controller.forward().then((_) => widget.onComplete());

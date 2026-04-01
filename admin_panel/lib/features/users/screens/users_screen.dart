@@ -387,7 +387,7 @@ class _UsersScreenState extends ConsumerState<UsersScreen> {
                     backgroundImage: user['avatar_url'] != null ? NetworkImage(user['avatar_url']) : null,
                     child: user['avatar_url'] == null
                         ? Text(
-                            (user['full_name'] ?? 'U').toString().substring(0, 1).toUpperCase(),
+                            () { final n = (user['full_name']?.toString() ?? '').trim(); return n.isEmpty ? 'U' : n[0].toUpperCase(); }(),
                             style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
                           )
                         : null,

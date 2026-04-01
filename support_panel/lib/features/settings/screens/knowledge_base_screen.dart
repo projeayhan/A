@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/providers/auth_provider.dart';
+import 'package:support_panel/core/services/log_service.dart';
 import 'kb_article_screen.dart';
 
 class KnowledgeBaseScreen extends ConsumerStatefulWidget {
@@ -64,7 +65,8 @@ class _KnowledgeBaseScreenState extends ConsumerState<KnowledgeBaseScreen> {
 
       final data = await query.order('view_count', ascending: false).limit(100);
       setState(() { _articles = List<Map<String, dynamic>>.from(data); _isLoading = false; });
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to load articles', error: e, stackTrace: st, source: 'KnowledgeBaseScreen:_loadArticles');
       setState(() => _isLoading = false);
     }
   }
@@ -287,7 +289,9 @@ class _KnowledgeBaseScreenState extends ConsumerState<KnowledgeBaseScreen> {
             .from('knowledge_base')
             .update({'view_count': (existing['view_count'] ?? 0) + 1})
             .eq('id', existing['id']);
-      } catch (_) {}
+      } catch (e, st) {
+        LogService.error('Error incrementing view count', error: e, stackTrace: st, source: 'KnowledgeBaseScreen:_showArticleEditor');
+      }
     }
 
     if (!mounted) return;

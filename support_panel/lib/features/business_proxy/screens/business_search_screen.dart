@@ -5,6 +5,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/services/business_proxy_service.dart';
 import '../../../core/providers/business_provider.dart';
 import '../../../core/router/app_router.dart';
+import 'package:support_panel/core/services/log_service.dart';
 
 class BusinessSearchScreen extends ConsumerStatefulWidget {
   const BusinessSearchScreen({super.key});
@@ -51,7 +52,8 @@ class _BusinessSearchScreenState extends ConsumerState<BusinessSearchScreen> {
         default: results = await service.searchMerchants(q);
       }
       setState(() { _results = results; _isLoading = false; });
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Business search failed', error: e, stackTrace: st, source: 'BusinessSearchScreen:_search');
       setState(() { _isLoading = false; });
     }
   }

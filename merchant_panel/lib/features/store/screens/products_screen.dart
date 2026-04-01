@@ -128,29 +128,42 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                       color: AppColors.background,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: ref.watch(productCategoriesProvider).when(
-                      loading: () => const SizedBox(
-                        width: 120,
-                        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                      ),
-                      error: (_, __) => const Text('Kategori yuklenemedi'),
-                      data: (categories) => DropdownButton<String>(
-                        value: _selectedCategory,
-                        hint: const Text('Kategori'),
-                        underline: const SizedBox(),
-                        items: [
-                          const DropdownMenuItem(
-                            value: null,
-                            child: Text('Tum Kategoriler'),
-                          ),
-                          ...categories.map(
-                            (c) => DropdownMenuItem(value: c.id, child: Text(c.name)),
-                          ),
-                        ],
-                        onChanged:
-                            (value) => setState(() => _selectedCategory = value),
-                      ),
-                    ),
+                    child: ref
+                        .watch(productCategoriesProvider)
+                        .when(
+                          loading:
+                              () => const SizedBox(
+                                width: 120,
+                                child: Center(
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              ),
+                          error: (_, _) => const Text('Kategori yuklenemedi'),
+                          data:
+                              (categories) => DropdownButton<String>(
+                                value: _selectedCategory,
+                                hint: const Text('Kategori'),
+                                underline: const SizedBox(),
+                                items: [
+                                  const DropdownMenuItem(
+                                    value: null,
+                                    child: Text('Tum Kategoriler'),
+                                  ),
+                                  ...categories.map(
+                                    (c) => DropdownMenuItem(
+                                      value: c.id,
+                                      child: Text(c.name),
+                                    ),
+                                  ),
+                                ],
+                                onChanged:
+                                    (value) => setState(
+                                      () => _selectedCategory = value,
+                                    ),
+                              ),
+                        ),
                   ),
                   const SizedBox(width: 16),
 
@@ -283,7 +296,10 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
                 children: [
                   const SizedBox(width: 60),
                   Expanded(flex: 3, child: Text('Urun', style: _headerStyle)),
-                  Expanded(flex: 2, child: Text('SKU / Barkod', style: _headerStyle)),
+                  Expanded(
+                    flex: 2,
+                    child: Text('SKU / Barkod', style: _headerStyle),
+                  ),
                   Expanded(child: Text('Fiyat', style: _headerStyle)),
                   Expanded(child: Text('Stok', style: _headerStyle)),
                   Expanded(child: Text('Durum', style: _headerStyle)),
@@ -444,7 +460,10 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
 
   void _showAutoImageDialog(BuildContext context) {
     final products = ref.read(storeProductsProvider).valueOrNull ?? [];
-    final noImage = products.where((p) => p.imageUrl == null || p.imageUrl!.isEmpty).toList();
+    final noImage =
+        products
+            .where((p) => p.imageUrl == null || p.imageUrl!.isEmpty)
+            .toList();
 
     if (noImage.isEmpty) {
       AppDialogs.showSuccess(context, 'Tum urunlerin resmi mevcut!');
@@ -454,14 +473,15 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => _AutoImageDialog(
-        totalProducts: noImage.length,
-        onStart: () async {
-          return await ref.read(storeProductsProvider.notifier).autoFetchProductImages(
-            onProgress: null,
-          );
-        },
-      ),
+      builder:
+          (context) => _AutoImageDialog(
+            totalProducts: noImage.length,
+            onStart: () async {
+              return await ref
+                  .read(storeProductsProvider.notifier)
+                  .autoFetchProductImages(onProgress: null);
+            },
+          ),
     );
   }
 
@@ -469,11 +489,14 @@ class _ProductsScreenState extends ConsumerState<ProductsScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => _ImportDialog(
-        onImport: (products) async {
-          return await ref.read(storeProductsProvider.notifier).bulkAddProducts(products);
-        },
-      ),
+      builder:
+          (context) => _ImportDialog(
+            onImport: (products) async {
+              return await ref
+                  .read(storeProductsProvider.notifier)
+                  .bulkAddProducts(products);
+            },
+          ),
     );
   }
 }
@@ -495,7 +518,8 @@ class _ProductRow extends StatelessWidget {
 
   String _getCategoryName() {
     if (product.categoryId == null) return 'Kategorisiz';
-    final category = categories.where((c) => c.id == product.categoryId).firstOrNull;
+    final category =
+        categories.where((c) => c.id == product.categoryId).firstOrNull;
     return category?.name ?? 'Kategorisiz';
   }
 
@@ -756,12 +780,11 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
     );
     _brandController = TextEditingController(text: widget.product?.brand);
     _selectedCategoryId = widget.product?.categoryId;
-    _imageUrlController = TextEditingController(
-      text: widget.product?.imageUrl,
-    );
+    _imageUrlController = TextEditingController(text: widget.product?.imageUrl);
     _selectedUnitType = widget.product?.unitType ?? UnitType.adet;
     _isFeatured = widget.product?.isFeatured ?? false;
-    _useUrlInput = widget.product?.imageUrl != null || _selectedImageBytes == null;
+    _useUrlInput =
+        widget.product?.imageUrl != null || _selectedImageBytes == null;
     _variants = List<ProductVariant>.from(widget.product?.variants ?? []);
   }
 
@@ -916,19 +939,21 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<UnitType>(
-                        value: _selectedUnitType,
+                        initialValue: _selectedUnitType,
                         decoration: const InputDecoration(
                           labelText: 'Birim Tipi',
                         ),
-                        items: UnitType.values
-                            .map(
-                              (u) => DropdownMenuItem(
-                                value: u,
-                                child: Text(u.displayName),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (v) => setState(() => _selectedUnitType = v!),
+                        items:
+                            UnitType.values
+                                .map(
+                                  (u) => DropdownMenuItem(
+                                    value: u,
+                                    child: Text(u.displayName),
+                                  ),
+                                )
+                                .toList(),
+                        onChanged:
+                            (v) => setState(() => _selectedUnitType = v!),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -1022,19 +1047,19 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             DropdownButtonFormField<String>(
-              value: _selectedCategoryId != null &&
-                     categoryList.any((c) => c.id == _selectedCategoryId)
-                  ? _selectedCategoryId
-                  : null,
-              decoration: const InputDecoration(
-                labelText: 'Kategori',
-              ),
-              items: categoryList.map(
-                (c) => DropdownMenuItem(
-                  value: c.id,
-                  child: Text(c.name),
-                ),
-              ).toList(),
+              initialValue:
+                  _selectedCategoryId != null &&
+                          categoryList.any((c) => c.id == _selectedCategoryId)
+                      ? _selectedCategoryId
+                      : null,
+              decoration: const InputDecoration(labelText: 'Kategori'),
+              items:
+                  categoryList
+                      .map(
+                        (c) =>
+                            DropdownMenuItem(value: c.id, child: Text(c.name)),
+                      )
+                      .toList(),
               onChanged: (value) {
                 setState(() => _selectedCategoryId = value);
               },
@@ -1069,8 +1094,16 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
               // Toggle between URL and Upload
               SegmentedButton<bool>(
                 segments: const [
-                  ButtonSegment(value: true, label: Text('URL'), icon: Icon(Icons.link, size: 16)),
-                  ButtonSegment(value: false, label: Text('Yukle'), icon: Icon(Icons.upload, size: 16)),
+                  ButtonSegment(
+                    value: true,
+                    label: Text('URL'),
+                    icon: Icon(Icons.link, size: 16),
+                  ),
+                  ButtonSegment(
+                    value: false,
+                    label: Text('Yukle'),
+                    icon: Icon(Icons.upload, size: 16),
+                  ),
                 ],
                 selected: {_useUrlInput},
                 onSelectionChanged: (selection) {
@@ -1111,71 +1144,72 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
                     style: BorderStyle.solid,
                   ),
                 ),
-                child: _isUploadingImage
-                    ? const Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            CircularProgressIndicator(),
-                            SizedBox(height: 8),
-                            Text('Yukleniyor...'),
-                          ],
-                        ),
-                      )
-                    : _selectedImageBytes != null
-                        ? Stack(
+                child:
+                    _isUploadingImage
+                        ? const Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: Image.memory(
-                                  _selectedImageBytes!,
-                                  width: double.infinity,
-                                  height: 120,
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
-                              Positioned(
-                                top: 4,
-                                right: 4,
-                                child: IconButton(
-                                  onPressed: () {
-                                    setState(() {
-                                      _selectedImageBytes = null;
-                                      _selectedImageName = null;
-                                    });
-                                  },
-                                  icon: const Icon(Icons.close),
-                                  style: IconButton.styleFrom(
-                                    backgroundColor: Colors.black54,
-                                    foregroundColor: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          )
-                        : Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.cloud_upload_outlined,
-                                size: 40,
-                                color: AppColors.textMuted,
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Resim secmek icin tiklayin',
-                                style: TextStyle(color: AppColors.textMuted),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'PNG, JPG, WEBP (Max 5MB)',
-                                style: TextStyle(
-                                  color: AppColors.textMuted,
-                                  fontSize: 12,
-                                ),
-                              ),
+                              CircularProgressIndicator(),
+                              SizedBox(height: 8),
+                              Text('Yukleniyor...'),
                             ],
                           ),
+                        )
+                        : _selectedImageBytes != null
+                        ? Stack(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.memory(
+                                _selectedImageBytes!,
+                                width: double.infinity,
+                                height: 120,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                            Positioned(
+                              top: 4,
+                              right: 4,
+                              child: IconButton(
+                                onPressed: () {
+                                  setState(() {
+                                    _selectedImageBytes = null;
+                                    _selectedImageName = null;
+                                  });
+                                },
+                                icon: const Icon(Icons.close),
+                                style: IconButton.styleFrom(
+                                  backgroundColor: Colors.black54,
+                                  foregroundColor: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                        : Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.cloud_upload_outlined,
+                              size: 40,
+                              color: AppColors.textMuted,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Resim secmek icin tiklayin',
+                              style: TextStyle(color: AppColors.textMuted),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'PNG, JPG, WEBP (Max 5MB)',
+                              style: TextStyle(
+                                color: AppColors.textMuted,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
               ),
             ),
             if (_selectedImageName != null) ...[
@@ -1197,12 +1231,16 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
                 height: 80,
                 width: 80,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stack) => Container(
-                  height: 80,
-                  width: 80,
-                  color: AppColors.error.withAlpha(30),
-                  child: const Icon(Icons.broken_image, color: AppColors.error),
-                ),
+                errorBuilder:
+                    (context, error, stack) => Container(
+                      height: 80,
+                      width: 80,
+                      color: AppColors.error.withAlpha(30),
+                      child: const Icon(
+                        Icons.broken_image,
+                        color: AppColors.error,
+                      ),
+                    ),
               ),
             ),
           ],
@@ -1238,13 +1276,19 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
 
     try {
       final supabase = Supabase.instance.client;
-      final fileName = 'products/${DateTime.now().millisecondsSinceEpoch}_$_selectedImageName';
+      final fileName =
+          'products/${DateTime.now().millisecondsSinceEpoch}_$_selectedImageName';
 
-      await supabase.storage.from('images').uploadBinary(
-        fileName,
-        _selectedImageBytes!,
-        fileOptions: const FileOptions(cacheControl: '31536000', upsert: true),
-      );
+      await supabase.storage
+          .from('images')
+          .uploadBinary(
+            fileName,
+            _selectedImageBytes!,
+            fileOptions: const FileOptions(
+              cacheControl: '31536000',
+              upsert: true,
+            ),
+          );
 
       final publicUrl = supabase.storage.from('images').getPublicUrl(fileName);
 
@@ -1286,9 +1330,7 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
               onPressed: _showAddVariantGroupDialog,
               icon: const Icon(Icons.add, size: 18),
               label: const Text('Grup Ekle'),
-              style: TextButton.styleFrom(
-                visualDensity: VisualDensity.compact,
-              ),
+              style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
             ),
           ],
         ),
@@ -1311,7 +1353,10 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
               children: [
                 // Grup basligi
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.primary.withAlpha(15),
                     borderRadius: const BorderRadius.only(
@@ -1332,11 +1377,18 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
                       const Spacer(),
                       IconButton(
                         onPressed: () => _showAddVariantValueDialog(groupName),
-                        icon: Icon(Icons.add_circle_outline, size: 20, color: AppColors.primary),
+                        icon: Icon(
+                          Icons.add_circle_outline,
+                          size: 20,
+                          color: AppColors.primary,
+                        ),
                         tooltip: 'Secenek Ekle',
                         visualDensity: VisualDensity.compact,
                         padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                        constraints: const BoxConstraints(
+                          minWidth: 32,
+                          minHeight: 32,
+                        ),
                       ),
                       IconButton(
                         onPressed: () {
@@ -1344,40 +1396,66 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
                             _variants.removeWhere((v) => v.name == groupName);
                           });
                         },
-                        icon: Icon(Icons.delete_outline, size: 20, color: AppColors.error),
+                        icon: Icon(
+                          Icons.delete_outline,
+                          size: 20,
+                          color: AppColors.error,
+                        ),
                         tooltip: 'Grubu Sil',
                         visualDensity: VisualDensity.compact,
                         padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                        constraints: const BoxConstraints(
+                          minWidth: 32,
+                          minHeight: 32,
+                        ),
                       ),
                     ],
                   ),
                 ),
                 // Secenekler
                 ...() {
-                  final groupVariants = _variants.where((v) => v.name == groupName).toList();
+                  final groupVariants =
+                      _variants.where((v) => v.name == groupName).toList();
                   return groupVariants.asMap().entries.map((entry) {
                     final idx = entry.key;
                     final v = entry.value;
                     return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
-                        border: idx < groupVariants.length - 1
-                            ? Border(bottom: BorderSide(color: AppColors.border.withAlpha(80)))
-                            : null,
+                        border:
+                            idx < groupVariants.length - 1
+                                ? Border(
+                                  bottom: BorderSide(
+                                    color: AppColors.border.withAlpha(80),
+                                  ),
+                                )
+                                : null,
                       ),
                       child: Row(
                         children: [
                           Expanded(
                             flex: 3,
-                            child: Text(v.value, style: TextStyle(color: AppColors.textPrimary, fontSize: 13)),
+                            child: Text(
+                              v.value,
+                              style: TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 13,
+                              ),
+                            ),
                           ),
                           if (v.priceModifier != null && v.priceModifier != 0)
                             Padding(
                               padding: const EdgeInsets.only(right: 8),
                               child: Text(
                                 '${v.priceModifier! > 0 ? '+' : ''}${v.priceModifier!.toStringAsFixed(0)} TL',
-                                style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w500),
+                                style: TextStyle(
+                                  color: AppColors.primary,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
                             ),
                           if (v.stock != null)
@@ -1385,7 +1463,10 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
                               padding: const EdgeInsets.only(right: 8),
                               child: Text(
                                 'Stok: ${v.stock}',
-                                style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+                                style: TextStyle(
+                                  color: AppColors.textMuted,
+                                  fontSize: 11,
+                                ),
                               ),
                             ),
                           IconButton(
@@ -1394,10 +1475,17 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
                                 _variants.remove(v);
                               });
                             },
-                            icon: Icon(Icons.close, size: 16, color: AppColors.textMuted),
+                            icon: Icon(
+                              Icons.close,
+                              size: 16,
+                              color: AppColors.textMuted,
+                            ),
                             visualDensity: VisualDensity.compact,
                             padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                            constraints: const BoxConstraints(
+                              minWidth: 28,
+                              minHeight: 28,
+                            ),
                           ),
                         ],
                       ),
@@ -1416,51 +1504,66 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
     final controller = TextEditingController();
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Secenek Grubu Ekle'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: controller,
-              autofocus: true,
-              decoration: const InputDecoration(
-                labelText: 'Grup Adi',
-                hintText: 'Ornek: Renk, Beden, Boyut...',
-              ),
+      builder:
+          (ctx) => AlertDialog(
+            backgroundColor: AppColors.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
             ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
+            title: const Text('Secenek Grubu Ekle'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                for (final suggestion in ['Renk', 'Beden', 'Boyut', 'Malzeme', 'Model'])
-                  ActionChip(
-                    label: Text(suggestion, style: const TextStyle(fontSize: 12)),
-                    onPressed: () => controller.text = suggestion,
-                    visualDensity: VisualDensity.compact,
-                    backgroundColor: AppColors.background,
-                    side: BorderSide(color: AppColors.border),
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Grup Adi',
+                    hintText: 'Ornek: Renk, Beden, Boyut...',
                   ),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    for (final suggestion in [
+                      'Renk',
+                      'Beden',
+                      'Boyut',
+                      'Malzeme',
+                      'Model',
+                    ])
+                      ActionChip(
+                        label: Text(
+                          suggestion,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        onPressed: () => controller.text = suggestion,
+                        visualDensity: VisualDensity.compact,
+                        backgroundColor: AppColors.background,
+                        side: BorderSide(color: AppColors.border),
+                      ),
+                  ],
+                ),
               ],
             ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Iptal')),
-          ElevatedButton(
-            onPressed: () {
-              if (controller.text.trim().isNotEmpty) {
-                Navigator.pop(ctx);
-                _showAddVariantValueDialog(controller.text.trim());
-              }
-            },
-            child: const Text('Ekle'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Iptal'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  if (controller.text.trim().isNotEmpty) {
+                    Navigator.pop(ctx);
+                    _showAddVariantValueDialog(controller.text.trim());
+                  }
+                },
+                child: const Text('Ekle'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
@@ -1470,76 +1573,85 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
     final stockController = TextEditingController();
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('$groupName - Secenek Ekle'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: valueController,
-              autofocus: true,
-              decoration: InputDecoration(
-                labelText: 'Deger',
-                hintText: groupName.toLowerCase().contains('renk')
-                    ? 'Ornek: Kirmizi, Mavi...'
-                    : groupName.toLowerCase().contains('beden')
-                        ? 'Ornek: S, M, L, XL...'
-                        : 'Deger girin',
-              ),
+      builder:
+          (ctx) => AlertDialog(
+            backgroundColor: AppColors.surface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
             ),
-            const SizedBox(height: 12),
-            Row(
+            title: Text('$groupName - Secenek Ekle'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Expanded(
-                  child: TextField(
-                    controller: priceController,
-                    decoration: const InputDecoration(
-                      labelText: 'Fiyat Farki',
-                      hintText: '0',
-                      suffixText: 'TL',
-                    ),
-                    keyboardType: TextInputType.number,
+                TextField(
+                  controller: valueController,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    labelText: 'Deger',
+                    hintText:
+                        groupName.toLowerCase().contains('renk')
+                            ? 'Ornek: Kirmizi, Mavi...'
+                            : groupName.toLowerCase().contains('beden')
+                            ? 'Ornek: S, M, L, XL...'
+                            : 'Deger girin',
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextField(
-                    controller: stockController,
-                    decoration: const InputDecoration(
-                      labelText: 'Stok',
-                      hintText: 'Opsiyonel',
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: priceController,
+                        decoration: const InputDecoration(
+                          labelText: 'Fiyat Farki',
+                          hintText: '0',
+                          suffixText: 'TL',
+                        ),
+                        keyboardType: TextInputType.number,
+                      ),
                     ),
-                    keyboardType: TextInputType.number,
-                  ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: stockController,
+                        decoration: const InputDecoration(
+                          labelText: 'Stok',
+                          hintText: 'Opsiyonel',
+                        ),
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Iptal')),
-          ElevatedButton(
-            onPressed: () {
-              if (valueController.text.trim().isNotEmpty) {
-                setState(() {
-                  _variants.add(ProductVariant(
-                    name: groupName,
-                    value: valueController.text.trim(),
-                    priceModifier: double.tryParse(priceController.text),
-                    stock: int.tryParse(stockController.text),
-                  ));
-                });
-                Navigator.pop(ctx);
-                // Hemen bir daha eklemek isteyebilir
-                _showAddVariantValueDialog(groupName);
-              }
-            },
-            child: const Text('Ekle'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Iptal'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  if (valueController.text.trim().isNotEmpty) {
+                    setState(() {
+                      _variants.add(
+                        ProductVariant(
+                          name: groupName,
+                          value: valueController.text.trim(),
+                          priceModifier: double.tryParse(priceController.text),
+                          stock: int.tryParse(stockController.text),
+                        ),
+                      );
+                    });
+                    Navigator.pop(ctx);
+                    // Hemen bir daha eklemek isteyebilir
+                    _showAddVariantValueDialog(groupName);
+                  }
+                },
+                child: const Text('Ekle'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
@@ -1553,7 +1665,10 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
 
     // Handle image URL
     if (_useUrlInput) {
-      imageUrl = _imageUrlController.text.isNotEmpty ? _imageUrlController.text : widget.product?.imageUrl;
+      imageUrl =
+          _imageUrlController.text.isNotEmpty
+              ? _imageUrlController.text
+              : widget.product?.imageUrl;
     } else if (_selectedImageBytes != null) {
       // Upload image to storage
       imageUrl = await _uploadImageToStorage();
@@ -1562,9 +1677,7 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
     }
 
     final product = StoreProduct(
-      id:
-          widget.product?.id ??
-          const Uuid().v4(),
+      id: widget.product?.id ?? const Uuid().v4(),
       storeId: widget.product?.storeId ?? merchant.id,
       categoryId: _selectedCategoryId ?? widget.product?.categoryId,
       name: _nameController.text,
@@ -1581,7 +1694,10 @@ class _ProductDialogState extends ConsumerState<_ProductDialog> {
       sku: _skuController.text.isEmpty ? null : _skuController.text,
       barcode: _barcodeController.text.isEmpty ? null : _barcodeController.text,
       stock: int.tryParse(_stockController.text) ?? 0,
-      weight: _weightController.text.isEmpty ? null : double.tryParse(_weightController.text),
+      weight:
+          _weightController.text.isEmpty
+              ? null
+              : double.tryParse(_weightController.text),
       unitType: _selectedUnitType,
       lowStockThreshold: int.tryParse(_lowStockThresholdController.text) ?? 5,
       brand: _brandController.text.isEmpty ? null : _brandController.text,
@@ -1606,8 +1722,10 @@ class _ImportDialog extends ConsumerStatefulWidget {
 }
 
 class _ImportDialogState extends ConsumerState<_ImportDialog> {
-  List<ProductCategory> get _categories => ref.watch(productCategoriesProvider).valueOrNull ?? [];
-  String get _merchantId => ref.watch(currentMerchantProvider).valueOrNull?.id ?? '';
+  List<ProductCategory> get _categories =>
+      ref.watch(productCategoriesProvider).valueOrNull ?? [];
+  String get _merchantId =>
+      ref.watch(currentMerchantProvider).valueOrNull?.id ?? '';
   int _step = 0; // 0: sablon indir, 1: excel yukle, 2: onizleme, 3: sonuc
   List<StoreProduct> _parsedProducts = [];
   Map<String, List<StoreProduct>> _groupedProducts = {};
@@ -1665,7 +1783,9 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
       final exampleRow = [
         exc.TextCellValue('Ornek Urun'),
         exc.DoubleCellValue(29.90),
-        exc.TextCellValue(_categories.isNotEmpty ? _categories.first.name : 'Icecekler'),
+        exc.TextCellValue(
+          _categories.isNotEmpty ? _categories.first.name : 'Icecekler',
+        ),
         exc.TextCellValue('Urun aciklamasi'),
         exc.TextCellValue('SKU001'),
         exc.TextCellValue('8691234567890'),
@@ -1689,20 +1809,29 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
       // Header satiri
       sheet.appendRow(headers);
       for (int col = 0; col < headers.length; col++) {
-        sheet.cell(exc.CellIndex.indexByColumnRow(columnIndex: col, rowIndex: 0)).cellStyle = headerStyle;
+        sheet
+            .cell(exc.CellIndex.indexByColumnRow(columnIndex: col, rowIndex: 0))
+            .cellStyle = headerStyle;
       }
 
       // Ornek satiri
       sheet.appendRow(exampleRow);
       for (int col = 0; col < exampleRow.length; col++) {
-        sheet.cell(exc.CellIndex.indexByColumnRow(columnIndex: col, rowIndex: 1)).cellStyle = exampleStyle;
+        sheet
+            .cell(exc.CellIndex.indexByColumnRow(columnIndex: col, rowIndex: 1))
+            .cellStyle = exampleStyle;
       }
 
       // Kategori ipucu satiri (3. satir)
-      final hintRow = List<exc.CellValue>.generate(headers.length, (_) => exc.TextCellValue(''));
+      final hintRow = List<exc.CellValue>.generate(
+        headers.length,
+        (_) => exc.TextCellValue(''),
+      );
       hintRow[2] = exc.TextCellValue('Kategoriler: $categoryNames');
       sheet.appendRow(hintRow);
-      sheet.cell(exc.CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: 2)).cellStyle = categoryHintStyle;
+      sheet
+          .cell(exc.CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: 2))
+          .cellStyle = categoryHintStyle;
 
       // Varsayilan Sheet1 sil
       excel.delete('Sheet1');
@@ -1769,7 +1898,8 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
 
       if (isCsv) {
         final csvStr = String.fromCharCodes(bytes);
-        final lines = csvStr.split('\n').where((l) => l.trim().isNotEmpty).toList();
+        final lines =
+            csvStr.split('\n').where((l) => l.trim().isNotEmpty).toList();
         for (final line in lines) {
           dataRows.add(line.split(';').map((c) => c.trim()).toList());
         }
@@ -1779,7 +1909,8 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
           excel = exc.Excel.decodeBytes(bytes);
         } catch (e) {
           setState(() {
-            _errorMessage = 'Excel okunamadi: ${e.toString().length > 100 ? e.toString().substring(0, 100) : e}';
+            _errorMessage =
+                'Excel okunamadi: ${e.toString().length > 100 ? e.toString().substring(0, 100) : e}';
             _isLoading = false;
           });
           return;
@@ -1791,7 +1922,9 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
           final sheet = excel.tables[sheetName];
           if (sheet == null || sheet.rows.length < 2) continue;
           for (final row in sheet.rows) {
-            dataRows.add(row.map((c) => c?.value?.toString().trim() ?? '').toList());
+            dataRows.add(
+              row.map((c) => c?.value?.toString().trim() ?? '').toList(),
+            );
           }
           break; // Sadece ilk veri sayfasi
         }
@@ -1819,7 +1952,11 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
 
       // Kolon tespiti
       int colName = 0, colPrice = -1, colCategory = -1, colDescription = -1;
-      int colSku = -1, colBarcode = -1, colStock = -1, colUnit = -1, colBrand = -1;
+      int colSku = -1,
+          colBarcode = -1,
+          colStock = -1,
+          colUnit = -1,
+          colBrand = -1;
       int dataStartRow = 1;
 
       final headerRow = dataRows[0];
@@ -1829,26 +1966,50 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
       final h1 = headerRow.length > 1 ? headerRow[1].toLowerCase() : '';
       if (h0.contains('urun') && h1.contains('fiyat')) {
         // Sablon formati: Urun Adi, Fiyat, Kategori, Aciklama, SKU, Barkod, Stok, Birim, Marka
-        colName = 0; colPrice = 1; colCategory = 2; colDescription = 3;
-        colSku = 4; colBarcode = 5; colStock = 6; colUnit = 7; colBrand = 8;
+        colName = 0;
+        colPrice = 1;
+        colCategory = 2;
+        colDescription = 3;
+        colSku = 4;
+        colBarcode = 5;
+        colStock = 6;
+        colUnit = 7;
+        colBrand = 8;
         dataStartRow = 2; // baslik + ornek satiri atla
       } else {
         // 2) Akilli kolon tespiti
         for (int c = 0; c < headerRow.length; c++) {
-          final h = headerRow[c].toLowerCase().replaceAll(RegExp('[^a-z0-9]'), '');
-          if (h.contains('urun') || h.contains('isim') || h == 'ad' || h == 'adi' || h.contains('name')) {
-            if (colName == 0 && c > 0) colName = c; // sadece ilk eslesen (varsayilan 0 degilse)
-          } else if (h.contains('fiyat') || h.contains('price') || h.contains('tutar')) {
+          final h = headerRow[c].toLowerCase().replaceAll(
+            RegExp('[^a-z0-9]'),
+            '',
+          );
+          if (h.contains('urun') ||
+              h.contains('isim') ||
+              h == 'ad' ||
+              h == 'adi' ||
+              h.contains('name')) {
+            if (colName == 0 && c > 0) {
+              colName = c; // sadece ilk eslesen (varsayilan 0 degilse)
+            }
+          } else if (h.contains('fiyat') ||
+              h.contains('price') ||
+              h.contains('tutar')) {
             colPrice = c;
-          } else if (h.contains('kategori') || h.contains('category') || h.contains('grup')) {
+          } else if (h.contains('kategori') ||
+              h.contains('category') ||
+              h.contains('grup')) {
             colCategory = c;
           } else if (h.contains('aciklama') || h.contains('desc')) {
             colDescription = c;
           } else if (h == 'sku' || h.contains('urunkod')) {
             colSku = c;
-          } else if (h.contains('barkod') || h.contains('barcode') || h.contains('ean')) {
+          } else if (h.contains('barkod') ||
+              h.contains('barcode') ||
+              h.contains('ean')) {
             colBarcode = c;
-          } else if (h.contains('stok') || h.contains('miktar') || h.contains('stock')) {
+          } else if (h.contains('stok') ||
+              h.contains('miktar') ||
+              h.contains('stock')) {
             colStock = c;
           } else if (h.contains('birim') || h.contains('unit')) {
             colUnit = c;
@@ -1858,30 +2019,38 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
         }
         // 2. satir ornek ise atla
         if (dataRows.length > 1) {
-          final firstVal = dataRows[1].isNotEmpty ? dataRows[1][0].toLowerCase().trim() : '';
-          if (firstVal == 'ornek urun' || firstVal == 'ornek' || firstVal.isEmpty) {
+          final firstVal =
+              dataRows[1].isNotEmpty ? dataRows[1][0].toLowerCase().trim() : '';
+          if (firstVal == 'ornek urun' ||
+              firstVal == 'ornek' ||
+              firstVal.isEmpty) {
             dataStartRow = 2;
           }
         }
       }
 
-
       for (int i = dataStartRow; i < dataRows.length; i++) {
         final row = dataRows[i];
         if (row.isEmpty || row.every((c) => c.isEmpty)) continue;
 
-        String col(int idx) => (idx >= 0 && idx < row.length) ? row[idx].trim() : '';
+        String col(int idx) =>
+            (idx >= 0 && idx < row.length) ? row[idx].trim() : '';
 
         final name = col(colName);
         final priceStr = col(colPrice);
-        final price = priceStr.isNotEmpty ? (double.tryParse(priceStr.replaceAll(',', '.')) ?? 0.0) : 0.0;
+        final price =
+            priceStr.isNotEmpty
+                ? (double.tryParse(priceStr.replaceAll(',', '.')) ?? 0.0)
+                : 0.0;
 
         // Ornek/ipucu satirini atla
         if (name.toLowerCase() == 'ornek urun') continue;
         if (name.isEmpty) continue;
 
-        final categoryStr = col(colCategory).isNotEmpty ? col(colCategory) : null;
-        final description = col(colDescription).isNotEmpty ? col(colDescription) : null;
+        final categoryStr =
+            col(colCategory).isNotEmpty ? col(colCategory) : null;
+        final description =
+            col(colDescription).isNotEmpty ? col(colDescription) : null;
         final sku = col(colSku).isNotEmpty ? col(colSku) : null;
         final barcode = col(colBarcode).isNotEmpty ? col(colBarcode) : null;
         final stockStr = col(colStock);
@@ -1909,12 +2078,18 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
           storeId: _merchantId,
           categoryId: categoryId,
           name: name,
-          description: (description != null && description.isNotEmpty) ? description : null,
+          description:
+              (description != null && description.isNotEmpty)
+                  ? description
+                  : null,
           price: price,
           stock: stock,
           sku: (sku != null && sku.isNotEmpty) ? sku : null,
           barcode: (barcode != null && barcode.isNotEmpty) ? barcode : null,
-          unitType: (unitStr != null && unitStr.isNotEmpty) ? UnitTypeExtension.fromString(unitStr) : UnitType.adet,
+          unitType:
+              (unitStr != null && unitStr.isNotEmpty)
+                  ? UnitTypeExtension.fromString(unitStr)
+                  : UnitType.adet,
           brand: (brand != null && brand.isNotEmpty) ? brand : null,
           createdAt: DateTime.now(),
         );
@@ -1925,7 +2100,8 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
 
       if (allProducts.isEmpty) {
         setState(() {
-          _errorMessage = 'Dosyada gecerli urun bulunamadi${errorCount > 0 ? ' ($errorCount satir hatali)' : ''}';
+          _errorMessage =
+              'Dosyada gecerli urun bulunamadi${errorCount > 0 ? ' ($errorCount satir hatali)' : ''}';
           _isLoading = false;
         });
         return;
@@ -1962,22 +2138,30 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
       }
 
       // Hala kategorisiz urunler varsa AI ile kategorize et (batch: 50'ser)
-      final uncategorized = allProducts.where((p) => p.categoryId == null).toList();
+      final uncategorized =
+          allProducts.where((p) => p.categoryId == null).toList();
       if (uncategorized.isNotEmpty && _categories.isNotEmpty) {
         try {
           final supabase = Supabase.instance.client;
-          final categoryList = _categories.map((c) => {'id': c.id, 'name': c.name}).toList();
+          final categoryList =
+              _categories.map((c) => {'id': c.id, 'name': c.name}).toList();
           // Batch: max 50 urun per call
           for (int b = 0; b < uncategorized.length; b += 50) {
             final batch = uncategorized.skip(b).take(50).toList();
-            final productNames = batch.map((p) => {'id': p.id, 'name': p.name, 'brand': p.brand}).toList();
+            final productNames =
+                batch
+                    .map((p) => {'id': p.id, 'name': p.name, 'brand': p.brand})
+                    .toList();
             try {
               final response = await supabase.functions.invoke(
                 'ai-categorize-products',
                 body: {'products': productNames, 'categories': categoryList},
               );
               if (response.status == 200 && response.data != null) {
-                final assignments = (response.data['assignments'] as Map?)?.cast<String, dynamic>() ?? {};
+                final assignments =
+                    (response.data['assignments'] as Map?)
+                        ?.cast<String, dynamic>() ??
+                    {};
                 for (final entry in assignments.entries) {
                   final productId = entry.key;
                   final catId = entry.value as String;
@@ -1988,10 +2172,21 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
                       orElse: () => 'Kategorisiz',
                     );
                     grouped[oldLabel]?.removeWhere((p) => p.id == productId);
-                    if (grouped[oldLabel]?.isEmpty ?? false) grouped.remove(oldLabel);
-                    final catName = _categories.where((c) => c.id == catId).firstOrNull?.name ?? 'Kategorisiz';
-                    allProducts[idx] = allProducts[idx].copyWith(categoryId: catId);
-                    grouped.putIfAbsent(catName, () => []).add(allProducts[idx]);
+                    if (grouped[oldLabel]?.isEmpty ?? false) {
+                      grouped.remove(oldLabel);
+                    }
+                    final catName =
+                        _categories
+                            .where((c) => c.id == catId)
+                            .firstOrNull
+                            ?.name ??
+                        'Kategorisiz';
+                    allProducts[idx] = allProducts[idx].copyWith(
+                      categoryId: catId,
+                    );
+                    grouped
+                        .putIfAbsent(catName, () => [])
+                        .add(allProducts[idx]);
                   }
                 }
               }
@@ -2005,7 +2200,8 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
       setState(() {
         _parsedProducts = allProducts;
         _groupedProducts = grouped;
-        _errorMessage = errorCount > 0 ? '$errorCount satir hatali (atlandilar)' : null;
+        _errorMessage =
+            errorCount > 0 ? '$errorCount satir hatali (atlandilar)' : null;
         _step = 2;
         _isLoading = false;
       });
@@ -2025,7 +2221,10 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
       setState(() {
         _isUploading = false;
         _uploadedCount = count;
-        _imagesTotal = _parsedProducts.where((p) => p.imageUrl == null || p.imageUrl!.isEmpty).length;
+        _imagesTotal =
+            _parsedProducts
+                .where((p) => p.imageUrl == null || p.imageUrl!.isEmpty)
+                .length;
         _step = 3;
       });
     }
@@ -2040,17 +2239,19 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
     });
 
     final productIds = _parsedProducts.map((p) => p.id).toList();
-    final found = await ref.read(storeProductsProvider.notifier).autoFetchProductImages(
-      productIds: productIds,
-      onProgress: (found, total) {
-        if (mounted) {
-          setState(() {
-            _imagesFound = found;
-            _imagesTotal = total;
-          });
-        }
-      },
-    );
+    final found = await ref
+        .read(storeProductsProvider.notifier)
+        .autoFetchProductImages(
+          productIds: productIds,
+          onProgress: (found, total) {
+            if (mounted) {
+              setState(() {
+                _imagesFound = found;
+                _imagesTotal = total;
+              });
+            }
+          },
+        );
 
     if (mounted) {
       setState(() {
@@ -2079,7 +2280,10 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
               children: [
                 const Icon(Icons.upload_file, size: 28),
                 const SizedBox(width: 12),
-                Text('Toplu Urun Yukleme', style: Theme.of(context).textTheme.titleLarge),
+                Text(
+                  'Toplu Urun Yukleme',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
                 const Spacer(),
                 // Adim gostergesi
                 _buildStepIndicator(),
@@ -2099,9 +2303,13 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
                 padding: const EdgeInsets.all(12),
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
-                  color: (_step == 2 ? AppColors.warning : AppColors.error).withAlpha(25),
+                  color: (_step == 2 ? AppColors.warning : AppColors.error)
+                      .withAlpha(25),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: (_step == 2 ? AppColors.warning : AppColors.error).withAlpha(60)),
+                  border: Border.all(
+                    color: (_step == 2 ? AppColors.warning : AppColors.error)
+                        .withAlpha(60),
+                  ),
                 ),
                 child: Row(
                   children: [
@@ -2115,7 +2323,8 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
                       child: Text(
                         _errorMessage!,
                         style: TextStyle(
-                          color: _step == 2 ? AppColors.warning : AppColors.error,
+                          color:
+                              _step == 2 ? AppColors.warning : AppColors.error,
                           fontSize: 13,
                         ),
                       ),
@@ -2143,26 +2352,35 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
       mainAxisSize: MainAxisSize.min,
       children: [
         for (int i = 0; i < 4; i++) ...[
-          if (i > 0) Container(width: 20, height: 2, color: i <= _step ? AppColors.primary : AppColors.border),
+          if (i > 0)
+            Container(
+              width: 20,
+              height: 2,
+              color: i <= _step ? AppColors.primary : AppColors.border,
+            ),
           Container(
             width: 24,
             height: 24,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: i <= _step ? AppColors.primary : AppColors.background,
-              border: Border.all(color: i <= _step ? AppColors.primary : AppColors.border),
+              border: Border.all(
+                color: i <= _step ? AppColors.primary : AppColors.border,
+              ),
             ),
             child: Center(
-              child: i < _step
-                  ? const Icon(Icons.check, size: 14, color: Colors.white)
-                  : Text(
-                      '${i + 1}',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: i <= _step ? Colors.white : AppColors.textMuted,
+              child:
+                  i < _step
+                      ? const Icon(Icons.check, size: 14, color: Colors.white)
+                      : Text(
+                        '${i + 1}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color:
+                              i <= _step ? Colors.white : AppColors.textMuted,
+                        ),
                       ),
-                    ),
             ),
           ),
         ],
@@ -2200,28 +2418,53 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
           ),
           child: Column(
             children: [
-              Icon(Icons.description_outlined, size: 48, color: AppColors.primary),
+              Icon(
+                Icons.description_outlined,
+                size: 48,
+                color: AppColors.primary,
+              ),
               const SizedBox(height: 12),
               Text(
                 'Excel Sablonunu Indirin',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
                 'Sablonda mevcut kategorileriniz icin ayri sayfalar bulunur.\n'
                 'Her sayfaya ilgili kategorinin urunlerini yazin.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.5),
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 13,
+                  height: 1.5,
+                ),
               ),
               const SizedBox(height: 16),
               ElevatedButton.icon(
                 onPressed: _isLoading ? null : _downloadTemplate,
-                icon: _isLoading
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.download, size: 20),
-                label: Text(_isLoading ? 'Hazirlaniyor...' : 'Sablon Indir (.xlsx)'),
+                icon:
+                    _isLoading
+                        ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                        : const Icon(Icons.download, size: 20),
+                label: Text(
+                  _isLoading ? 'Hazirlaniyor...' : 'Sablon Indir (.xlsx)',
+                ),
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 14,
+                  ),
                 ),
               ),
             ],
@@ -2229,7 +2472,14 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
         ),
         const SizedBox(height: 16),
         // Kategori listesi
-        Text('Mevcut Kategoriler:', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary, fontSize: 13)),
+        Text(
+          'Mevcut Kategoriler:',
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+            fontSize: 13,
+          ),
+        ),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
@@ -2279,16 +2529,27 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
                 if (_isLoading)
                   const CircularProgressIndicator()
                 else ...[
-                  Icon(Icons.cloud_upload_outlined, size: 56, color: AppColors.primary.withAlpha(180)),
+                  Icon(
+                    Icons.cloud_upload_outlined,
+                    size: 56,
+                    color: AppColors.primary.withAlpha(180),
+                  ),
                   const SizedBox(height: 12),
                   Text(
                     'Excel Dosyasi Sec',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     'Doldurdugunuz .xlsx dosyasini secin',
-                    style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                    ),
                   ),
                 ],
               ],
@@ -2301,7 +2562,10 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
             children: [
               Icon(Icons.insert_drive_file, size: 18, color: AppColors.primary),
               const SizedBox(width: 8),
-              Text(_fileName!, style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+              Text(
+                _fileName!,
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+              ),
             ],
           ),
         ],
@@ -2317,9 +2581,20 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
             children: [
               Row(
                 children: [
-                  Icon(Icons.lightbulb_outline, size: 18, color: AppColors.warning),
+                  Icon(
+                    Icons.lightbulb_outline,
+                    size: 18,
+                    color: AppColors.warning,
+                  ),
                   const SizedBox(width: 8),
-                  Text('Ipuclari', style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary, fontSize: 13)),
+                  Text(
+                    'Ipuclari',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 8),
@@ -2341,8 +2616,16 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('  •  ', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
-          Expanded(child: Text(text, style: TextStyle(color: AppColors.textSecondary, fontSize: 12))),
+          Text(
+            '  •  ',
+            style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+          ),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+            ),
+          ),
         ],
       ),
     );
@@ -2364,7 +2647,11 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
               ),
               child: Text(
                 '${_parsedProducts.length} urun hazir',
-                style: TextStyle(color: AppColors.success, fontWeight: FontWeight.w600, fontSize: 13),
+                style: TextStyle(
+                  color: AppColors.success,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
               ),
             ),
             const SizedBox(width: 8),
@@ -2374,9 +2661,16 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
             ),
             if (_fileName != null) ...[
               const Spacer(),
-              Icon(Icons.insert_drive_file, size: 16, color: AppColors.textMuted),
+              Icon(
+                Icons.insert_drive_file,
+                size: 16,
+                color: AppColors.textMuted,
+              ),
               const SizedBox(width: 4),
-              Text(_fileName!, style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+              Text(
+                _fileName!,
+                style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+              ),
             ],
           ],
         ),
@@ -2401,7 +2695,10 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
                     // Kategori basligi
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.primary.withAlpha(15),
                         borderRadius: const BorderRadius.only(
@@ -2411,22 +2708,37 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.folder_outlined, size: 18, color: AppColors.primary),
+                          Icon(
+                            Icons.folder_outlined,
+                            size: 18,
+                            color: AppColors.primary,
+                          ),
                           const SizedBox(width: 8),
                           Text(
                             categoryName,
-                            style: TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary, fontSize: 13),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                              fontSize: 13,
+                            ),
                           ),
                           const Spacer(),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: AppColors.primary.withAlpha(25),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
                               '${products.length} urun',
-                              style: TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w500),
+                              style: TextStyle(
+                                color: AppColors.primary,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
                         ],
@@ -2435,9 +2747,19 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
                     // Urun satirlari
                     for (int i = 0; i < products.length; i++)
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
                         decoration: BoxDecoration(
-                          border: i < products.length - 1 ? Border(bottom: BorderSide(color: AppColors.border.withAlpha(80))) : null,
+                          border:
+                              i < products.length - 1
+                                  ? Border(
+                                    bottom: BorderSide(
+                                      color: AppColors.border.withAlpha(80),
+                                    ),
+                                  )
+                                  : null,
                         ),
                         child: Row(
                           children: [
@@ -2445,7 +2767,10 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
                               flex: 3,
                               child: Text(
                                 products[i].name,
-                                style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
+                                style: TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontSize: 13,
+                                ),
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
@@ -2453,7 +2778,10 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
                               flex: 1,
                               child: Text(
                                 '${products[i].price.toStringAsFixed(2)} TL',
-                                style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 12,
+                                ),
                                 textAlign: TextAlign.right,
                               ),
                             ),
@@ -2462,7 +2790,10 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
                               width: 60,
                               child: Text(
                                 'Stok: ${products[i].stock}',
-                                style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+                                style: TextStyle(
+                                  color: AppColors.textMuted,
+                                  fontSize: 11,
+                                ),
                                 textAlign: TextAlign.right,
                               ),
                             ),
@@ -2499,7 +2830,11 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
               const SizedBox(height: 12),
               Text(
                 '$_uploadedCount urun basariyla yuklendi!',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
               ),
             ],
           ),
@@ -2522,13 +2857,21 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
                 const SizedBox(height: 12),
                 Text(
                   'Urun Resimlerini Otomatik Bul',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   'Urun adi ve barkoduna gore Open Food Facts veritabanindan\notomatik resim aranir. $_imagesTotal resimsiz urun var.',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 12, height: 1.4),
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                    height: 1.4,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
@@ -2536,7 +2879,10 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
                   icon: const Icon(Icons.auto_awesome, size: 18),
                   label: const Text('Resimleri Otomatik Bul'),
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
                   ),
                 ),
               ],
@@ -2564,12 +2910,19 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
                 const SizedBox(height: 16),
                 Text(
                   'Resimler araniyor...',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   '$_imagesFound / $_imagesTotal urun icin resim bulundu',
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 if (_imagesTotal > 0)
@@ -2589,30 +2942,46 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
             width: double.infinity,
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: (_imagesFound > 0 ? AppColors.success : AppColors.warning).withAlpha(10),
+              color: (_imagesFound > 0 ? AppColors.success : AppColors.warning)
+                  .withAlpha(10),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: (_imagesFound > 0 ? AppColors.success : AppColors.warning).withAlpha(30)),
+              border: Border.all(
+                color: (_imagesFound > 0
+                        ? AppColors.success
+                        : AppColors.warning)
+                    .withAlpha(30),
+              ),
             ),
             child: Column(
               children: [
                 Icon(
-                  _imagesFound > 0 ? Icons.image : Icons.image_not_supported_outlined,
+                  _imagesFound > 0
+                      ? Icons.image
+                      : Icons.image_not_supported_outlined,
                   size: 40,
-                  color: _imagesFound > 0 ? AppColors.success : AppColors.warning,
+                  color:
+                      _imagesFound > 0 ? AppColors.success : AppColors.warning,
                 ),
                 const SizedBox(height: 12),
                 Text(
                   _imagesFound > 0
                       ? '$_imagesFound / $_imagesTotal urun icin resim bulundu!'
                       : 'Maalesef resim bulunamadi',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
                 if (_imagesFound < _imagesTotal && _imagesFound > 0) ...[
                   const SizedBox(height: 4),
                   Text(
                     'Bulunamayan resimler icin urun duzenleme ekranindan manuel ekleyebilirsiniz.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ],
@@ -2630,13 +2999,14 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
         // Sol: Geri
         if (_step > 0 && _step < 3)
           TextButton.icon(
-            onPressed: () => setState(() {
-              _step = _step - 1;
-              if (_step < 2) {
-                _parsedProducts = [];
-                _groupedProducts = {};
-              }
-            }),
+            onPressed:
+                () => setState(() {
+                  _step = _step - 1;
+                  if (_step < 2) {
+                    _parsedProducts = [];
+                    _groupedProducts = {};
+                  }
+                }),
             icon: const Icon(Icons.arrow_back, size: 18),
             label: const Text('Geri'),
           )
@@ -2667,10 +3037,22 @@ class _ImportDialogState extends ConsumerState<_ImportDialog> {
             if (_step == 2)
               ElevatedButton.icon(
                 onPressed: _isUploading ? null : _doImport,
-                icon: _isUploading
-                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.check, size: 18),
-                label: Text(_isUploading ? 'Yukleniyor...' : '${_parsedProducts.length} Urun Yukle'),
+                icon:
+                    _isUploading
+                        ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                        : const Icon(Icons.check, size: 18),
+                label: Text(
+                  _isUploading
+                      ? 'Yukleniyor...'
+                      : '${_parsedProducts.length} Urun Yukle',
+                ),
               ),
             if (_step == 3 && !_isFetchingImages)
               ElevatedButton.icon(
@@ -2690,10 +3072,7 @@ class _AutoImageDialog extends StatefulWidget {
   final int totalProducts;
   final Future<int> Function() onStart;
 
-  const _AutoImageDialog({
-    required this.totalProducts,
-    required this.onStart,
-  });
+  const _AutoImageDialog({required this.totalProducts, required this.onStart});
 
   @override
   State<_AutoImageDialog> createState() => _AutoImageDialogState();
@@ -2730,11 +3109,19 @@ class _AutoImageDialogState extends State<_AutoImageDialog> {
             // Header
             Row(
               children: [
-                const Icon(Icons.image_search, color: AppColors.primary, size: 24),
+                const Icon(
+                  Icons.image_search,
+                  color: AppColors.primary,
+                  size: 24,
+                ),
                 const SizedBox(width: 12),
                 const Text(
                   'Otomatik Resim Bul',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
                 const Spacer(),
                 IconButton(
@@ -2755,17 +3142,28 @@ class _AutoImageDialogState extends State<_AutoImageDialog> {
                 ),
                 child: Column(
                   children: [
-                    Icon(Icons.info_outline, color: AppColors.primary, size: 32),
+                    Icon(
+                      Icons.info_outline,
+                      color: AppColors.primary,
+                      size: 32,
+                    ),
                     const SizedBox(height: 8),
                     Text(
                       '${widget.totalProducts} urun resimsiz',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     const Text(
                       'Barkod ve isim ile otomatik resim aranacak.\nPaylasilan havuz ve Open Food Facts kullanilir.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                      ),
                     ),
                   ],
                 ),
@@ -2801,13 +3199,18 @@ class _AutoImageDialogState extends State<_AutoImageDialog> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: _found > 0 ? AppColors.success.withAlpha(20) : AppColors.warning.withAlpha(20),
+                  color:
+                      _found > 0
+                          ? AppColors.success.withAlpha(20)
+                          : AppColors.warning.withAlpha(20),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Column(
                   children: [
                     Icon(
-                      _found > 0 ? Icons.check_circle : Icons.image_not_supported,
+                      _found > 0
+                          ? Icons.check_circle
+                          : Icons.image_not_supported,
                       color: _found > 0 ? AppColors.success : AppColors.warning,
                       size: 40,
                     ),
@@ -2819,7 +3222,8 @@ class _AutoImageDialogState extends State<_AutoImageDialog> {
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        color: _found > 0 ? AppColors.success : AppColors.warning,
+                        color:
+                            _found > 0 ? AppColors.success : AppColors.warning,
                       ),
                     ),
                   ],

@@ -14,6 +14,8 @@ import '../../screens/reviews/reviews_screen.dart';
 import '../../screens/profile/profile_screen.dart';
 import '../../screens/settings/settings_screen.dart';
 import '../../screens/chat/chat_screen.dart';
+import '../../screens/promotions/promotions_screen.dart';
+import '../../screens/banner_ads/banner_ads_screen.dart';
 import '../../shared/widgets/dealer_shell.dart';
 
 /// Route sabitleri
@@ -29,6 +31,7 @@ class AppRoutes {
   static const String reviews = '/reviews';
   static const String profile = '/profile';
   static const String settings = '/settings';
+  static const String promotions = '/promotions';
 }
 
 /// Auth state notifier for router refresh
@@ -89,10 +92,7 @@ final appRouter = GoRouter(
     ),
 
     // Eski /panel route'u için redirect
-    GoRoute(
-      path: '/panel',
-      redirect: (_, __) => '/dashboard',
-    ),
+    GoRoute(path: '/panel', redirect: (_, _) => '/dashboard'),
 
     // ==================== SHELL ROUTES (Sidebar + Topbar) ====================
     ShellRoute(
@@ -171,6 +171,20 @@ final appRouter = GoRouter(
           path: '/profile',
           name: 'profile',
           builder: (context, state) => const ProfileScreen(),
+        ),
+
+        // Öne Çıkarma
+        GoRoute(
+          path: '/promotions',
+          name: 'promotions',
+          builder: (context, state) => const PromotionsScreen(),
+        ),
+
+        // Banner Reklamları
+        GoRoute(
+          path: '/banner-ads',
+          name: 'banner-ads',
+          builder: (context, state) => const BannerAdsScreen(),
         ),
 
         // Ayarlar

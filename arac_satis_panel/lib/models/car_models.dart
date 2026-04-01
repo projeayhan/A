@@ -1,4 +1,5 @@
 /// Araç Satış Modeli Tanımlamaları
+library;
 
 import 'dart:ui';
 
@@ -190,19 +191,35 @@ class CarSalesColors {
   static const Color dividerDark = Color(0xFF334155);
 
   // Helper Methods
-  static Color background(bool isDark) => isDark ? backgroundDark : backgroundLight;
+  static Color background(bool isDark) =>
+      isDark ? backgroundDark : backgroundLight;
   static Color surface(bool isDark) => isDark ? surfaceDark : surfaceLight;
   static Color card(bool isDark) => isDark ? cardDark : cardLight;
-  static Color textPrimary(bool isDark) => isDark ? textPrimaryDark : textPrimaryLight;
-  static Color textSecondary(bool isDark) => isDark ? textSecondaryDark : textSecondaryLight;
-  static Color textTertiary(bool isDark) => isDark ? textTertiaryDark : textTertiaryLight;
+  static Color textPrimary(bool isDark) =>
+      isDark ? textPrimaryDark : textPrimaryLight;
+  static Color textSecondary(bool isDark) =>
+      isDark ? textSecondaryDark : textSecondaryLight;
+  static Color textTertiary(bool isDark) =>
+      isDark ? textTertiaryDark : textTertiaryLight;
   static Color border(bool isDark) => isDark ? borderDark : borderLight;
 
   // Gradients
-  static const List<Color> primaryGradient = [Color(0xFF1E40AF), Color(0xFF3B82F6)];
-  static const List<Color> premiumGradient = [Color(0xFF0F172A), Color(0xFF1E293B)];
-  static const List<Color> goldGradient = [Color(0xFFF59E0B), Color(0xFFD97706)];
-  static const List<Color> sportGradient = [Color(0xFFDC2626), Color(0xFFF97316)];
+  static const List<Color> primaryGradient = [
+    Color(0xFF1E40AF),
+    Color(0xFF3B82F6),
+  ];
+  static const List<Color> premiumGradient = [
+    Color(0xFF0F172A),
+    Color(0xFF1E293B),
+  ];
+  static const List<Color> goldGradient = [
+    Color(0xFFF59E0B),
+    Color(0xFFD97706),
+  ];
+  static const List<Color> sportGradient = [
+    Color(0xFFDC2626),
+    Color(0xFFF97316),
+  ];
 }
 
 // ==================== MODEL SINIFLARI ====================
@@ -371,7 +388,9 @@ class CarDealer {
     return CarDealer(
       id: json['id'] as String,
       userId: json['user_id'] as String,
-      dealerType: DealerType.fromString(json['dealer_type'] as String?) ?? DealerType.individual,
+      dealerType:
+          DealerType.fromString(json['dealer_type'] as String?) ??
+          DealerType.individual,
       businessName: json['business_name'] as String?,
       ownerName: json['owner_name'] as String,
       phone: json['phone'] as String,
@@ -573,16 +592,26 @@ class CarListing {
       brandName: json['brand_name'] as String,
       modelName: json['model_name'] as String,
       year: json['year'] as int,
-      bodyType: CarBodyType.fromString(json['body_type'] as String?) ?? CarBodyType.sedan,
-      fuelType: CarFuelType.fromString(json['fuel_type'] as String?) ?? CarFuelType.petrol,
-      transmission: CarTransmission.fromString(json['transmission'] as String?) ?? CarTransmission.manual,
-      traction: CarTraction.fromString(json['traction'] as String?) ?? CarTraction.fwd,
+      bodyType:
+          CarBodyType.fromString(json['body_type'] as String?) ??
+          CarBodyType.sedan,
+      fuelType:
+          CarFuelType.fromString(json['fuel_type'] as String?) ??
+          CarFuelType.petrol,
+      transmission:
+          CarTransmission.fromString(json['transmission'] as String?) ??
+          CarTransmission.manual,
+      traction:
+          CarTraction.fromString(json['traction'] as String?) ??
+          CarTraction.fwd,
       engineCc: json['engine_cc'] as int?,
       horsepower: json['horsepower'] as int?,
       mileage: json['mileage'] as int,
       exteriorColor: json['exterior_color'] as String?,
       interiorColor: json['interior_color'] as String?,
-      condition: CarCondition.fromString(json['condition'] as String?) ?? CarCondition.good,
+      condition:
+          CarCondition.fromString(json['condition'] as String?) ??
+          CarCondition.good,
       previousOwners: json['previous_owners'] as int? ?? 1,
       hasOriginalPaint: json['has_original_paint'] as bool? ?? true,
       hasAccidentHistory: json['has_accident_history'] as bool? ?? false,
@@ -601,7 +630,9 @@ class CarListing {
       location: json['location'] as String?,
       city: json['city'] as String?,
       district: json['district'] as String?,
-      status: CarListingStatus.fromString(json['status'] as String?) ?? CarListingStatus.pending,
+      status:
+          CarListingStatus.fromString(json['status'] as String?) ??
+          CarListingStatus.pending,
       rejectionReason: json['rejection_reason'] as String?,
       isFeatured: json['is_featured'] as bool? ?? false,
       isPremium: json['is_premium'] as bool? ?? false,
@@ -712,10 +743,12 @@ class CarListing {
 
   /// Formatlı fiyat
   String get formattedPrice {
-    final formatted = price.toStringAsFixed(0).replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]}.',
-    );
+    final formatted = price
+        .toStringAsFixed(0)
+        .replaceAllMapped(
+          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+          (Match m) => '${m[1]}.',
+        );
     return '$formatted TL';
   }
 
@@ -895,7 +928,9 @@ class PromotionPrice {
       promotionType: json['promotion_type'] as String,
       durationDays: json['duration_days'] as int,
       price: parsePrice(json['price']),
-      discountedPrice: json['discounted_price'] != null ? parsePrice(json['discounted_price']) : null,
+      discountedPrice: json['discounted_price'] != null
+          ? parsePrice(json['discounted_price'])
+          : null,
       description: json['description'] as String?,
       benefits: (json['benefits'] as List?)?.cast<String>() ?? [],
       isActive: json['is_active'] as bool? ?? true,
@@ -905,13 +940,16 @@ class PromotionPrice {
 
   double get effectivePrice => discountedPrice ?? price;
 
-  bool get isFeatured => promotionType == 'featured' || promotionType == 'premium';
+  bool get isFeatured =>
+      promotionType == 'featured' || promotionType == 'premium';
 
   String get formattedPrice {
-    final formatted = effectivePrice.toStringAsFixed(0).replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]}.',
-    );
+    final formatted = effectivePrice
+        .toStringAsFixed(0)
+        .replaceAllMapped(
+          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+          (Match m) => '${m[1]}.',
+        );
     return '$formatted TL';
   }
 
@@ -980,8 +1018,12 @@ class CarListingPromotion {
       userId: json['user_id'] as String,
       promotionType: json['promotion_type'] as String,
       durationDays: json['duration_days'] as int,
-      startedAt: DateTime.parse(json['started_at'] as String),
-      expiresAt: DateTime.parse(json['expires_at'] as String),
+      startedAt: json['started_at'] != null
+          ? DateTime.parse(json['started_at'] as String)
+          : DateTime.parse(json['created_at'] as String),
+      expiresAt: json['expires_at'] != null
+          ? DateTime.parse(json['expires_at'] as String)
+          : DateTime.parse(json['created_at'] as String),
       amountPaid: (json['amount_paid'] as num?)?.toDouble(),
       currency: json['currency'] as String?,
       paymentMethod: json['payment_method'] as String?,
@@ -1007,7 +1049,8 @@ class CarListingPromotion {
 
   bool get isActive => status == 'active' && expiresAt.isAfter(DateTime.now());
 
-  bool get isFeatured => promotionType == 'featured' || promotionType == 'premium';
+  bool get isFeatured =>
+      promotionType == 'featured' || promotionType == 'premium';
 
   DateTime get endDate => expiresAt;
 

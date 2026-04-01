@@ -40,7 +40,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _vehiclePlateController = TextEditingController();
   final _vehicleColorController = TextEditingController();
   final _vehicleYearController = TextEditingController();
-  Set<String> _selectedVehicleTypes = {'standard'};
+  final Set<String> _selectedVehicleTypes = {'standard'};
 
   bool _obscurePassword = true;
   bool _isLoading = false;
@@ -98,10 +98,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   void _nextPage() {
     if (_currentPage == 0) {
       // OTP modunda e-posta ve şifre gerekmez
-      final requiredEmpty = _fullNameController.text.isEmpty ||
+      final requiredEmpty =
+          _fullNameController.text.isEmpty ||
           _phoneController.text.isEmpty ||
           _tcNoController.text.isEmpty;
-      final directFieldsEmpty = !_isOtpRegistration &&
+      final directFieldsEmpty =
+          !_isOtpRegistration &&
           (_emailController.text.isEmpty || _passwordController.text.isEmpty);
 
       if (requiredEmpty || directFieldsEmpty) {
@@ -133,12 +135,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     setState(() => _isLoading = true);
 
-    final year = int.tryParse(_vehicleYearController.text) ?? DateTime.now().year;
+    final year =
+        int.tryParse(_vehicleYearController.text) ?? DateTime.now().year;
     bool success;
 
     if (_isOtpRegistration) {
       // OTP modu: sadece profil oluştur (e-posta/şifre yok)
-      success = await ref.read(authProvider.notifier).completeRegistration(
+      success = await ref
+          .read(authProvider.notifier)
+          .completeRegistration(
             fullName: _fullNameController.text.trim(),
             phone: _normalizePhone(_phoneController.text.trim()),
             tcNo: _tcNoController.text.trim(),
@@ -151,7 +156,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           );
     } else {
       // Direkt kayıt modu: e-posta + şifre ile kayıt
-      success = await ref.read(authProvider.notifier).signUp(
+      success = await ref
+          .read(authProvider.notifier)
+          .signUp(
             email: _emailController.text.trim(),
             password: _passwordController.text,
             fullName: _fullNameController.text.trim(),
@@ -198,7 +205,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             color: Colors.orange.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.hourglass_top_rounded, color: Colors.orange, size: 32),
+          child: const Icon(
+            Icons.hourglass_top_rounded,
+            color: Colors.orange,
+            size: 32,
+          ),
         ),
         title: const Text('Başvurunuz Alındı'),
         content: const Text(
@@ -228,7 +239,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text(_isOtpRegistration ? 'Bilgilerinizi Tamamlayın' : 'Sürücü Kaydı'),
+        title: Text(
+          _isOtpRegistration ? 'Bilgilerinizi Tamamlayın' : 'Sürücü Kaydı',
+        ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () {
@@ -256,7 +269,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   Expanded(
                     child: Container(
                       height: 2,
-                      color: _currentPage >= 1 ? AppColors.primary : AppColors.border,
+                      color: _currentPage >= 1
+                          ? AppColors.primary
+                          : AppColors.border,
                     ),
                   ),
                   _buildStepIndicator(1, 'Araç'),
@@ -272,10 +287,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 onPageChanged: (index) {
                   setState(() => _currentPage = index);
                 },
-                children: [
-                  _buildPersonalInfoPage(),
-                  _buildVehicleInfoPage(),
-                ],
+                children: [_buildPersonalInfoPage(), _buildVehicleInfoPage()],
               ),
             ),
           ],
@@ -305,7 +317,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 : Text(
                     '${step + 1}',
                     style: TextStyle(
-                      color: isActive ? AppColors.secondary : AppColors.textSecondary,
+                      color: isActive
+                          ? AppColors.secondary
+                          : AppColors.textSecondary,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -347,7 +361,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               prefixIcon: Icon(Icons.person_outline),
             ),
             textCapitalization: TextCapitalization.words,
-            validator: (value) => value?.isEmpty ?? true ? 'Ad soyad gerekli' : null,
+            validator: (value) =>
+                value?.isEmpty ?? true ? 'Ad soyad gerekli' : null,
           ),
           const SizedBox(height: 16),
 
@@ -380,7 +395,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   ? const Icon(Icons.verified, color: Colors.green, size: 20)
                   : null,
             ),
-            validator: (value) => value?.isEmpty ?? true ? 'Telefon gerekli' : null,
+            validator: (value) =>
+                value?.isEmpty ?? true ? 'Telefon gerekli' : null,
           ),
           const SizedBox(height: 16),
 
@@ -406,8 +422,11 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 labelText: 'Şifre',
                 prefixIcon: const Icon(Icons.lock_outlined),
                 suffixIcon: IconButton(
-                  icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
-                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                  icon: Icon(
+                    _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                  ),
+                  onPressed: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
                 ),
               ),
               validator: (value) {
@@ -439,10 +458,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            'Araç Bilgileri',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
+          Text('Araç Bilgileri', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 8),
           Text(
             'Aracınız hakkında bilgi girin',
@@ -453,18 +469,20 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           // Vehicle Type Selection
           Text(
             'Araç Kategorileri (birden fazla seçebilirsiniz)',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 12),
 
-          ..._vehicleTypes.entries.map((entry) => _buildVehicleTypeOption(
-            entry.key,
-            entry.value['label']!,
-            entry.value['description']!,
-            entry.value['icon']!,
-          )),
+          ..._vehicleTypes.entries.map(
+            (entry) => _buildVehicleTypeOption(
+              entry.key,
+              entry.value['label']!,
+              entry.value['description']!,
+              entry.value['icon']!,
+            ),
+          ),
 
           // Warning Message
           Container(
@@ -473,12 +491,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
             decoration: BoxDecoration(
               color: AppColors.warning.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+              border: Border.all(
+                color: AppColors.warning.withValues(alpha: 0.3),
+              ),
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.warning_amber_rounded, color: AppColors.warning, size: 20),
+                Icon(
+                  Icons.warning_amber_rounded,
+                  color: AppColors.warning,
+                  size: 20,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -502,7 +526,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               hintText: 'Örn: Toyota',
             ),
             textCapitalization: TextCapitalization.words,
-            validator: (value) => value?.isEmpty ?? true ? 'Marka gerekli' : null,
+            validator: (value) =>
+                value?.isEmpty ?? true ? 'Marka gerekli' : null,
           ),
           const SizedBox(height: 16),
 
@@ -514,7 +539,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               hintText: 'Örn: Corolla',
             ),
             textCapitalization: TextCapitalization.words,
-            validator: (value) => value?.isEmpty ?? true ? 'Model gerekli' : null,
+            validator: (value) =>
+                value?.isEmpty ?? true ? 'Model gerekli' : null,
           ),
           const SizedBox(height: 16),
 
@@ -534,7 +560,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   validator: (value) {
                     if (value?.isEmpty ?? true) return 'Yıl gerekli';
                     final year = int.tryParse(value!);
-                    if (year == null || year < 2000 || year > DateTime.now().year + 1) {
+                    if (year == null ||
+                        year < 2000 ||
+                        year > DateTime.now().year + 1) {
                       return 'Geçerli yıl girin';
                     }
                     return null;
@@ -551,7 +579,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     hintText: 'Sarı',
                   ),
                   textCapitalization: TextCapitalization.words,
-                  validator: (value) => value?.isEmpty ?? true ? 'Renk gerekli' : null,
+                  validator: (value) =>
+                      value?.isEmpty ?? true ? 'Renk gerekli' : null,
                 ),
               ),
             ],
@@ -566,7 +595,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               hintText: '34 ABC 123',
             ),
             textCapitalization: TextCapitalization.characters,
-            validator: (value) => value?.isEmpty ?? true ? 'Plaka gerekli' : null,
+            validator: (value) =>
+                value?.isEmpty ?? true ? 'Plaka gerekli' : null,
           ),
           const SizedBox(height: 32),
 
@@ -598,7 +628,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     );
   }
 
-  Widget _buildVehicleTypeOption(String value, String label, String description, String icon) {
+  Widget _buildVehicleTypeOption(
+    String value,
+    String label,
+    String description,
+    String icon,
+  ) {
     final isSelected = _selectedVehicleTypes.contains(value);
     return GestureDetector(
       onTap: () => setState(() {
@@ -612,7 +647,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withValues(alpha: 0.1) : AppColors.surface,
+          color: isSelected
+              ? AppColors.primary.withValues(alpha: 0.1)
+              : AppColors.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: isSelected ? AppColors.primary : AppColors.border,
@@ -631,7 +668,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     label,
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
-                      color: isSelected ? AppColors.primary : AppColors.textPrimary,
+                      color: isSelected
+                          ? AppColors.primary
+                          : AppColors.textPrimary,
                     ),
                   ),
                   Text(

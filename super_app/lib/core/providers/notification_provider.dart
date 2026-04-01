@@ -1,8 +1,9 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 import '../services/supabase_service.dart';
+import 'auth_provider.dart';
+import 'package:super_app/core/services/log_service.dart';
 
 // Bildirim modeli
 class AppNotification {
@@ -145,20 +146,15 @@ class NotificationState {
 // Bildirim notifier
 class NotificationNotifier extends StateNotifier<NotificationState> {
   RealtimeChannel? _channel;
-  StreamSubscription<AuthState>? _authSubscription;
+  final Ref _ref;
 
-  NotificationNotifier() : super(const NotificationState(isLoading: true)) {
+  NotificationNotifier(this._ref) : super(const NotificationState(isLoading: true)) {
     _init();
-    _listenToAuthChanges();
-  }
-
-  void _listenToAuthChanges() {
-    _authSubscription = SupabaseService.authStateChanges.listen((authState) {
-      if (authState.event == AuthChangeEvent.signedIn) {
-        Future.delayed(const Duration(milliseconds: 500), () {
-          _init();
-        });
-      } else if (authState.event == AuthChangeEvent.signedOut) {
+    _ref.listen<AuthState>(authProvider, (previous, next) {
+      if (next.status == AuthStatus.authenticated &&
+          previous?.status != AuthStatus.authenticated) {
+        _init();
+      } else if (next.status == AuthStatus.unauthenticated) {
         _channel?.unsubscribe();
         state = const NotificationState();
       }
@@ -199,8 +195,8 @@ class NotificationNotifier extends StateNotifier<NotificationState> {
         isLoading: false,
         unreadCount: unreadCount,
       );
-    } catch (e) {
-      if (kDebugMode) print('Error loading notifications: $e');
+    } catch (e, st) {
+      LogService.error('Error loading notifications', error: e, stackTrace: st, source: 'NotificationProvider:loadNotifications');
       state = const NotificationState(isLoading: false);
     }
   }
@@ -250,8 +246,8 @@ class NotificationNotifier extends StateNotifier<NotificationState> {
         notifications: updatedNotifications,
         unreadCount: unreadCount,
       );
-    } catch (e) {
-      if (kDebugMode) print('Error marking notification as read: $e');
+    } catch (e, st) {
+      LogService.error('Error marking notification as read', error: e, stackTrace: st, source: 'NotificationProvider:markAsRead');
     }
   }
 
@@ -274,8 +270,8 @@ class NotificationNotifier extends StateNotifier<NotificationState> {
         notifications: updatedNotifications,
         unreadCount: 0,
       );
-    } catch (e) {
-      if (kDebugMode) print('Error marking all as read: $e');
+    } catch (e, st) {
+      LogService.error('Error marking all as read', error: e, stackTrace: st, source: 'NotificationProvider:markAllAsRead');
     }
   }
 
@@ -295,8 +291,8 @@ class NotificationNotifier extends StateNotifier<NotificationState> {
         notifications: updatedNotifications,
         unreadCount: notification.isRead ? state.unreadCount : state.unreadCount - 1,
       );
-    } catch (e) {
-      if (kDebugMode) print('Error deleting notification: $e');
+    } catch (e, st) {
+      LogService.error('Error deleting notification', error: e, stackTrace: st, source: 'NotificationProvider:deleteNotification');
     }
   }
 
@@ -308,7 +304,6 @@ class NotificationNotifier extends StateNotifier<NotificationState> {
   @override
   void dispose() {
     _channel?.unsubscribe();
-    _authSubscription?.cancel();
     super.dispose();
   }
 }
@@ -316,7 +311,7 @@ class NotificationNotifier extends StateNotifier<NotificationState> {
 // Providers
 final notificationProvider =
     StateNotifierProvider<NotificationNotifier, NotificationState>((ref) {
-  return NotificationNotifier();
+  return NotificationNotifier(ref);
 });
 
 final unreadNotificationCountProvider = Provider<int>((ref) {

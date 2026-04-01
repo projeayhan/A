@@ -7,6 +7,20 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+async function logToDb(level: string, message: string, source: string, errorDetail?: string, metadata?: Record<string, unknown>) {
+  try {
+    const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+    await sb.from('app_logs').insert({
+      app_name: 'edge_function_ai_chat',
+      level,
+      message: message.substring(0, 2000),
+      source,
+      error_detail: errorDetail?.substring(0, 5000),
+      metadata,
+    });
+  } catch (_) { /* silent */ }
+}
+
 function uint8ArrayToBase64(bytes: Uint8Array): string {
   let binary = '';
   const chunkSize = 8192;
@@ -2321,6 +2335,7 @@ Deno.serve(async (req: Request) => {
     const errStack = error instanceof Error ? error.stack : '';
     console.error('Error:', errMsg);
     console.error('Stack:', errStack);
+    await logToDb('error', 'AI chat failed', 'ai-chat:handler', `${errMsg}\n${errStack}`);
     return new Response(JSON.stringify({
       success: false, error: errMsg || 'Bilinmeyen bir hata oluştu'
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 });

@@ -1,6 +1,6 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:support_panel/core/services/log_service.dart';
 import 'supabase_service.dart';
 import 'support_auth_service.dart';
 
@@ -60,8 +60,8 @@ class MetricsService {
         'sla_breached': (slaBreached as List).length,
         'unassigned': (unassigned as List).length,
       };
-    } catch (e) {
-      if (kDebugMode) print('Error fetching dashboard stats: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching dashboard stats', error: e, stackTrace: st, source: 'MetricsService:getDashboardStats');
       return {};
     }
   }
@@ -84,8 +84,8 @@ class MetricsService {
           .map((e) => {'service_type': e.key, 'count': e.value})
           .toList()
         ..sort((a, b) => (b['count'] as int).compareTo(a['count'] as int));
-    } catch (e) {
-      if (kDebugMode) print('Error fetching ticket distribution: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching ticket distribution', error: e, stackTrace: st, source: 'MetricsService:getTicketsByServiceType');
       return [];
     }
   }
@@ -98,8 +98,8 @@ class MetricsService {
           .select()
           .neq('status', 'offline')
           .order('status');
-    } catch (e) {
-      if (kDebugMode) print('Error fetching online agents: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching online agents', error: e, stackTrace: st, source: 'MetricsService:getOnlineAgents');
       return [];
     }
   }
@@ -112,8 +112,8 @@ class MetricsService {
           .select()
           .order('created_at', ascending: false)
           .limit(limit);
-    } catch (e) {
-      if (kDebugMode) print('Error fetching recent activity: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching recent activity', error: e, stackTrace: st, source: 'MetricsService:getRecentActivity');
       return [];
     }
   }
@@ -130,7 +130,8 @@ class MetricsService {
           .eq('agent_id', agent.id)
           .eq('date', DateTime.now().toIso8601String().substring(0, 10))
           .maybeSingle();
-    } catch (_) {
+    } catch (e, st) {
+      LogService.error('Error fetching today metrics', error: e, stackTrace: st, source: 'MetricsService:getTodayMetrics');
       return null;
     }
   }
@@ -177,8 +178,8 @@ class MetricsService {
       }
 
       return trend;
-    } catch (e) {
-      if (kDebugMode) print('Error fetching weekly trend: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching weekly trend', error: e, stackTrace: st, source: 'MetricsService:getWeeklyTrend');
       return [];
     }
   }
@@ -211,8 +212,8 @@ class MetricsService {
           .map((e) => {'service_type': e.key, ...e.value})
           .toList()
         ..sort((a, b) => (b['total'] as int).compareTo(a['total'] as int));
-    } catch (e) {
-      if (kDebugMode) print('Error fetching queue: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching queue', error: e, stackTrace: st, source: 'MetricsService:getQueueByServiceType');
       return [];
     }
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/app_responsive.dart';
 import '../../core/providers/auth_provider.dart';
@@ -9,6 +10,9 @@ import '../../core/providers/user_provider.dart' as up;
 import '../../core/providers/notification_provider.dart';
 import '../../core/providers/settings_provider.dart';
 import '../../core/services/profile_service.dart';
+import '../../core/services/supabase_service.dart';
+import '../../core/utils/app_dialogs.dart';
+import '../../l10n/app_localizations.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -23,7 +27,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final authState = ref.watch(authProvider);
     final user = authState.user;
-    final profileAsync = ref.watch(userProfileProvider);
+    final profileAsync = ref.watch(profileDataProvider);
     final userProfileState = ref.watch(
       up.userProfileProvider,
     ); // Real, mutable profile state
@@ -53,35 +57,35 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     const SizedBox(height: 8),
 
                     // Account Section
-                    _buildSectionTitle('Hesap', isDark),
+                    _buildSectionTitle(S.of(context)!.account, isDark),
                     _buildMenuCard(isDark, [
                       _buildMenuItemData(
                         icon: Icons.person_outline,
-                        title: 'Kişisel Bilgiler',
-                        subtitle: 'Ad, soyad, telefon',
+                        title: S.of(context)!.personalInfo,
+                        subtitle: S.of(context)!.personalInfoSubtitle,
                         color: const Color(0xFF3B82F6),
                         onTap: () => context.push('/settings/personal-info'),
                       ),
                       _buildMenuItemData(
                         icon: Icons.location_on_outlined,
-                        title: 'Adreslerim',
+                        title: S.of(context)!.myAddresses,
                         subtitle:
-                            '${statsAsync.valueOrNull?['addressCount'] ?? addressesAsync.valueOrNull?.length ?? 0} kayıtlı adres',
+                            S.of(context)!.registeredAddressCount(statsAsync.valueOrNull?['addressCount'] ?? addressesAsync.valueOrNull?.length ?? 0),
                         color: const Color(0xFF10B981),
                         onTap: () => context.push('/settings/addresses'),
                       ),
                       _buildMenuItemData(
                         icon: Icons.credit_card_outlined,
-                        title: 'Ödeme Yöntemlerim',
+                        title: S.of(context)!.myPaymentMethods,
                         subtitle:
-                            '${statsAsync.valueOrNull?['cardCount'] ?? cardsAsync.valueOrNull?.length ?? 0} kayıtlı kart',
+                            S.of(context)!.registeredCardCount(statsAsync.valueOrNull?['cardCount'] ?? cardsAsync.valueOrNull?.length ?? 0),
                         color: const Color(0xFF8B5CF6),
                         onTap: () => context.push('/settings/payment-methods'),
                       ),
                       _buildMenuItemData(
                         icon: Icons.emergency_outlined,
-                        title: 'Acil Durum Kişileri',
-                        subtitle: 'SOS mesajı gönderilecek kişiler',
+                        title: S.of(context)!.emergencyContacts,
+                        subtitle: S.of(context)!.emergencyContactsSubtitle,
                         color: const Color(0xFFEF4444),
                         onTap: () => context.push('/settings/emergency-contacts'),
                       ),
@@ -90,11 +94,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     const SizedBox(height: 20),
 
                     // Preferences Section
-                    _buildSectionTitle('Tercihler', isDark),
+                    _buildSectionTitle(S.of(context)!.preferences, isDark),
                     _buildMenuCard(isDark, [
                       _buildMenuItemWithBadge(
                         icon: Icons.notifications_outlined,
-                        title: 'Bildirimler',
+                        title: S.of(context)!.notifications,
                         color: const Color(0xFFF59E0B),
                         badgeCount: ref.watch(unreadNotificationCountProvider),
                         onTap: () => context.push('/notifications'),
@@ -102,8 +106,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                       _buildToggleItemData(
                         icon: Icons.dark_mode_outlined,
-                        title: 'Karanlık Mod',
-                        subtitle: 'Tema tercihi',
+                        title: S.of(context)!.darkMode,
+                        subtitle: S.of(context)!.themePreference,
                         color: const Color(0xFF6366F1),
                         value: ref.watch(settingsProvider).themeMode == ThemeMode.dark,
                         onChanged: (value) {
@@ -114,7 +118,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       ),
                       _buildMenuItemData(
                         icon: Icons.language_outlined,
-                        title: 'Dil',
+                        title: S.of(context)!.language,
                         subtitle: getLanguageName(ref.watch(settingsProvider).locale),
                         color: const Color(0xFF06B6D4),
                         onTap: () => _showLanguageSelector(),
@@ -124,28 +128,49 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     const SizedBox(height: 20),
 
                     // Support Section
-                    _buildSectionTitle('Destek', isDark),
+                    _buildSectionTitle(S.of(context)!.supportAndInfo, isDark),
                     _buildMenuCard(isDark, [
                       _buildMenuItemData(
-                        icon: Icons.help_outline,
-                        title: 'Yardım Merkezi',
-                        subtitle: 'SSS ve destek',
+                        icon: Icons.help_center_outlined,
+                        title: S.of(context)!.helpCenter,
+                        subtitle: S.of(context)!.helpCenterSubtitle,
                         color: const Color(0xFFEC4899),
-                        onTap: () {},
+                        onTap: () => context.push('/help-center'),
                       ),
                       _buildMenuItemData(
                         icon: Icons.chat_bubble_outline,
-                        title: 'Canlı Destek',
-                        subtitle: '7/24 AI destekli yardım',
+                        title: S.of(context)!.liveSupport,
+                        subtitle: S.of(context)!.liveSupportSubtitle,
                         color: const Color(0xFF14B8A6),
-                        onTap: () => context.push('/support/ai-chat'),
+                        onTap: () => _showLiveChatDialog(),
+                      ),
+                      _buildMenuItemData(
+                        icon: Icons.bug_report_outlined,
+                        title: S.of(context)!.reportBug,
+                        subtitle: S.of(context)!.reportBugSubtitle,
+                        color: const Color(0xFFF59E0B),
+                        onTap: () => _showBugReportDialog(),
+                      ),
+                      _buildMenuItemData(
+                        icon: Icons.description_outlined,
+                        title: S.of(context)!.termsOfService,
+                        subtitle: S.of(context)!.termsOfServiceSubtitle,
+                        color: const Color(0xFF64748B),
+                        onTap: () => _openUrl('https://supercyp.com/terms'),
+                      ),
+                      _buildMenuItemData(
+                        icon: Icons.privacy_tip_outlined,
+                        title: S.of(context)!.privacyPolicy,
+                        subtitle: S.of(context)!.privacyPolicySubtitle,
+                        color: const Color(0xFF64748B),
+                        onTap: () => _openUrl('https://supercyp.com/privacy'),
                       ),
                       _buildMenuItemData(
                         icon: Icons.info_outline,
-                        title: 'Hakkında',
-                        subtitle: 'Versiyon 1.0.0',
+                        title: S.of(context)!.about,
+                        subtitle: S.of(context)!.versionInfo('1.0.0+1'),
                         color: const Color(0xFF64748B),
-                        onTap: () {},
+                        onTap: () => _showAboutDialog(),
                       ),
                     ]),
 
@@ -225,7 +250,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 Text(
                   profile?.fullName.isNotEmpty == true
                       ? profile!.fullName
-                      : (user?.userMetadata?['full_name'] ?? 'Kullanıcı'),
+                      : (user?.userMetadata?['full_name'] ?? S.of(context)!.userFallback),
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
@@ -276,22 +301,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       case 'gold':
         startColor = const Color(0xFFF59E0B);
         endColor = const Color(0xFFFBBF24);
-        label = 'Gold Üye';
+        label = S.of(context)!.goldMember;
         break;
       case 'platinum':
         startColor = const Color(0xFF6366F1);
         endColor = const Color(0xFF8B5CF6);
-        label = 'Platinum Üye';
+        label = S.of(context)!.platinumMember;
         break;
       case 'premium':
         startColor = const Color(0xFFEC4899);
         endColor = const Color(0xFFF472B6);
-        label = 'Premium Üye';
+        label = S.of(context)!.premiumMember;
         break;
       default:
         startColor = const Color(0xFF64748B);
         endColor = const Color(0xFF94A3B8);
-        label = 'Standart Üye';
+        label = S.of(context)!.standardMember;
     }
 
     return Container(
@@ -431,7 +456,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ),
       ),
       subtitle: Text(
-        badgeCount > 0 ? '$badgeCount okunmamış bildirim' : 'Tüm bildirimler okundu',
+        badgeCount > 0 ? S.of(context)!.unreadNotifications : S.of(context)!.allNotificationsRead,
         style: TextStyle(fontSize: 12, color: Colors.grey[500]),
       ),
       trailing: Row(
@@ -509,10 +534,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final languages = [
       {'name': 'Türkçe', 'locale': const Locale('tr', 'TR')},
       {'name': 'English', 'locale': const Locale('en', 'US')},
-      {'name': 'Deutsch', 'locale': const Locale('de', 'DE')},
-      {'name': 'Français', 'locale': const Locale('fr', 'FR')},
-      {'name': 'Español', 'locale': const Locale('es', 'ES')},
-      {'name': 'العربية', 'locale': const Locale('ar', 'SA')},
     ];
 
     showModalBottomSheet(
@@ -539,7 +560,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
             const SizedBox(height: 20),
             Text(
-              'Dil Seçin',
+              S.of(context)!.selectLanguage,
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -590,20 +611,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
             ),
-            title: const Row(
+            title: Row(
               children: [
-                Icon(Icons.logout, color: Colors.red),
-                SizedBox(width: 12),
-                Text('Çıkış Yap'),
+                const Icon(Icons.logout, color: Colors.red),
+                const SizedBox(width: 12),
+                Text(S.of(context)!.signOut),
               ],
             ),
-            content: const Text(
-              'Hesabınızdan çıkış yapmak istediğinize emin misiniz?',
+            content: Text(
+              S.of(context)!.signOutConfirm,
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: Text('İptal', style: TextStyle(color: Colors.grey[600])),
+                child: Text(S.of(context)!.cancel, style: TextStyle(color: Colors.grey[600])),
               ),
               ElevatedButton(
                 onPressed: () async {
@@ -616,9 +637,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                child: const Text(
-                  'Çıkış Yap',
-                  style: TextStyle(color: Colors.white),
+                child: Text(
+                  S.of(context)!.signOut,
+                  style: const TextStyle(color: Colors.white),
                 ),
               ),
             ],
@@ -632,14 +653,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
         ),
-        child: const Row(
+        child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.logout, color: Colors.red, size: 20),
-            SizedBox(width: 10),
+            const Icon(Icons.logout, color: Colors.red, size: 20),
+            const SizedBox(width: 10),
             Text(
-              'Çıkış Yap',
-              style: TextStyle(
+              S.of(context)!.signOut,
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
                 color: Colors.red,
@@ -649,5 +670,212 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ),
       ),
     );
+  }
+
+  void _showLiveChatDialog() {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.support_agent, color: Color(0xFF14B8A6)),
+            const SizedBox(width: 12),
+            Text(S.of(context)!.liveSupport),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(S.of(context)!.liveSupportDialogMessage),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                const Icon(Icons.smart_toy_outlined, size: 18, color: Colors.grey),
+                const SizedBox(width: 8),
+                Text(S.of(context)!.getInstantAnswers),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(S.of(context)!.cancel, style: TextStyle(color: Colors.grey[600])),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              context.push('/support/ai-chat');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF14B8A6),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: Text(S.of(context)!.startChat, style: const TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showBugReportDialog() {
+    final controller = TextEditingController();
+    bool isSending = false;
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              const Icon(Icons.bug_report, color: Color(0xFFF59E0B)),
+              const SizedBox(width: 12),
+              Text(S.of(context)!.reportBug),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(S.of(context)!.reportBugDialogMessage),
+              const SizedBox(height: 16),
+              TextField(
+                controller: controller,
+                maxLines: 4,
+                decoration: InputDecoration(
+                  hintText: S.of(context)!.describeProblem,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: const BorderSide(color: AppColors.primary),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(S.of(context)!.cancel, style: TextStyle(color: Colors.grey[600])),
+            ),
+            ElevatedButton(
+              onPressed: isSending ? null : () async {
+                final text = controller.text.trim();
+                if (text.isEmpty) {
+                  await AppDialogs.showWarning(dialogContext, S.of(context)!.pleaseDescribeProblem);
+                  return;
+                }
+                setDialogState(() => isSending = true);
+                try {
+                  await SupabaseService.client.from('bug_reports').insert({
+                    'user_id': SupabaseService.currentUser!.id,
+                    'description': text,
+                  });
+                  if (!mounted) return;
+                  Navigator.pop(dialogContext);
+                  await AppDialogs.showSuccess(this.context, S.of(this.context)!.bugReportSent);
+                } catch (e) {
+                  setDialogState(() => isSending = false);
+                  if (!mounted) return;
+                  await AppDialogs.showWarning(dialogContext, '${S.of(context)!.couldNotSend} $e');
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFF59E0B),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: isSending
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  : Text(S.of(context)!.send, style: const TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAboutDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [AppColors.primary, Color(0xFF60A5FA)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Icon(Icons.apps, color: Colors.white, size: 40),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              S.of(context)!.appName,
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              S.of(context)!.versionInfo('1.0.0+1'),
+              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              S.of(context)!.allNeedsInOneApp,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              S.of(context)!.copyright,
+              style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                TextButton.icon(
+                  onPressed: () => _openUrl('https://supercyp.com/terms'),
+                  icon: Icon(Icons.description_outlined, size: 16, color: Colors.grey[500]),
+                  label: Text(S.of(context)!.terms, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                ),
+                Text('·', style: TextStyle(color: Colors.grey[400])),
+                TextButton.icon(
+                  onPressed: () => _openUrl('https://supercyp.com/privacy'),
+                  icon: Icon(Icons.privacy_tip_outlined, size: 16, color: Colors.grey[500]),
+                  label: Text(S.of(context)!.privacy, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          Center(
+            child: TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(S.of(context)!.ok),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openUrl(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else if (mounted) {
+      // TODO: localize this string
+      await AppDialogs.showWarning(context, 'Bağlantı açılamadı.');
+    }
   }
 }

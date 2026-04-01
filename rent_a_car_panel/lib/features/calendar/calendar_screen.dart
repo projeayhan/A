@@ -4,9 +4,12 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../core/supabase_config.dart';
 import '../../core/theme.dart';
+import 'package:rent_a_car_panel/core/services/log_service.dart';
 
 // View mode: week or month
-final calendarViewModeProvider = StateProvider<String>((ref) => 'month'); // 'week' or 'month'
+final calendarViewModeProvider = StateProvider<String>(
+  (ref) => 'month',
+); // 'week' or 'month'
 
 // Provider for selected week start date
 final selectedWeekStartProvider = StateProvider<DateTime>((ref) {
@@ -23,7 +26,9 @@ final selectedMonthProvider = StateProvider<DateTime>((ref) {
 
 // Filter providers
 final calendarSearchProvider = StateProvider<String>((ref) => '');
-final calendarStatusFilterProvider = StateProvider<String?>((ref) => null); // null = all, 'booked', 'maintenance', 'available'
+final calendarStatusFilterProvider = StateProvider<String?>(
+  (ref) => null,
+); // null = all, 'booked', 'maintenance', 'available'
 final showOnlyBookedProvider = StateProvider<bool>((ref) => false);
 
 // Provider for all cars
@@ -57,7 +62,11 @@ final weekBookingsProvider = FutureProvider.autoDispose((ref) async {
   if (viewMode == 'month') {
     final monthStart = ref.watch(selectedMonthProvider);
     rangeStart = monthStart;
-    rangeEnd = DateTime(monthStart.year, monthStart.month + 1, 0); // last day of month
+    rangeEnd = DateTime(
+      monthStart.year,
+      monthStart.month + 1,
+      0,
+    ); // last day of month
   } else {
     final weekStart = ref.watch(selectedWeekStartProvider);
     rangeStart = weekStart;
@@ -66,7 +75,9 @@ final weekBookingsProvider = FutureProvider.autoDispose((ref) async {
 
   final response = await client
       .from('rental_bookings')
-      .select('id, car_id, customer_name, customer_phone, pickup_date, dropoff_date, status, total_amount, company_notes')
+      .select(
+        'id, car_id, customer_name, customer_phone, pickup_date, dropoff_date, status, total_amount, company_notes',
+      )
       .eq('company_id', companyId)
       .gte('dropoff_date', rangeStart.toIso8601String().split('T')[0])
       .lte('pickup_date', rangeEnd.toIso8601String().split('T')[0])
@@ -95,13 +106,15 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     // Sync horizontal scroll: header ↔ body
     _monthHeaderScrollController.addListener(() {
       if (_monthBodyScrollController.hasClients &&
-          _monthBodyScrollController.offset != _monthHeaderScrollController.offset) {
+          _monthBodyScrollController.offset !=
+              _monthHeaderScrollController.offset) {
         _monthBodyScrollController.jumpTo(_monthHeaderScrollController.offset);
       }
     });
     _monthBodyScrollController.addListener(() {
       if (_monthHeaderScrollController.hasClients &&
-          _monthHeaderScrollController.offset != _monthBodyScrollController.offset) {
+          _monthHeaderScrollController.offset !=
+              _monthBodyScrollController.offset) {
         _monthHeaderScrollController.jumpTo(_monthBodyScrollController.offset);
       }
     });
@@ -137,7 +150,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
   // Get normalized date range (start always before end)
   (DateTime, DateTime)? get _selectedRange {
-    if (_selectionStartDate == null || _selectionEndDate == null || _selectedCarId == null) {
+    if (_selectionStartDate == null ||
+        _selectionEndDate == null ||
+        _selectedCarId == null) {
       return null;
     }
     if (_selectionStartDate!.isBefore(_selectionEndDate!)) {
@@ -152,7 +167,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     if (_selectedCarId != carId) return false;
 
     // Highlight start date while waiting for end date
-    if (_isSelectingEndDate && _selectionStartDate != null && _selectionEndDate == null) {
+    if (_isSelectingEndDate &&
+        _selectionStartDate != null &&
+        _selectionEndDate == null) {
       return _isSameDay(date, _selectionStartDate!);
     }
 
@@ -167,7 +184,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     return end.difference(start).inDays + 1;
   }
 
-  void _handleCellTap(String carId, DateTime day, bool canSelect, Map<String, dynamic>? dayBooking) {
+  void _handleCellTap(
+    String carId,
+    DateTime day,
+    bool canSelect,
+    Map<String, dynamic>? dayBooking,
+  ) {
     if (dayBooking != null) {
       // Navigate to booking detail page
       final bookingId = dayBooking['id'] as String;
@@ -227,8 +249,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             _buildSelectionHint(carsAsync),
 
           // Selection indicator (when complete range selected)
-          if (_hasSelection)
-            _buildSelectionIndicator(carsAsync),
+          if (_hasSelection) _buildSelectionIndicator(carsAsync),
 
           // Timeline content
           Expanded(
@@ -242,23 +263,44 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                   // Apply filters
                   var filteredCars = cars.where((car) {
                     if (searchQuery.isNotEmpty) {
-                      final carName = '${car['brand']} ${car['model']}'.toLowerCase();
-                      final plate = (car['plate'] ?? '').toString().toLowerCase();
-                      if (!carName.contains(searchQuery) && !plate.contains(searchQuery)) {
+                      final carName = '${car['brand']} ${car['model']}'
+                          .toLowerCase();
+                      final plate = (car['plate'] ?? '')
+                          .toString()
+                          .toLowerCase();
+                      if (!carName.contains(searchQuery) &&
+                          !plate.contains(searchQuery)) {
                         return false;
                       }
                     }
                     final carStatus = car['status'] ?? 'available';
-                    if (statusFilter == 'maintenance' && carStatus != 'maintenance') return false;
-                    if (statusFilter == 'available' && carStatus != 'available') return false;
+                    if (statusFilter == 'maintenance' &&
+                        carStatus != 'maintenance') {
+                      return false;
+                    }
+                    if (statusFilter == 'available' &&
+                        carStatus != 'available') {
+                      return false;
+                    }
                     if (showOnlyBooked || statusFilter == 'booked') {
-                      if (!bookings.any((b) => b['car_id'] == car['id'])) return false;
+                      if (!bookings.any((b) => b['car_id'] == car['id'])) {
+                        return false;
+                      }
                     }
                     return true;
                   }).toList();
 
-                  final rangeStart = viewMode == 'month' ? monthStart : weekStart;
-                  return _buildTimeline(context, ref, filteredCars, bookings, rangeStart, cars.length);
+                  final rangeStart = viewMode == 'month'
+                      ? monthStart
+                      : weekStart;
+                  return _buildTimeline(
+                    context,
+                    ref,
+                    filteredCars,
+                    bookings,
+                    rangeStart,
+                    cars.length,
+                  );
                 },
               ),
             ),
@@ -309,7 +351,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     );
   }
 
-  Widget _buildSelectionIndicator(AsyncValue<List<Map<String, dynamic>>> carsAsync) {
+  Widget _buildSelectionIndicator(
+    AsyncValue<List<Map<String, dynamic>>> carsAsync,
+  ) {
     final dateFormat = DateFormat('d MMM', 'tr_TR');
     final (start, end) = _selectedRange!;
 
@@ -383,7 +427,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 prefixIcon: const Icon(Icons.search, size: 20),
                 filled: true,
                 fillColor: AppColors.surface,
-                contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 12),
+                contentPadding: const EdgeInsets.symmetric(
+                  vertical: 0,
+                  horizontal: 12,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: BorderSide.none,
@@ -445,27 +492,51 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
 
           // Stats
           carsAsync.when(
-            loading: () => const Text('Yükleniyor...', style: TextStyle(color: AppColors.textMuted)),
-            error: (e, __) => Text('Hata: $e', style: const TextStyle(color: AppColors.error)),
+            loading: () => const Text(
+              'Yükleniyor...',
+              style: TextStyle(color: AppColors.textMuted),
+            ),
+            error: (e, _) => Text(
+              'Hata: $e',
+              style: const TextStyle(color: AppColors.error),
+            ),
             data: (cars) => bookingsAsync.when(
               loading: () => const SizedBox(),
               error: (e, s) => const SizedBox(),
               data: (bookings) {
                 final totalCars = cars.length;
-                final maintenanceCars = cars.where((c) => c['status'] == 'maintenance').length;
+                final maintenanceCars = cars
+                    .where((c) => c['status'] == 'maintenance')
+                    .length;
                 final bookedCarIds = bookings.map((b) => b['car_id']).toSet();
                 final bookedCars = bookedCarIds.length;
                 final availableCars = totalCars - maintenanceCars - bookedCars;
 
                 return Row(
                   children: [
-                    _buildStatItem(Icons.directions_car, '$totalCars Araç', AppColors.textSecondary),
+                    _buildStatItem(
+                      Icons.directions_car,
+                      '$totalCars Araç',
+                      AppColors.textSecondary,
+                    ),
                     const SizedBox(width: 16),
-                    _buildStatItem(Icons.event_busy, '$bookedCars Kirada', Colors.blue[400]!),
+                    _buildStatItem(
+                      Icons.event_busy,
+                      '$bookedCars Kirada',
+                      Colors.blue[400]!,
+                    ),
                     const SizedBox(width: 16),
-                    _buildStatItem(Icons.build, '$maintenanceCars Bakımda', AppColors.warning),
+                    _buildStatItem(
+                      Icons.build,
+                      '$maintenanceCars Bakımda',
+                      AppColors.warning,
+                    ),
                     const SizedBox(width: 16),
-                    _buildStatItem(Icons.check_circle, '$availableCars Müsait', AppColors.success),
+                    _buildStatItem(
+                      Icons.check_circle,
+                      '$availableCars Müsait',
+                      AppColors.success,
+                    ),
                   ],
                 );
               },
@@ -488,10 +559,14 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? (color ?? AppColors.primary).withValues(alpha: 0.2) : Colors.transparent,
+          color: isSelected
+              ? (color ?? AppColors.primary).withValues(alpha: 0.2)
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isSelected ? (color ?? AppColors.primary) : AppColors.textMuted,
+            color: isSelected
+                ? (color ?? AppColors.primary)
+                : AppColors.textMuted,
             width: 1,
           ),
         ),
@@ -500,7 +575,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           style: TextStyle(
             fontSize: 12,
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-            color: isSelected ? (color ?? AppColors.primary) : AppColors.textSecondary,
+            color: isSelected
+                ? (color ?? AppColors.primary)
+                : AppColors.textSecondary,
           ),
         ),
       ),
@@ -540,16 +617,24 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           // View mode toggle
           SegmentedButton<String>(
             segments: const [
-              ButtonSegment(value: 'week', label: Text('Hafta'), icon: Icon(Icons.view_week, size: 18)),
-              ButtonSegment(value: 'month', label: Text('Ay'), icon: Icon(Icons.calendar_month, size: 18)),
+              ButtonSegment(
+                value: 'week',
+                label: Text('Hafta'),
+                icon: Icon(Icons.view_week, size: 18),
+              ),
+              ButtonSegment(
+                value: 'month',
+                label: Text('Ay'),
+                icon: Icon(Icons.calendar_month, size: 18),
+              ),
             ],
             selected: {viewMode},
             onSelectionChanged: (value) {
               ref.read(calendarViewModeProvider.notifier).state = value.first;
             },
-            style: ButtonStyle(
+            style: const ButtonStyle(
               visualDensity: VisualDensity.compact,
-              textStyle: WidgetStatePropertyAll(const TextStyle(fontSize: 13)),
+              textStyle: WidgetStatePropertyAll(TextStyle(fontSize: 13)),
             ),
           ),
           const SizedBox(width: 16),
@@ -559,11 +644,14 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             icon: const Icon(Icons.chevron_left),
             onPressed: () {
               if (viewMode == 'month') {
-                ref.read(selectedMonthProvider.notifier).state =
-                    DateTime(monthStart.year, monthStart.month - 1, 1);
+                ref.read(selectedMonthProvider.notifier).state = DateTime(
+                  monthStart.year,
+                  monthStart.month - 1,
+                  1,
+                );
               } else {
-                ref.read(selectedWeekStartProvider.notifier).state =
-                    weekStart.subtract(const Duration(days: 7));
+                ref.read(selectedWeekStartProvider.notifier).state = weekStart
+                    .subtract(const Duration(days: 7));
               }
             },
           ),
@@ -572,21 +660,21 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             viewMode == 'month'
                 ? monthFormat.format(monthStart)
                 : '${dateFormat.format(weekStart)} - ${dateFormat.format(weekEnd)}',
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(width: 8),
           IconButton(
             icon: const Icon(Icons.chevron_right),
             onPressed: () {
               if (viewMode == 'month') {
-                ref.read(selectedMonthProvider.notifier).state =
-                    DateTime(monthStart.year, monthStart.month + 1, 1);
+                ref.read(selectedMonthProvider.notifier).state = DateTime(
+                  monthStart.year,
+                  monthStart.month + 1,
+                  1,
+                );
               } else {
-                ref.read(selectedWeekStartProvider.notifier).state =
-                    weekStart.add(const Duration(days: 7));
+                ref.read(selectedWeekStartProvider.notifier).state = weekStart
+                    .add(const Duration(days: 7));
               }
             },
           ),
@@ -595,11 +683,14 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             onPressed: () {
               final now = DateTime.now();
               if (viewMode == 'month') {
-                ref.read(selectedMonthProvider.notifier).state =
-                    DateTime(now.year, now.month, 1);
+                ref.read(selectedMonthProvider.notifier).state = DateTime(
+                  now.year,
+                  now.month,
+                  1,
+                );
               } else {
-                ref.read(selectedWeekStartProvider.notifier).state =
-                    now.subtract(Duration(days: now.weekday - 1));
+                ref.read(selectedWeekStartProvider.notifier).state = now
+                    .subtract(Duration(days: now.weekday - 1));
               }
             },
             icon: const Icon(Icons.today, size: 18),
@@ -667,7 +758,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     if (cars.isEmpty) {
       return Center(
         child: Text(
-          totalCarCount == 0 ? 'Henüz araç eklenmemiş' : 'Filtreye uygun araç bulunamadı',
+          totalCarCount == 0
+              ? 'Henüz araç eklenmemiş'
+              : 'Filtreye uygun araç bulunamadı',
         ),
       );
     }
@@ -680,7 +773,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
       dayCount = 7;
     }
 
-    final days = List.generate(dayCount, (i) => rangeStart.add(Duration(days: i)));
+    final days = List.generate(
+      dayCount,
+      (i) => rangeStart.add(Duration(days: i)),
+    );
     final dayFormat = DateFormat('EEE', 'tr_TR');
     final dateFormat = DateFormat('d', 'tr_TR');
 
@@ -700,9 +796,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               color: isToday
                   ? AppColors.primary.withValues(alpha: 0.15)
                   : isWeekend && isMonthView
-                      ? AppColors.surfaceLight.withValues(alpha: 0.5)
-                      : null,
-              border: Border(
+                  ? AppColors.surfaceLight.withValues(alpha: 0.5)
+                  : null,
+              border: const Border(
                 right: BorderSide(color: AppColors.surfaceLight),
                 bottom: BorderSide(color: AppColors.surfaceLight),
               ),
@@ -710,7 +806,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             child: Column(
               children: [
                 Text(
-                  isMonthView ? dayFormat.format(day).substring(0, 3) : dayFormat.format(day),
+                  isMonthView
+                      ? dayFormat.format(day).substring(0, 3)
+                      : dayFormat.format(day),
                   style: TextStyle(
                     fontSize: isMonthView ? 10 : 12,
                     color: isToday ? AppColors.primary : AppColors.textMuted,
@@ -742,14 +840,17 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               Container(
                 width: 180,
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: AppColors.surface,
                   border: Border(
                     right: BorderSide(color: AppColors.surfaceLight),
                     bottom: BorderSide(color: AppColors.surfaceLight),
                   ),
                 ),
-                child: const Text('Araçlar', style: TextStyle(fontWeight: FontWeight.bold)),
+                child: const Text(
+                  'Araçlar',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
               ),
               Expanded(
                 child: SingleChildScrollView(
@@ -775,11 +876,12 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                     itemCount: cars.length,
                     itemBuilder: (context, index) {
                       final car = cars[index];
-                      final isMaintenance = (car['status'] ?? 'available') == 'maintenance';
+                      final isMaintenance =
+                          (car['status'] ?? 'available') == 'maintenance';
                       return Container(
                         height: 50,
                         padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
+                        decoration: const BoxDecoration(
                           color: AppColors.surface,
                           border: Border(
                             right: BorderSide(color: AppColors.surfaceLight),
@@ -791,7 +893,11 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                             if (isMaintenance)
                               const Padding(
                                 padding: EdgeInsets.only(right: 8),
-                                child: Icon(Icons.build, size: 14, color: AppColors.warning),
+                                child: Icon(
+                                  Icons.build,
+                                  size: 14,
+                                  color: AppColors.warning,
+                                ),
                               ),
                             Expanded(
                               child: Column(
@@ -800,12 +906,18 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                                 children: [
                                   Text(
                                     '${car['brand']} ${car['model']}',
-                                    style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 12,
+                                    ),
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                   Text(
                                     car['plate'] ?? '',
-                                    style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
+                                    style: const TextStyle(
+                                      fontSize: 10,
+                                      color: AppColors.textMuted,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -828,7 +940,14 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                         itemCount: cars.length,
                         itemBuilder: (context, index) {
                           final car = cars[index];
-                          return _buildCarDayCells(context, ref, car, bookings, days, cellWidth);
+                          return _buildCarDayCells(
+                            context,
+                            ref,
+                            car,
+                            bookings,
+                            days,
+                            cellWidth,
+                          );
                         },
                       ),
                     ),
@@ -852,13 +971,16 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 Container(
                   width: 180,
                   padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     border: Border(
                       right: BorderSide(color: AppColors.surfaceLight),
                       bottom: BorderSide(color: AppColors.surfaceLight),
                     ),
                   ),
-                  child: const Text('Araçlar', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: const Text(
+                    'Araçlar',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
                 ...days.map((day) {
                   final isToday = _isSameDay(day, DateTime.now());
@@ -866,8 +988,10 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: isToday ? AppColors.primary.withValues(alpha: 0.15) : null,
-                        border: Border(
+                        color: isToday
+                            ? AppColors.primary.withValues(alpha: 0.15)
+                            : null,
+                        border: const Border(
                           right: BorderSide(color: AppColors.surfaceLight),
                           bottom: BorderSide(color: AppColors.surfaceLight),
                         ),
@@ -876,11 +1000,20 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                         children: [
                           Text(
                             dayFormat.format(day),
-                            style: TextStyle(fontSize: 12, color: isToday ? AppColors.primary : AppColors.textMuted),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isToday
+                                  ? AppColors.primary
+                                  : AppColors.textMuted,
+                            ),
                           ),
                           Text(
                             dateFormat.format(day),
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isToday ? AppColors.primary : null),
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: isToday ? AppColors.primary : null,
+                            ),
                           ),
                         ],
                       ),
@@ -890,7 +1023,9 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
               ],
             ),
           ),
-          ...cars.map((car) => _buildCarRow(context, ref, car, bookings, days, false, 0)),
+          ...cars.map(
+            (car) => _buildCarRow(context, ref, car, bookings, days, false, 0),
+          ),
         ],
       ),
     );
@@ -905,13 +1040,15 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     List<DateTime> days,
     double cellWidth,
   ) {
-    final carBookings = bookings.where((b) => b['car_id'] == car['id']).toList();
+    final carBookings = bookings
+        .where((b) => b['car_id'] == car['id'])
+        .toList();
     final isMaintenance = (car['status'] ?? 'available') == 'maintenance';
     final carId = car['id'] as String;
 
     return Container(
       height: 50,
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.surface,
         border: Border(bottom: BorderSide(color: AppColors.surfaceLight)),
       ),
@@ -919,15 +1056,14 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
         children: days.map((day) {
           final isToday = _isSameDay(day, DateTime.now());
           final isSelected = _isDateInSelection(carId, day);
-          final dayBooking = carBookings.cast<Map<String, dynamic>?>().firstWhere(
-            (b) {
-              if (b == null) return false;
-              final pickupDate = DateTime.parse(b['pickup_date']);
-              final dropoffDate = DateTime.parse(b['dropoff_date']);
-              return !day.isBefore(pickupDate) && !day.isAfter(dropoffDate);
-            },
-            orElse: () => null,
-          );
+          final dayBooking = carBookings
+              .cast<Map<String, dynamic>?>()
+              .firstWhere((b) {
+                if (b == null) return false;
+                final pickupDate = DateTime.parse(b['pickup_date']);
+                final dropoffDate = DateTime.parse(b['dropoff_date']);
+                return !day.isBefore(pickupDate) && !day.isAfter(dropoffDate);
+              }, orElse: () => null);
           final hasBooking = dayBooking != null;
           final canSelect = !isMaintenance && !hasBooking;
 
@@ -940,24 +1076,28 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 color: isSelected
                     ? AppColors.primary.withValues(alpha: 0.4)
                     : isMaintenance
-                        ? AppColors.warning.withValues(alpha: 0.3)
-                        : dayBooking != null
-                            ? _getBookingColor(dayBooking['status'])
-                            : isToday
-                                ? AppColors.primary.withValues(alpha: 0.1)
-                                : AppColors.surfaceLight,
+                    ? AppColors.warning.withValues(alpha: 0.3)
+                    : dayBooking != null
+                    ? _getBookingColor(dayBooking['status'])
+                    : isToday
+                    ? AppColors.primary.withValues(alpha: 0.1)
+                    : AppColors.surfaceLight,
                 borderRadius: BorderRadius.circular(3),
                 border: isSelected
                     ? Border.all(color: AppColors.primary, width: 2)
                     : isToday
-                        ? Border.all(color: AppColors.primary, width: 1)
-                        : null,
+                    ? Border.all(color: AppColors.primary, width: 1)
+                    : null,
               ),
               child: dayBooking != null
                   ? Center(
                       child: Text(
                         _getBookingInitials(dayBooking['customer_name']),
-                        style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     )
                   : null,
@@ -977,14 +1117,16 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
     bool isMonthView,
     double cellWidth,
   ) {
-    final carBookings = bookings.where((b) => b['car_id'] == car['id']).toList();
+    final carBookings = bookings
+        .where((b) => b['car_id'] == car['id'])
+        .toList();
     final carStatus = car['status'] ?? 'available';
     final isMaintenance = carStatus == 'maintenance';
     final carId = car['id'] as String;
 
     return Container(
       height: 60,
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.surface,
         border: Border(bottom: BorderSide(color: AppColors.surfaceLight)),
       ),
@@ -994,7 +1136,7 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
           Container(
             width: 180,
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               border: Border(right: BorderSide(color: AppColors.surfaceLight)),
             ),
             child: Row(
@@ -1002,7 +1144,11 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 if (isMaintenance)
                   const Padding(
                     padding: EdgeInsets.only(right: 8),
-                    child: Icon(Icons.build, size: 16, color: AppColors.warning),
+                    child: Icon(
+                      Icons.build,
+                      size: 16,
+                      color: AppColors.warning,
+                    ),
                   ),
                 Expanded(
                   child: Column(
@@ -1035,15 +1181,14 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             final isToday = _isSameDay(day, DateTime.now());
             final isSelected = _isDateInSelection(carId, day);
 
-            final dayBooking = carBookings.cast<Map<String, dynamic>?>().firstWhere(
-              (b) {
-                if (b == null) return false;
-                final pickupDate = DateTime.parse(b['pickup_date']);
-                final dropoffDate = DateTime.parse(b['dropoff_date']);
-                return !day.isBefore(pickupDate) && !day.isAfter(dropoffDate);
-              },
-              orElse: () => null,
-            );
+            final dayBooking = carBookings
+                .cast<Map<String, dynamic>?>()
+                .firstWhere((b) {
+                  if (b == null) return false;
+                  final pickupDate = DateTime.parse(b['pickup_date']);
+                  final dropoffDate = DateTime.parse(b['dropoff_date']);
+                  return !day.isBefore(pickupDate) && !day.isAfter(dropoffDate);
+                }, orElse: () => null);
 
             final hasBooking = dayBooking != null;
             final canSelect = !isMaintenance && !hasBooking;
@@ -1053,41 +1198,49 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 message: dayBooking != null
                     ? '${dayBooking['customer_name'] ?? 'Müşteri'}\n${_getStatusText(dayBooking['status'])}\nDetay için tıklayın'
                     : isMaintenance
-                        ? 'Araç bakımda'
-                        : _isSelectingEndDate && _selectedCarId == carId
-                            ? 'Bitiş tarihini seçmek için tıklayın'
-                            : 'Başlangıç tarihini seçmek için tıklayın',
+                    ? 'Araç bakımda'
+                    : _isSelectingEndDate && _selectedCarId == carId
+                    ? 'Bitiş tarihini seçmek için tıklayın'
+                    : 'Başlangıç tarihini seçmek için tıklayın',
                 preferBelow: true,
                 waitDuration: const Duration(milliseconds: 300),
                 child: MouseRegion(
-                  cursor: canSelect ? SystemMouseCursors.click : SystemMouseCursors.basic,
+                  cursor: canSelect
+                      ? SystemMouseCursors.click
+                      : SystemMouseCursors.basic,
                   child: GestureDetector(
-                    onTap: () => _handleCellTap(carId, day, canSelect, dayBooking),
+                    onTap: () =>
+                        _handleCellTap(carId, day, canSelect, dayBooking),
                     child: Container(
                       margin: const EdgeInsets.all(2),
                       decoration: BoxDecoration(
                         color: isSelected
                             ? AppColors.primary.withValues(alpha: 0.4)
                             : isMaintenance
-                                ? AppColors.warning.withValues(alpha: 0.3)
-                                : dayBooking != null
-                                    ? _getBookingColor(dayBooking['status'])
-                                    : isToday
-                                        ? AppColors.primary.withValues(alpha: 0.1)
-                                        : AppColors.surfaceLight,
+                            ? AppColors.warning.withValues(alpha: 0.3)
+                            : dayBooking != null
+                            ? _getBookingColor(dayBooking['status'])
+                            : isToday
+                            ? AppColors.primary.withValues(alpha: 0.1)
+                            : AppColors.surfaceLight,
                         borderRadius: BorderRadius.circular(4),
                         border: isSelected
                             ? Border.all(color: AppColors.primary, width: 2)
                             : isToday
-                                ? Border.all(color: AppColors.primary, width: 2)
-                                : null,
+                            ? Border.all(color: AppColors.primary, width: 2)
+                            : null,
                       ),
                       child: dayBooking != null
                           ? Center(
                               child: Text(
-                                dayBooking['customer_name'] != null && (dayBooking['customer_name'] as String).length <= 10
+                                dayBooking['customer_name'] != null &&
+                                        (dayBooking['customer_name'] as String)
+                                                .length <=
+                                            10
                                     ? dayBooking['customer_name']
-                                    : _getBookingInitials(dayBooking['customer_name']),
+                                    : _getBookingInitials(
+                                        dayBooking['customer_name'],
+                                      ),
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 10,
@@ -1098,22 +1251,22 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                               ),
                             )
                           : isMaintenance
-                              ? const Center(
-                                  child: Icon(
-                                    Icons.build,
-                                    size: 14,
-                                    color: AppColors.warning,
-                                  ),
-                                )
-                              : isSelected
-                                  ? Center(
-                                      child: Icon(
-                                        Icons.check,
-                                        size: 16,
-                                        color: AppColors.primary.withValues(alpha: 0.7),
-                                      ),
-                                    )
-                                  : null,
+                          ? const Center(
+                              child: Icon(
+                                Icons.build,
+                                size: 14,
+                                color: AppColors.warning,
+                              ),
+                            )
+                          : isSelected
+                          ? Center(
+                              child: Icon(
+                                Icons.check,
+                                size: 16,
+                                color: AppColors.primary.withValues(alpha: 0.7),
+                              ),
+                            )
+                          : null,
                     ),
                   ),
                 ),
@@ -1128,17 +1281,17 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
   Color _getBookingColor(String? status) {
     switch (status) {
       case 'active':
-        return Colors.red[400]!;      // Aktif - Araç müşteride
+        return Colors.red[400]!; // Aktif - Araç müşteride
       case 'pending':
-        return Colors.orange[400]!;   // Beklemede - Onay bekliyor
+        return Colors.orange[400]!; // Beklemede - Onay bekliyor
       case 'confirmed':
-        return Colors.green[400]!;    // Onaylandı - Hazır
+        return Colors.green[400]!; // Onaylandı - Hazır
       case 'completed':
-        return Colors.blue[400]!;     // Tamamlandı
+        return Colors.blue[400]!; // Tamamlandı
       case 'cancelled':
-        return Colors.grey[400]!;     // İptal edildi
+        return Colors.grey[400]!; // İptal edildi
       default:
-        return Colors.green[400]!;    // Varsayılan onaylandı
+        return Colors.green[400]!; // Varsayılan onaylandı
     }
   }
 
@@ -1219,7 +1372,31 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
             final companyId = await ref.read(companyIdProvider.future);
 
             // Generate booking number
-            final bookingNumber = 'CL-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
+            final bookingNumber =
+                'CL-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
+
+            // Check for conflicting bookings on the same car
+            final conflictCheck = await client
+                .from('rental_bookings')
+                .select('id')
+                .eq('car_id', bookingData['car_id'])
+                .neq('status', 'cancelled')
+                .lt('pickup_date', bookingData['dropoff_date'])
+                .gt('dropoff_date', bookingData['pickup_date']);
+
+            if ((conflictCheck as List).isNotEmpty) {
+              if (dialogContext.mounted) {
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Bu araç seçilen tarihlerde zaten rezerve edilmiş.',
+                    ),
+                    backgroundColor: AppColors.error,
+                  ),
+                );
+              }
+              return;
+            }
 
             // Create booking
             await client.from('rental_bookings').insert({
@@ -1251,7 +1428,8 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen> {
                 ),
               );
             }
-          } catch (e) {
+          } catch (e, st) {
+            LogService.error('Failed to create booking from calendar', error: e, stackTrace: st, source: 'CalendarScreen:_showQuickBookDialog');
             if (dialogContext.mounted) {
               ScaffoldMessenger.of(dialogContext).showSnackBar(
                 SnackBar(
@@ -1331,7 +1509,8 @@ class _CalendarBookingDialogState extends State<_CalendarBookingDialog> {
   }
 
   double get _totalAmount {
-    final dailyPrice = (widget.selectedCar['daily_price'] as num?)?.toDouble() ?? 0;
+    final dailyPrice =
+        (widget.selectedCar['daily_price'] as num?)?.toDouble() ?? 0;
     return dailyPrice * _rentalDays;
   }
 
@@ -1339,7 +1518,8 @@ class _CalendarBookingDialogState extends State<_CalendarBookingDialog> {
   Widget build(BuildContext context) {
     final formatter = NumberFormat.currency(locale: 'tr_TR', symbol: '₺');
     final dateFormat = DateFormat('dd MMM yyyy');
-    final dailyPrice = (widget.selectedCar['daily_price'] as num?)?.toDouble() ?? 0;
+    final dailyPrice =
+        (widget.selectedCar['daily_price'] as num?)?.toDouble() ?? 0;
 
     return Dialog(
       child: Container(
@@ -1364,7 +1544,10 @@ class _CalendarBookingDialogState extends State<_CalendarBookingDialog> {
                             color: AppColors.primary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Icon(Icons.calendar_month, color: AppColors.primary),
+                          child: const Icon(
+                            Icons.calendar_month,
+                            color: AppColors.primary,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         const Text(
@@ -1388,7 +1571,10 @@ class _CalendarBookingDialogState extends State<_CalendarBookingDialog> {
                 const SizedBox(height: 8),
                 const Text(
                   'Seçtiğiniz tarih aralığı için rezervasyon oluşturun',
-                  style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                  ),
                 ),
                 const SizedBox(height: 24),
 
@@ -1398,11 +1584,16 @@ class _CalendarBookingDialogState extends State<_CalendarBookingDialog> {
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                    border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.3),
+                    ),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.directions_car, color: AppColors.primary),
+                      const Icon(
+                        Icons.directions_car,
+                        color: AppColors.primary,
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
@@ -1410,7 +1601,9 @@ class _CalendarBookingDialogState extends State<_CalendarBookingDialog> {
                           children: [
                             Text(
                               '${widget.selectedCar['brand']} ${widget.selectedCar['model']}',
-                              style: const TextStyle(fontWeight: FontWeight.w600),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                             Text(
                               '${widget.selectedCar['plate']} • ${formatter.format(dailyPrice)}/gün',
@@ -1423,14 +1616,21 @@ class _CalendarBookingDialogState extends State<_CalendarBookingDialog> {
                         ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: AppColors.primary,
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: const Text(
                           'Seçili Araç',
-                          style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ],
@@ -1453,14 +1653,20 @@ class _CalendarBookingDialogState extends State<_CalendarBookingDialog> {
                           final date = await showDatePicker(
                             context: context,
                             initialDate: _pickupDate,
-                            firstDate: DateTime.now().subtract(const Duration(days: 30)),
-                            lastDate: DateTime.now().add(const Duration(days: 365)),
+                            firstDate: DateTime.now().subtract(
+                              const Duration(days: 30),
+                            ),
+                            lastDate: DateTime.now().add(
+                              const Duration(days: 365),
+                            ),
                           );
                           if (date != null) {
                             setState(() {
                               _pickupDate = date;
                               if (_dropoffDate.isBefore(_pickupDate)) {
-                                _dropoffDate = _pickupDate.add(const Duration(days: 1));
+                                _dropoffDate = _pickupDate.add(
+                                  const Duration(days: 1),
+                                );
                               }
                             });
                           }
@@ -1516,7 +1722,9 @@ class _CalendarBookingDialogState extends State<_CalendarBookingDialog> {
                             context: context,
                             initialDate: _dropoffDate,
                             firstDate: _pickupDate,
-                            lastDate: DateTime.now().add(const Duration(days: 365)),
+                            lastDate: DateTime.now().add(
+                              const Duration(days: 365),
+                            ),
                           );
                           if (date != null) {
                             setState(() => _dropoffDate = date);
@@ -1621,15 +1829,24 @@ class _CalendarBookingDialogState extends State<_CalendarBookingDialog> {
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: _paymentStatus,
+                        initialValue: _paymentStatus,
                         decoration: const InputDecoration(
                           labelText: 'Ödeme Durumu',
                           prefixIcon: Icon(Icons.payment),
                         ),
                         items: const [
-                          DropdownMenuItem(value: 'pending', child: Text('Bekliyor')),
-                          DropdownMenuItem(value: 'paid', child: Text('Ödendi')),
-                          DropdownMenuItem(value: 'partial', child: Text('Kısmi Ödeme')),
+                          DropdownMenuItem(
+                            value: 'pending',
+                            child: Text('Bekliyor'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'paid',
+                            child: Text('Ödendi'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'partial',
+                            child: Text('Kısmi Ödeme'),
+                          ),
                         ],
                         onChanged: (v) => setState(() => _paymentStatus = v!),
                       ),
@@ -1637,15 +1854,21 @@ class _CalendarBookingDialogState extends State<_CalendarBookingDialog> {
                     const SizedBox(width: 16),
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: _paymentMethod,
+                        initialValue: _paymentMethod,
                         decoration: const InputDecoration(
                           labelText: 'Ödeme Yöntemi',
                           prefixIcon: Icon(Icons.account_balance_wallet),
                         ),
                         items: const [
                           DropdownMenuItem(value: 'cash', child: Text('Nakit')),
-                          DropdownMenuItem(value: 'credit_card', child: Text('Kredi Kartı')),
-                          DropdownMenuItem(value: 'bank_transfer', child: Text('Havale/EFT')),
+                          DropdownMenuItem(
+                            value: 'credit_card',
+                            child: Text('Kredi Kartı'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'bank_transfer',
+                            child: Text('Havale/EFT'),
+                          ),
                         ],
                         onChanged: (v) => setState(() => _paymentMethod = v!),
                       ),
@@ -1744,7 +1967,8 @@ class _CalendarBookingDialogState extends State<_CalendarBookingDialog> {
 
     setState(() => _isLoading = true);
 
-    final dailyPrice = (widget.selectedCar['daily_price'] as num?)?.toDouble() ?? 0;
+    final dailyPrice =
+        (widget.selectedCar['daily_price'] as num?)?.toDouble() ?? 0;
 
     // Combine date and time
     final pickupDateTime = DateTime(

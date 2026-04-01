@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Henüz implement edilmemiş tab içerikleri için placeholder ekran
+/// Veri bulunmayan tab içerikleri için boş durum ekranı
 class PlaceholderTabScreen extends StatelessWidget {
   final String tabName;
   final String sectorName;
@@ -17,7 +17,7 @@ class PlaceholderTabScreen extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.construction_outlined, size: 64, color: Colors.grey.shade400),
+          Icon(Icons.inbox_outlined, size: 64, color: Colors.grey.shade400),
           const SizedBox(height: 16),
           Text(
             '$sectorName - $tabName',
@@ -25,7 +25,7 @@ class PlaceholderTabScreen extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'Yakında aktif olacak',
+            'Bu sekme için henüz veri bulunmuyor',
             style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
           ),
         ],

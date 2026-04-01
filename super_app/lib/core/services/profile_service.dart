@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supabase_service.dart';
+import 'package:super_app/core/services/log_service.dart';
 
 class UserProfile {
   final String id;
@@ -326,8 +327,8 @@ class ProfileService {
           .single();
 
       return UserProfile.fromJson(response);
-    } catch (e) {
-      if (kDebugMode) print('Error fetching user profile: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching user profile', error: e, stackTrace: st, source: 'ProfileService:getUserProfile');
       return null;
     }
   }
@@ -352,8 +353,8 @@ class ProfileService {
       return (response as List)
           .map((json) => UserAddress.fromJson(json))
           .toList();
-    } catch (e) {
-      if (kDebugMode) print('Error fetching addresses: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching addresses', error: e, stackTrace: st, source: 'ProfileService:getUserAddresses');
       return [];
     }
   }
@@ -373,8 +374,8 @@ class ProfileService {
       return (response as List)
           .map((json) => UserPaymentMethod.fromJson(json))
           .toList();
-    } catch (e) {
-      if (kDebugMode) print('Error fetching payment methods: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching payment methods', error: e, stackTrace: st, source: 'ProfileService:getUserPaymentMethods');
       return [];
     }
   }
@@ -393,8 +394,8 @@ class ProfileService {
       return (response as List)
           .map((json) => UserCoupon.fromJson(json))
           .toList();
-    } catch (e) {
-      if (kDebugMode) print('Error fetching coupons: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching coupons', error: e, stackTrace: st, source: 'ProfileService:getUserCoupons');
       return [];
     }
   }
@@ -415,8 +416,8 @@ class ProfileService {
       return (response as List)
           .map((json) => UserOrder.fromJson(json))
           .toList();
-    } catch (e) {
-      if (kDebugMode) print('Error fetching orders: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching orders', error: e, stackTrace: st, source: 'ProfileService:getUserOrders');
       return [];
     }
   }
@@ -424,46 +425,34 @@ class ProfileService {
   // Profil istatistiklerini getir
   static Future<Map<String, dynamic>> getProfileStats(String userId) async {
     try {
-      // Sipariş sayısı
-      final ordersResponse = await _client
-          .from('orders')
-          .select('id')
-          .eq('user_id', userId);
-      final orderCount = (ordersResponse as List).length;
-
-      // Adres sayısı
-      final addressesResponse = await _client
-          .from('saved_locations')
-          .select('id')
-          .eq('user_id', userId)
-          .eq('is_active', true);
-      final addressCount = (addressesResponse as List).length;
-
-      // Kart sayısı
-      final cardsResponse = await _client
-          .from('payment_methods')
-          .select('id')
-          .eq('user_id', userId)
-          .eq('is_active', true);
-      final cardCount = (cardsResponse as List).length;
-
-      // Kupon sayısı
-      final couponsResponse = await _client
-          .from('user_coupons')
-          .select('id')
-          .eq('user_id', userId)
-          .eq('is_used', false)
-          .gte('valid_until', DateTime.now().toIso8601String());
-      final couponCount = (couponsResponse as List).length;
+      final results = await Future.wait([
+        _client.from('orders').select('id').eq('user_id', userId),
+        _client
+            .from('saved_locations')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('is_active', true),
+        _client
+            .from('payment_methods')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('is_active', true),
+        _client
+            .from('user_coupons')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('is_used', false)
+            .gte('valid_until', DateTime.now().toIso8601String()),
+      ]);
 
       return {
-        'orderCount': orderCount,
-        'addressCount': addressCount,
-        'cardCount': cardCount,
-        'couponCount': couponCount,
+        'orderCount': (results[0] as List).length,
+        'addressCount': (results[1] as List).length,
+        'cardCount': (results[2] as List).length,
+        'couponCount': (results[3] as List).length,
       };
-    } catch (e) {
-      if (kDebugMode) print('Error fetching profile stats: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching profile stats', error: e, stackTrace: st, source: 'ProfileService:getProfileStats');
       return {
         'orderCount': 0,
         'addressCount': 0,
@@ -494,8 +483,8 @@ class ProfileService {
       await _client.from('users').update(updates).eq('id', userId);
 
       return true;
-    } catch (e) {
-      if (kDebugMode) print('Error updating profile: $e');
+    } catch (e, st) {
+      LogService.error('Error updating profile', error: e, stackTrace: st, source: 'ProfileService:updateProfile');
       return false;
     }
   }

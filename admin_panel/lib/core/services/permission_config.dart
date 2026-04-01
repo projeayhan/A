@@ -34,62 +34,25 @@ class PermissionConfig {
 
   /// Route → required (module, action) mapping
   static const Map<String, (String, String)> routePermissions = {
-    // Users & Merchants
+    // Users & Management
     AppRoutes.users: (users, 'read'),
-    AppRoutes.merchants: (merchants, 'read'),
     AppRoutes.partners: (partners, 'read'),
     AppRoutes.applications: (users, 'read'),
-    // Operations
-    AppRoutes.orders: (orders, 'read'),
+    // Notifications
     AppRoutes.notifications: (notifications, 'read'),
     AppRoutes.sanctions: (users, 'write'),
     // Finance
     AppRoutes.finance: (finance, 'read'),
-    AppRoutes.earnings: (finance, 'read'),
-    AppRoutes.invoices: (finance, 'read'),
-    AppRoutes.pricing: (finance, 'write'),
-    AppRoutes.surge: (finance, 'write'),
-    // Food
-    AppRoutes.restaurantCategories: (food, 'read'),
-    // Rental (eski rotalar)
-    AppRoutes.rentalDashboard: (rental, 'read'),
-    AppRoutes.rentalVehicles: (rental, 'read'),
-    AppRoutes.rentalBookings: (rental, 'read'),
-    AppRoutes.rentalLocations: (rental, 'read'),
-    // Emlak (eski rotalar)
-    AppRoutes.emlakDashboard: (emlak, 'read'),
-    AppRoutes.emlakListings: (emlak, 'read'),
-    AppRoutes.emlakCities: (emlak, 'read'),
-    AppRoutes.emlakDistricts: (emlak, 'read'),
-    AppRoutes.emlakPropertyTypes: (emlak, 'read'),
-    AppRoutes.emlakAmenities: (emlak, 'read'),
-    AppRoutes.emlakPricing: (emlak, 'write'),
-    AppRoutes.emlakSettings: (emlak, 'write'),
-    AppRoutes.emlakRealtorApplications: (emlak, 'read'),
-    // Car Sales (eski rotalar)
-    AppRoutes.carSalesDashboard: (carSales, 'read'),
-    AppRoutes.carSalesListings: (carSales, 'read'),
-    AppRoutes.carSalesBrands: (carSales, 'read'),
-    AppRoutes.carSalesFeatures: (carSales, 'read'),
-    AppRoutes.carSalesPricing: (carSales, 'write'),
-    AppRoutes.carSalesBodyTypes: (carSales, 'read'),
-    AppRoutes.carSalesFuelTypes: (carSales, 'read'),
-    AppRoutes.carSalesTransmissions: (carSales, 'read'),
-    // Job Listings (eski rotalar)
-    AppRoutes.jobListingsDashboard: (jobs, 'read'),
-    AppRoutes.jobListingsList: (jobs, 'read'),
-    AppRoutes.jobCompanies: (jobs, 'read'),
-    AppRoutes.jobCategories: (jobs, 'read'),
-    AppRoutes.jobSkills: (jobs, 'read'),
-    AppRoutes.jobBenefits: (jobs, 'read'),
-    AppRoutes.jobPricing: (jobs, 'write'),
-    AppRoutes.jobSettings: (jobs, 'write'),
+    AppRoutes.financeInvoices: (finance, 'read'),
+    AppRoutes.financeBatchInvoice: (finance, 'write'),
+    AppRoutes.financeIncomeExpense: (finance, 'read'),
+    AppRoutes.financeCommission: (finance, 'write'),
     // Support
-    AppRoutes.supportDashboard: (system, 'read'),
-    AppRoutes.ticketReview: (system, 'read'),
-    AppRoutes.agentPerformance: (system, 'read'),
-    AppRoutes.supportReports: (system, 'read'),
-    AppRoutes.supportAgents: (system, 'read'),
+    AppRoutes.supportDashboard: (support, 'read'),
+    AppRoutes.ticketReview: (support, 'read'),
+    AppRoutes.agentPerformance: (support, 'read'),
+    AppRoutes.supportReports: (support, 'read'),
+    AppRoutes.supportAgents: (support, 'read'),
     // Reports
     AppRoutes.reports: (finance, 'read'),
     // System
@@ -99,16 +62,43 @@ class PermissionConfig {
     AppRoutes.logs: (system, 'read'),
     AppRoutes.systemHealth: (system, 'read'),
     AppRoutes.aiSupport: (system, 'read'),
-    // Yeni sektör rotaları
+    AppRoutes.courierVehicleTypes: (system, 'read'),
+    // Sektör rotaları (ana liste + ayarlar)
     '/yemek': (food, 'read'),
+    '/yemek/ayarlar': (food, 'write'),
     '/market': (food, 'read'),
+    '/market/ayarlar': (food, 'write'),
     '/magaza': (food, 'read'),
-    '/emlak-sektor': (emlak, 'read'),
+    '/magaza/ayarlar': (food, 'write'),
+    '/emlak': (emlak, 'read'),
+    '/emlak/ayarlar': (emlak, 'write'),
     '/taksi': (taxi, 'read'),
+    '/taksi/ayarlar': (taxi, 'write'),
     '/galeri': (carSales, 'read'),
+    '/galeri/ayarlar': (carSales, 'write'),
     '/is-ilanlari': (jobs, 'read'),
+    '/is-ilanlari/ayarlar': (jobs, 'write'),
     '/arac-kiralama': (rental, 'read'),
+    '/arac-kiralama/ayarlar': (rental, 'write'),
   };
+
+  /// Sektör detay rotalarını kontrol et (dynamic path: /yemek/:id/siparisler gibi)
+  /// Router redirect'inde matchedLocation üzerinden sektör base path'ini bulur
+  static (String, String)? getPermissionForPath(String path) {
+    // Önce exact match dene
+    final exact = routePermissions[path];
+    if (exact != null) return exact;
+
+    // Sektör detay rotaları: /yemek/:id, /yemek/:id/siparisler vb.
+    for (final sector in SectorType.values) {
+      if (path.startsWith(sector.baseRoute)) {
+        final perm = sectorPermissions[sector];
+        if (perm != null) return (perm, 'read');
+      }
+    }
+
+    return null;
+  }
 
   /// Sidebar group → module mapping
   /// '*' means accessible to all authenticated admins

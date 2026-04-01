@@ -220,25 +220,6 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
               const SizedBox(height: 16),
 
               _buildTextField(
-                controller: _emailController,
-                label: 'E-posta',
-                icon: Icons.email_outlined,
-                keyboardType: TextInputType.emailAddress,
-                enabled: false,
-                isDark: isDark,
-                suffix: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Icon(Icons.verified, size: 14, color: Colors.green),
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              _buildTextField(
                 controller: _phoneController,
                 label: 'Telefon',
                 icon: Icons.phone_outlined,
@@ -957,7 +938,6 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
           .updateProfile(
             firstName: _firstNameController.text,
             lastName: _lastNameController.text,
-            email: _emailController.text,
             phone: _phoneController.text,
             dateOfBirth: _birthDateController.text.isNotEmpty
                 ? DateTime.tryParse(
@@ -1174,7 +1154,9 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
           ],
         ),
       ),
-    );
+    ).whenComplete(() {
+      otpController.dispose();
+    });
   }
 
   String _mapGenderToDb(String uiGender) {

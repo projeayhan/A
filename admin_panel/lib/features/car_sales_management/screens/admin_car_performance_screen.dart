@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/car_sales_management_providers.dart';
@@ -20,15 +19,14 @@ class AdminCarPerformanceScreen extends ConsumerStatefulWidget {
 }
 
 class _AdminCarPerformanceScreenState extends ConsumerState<AdminCarPerformanceScreen> {
-  String _selectedPeriod = 'this_month';
+  String _selectedPeriod = '30';
   final _currencyFormat = NumberFormat.currency(locale: 'tr_TR', symbol: '₺', decimalDigits: 0);
   final _numberFormat = NumberFormat('#,###', 'tr_TR');
 
-  final List<Map<String, String>> _periods = [
-    {'key': 'this_week', 'label': 'Bu Hafta'},
-    {'key': 'this_month', 'label': 'Bu Ay'},
-    {'key': 'last_3_months', 'label': 'Son 3 Ay'},
-    {'key': 'this_year', 'label': 'Bu Yıl'},
+  final List<Map<String, String>> _periodChips = [
+    {'key': '7', 'label': '7 gün'},
+    {'key': '30', 'label': '30 gün'},
+    {'key': '90', 'label': '90 gün'},
   ];
 
   @override
@@ -61,8 +59,27 @@ class _AdminCarPerformanceScreenState extends ConsumerState<AdminCarPerformanceS
   }
 
   Widget _buildContent(Map<String, dynamic> data) {
-    final topListings = List<Map<String, dynamic>>.from(data['top_listings'] ?? []);
     final allListings = List<Map<String, dynamic>>.from(data['listings'] ?? []);
+
+    // Calculate totals
+    int totalViews = (data['total_views'] as num?)?.toInt() ?? 0;
+    int totalFavorites = (data['total_favorites'] as num?)?.toInt() ?? 0;
+    int totalContacts = (data['total_contacts'] as num?)?.toInt() ?? 0;
+
+    // Conversion rate
+    final conversionRate = totalViews > 0
+        ? ((totalContacts / totalViews) * 100).toStringAsFixed(1)
+        : '0.0';
+
+    // Top 5 performing listings by views
+    final sortedByViews = List<Map<String, dynamic>>.from(allListings)
+      ..sort((a, b) => ((b['view_count'] as num?) ?? 0).compareTo((a['view_count'] as num?) ?? 0));
+    final top5 = sortedByViews.take(5).toList();
+
+    // Low performance listings (0 views)
+    final lowPerformance = allListings.where((l) {
+      return ((l['view_count'] as num?)?.toInt() ?? 0) == 0;
+    }).toList();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -105,7 +122,7 @@ class _AdminCarPerformanceScreenState extends ConsumerState<AdminCarPerformanceS
               ),
               Row(
                 children: [
-                  _buildPeriodSelector(),
+                  _buildPeriodChips(),
                   const SizedBox(width: 12),
                   OutlinedButton.icon(
                     onPressed: () {
@@ -122,69 +139,34 @@ class _AdminCarPerformanceScreenState extends ConsumerState<AdminCarPerformanceS
 
           const SizedBox(height: 32),
 
-          // Summary Cards - Row 1
+          // 4 Stat Cards: Toplam Görüntülenme, Favoriler, İletişim Sayısı, Dönüşüm Oranı
           Row(
             children: [
               _buildSummaryCard(
-                'Toplam İlan',
-                '${data['total_listings'] ?? 0}',
-                Icons.directions_car,
-                AppColors.primary,
-              ),
-              const SizedBox(width: 16),
-              _buildSummaryCard(
-                'Aktif',
-                '${data['active_count'] ?? 0}',
-                Icons.check_circle,
-                AppColors.success,
-              ),
-              const SizedBox(width: 16),
-              _buildSummaryCard(
-                'Satılan',
-                '${data['sold_count'] ?? 0}',
-                Icons.sell,
-                AppColors.info,
-              ),
-              const SizedBox(width: 16),
-              _buildSummaryCard(
-                'Beklemede',
-                '${data['pending_count'] ?? 0}',
-                Icons.pending,
-                AppColors.warning,
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          // Summary Cards - Row 2
-          Row(
-            children: [
-              _buildSummaryCard(
-                'Görüntülenme',
-                _numberFormat.format(data['total_views'] ?? 0),
+                'Toplam Görüntülenme',
+                _numberFormat.format(totalViews),
                 Icons.visibility,
                 AppColors.primary,
               ),
               const SizedBox(width: 16),
               _buildSummaryCard(
-                'Favori',
-                _numberFormat.format(data['total_favorites'] ?? 0),
+                'Favoriler',
+                _numberFormat.format(totalFavorites),
                 Icons.favorite,
                 AppColors.error,
               ),
               const SizedBox(width: 16),
               _buildSummaryCard(
-                'İletişim',
-                _numberFormat.format(data['total_contacts'] ?? 0),
+                'İletişim Sayısı',
+                _numberFormat.format(totalContacts),
                 Icons.phone,
                 AppColors.success,
               ),
               const SizedBox(width: 16),
               _buildSummaryCard(
-                'Ort. Satış Süresi',
-                '${data['avg_sell_days'] ?? 0} gün',
-                Icons.timer,
+                'Dönüşüm Oranı',
+                '%$conversionRate',
+                Icons.trending_up,
                 AppColors.warning,
               ),
             ],
@@ -192,61 +174,69 @@ class _AdminCarPerformanceScreenState extends ConsumerState<AdminCarPerformanceS
 
           const SizedBox(height: 32),
 
-          // Bar Chart - Top 10 by views
-          if (topListings.isNotEmpty) ...[
-            _buildChartCard(
-              'En Çok Görüntülenen İlanlar',
-              'Görüntülenme sayısına göre ilk 10',
-              _buildTopListingsBarChart(topListings),
-            ),
+          // Daily views trend area (placeholder)
+          _buildDailyViewsTrend(allListings),
+
+          const SizedBox(height: 32),
+
+          // Top 5 performing listings
+          if (top5.isNotEmpty) ...[
+            _buildTop5Section(top5),
             const SizedBox(height: 32),
           ],
 
-          // Performance Table
+          // Low performance alerts
+          if (lowPerformance.isNotEmpty) ...[
+            _buildLowPerformanceAlerts(lowPerformance),
+            const SizedBox(height: 32),
+          ],
+
+          // Full performance table
           _buildPerformanceTable(allListings),
         ],
       ),
     );
   }
 
-  Widget _buildPeriodSelector() {
-    final currentLabel = _periods.firstWhere(
-      (p) => p['key'] == _selectedPeriod,
-      orElse: () => _periods[1],
-    )['label']!;
+  // ==================== PERIOD CHIPS ====================
 
-    return PopupMenuButton<String>(
-      onSelected: (period) {
-        setState(() => _selectedPeriod = period);
-      },
-      itemBuilder: (context) => _periods.map((p) {
-        return PopupMenuItem(
-          value: p['key'],
-          child: Text(p['label']!),
-        );
-      }).toList(),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.surfaceLight),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.calendar_today, size: 18, color: AppColors.textSecondary),
-            const SizedBox(width: 8),
-            Text(
-              currentLabel,
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+  Widget _buildPeriodChips() {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.surfaceLight),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: _periodChips.map((chip) {
+          final isSelected = chip['key'] == _selectedPeriod;
+          return GestureDetector(
+            onTap: () => setState(() => _selectedPeriod = chip['key']!),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: isSelected ? AppColors.primary : Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                chip['label']!,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : AppColors.textSecondary,
+                  fontSize: 13,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                ),
+              ),
             ),
-            const SizedBox(width: 8),
-            const Icon(Icons.keyboard_arrow_down, size: 18, color: AppColors.textSecondary),
-          ],
-        ),
+          );
+        }).toList(),
       ),
     );
   }
+
+  // ==================== SUMMARY CARD ====================
 
   Widget _buildSummaryCard(String title, String value, IconData icon, Color color) {
     return Expanded(
@@ -284,6 +274,7 @@ class _AdminCarPerformanceScreenState extends ConsumerState<AdminCarPerformanceS
                   Text(
                     title,
                     style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
@@ -294,7 +285,16 @@ class _AdminCarPerformanceScreenState extends ConsumerState<AdminCarPerformanceS
     );
   }
 
-  Widget _buildChartCard(String title, String subtitle, Widget chart) {
+  // ==================== DAILY VIEWS TREND ====================
+
+  Widget _buildDailyViewsTrend(List<Map<String, dynamic>> listings) {
+    final totalViews = listings.fold<int>(
+      0,
+      (sum, l) => sum + ((l['view_count'] as num?)?.toInt() ?? 0),
+    );
+    final days = int.tryParse(_selectedPeriod) ?? 30;
+    final avgDailyViews = days > 0 ? totalViews / days : 0.0;
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -308,137 +308,375 @@ class _AdminCarPerformanceScreenState extends ConsumerState<AdminCarPerformanceS
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Column(
+              const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    title,
-                    style: const TextStyle(
+                    'Günlük Görüntülenme Trendi',
+                    style: TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: 4),
                   Text(
-                    subtitle,
-                    style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                    'Seçili dönemdeki günlük görüntülenme verileri',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 13),
                   ),
                 ],
               ),
+              if (totalViews > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.show_chart, size: 16, color: AppColors.primary),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Toplam: ${_numberFormat.format(totalViews)} | Ort: ${avgDailyViews.toStringAsFixed(1)} / gün',
+                        style: const TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: 24),
-          chart,
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppColors.info.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.info.withValues(alpha: 0.2)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.info.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.info_outline, color: AppColors.info, size: 22),
+                ),
+                const SizedBox(width: 16),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Günlük görüntüleme verisi henüz mevcut değil',
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Günlük bazda detaylı görüntülenme istatistikleri yakında aktif edilecektir. '
+                        'Şu an için toplam ve ortalama veriler yukarıda gösterilmektedir.',
+                        style: TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildTopListingsBarChart(List<Map<String, dynamic>> topListings) {
-    if (topListings.isEmpty) {
-      return const SizedBox(
-        height: 300,
-        child: Center(
-          child: Text('Henüz veri yok', style: TextStyle(color: AppColors.textMuted)),
-        ),
-      );
-    }
+  // ==================== TOP 5 SECTION ====================
 
-    final maxViews = topListings
-        .map((l) => ((l['view_count'] as num?) ?? 0).toDouble())
-        .reduce((a, b) => a > b ? a : b);
-    final chartMax = maxViews > 0 ? (maxViews * 1.2).ceilToDouble() : 100.0;
-
-    return SizedBox(
-      height: 300,
-      child: BarChart(
-        BarChartData(
-          alignment: BarChartAlignment.spaceAround,
-          maxY: chartMax,
-          barTouchData: BarTouchData(
-            enabled: true,
-            touchTooltipData: BarTouchTooltipData(
-              getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                if (groupIndex < topListings.length) {
-                  final listing = topListings[groupIndex];
-                  final brand = listing['brand_name'] ?? '';
-                  final model = listing['model_name'] ?? '';
-                  final year = listing['year']?.toString() ?? '';
-                  return BarTooltipItem(
-                    '$brand $model $year\n${rod.toY.toInt()} görüntülenme',
-                    const TextStyle(color: Colors.white, fontSize: 12),
-                  );
-                }
-                return null;
-              },
-            ),
-          ),
-          titlesData: FlTitlesData(
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 50,
-                getTitlesWidget: (value, meta) => Text(
-                  value >= 1000 ? '${(value / 1000).toStringAsFixed(1)}K' : '${value.toInt()}',
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+  Widget _buildTop5Section(List<Map<String, dynamic>> top5) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.surfaceLight),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.emoji_events, color: AppColors.warning, size: 22),
+              SizedBox(width: 8),
+              Text(
+                'En İyi 5 İlan',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-            ),
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 40,
-                getTitlesWidget: (value, meta) {
-                  final index = value.toInt();
-                  if (index < topListings.length) {
-                    final brand = (topListings[index]['brand_name'] ?? '').toString();
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 8),
-                      child: Text(
-                        brand.length > 8 ? '${brand.substring(0, 8)}.' : brand,
-                        style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
-                      ),
-                    );
-                  }
-                  return const Text('');
-                },
-              ),
-            ),
-            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            ],
           ),
-          gridData: FlGridData(
-            show: true,
-            drawVerticalLine: false,
-            horizontalInterval: chartMax > 0 ? chartMax / 5 : 20,
-            getDrawingHorizontalLine: (value) => FlLine(
-              color: AppColors.surfaceLight.withValues(alpha: 0.5),
-              strokeWidth: 1,
-            ),
+          const SizedBox(height: 6),
+          const Text(
+            'Görüntülenme sayısına göre en iyi performans gösteren ilanlar',
+            style: TextStyle(color: AppColors.textMuted, fontSize: 13),
           ),
-          borderData: FlBorderData(show: false),
-          barGroups: topListings.asMap().entries.map((entry) {
-            final views = ((entry.value['view_count'] as num?) ?? 0).toDouble();
-            return BarChartGroupData(
-              x: entry.key,
-              barRods: [
-                BarChartRodData(
-                  toY: views,
-                  color: AppColors.primary,
-                  width: 20,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(4),
-                    topRight: Radius.circular(4),
-                  ),
-                ),
-              ],
-            );
-          }).toList(),
-        ),
+          const SizedBox(height: 20),
+          ...top5.asMap().entries.map((entry) {
+            return _buildTop5Item(entry.key + 1, entry.value);
+          }),
+        ],
       ),
     );
   }
+
+  Widget _buildTop5Item(int rank, Map<String, dynamic> listing) {
+    final brand = listing['brand_name'] ?? listing['brand'] ?? '';
+    final model = listing['model_name'] ?? listing['model'] ?? '';
+    final year = listing['year']?.toString() ?? '';
+    final title = '$brand $model $year'.trim();
+    final views = (listing['view_count'] as num?)?.toInt() ?? 0;
+    final favorites = (listing['favorite_count'] as num?)?.toInt() ?? 0;
+    final contacts = (listing['contact_count'] as num?)?.toInt() ?? 0;
+
+    // Get image
+    String? imageUrl;
+    final images = listing['images'];
+    if (images is List && images.isNotEmpty) {
+      imageUrl = images[0] as String?;
+    }
+
+    Color rankColor;
+    if (rank == 1) {
+      rankColor = const Color(0xFFFFD700);
+    } else if (rank == 2) {
+      rankColor = const Color(0xFFC0C0C0);
+    } else if (rank == 3) {
+      rankColor = const Color(0xFFCD7F32);
+    } else {
+      rankColor = AppColors.textMuted;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.surfaceLight),
+      ),
+      child: Row(
+        children: [
+          // Rank
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: rankColor.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Center(
+              child: Text(
+                '#$rank',
+                style: TextStyle(
+                  color: rankColor,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+
+          // Thumbnail
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: SizedBox(
+              width: 56,
+              height: 42,
+              child: imageUrl != null
+                  ? Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => _buildSmallPlaceholder(),
+                    )
+                  : _buildSmallPlaceholder(),
+            ),
+          ),
+          const SizedBox(width: 12),
+
+          // Info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title.isNotEmpty ? title : (listing['title'] ?? 'İsimsiz'),
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (listing['price'] != null)
+                  Text(
+                    _currencyFormat.format(listing['price']),
+                    style: const TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w500),
+                  ),
+              ],
+            ),
+          ),
+
+          // Stats
+          _buildMiniStat(Icons.visibility, views, AppColors.info),
+          const SizedBox(width: 16),
+          _buildMiniStat(Icons.favorite, favorites, AppColors.error),
+          const SizedBox(width: 16),
+          _buildMiniStat(Icons.phone, contacts, AppColors.success),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSmallPlaceholder() {
+    return Container(
+      color: AppColors.surfaceLight,
+      child: const Center(
+        child: Icon(Icons.directions_car, color: AppColors.textMuted, size: 18),
+      ),
+    );
+  }
+
+  Widget _buildMiniStat(IconData icon, int value, Color color) {
+    return Column(
+      children: [
+        Icon(icon, size: 14, color: color),
+        const SizedBox(height: 2),
+        Text(
+          _numberFormat.format(value),
+          style: const TextStyle(color: AppColors.textPrimary, fontSize: 12, fontWeight: FontWeight.w600),
+        ),
+      ],
+    );
+  }
+
+  // ==================== LOW PERFORMANCE ALERTS ====================
+
+  Widget _buildLowPerformanceAlerts(List<Map<String, dynamic>> listings) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.warning_amber_rounded, color: AppColors.warning, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Düşük Performans Uyarıları',
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${listings.length} ilan henüz hiç görüntülenmemiş',
+                      style: const TextStyle(color: AppColors.warning, fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ...listings.take(5).map((listing) {
+            final brand = listing['brand_name'] ?? listing['brand'] ?? '';
+            final model = listing['model_name'] ?? listing['model'] ?? '';
+            final year = listing['year']?.toString() ?? '';
+            final title = '$brand $model $year'.trim();
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.warning.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.warning.withValues(alpha: 0.15)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.visibility_off, size: 16, color: AppColors.warning),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      title.isNotEmpty ? title : (listing['title'] ?? 'İsimsiz'),
+                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (listing['price'] != null)
+                    Text(
+                      _currencyFormat.format(listing['price']),
+                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                    ),
+                  const SizedBox(width: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: AppColors.warning.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      '0 görüntülenme',
+                      style: TextStyle(color: AppColors.warning, fontSize: 11, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+          if (listings.length > 5) ...[
+            const SizedBox(height: 8),
+            Text(
+              '... ve ${listings.length - 5} ilan daha',
+              style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ==================== PERFORMANCE TABLE ====================
 
   Widget _buildPerformanceTable(List<Map<String, dynamic>> listings) {
     return Container(
@@ -490,7 +728,6 @@ class _AdminCarPerformanceScreenState extends ConsumerState<AdminCarPerformanceS
                 Expanded(child: Text('FAVORİ', style: TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.w600))),
                 Expanded(child: Text('İLETİŞİM', style: TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.w600))),
                 Expanded(child: Text('DURUM', style: TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.w600))),
-                Expanded(child: Text('ŞEHİR', style: TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.w600))),
               ],
             ),
           ),
@@ -510,8 +747,8 @@ class _AdminCarPerformanceScreenState extends ConsumerState<AdminCarPerformanceS
   }
 
   Widget _buildPerformanceRow(Map<String, dynamic> listing) {
-    final brand = listing['brand_name'] ?? '';
-    final model = listing['model_name'] ?? '';
+    final brand = listing['brand_name'] ?? listing['brand'] ?? '';
+    final model = listing['model_name'] ?? listing['model'] ?? '';
     final year = listing['year']?.toString() ?? '';
     final title = listing['title'] ?? '$brand $model $year';
 
@@ -594,13 +831,6 @@ class _AdminCarPerformanceScreenState extends ConsumerState<AdminCarPerformanceS
             ),
           ),
           Expanded(child: _buildStatusBadge(listing['status'] ?? 'pending')),
-          Expanded(
-            child: Text(
-              listing['city'] ?? '-',
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
         ],
       ),
     );
@@ -629,7 +859,7 @@ class _AdminCarPerformanceScreenState extends ConsumerState<AdminCarPerformanceS
         break;
       case 'expired':
         color = AppColors.textMuted;
-        text = 'Süresi Doldu';
+        text = 'Süresi Dolmuş';
         break;
       case 'rejected':
         color = AppColors.error;

@@ -19,7 +19,6 @@ class EmlakHomeScreen extends ConsumerStatefulWidget {
 }
 
 class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen> {
-
   final ScrollController _scrollController = ScrollController();
 
   // Filter States - All accessible from main page
@@ -40,9 +39,7 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen> {
   SortOption _selectedSort = SortOption.newest;
 
   // Supabase'den gelen veriler
-  List<Property> _properties = [];
   List<Property> _featuredProperties = [];
-  bool _isLoading = true;
 
   // DB'den gelen şehir ve ilçeler
   List<String> _cities = [];
@@ -59,8 +56,6 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen> {
   }
 
   Future<void> _loadData() async {
-    setState(() => _isLoading = true);
-
     try {
       // Şehirleri DB'den yükle
       final propertyService = ref.read(propertyServiceProvider);
@@ -84,10 +79,6 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen> {
     } catch (e) {
       debugPrint('Veri yükleme hatası: $e');
     }
-
-    if (mounted) {
-      setState(() => _isLoading = false);
-    }
   }
 
   Future<void> _loadDistricts() async {
@@ -107,13 +98,17 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen> {
 
   /// Seçili filtreleri provider'a gönder (DB seviyesinde filtre uygular)
   void _applyFiltersToProvider() {
-    ref.read(propertyListProvider.notifier).setFilter(
-      PropertyFilter(
-        city: _selectedCity.isEmpty ? null : _selectedCity,
-        district: _selectedDistricts.length == 1 ? _selectedDistricts.first : null,
-        listingType: _selectedListingType,
-      ),
-    );
+    ref
+        .read(propertyListProvider.notifier)
+        .setFilter(
+          PropertyFilter(
+            city: _selectedCity.isEmpty ? null : _selectedCity,
+            district: _selectedDistricts.length == 1
+                ? _selectedDistricts.first
+                : null,
+            listingType: _selectedListingType,
+          ),
+        );
   }
 
   void _onSearchChanged() {
@@ -131,7 +126,7 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen> {
   }
 
   List<Property> get filteredProperties {
-    var list = _properties.toList();
+    var list = ref.read(propertyListProvider).properties.toList();
     // Not: Şehir filtresi artık provider (DB) seviyesinde uygulanıyor
 
     // Search filter
@@ -149,7 +144,9 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen> {
       list = list.where((p) => p.listingType == _selectedListingType).toList();
     }
     if (_selectedPropertyTypeName != null) {
-      list = list.where((p) => p.type.name == _selectedPropertyTypeName).toList();
+      list = list
+          .where((p) => p.type.name == _selectedPropertyTypeName)
+          .toList();
     }
     // Multiple districts filter
     if (_selectedDistricts.isNotEmpty) {
@@ -214,7 +211,9 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen> {
       minSquareMeters: _areaRange.start > 0 ? _areaRange.start.toInt() : null,
       maxSquareMeters: _areaRange.end < 500 ? _areaRange.end.toInt() : null,
       city: _selectedCity.isEmpty ? null : _selectedCity,
-      district: _selectedDistricts.length == 1 ? _selectedDistricts.first : null,
+      district: _selectedDistricts.length == 1
+          ? _selectedDistricts.first
+          : null,
     );
 
     final result = await Navigator.push<PropertyFilter>(
@@ -278,15 +277,15 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen> {
     final propertyState = ref.watch(propertyListProvider);
     final featuredAsync = ref.watch(featuredPropertiesProvider);
 
-    // Provider'dan gelen verileri güncelle
-    _properties = propertyState.properties;
-    _isLoading = propertyState.isLoading;
-
-    featuredAsync.whenData((featured) {
-      if (featured.isNotEmpty) {
-        _featuredProperties = featured;
-      }
-    });
+    featuredAsync.when(
+      data: (featured) {
+        if (featured.isNotEmpty) {
+          _featuredProperties = featured;
+        }
+      },
+      loading: () {},
+      error: (_, _) {},
+    );
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
@@ -301,108 +300,120 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen> {
             child: CustomScrollView(
               controller: _scrollController,
               slivers: [
-              // Compact Hero Header
-              SliverToBoxAdapter(
-                child: _buildCompactHeader(context, size, isDark),
-              ),
+                // Compact Hero Header
+                SliverToBoxAdapter(
+                  child: _buildCompactHeader(context, size, isDark),
+                ),
 
-              // Banner Carousel - En üstte, header'dan hemen sonra (UX best practice)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(0, 16, 0, 8),
-                  child: GenericBannerCarousel(
-                    bannerProvider: emlakBannersProvider,
-                    height: 160,
-                    primaryColor: Colors.brown,
-                    defaultTitle: 'Emlak Fırsatları',
-                    defaultSubtitle: 'Hayalinizdeki eve ulaşın!',
+                // Banner Carousel - En üstte, header'dan hemen sonra (UX best practice)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(0, 16, 0, 8),
+                    child: GenericBannerCarousel(
+                      bannerProvider: emlakBannersProvider,
+                      height: 160,
+                      primaryColor: Colors.brown,
+                      defaultTitle: 'Emlak Fırsatları',
+                      defaultSubtitle: 'Hayalinizdeki eve ulaşın!',
+                    ),
                   ),
                 ),
-              ),
 
-              // Location Selector (Inline)
-              SliverToBoxAdapter(
-                child: _buildLocationSelector(context, isDark),
-              ),
-
-              // Active Search Bar
-              SliverToBoxAdapter(child: _buildActiveSearchBar(context, isDark)),
-
-              // Selected Districts Chips
-              if (_selectedDistricts.isNotEmpty)
+                // Location Selector (Inline)
                 SliverToBoxAdapter(
-                  child: _buildSelectedDistrictsChips(context, isDark),
+                  child: _buildLocationSelector(context, isDark),
                 ),
 
-              // Quick Filter Chips (Always Visible)
-              SliverToBoxAdapter(child: _buildQuickFilters(context, isDark)),
-
-              // Advanced Filters → Tam ekran filtre sayfasına taşındı
-
-              // Quick Actions (İlan Ver, İlanlarım, Favoriler)
-              SliverToBoxAdapter(child: _buildQuickActions(context, isDark)),
-
-              // Featured Properties Carousel
-              if (_featuredProperties.isNotEmpty && _searchQuery.isEmpty) ...[
+                // Active Search Bar
                 SliverToBoxAdapter(
-                  child: _buildSectionHeader(
-                    context,
-                    'Öne Çıkan İlanlar',
-                    'Tümünü Gör',
-                    isDark,
-                    icon: Icons.star_rounded,
-                    iconColor: EmlakColors.accent,
-                    onViewAll: () => context.push('/emlak/featured', extra: {
-                      'city': _selectedCity.isNotEmpty ? _selectedCity : null,
-                    }),
+                  child: _buildActiveSearchBar(context, isDark),
+                ),
+
+                // Selected Districts Chips
+                if (_selectedDistricts.isNotEmpty)
+                  SliverToBoxAdapter(
+                    child: _buildSelectedDistrictsChips(context, isDark),
                   ),
-                ),
+
+                // Quick Filter Chips (Always Visible)
+                SliverToBoxAdapter(child: _buildQuickFilters(context, isDark)),
+
+                // Advanced Filters → Tam ekran filtre sayfasına taşındı
+
+                // Quick Actions (İlan Ver, İlanlarım, Favoriler)
+                SliverToBoxAdapter(child: _buildQuickActions(context, isDark)),
+
+                // Featured Properties Carousel
+                if (_featuredProperties.isNotEmpty && _searchQuery.isEmpty) ...[
+                  SliverToBoxAdapter(
+                    child: _buildSectionHeader(
+                      context,
+                      'Öne Çıkan İlanlar',
+                      'Tümünü Gör',
+                      isDark,
+                      icon: Icons.star_rounded,
+                      iconColor: EmlakColors.accent,
+                      onViewAll: () => context.push(
+                        '/emlak/featured',
+                        extra: {
+                          'city': _selectedCity.isNotEmpty
+                              ? _selectedCity
+                              : null,
+                        },
+                      ),
+                    ),
+                  ),
+                  SliverToBoxAdapter(
+                    child: _buildFeaturedCarousel(context, isDark),
+                  ),
+                ],
+
+                // All Properties Grid
                 SliverToBoxAdapter(
-                  child: _buildFeaturedCarousel(context, isDark),
+                  child: _buildPropertiesHeader(context, isDark),
                 ),
-              ],
 
-              // All Properties Grid
-              SliverToBoxAdapter(
-                child: _buildPropertiesHeader(context, isDark),
-              ),
-
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                sliver: _isLoading && _properties.isEmpty
-                    ? SliverToBoxAdapter(
-                        child: Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(40),
-                            child: CircularProgressIndicator(
-                              color: EmlakColors.primary,
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  sliver: propertyState.isLoading && propertyState.properties.isEmpty
+                      ? SliverToBoxAdapter(
+                          child: Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(40),
+                              child: CircularProgressIndicator(
+                                color: EmlakColors.primary,
+                              ),
                             ),
                           ),
+                        )
+                      : filteredProperties.isEmpty
+                      ? SliverToBoxAdapter(
+                          child: _buildEmptyState(context, isDark),
+                        )
+                      : SliverList(
+                          delegate: SliverChildBuilderDelegate((
+                            context,
+                            index,
+                          ) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 16),
+                              child: _buildPropertyCard(
+                                context,
+                                filteredProperties[index],
+                                index,
+                                isDark,
+                              ),
+                            );
+                          }, childCount: filteredProperties.length),
                         ),
-                      )
-                    : filteredProperties.isEmpty
-                        ? SliverToBoxAdapter(
-                            child: _buildEmptyState(context, isDark),
-                          )
-                        : SliverList(
-                            delegate: SliverChildBuilderDelegate((context, index) {
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 16),
-                                child: _buildPropertyCard(
-                                  context,
-                                  filteredProperties[index],
-                                  index,
-                                  isDark,
-                                ),
-                              );
-                            }, childCount: filteredProperties.length),
-                          ),
-              ),
+                ),
 
-              // Bottom Padding
-              SliverToBoxAdapter(child: SizedBox(height: context.bottomNavPadding)),
-            ],
-          ),
+                // Bottom Padding
+                SliverToBoxAdapter(
+                  child: SizedBox(height: context.bottomNavPadding),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -450,7 +461,7 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen> {
                       Icons.chat_bubble_outline_rounded,
                       onTap: () => context.push('/emlak/chats'),
                     ),
-                    error: (_, __) => _buildHeaderIcon(
+                    error: (_, _) => _buildHeaderIcon(
                       Icons.chat_bubble_outline_rounded,
                       onTap: () => context.push('/emlak/chats'),
                     ),
@@ -557,7 +568,9 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          _selectedCity.isEmpty ? 'Tüm Şehirler' : _selectedCity,
+                          _selectedCity.isEmpty
+                              ? 'Tüm Şehirler'
+                              : _selectedCity,
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -578,7 +591,9 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen> {
           Divider(height: 1, color: EmlakColors.border(isDark)),
           // District Selector - Multiple Selection
           InkWell(
-            onTap: _selectedCity.isEmpty ? null : () => _showDistrictPicker(context, isDark),
+            onTap: _selectedCity.isEmpty
+                ? null
+                : () => _showDistrictPicker(context, isDark),
             borderRadius: const BorderRadius.vertical(
               bottom: Radius.circular(16),
             ),
@@ -615,8 +630,8 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen> {
                           _selectedCity.isEmpty
                               ? 'Önce şehir seçin'
                               : _selectedDistricts.isEmpty
-                                  ? 'Tüm İlçeler'
-                                  : '${_selectedDistricts.length} ilçe seçili',
+                              ? 'Tüm İlçeler'
+                              : '${_selectedDistricts.length} ilçe seçili',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -639,7 +654,10 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen> {
                         size: 16,
                         color: EmlakColors.textSecondary(isDark),
                       ),
-                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                      constraints: const BoxConstraints(
+                        minWidth: 32,
+                        minHeight: 32,
+                      ),
                       padding: EdgeInsets.zero,
                     )
                   else
@@ -721,63 +739,63 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen> {
           Material(
             color: Colors.transparent,
             child: InkWell(
-            onTap: () => _openFilterScreen(),
-            borderRadius: BorderRadius.circular(14),
-            child: Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: activeFilterCount > 0
-                    ? EmlakColors.primary
-                    : EmlakColors.surface(isDark),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
+              onTap: () => _openFilterScreen(),
+              borderRadius: BorderRadius.circular(14),
+              child: Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
                   color: activeFilterCount > 0
                       ? EmlakColors.primary
-                      : EmlakColors.border(isDark),
-                ),
-              ),
-              child: Stack(
-                children: [
-                  Icon(
-                    Icons.tune_rounded,
+                      : EmlakColors.surface(isDark),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
                     color: activeFilterCount > 0
-                        ? Colors.white
-                        : EmlakColors.primary,
-                    size: 22,
+                        ? EmlakColors.primary
+                        : EmlakColors.border(isDark),
                   ),
-                  if (activeFilterCount > 0)
-                    Positioned(
-                      top: -2,
-                      right: -2,
-                      child: Container(
-                        width: 16,
-                        height: 16,
-                        decoration: BoxDecoration(
-                          color: EmlakColors.accent,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: activeFilterCount > 0
-                                ? EmlakColors.primary
-                                : EmlakColors.surface(isDark),
-                            width: 2,
+                ),
+                child: Stack(
+                  children: [
+                    Icon(
+                      Icons.tune_rounded,
+                      color: activeFilterCount > 0
+                          ? Colors.white
+                          : EmlakColors.primary,
+                      size: 22,
+                    ),
+                    if (activeFilterCount > 0)
+                      Positioned(
+                        top: -2,
+                        right: -2,
+                        child: Container(
+                          width: 16,
+                          height: 16,
+                          decoration: BoxDecoration(
+                            color: EmlakColors.accent,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: activeFilterCount > 0
+                                  ? EmlakColors.primary
+                                  : EmlakColors.surface(isDark),
+                              width: 2,
+                            ),
                           ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            '$activeFilterCount',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
+                          child: Center(
+                            child: Text(
+                              '$activeFilterCount',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
           ),
         ],
       ),
@@ -863,47 +881,60 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen> {
           Container(width: 1, height: 24, color: EmlakColors.border(isDark)),
           const SizedBox(width: 12),
           // Property Type Chips - Dinamik olarak DB'den
-          ...ref.watch(propertyTypesProvider).when(
-            data: (types) => types.map((type) {
-              return Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: _buildFilterChip(
-                  label: type.label,
-                  icon: type.iconData,
-                  isSelected: _selectedPropertyTypeName == type.name,
-                  onTap: () => setState(() {
-                    _selectedPropertyTypeName = _selectedPropertyTypeName == type.name
-                        ? null
-                        : type.name;
-                  }),
-                  isDark: isDark,
-                ),
-              );
-            }).toList(),
-            loading: () => [const SizedBox(width: 100, child: LinearProgressIndicator())],
-            error: (_, __) => PropertyType.values.map((type) {
-              // Fallback - DB'den yüklenemezse enum kullan
-              return Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: _buildFilterChip(
-                  label: type.label,
-                  icon: type.icon,
-                  isSelected: _selectedPropertyTypeName == type.name,
-                  onTap: () => setState(() {
-                    _selectedPropertyTypeName = _selectedPropertyTypeName == type.name
-                        ? null
-                        : type.name;
-                  }),
-                  isDark: isDark,
-                ),
-              );
-            }).toList(),
-          ),
+          ...ref
+              .watch(propertyTypesProvider)
+              .when(
+                data: (types) => types.map((type) {
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: _buildFilterChip(
+                      label: type.label,
+                      icon: type.iconData,
+                      isSelected: _selectedPropertyTypeName == type.name,
+                      onTap: () => setState(() {
+                        _selectedPropertyTypeName =
+                            _selectedPropertyTypeName == type.name
+                            ? null
+                            : type.name;
+                      }),
+                      isDark: isDark,
+                    ),
+                  );
+                }).toList(),
+                loading: () => [
+                  const SizedBox(width: 100, child: LinearProgressIndicator()),
+                ],
+                error: (_, _) => PropertyType.values.map((type) {
+                  // Fallback - DB'den yüklenemezse enum kullan
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: _buildFilterChip(
+                      label: type.label,
+                      icon: type.icon,
+                      isSelected: _selectedPropertyTypeName == type.name,
+                      onTap: () => setState(() {
+                        _selectedPropertyTypeName =
+                            _selectedPropertyTypeName == type.name
+                            ? null
+                            : type.name;
+                      }),
+                      isDark: isDark,
+                    ),
+                  );
+                }).toList(),
+              ),
           // Clear All Button
           if (activeFilterCount > 0) ...[
             const SizedBox(width: 4),
             ActionChip(
-              label: const Text('Temizle', style: TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.w600)),
+              label: const Text(
+                'Temizle',
+                style: TextStyle(
+                  color: Colors.red,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               avatar: const Icon(Icons.clear_all, size: 16, color: Colors.red),
               backgroundColor: Colors.red.withValues(alpha: 0.1),
               side: BorderSide.none,
@@ -927,44 +958,44 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen> {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? activeColor : EmlakColors.surface(isDark),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected ? activeColor : EmlakColors.border(isDark),
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? activeColor : EmlakColors.surface(isDark),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isSelected ? activeColor : EmlakColors.border(isDark),
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(
+                  icon,
+                  size: 16,
+                  color: isSelected
+                      ? Colors.white
+                      : EmlakColors.textSecondary(isDark),
+                ),
+                const SizedBox(width: 4),
+              ],
+              Text(
+                label,
+                style: TextStyle(
+                  color: isSelected
+                      ? Colors.white
+                      : EmlakColors.textSecondary(isDark),
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  fontSize: 13,
+                ),
+              ),
+            ],
           ),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null) ...[
-              Icon(
-                icon,
-                size: 16,
-                color: isSelected
-                    ? Colors.white
-                    : EmlakColors.textSecondary(isDark),
-              ),
-              const SizedBox(width: 4),
-            ],
-            Text(
-              label,
-              style: TextStyle(
-                color: isSelected
-                    ? Colors.white
-                    : EmlakColors.textSecondary(isDark),
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                fontSize: 13,
-              ),
-            ),
-          ],
-        ),
-      ),
       ),
     );
   }
@@ -1097,55 +1128,58 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen> {
               onTap: () => _showSortOptions(context, isDark),
               borderRadius: BorderRadius.circular(20),
               child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: _selectedSort != SortOption.newest
-                    ? EmlakColors.primary.withValues(alpha: 0.1)
-                    : EmlakColors.surface(isDark),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: _selectedSort != SortOption.newest
-                      ? EmlakColors.primary
-                      : EmlakColors.border(isDark),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
                 ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    _selectedSort.icon,
-                    size: 18,
+                decoration: BoxDecoration(
+                  color: _selectedSort != SortOption.newest
+                      ? EmlakColors.primary.withValues(alpha: 0.1)
+                      : EmlakColors.surface(isDark),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
                     color: _selectedSort != SortOption.newest
                         ? EmlakColors.primary
-                        : EmlakColors.textSecondary(isDark),
+                        : EmlakColors.border(isDark),
                   ),
-                  const SizedBox(width: 4),
-                  Text(
-                    _selectedSort == SortOption.newest
-                        ? 'Sırala'
-                        : _selectedSort.label.split(' ').first,
-                    style: TextStyle(
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _selectedSort.icon,
+                      size: 18,
                       color: _selectedSort != SortOption.newest
                           ? EmlakColors.primary
                           : EmlakColors.textSecondary(isDark),
-                      fontSize: 13,
-                      fontWeight: _selectedSort != SortOption.newest
-                          ? FontWeight.w600
-                          : FontWeight.w500,
                     ),
-                  ),
-                  const SizedBox(width: 2),
-                  Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    size: 18,
-                    color: _selectedSort != SortOption.newest
-                        ? EmlakColors.primary
-                        : EmlakColors.textSecondary(isDark),
-                  ),
-                ],
+                    const SizedBox(width: 4),
+                    Text(
+                      _selectedSort == SortOption.newest
+                          ? 'Sırala'
+                          : _selectedSort.label.split(' ').first,
+                      style: TextStyle(
+                        color: _selectedSort != SortOption.newest
+                            ? EmlakColors.primary
+                            : EmlakColors.textSecondary(isDark),
+                        fontSize: 13,
+                        fontWeight: _selectedSort != SortOption.newest
+                            ? FontWeight.w600
+                            : FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(width: 2),
+                    Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      size: 18,
+                      color: _selectedSort != SortOption.newest
+                          ? EmlakColors.primary
+                          : EmlakColors.textSecondary(isDark),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
           ),
         ],
       ),
@@ -1208,46 +1242,46 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen> {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
-        ),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Icon(icon, color: Colors.white, size: 22),
-            if (badgeCount != null && badgeCount > 0)
-              Positioned(
-                top: 6,
-                right: 6,
-                child: Container(
-                  width: 16,
-                  height: 16,
-                  decoration: const BoxDecoration(
-                    color: EmlakColors.accent,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: Text(
-                      '$badgeCount',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Icon(icon, color: Colors.white, size: 22),
+              if (badgeCount != null && badgeCount > 0)
+                Positioned(
+                  top: 6,
+                  right: 6,
+                  child: Container(
+                    width: 16,
+                    height: 16,
+                    decoration: const BoxDecoration(
+                      color: EmlakColors.accent,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        '$badgeCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -1289,7 +1323,10 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen> {
                     onTap: onViewAll,
                     borderRadius: BorderRadius.circular(20),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: EmlakColors.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(20),
@@ -1317,7 +1354,10 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen> {
                   ),
                 )
               : Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: EmlakColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
@@ -1377,191 +1417,209 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen> {
             borderRadius: BorderRadius.circular(18),
             child: Stack(
               fit: StackFit.expand,
-                  children: [
-                    // Background Image
-                    if (property.images.isNotEmpty)
-                      CachedNetworkImage(
-                        imageUrl: property.images.first,
-                        fit: BoxFit.cover,
-                        placeholder: (_, __) => Container(
-                          color: Colors.grey[200],
-                          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                        ),
-                        errorWidget: (_, __, ___) => Container(
-                          color: EmlakColors.primary.withValues(alpha: 0.3),
-                          child: const Icon(
-                            Icons.image,
-                            size: 60,
-                            color: Colors.white54,
-                          ),
-                        ),
-                      )
-                    else
-                      Container(
-                        color: EmlakColors.primary.withValues(alpha: 0.3),
-                        child: const Icon(Icons.home, size: 60, color: Colors.white54),
-                      ),
-
-                    // Gradient Overlay
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withValues(alpha: 0.3),
-                            Colors.black.withValues(alpha: 0.8),
-                          ],
-                          stops: const [0.3, 0.6, 1.0],
-                        ),
+              children: [
+                // Background Image
+                if (property.images.isNotEmpty)
+                  CachedNetworkImage(
+                    imageUrl: property.images.first,
+                    fit: BoxFit.cover,
+                    placeholder: (_, _) => Container(
+                      color: Colors.grey[200],
+                      child: const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
                       ),
                     ),
+                    errorWidget: (_, _, _) => Container(
+                      color: EmlakColors.primary.withValues(alpha: 0.3),
+                      child: const Icon(
+                        Icons.image,
+                        size: 60,
+                        color: Colors.white54,
+                      ),
+                    ),
+                  )
+                else
+                  Container(
+                    color: EmlakColors.primary.withValues(alpha: 0.3),
+                    child: const Icon(
+                      Icons.home,
+                      size: 60,
+                      color: Colors.white54,
+                    ),
+                  ),
 
-                    // Content
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                // Gradient Overlay
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.3),
+                        Colors.black.withValues(alpha: 0.8),
+                      ],
+                      stops: const [0.3, 0.6, 1.0],
+                    ),
+                  ),
+                ),
+
+                // Content
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Top Row - Badges
+                      Row(
                         children: [
-                          // Top Row - Badges
-                          Row(
-                            children: [
-                              _buildBadge(
-                                property.listingType.label,
-                                property.listingType.color,
-                              ),
-                              const SizedBox(width: 8),
-                              if (property.isPremium)
-                                _buildBadge(
-                                  'Premium',
-                                  EmlakColors.accent,
-                                  icon: Icons.workspace_premium_rounded,
-                                ),
-                              const Spacer(),
-                              _buildGlassButton(
-                                icon: Icons.favorite_border_rounded,
-                                onTap: () {},
-                              ),
-                            ],
+                          _buildBadge(
+                            property.listingType.label,
+                            property.listingType.color,
                           ),
-
-                          const Spacer(),
-
-                          // Property Info
-                          Text(
-                            property.title,
-                            style: const TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                              height: 1.2,
+                          const SizedBox(width: 8),
+                          if (property.isPremium)
+                            _buildBadge(
+                              'Premium',
+                              EmlakColors.accent,
+                              icon: Icons.workspace_premium_rounded,
                             ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 8),
-
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.location_on_outlined,
-                                color: Colors.white.withValues(alpha: 0.8),
-                                size: 16,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                property.location.shortAddress,
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.8),
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 14),
-
-                          // Features Row
-                          Row(
-                            children: [
-                              _buildFeatureChip(
-                                Icons.bed_outlined,
-                                '${property.rooms}+1',
-                              ),
-                              const SizedBox(width: 12),
-                              _buildFeatureChip(
-                                Icons.bathtub_outlined,
-                                '${property.bathrooms}',
-                              ),
-                              const SizedBox(width: 12),
-                              _buildFeatureChip(
-                                Icons.square_foot,
-                                '${property.squareMeters}m²',
-                              ),
-                              const Spacer(),
-                              // Emlakçı fotoğrafı
-                              if (property.agent?.isRealtor == true) ...[
-                                Container(
-                                  padding: const EdgeInsets.all(2),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.2),
-                                        blurRadius: 4,
-                                      ),
-                                    ],
-                                  ),
-                                  child: Stack(
-                                    children: [
-                                      CircleAvatar(
-                                        radius: 16,
-                                        backgroundColor: EmlakColors.primary.withValues(alpha: 0.1),
-                                        backgroundImage: property.agent?.imageUrl != null
-                                            ? NetworkImage(property.agent!.imageUrl!)
-                                            : null,
-                                        child: property.agent?.imageUrl == null
-                                            ? Icon(Icons.business, size: 16, color: EmlakColors.primary)
-                                            : null,
-                                      ),
-                                      if (property.agent?.isVerified == true)
-                                        Positioned(
-                                          bottom: 0,
-                                          right: 0,
-                                          child: Container(
-                                            padding: const EdgeInsets.all(1),
-                                            decoration: const BoxDecoration(
-                                              color: Colors.white,
-                                              shape: BoxShape.circle,
-                                            ),
-                                            child: Icon(Icons.verified, size: 10, color: EmlakColors.primary),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                              ],
-                              Text(
-                                property.fullFormattedPrice,
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
+                          const Spacer(),
+                          _buildGlassButton(
+                            icon: Icons.favorite_border_rounded,
+                            onTap: () {},
                           ),
                         ],
                       ),
-                    ),
-                  ],
+
+                      const Spacer(),
+
+                      // Property Info
+                      Text(
+                        property.title,
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          height: 1.2,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 8),
+
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.location_on_outlined,
+                            color: Colors.white.withValues(alpha: 0.8),
+                            size: 16,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            property.location.shortAddress,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.8),
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Features Row
+                      Row(
+                        children: [
+                          _buildFeatureChip(
+                            Icons.bed_outlined,
+                            '${property.rooms}+1',
+                          ),
+                          const SizedBox(width: 12),
+                          _buildFeatureChip(
+                            Icons.bathtub_outlined,
+                            '${property.bathrooms}',
+                          ),
+                          const SizedBox(width: 12),
+                          _buildFeatureChip(
+                            Icons.square_foot,
+                            '${property.squareMeters}m²',
+                          ),
+                          const Spacer(),
+                          // Emlakçı fotoğrafı
+                          if (property.agent?.isRealtor == true) ...[
+                            Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.2),
+                                    blurRadius: 4,
+                                  ),
+                                ],
+                              ),
+                              child: Stack(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 16,
+                                    backgroundColor: EmlakColors.primary
+                                        .withValues(alpha: 0.1),
+                                    backgroundImage:
+                                        property.agent?.imageUrl != null
+                                        ? NetworkImage(
+                                            property.agent!.imageUrl!,
+                                          )
+                                        : null,
+                                    child: property.agent?.imageUrl == null
+                                        ? Icon(
+                                            Icons.business,
+                                            size: 16,
+                                            color: EmlakColors.primary,
+                                          )
+                                        : null,
+                                  ),
+                                  if (property.agent?.isVerified == true)
+                                    Positioned(
+                                      bottom: 0,
+                                      right: 0,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(1),
+                                        decoration: const BoxDecoration(
+                                          color: Colors.white,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Icon(
+                                          Icons.verified,
+                                          size: 10,
+                                          color: EmlakColors.primary,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                          Text(
+                            property.fullFormattedPrice,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
+              ],
             ),
           ),
-        );
+        ),
+      ),
+    );
   }
 
   Widget _buildBadge(String label, Color color, {IconData? icon}) {
@@ -1637,8 +1695,11 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen> {
             border: property.isPremium
                 ? Border.all(color: EmlakColors.accent, width: 2)
                 : property.isFeatured
-                    ? Border.all(color: EmlakColors.accent.withValues(alpha: 0.5), width: 1.5)
-                    : null,
+                ? Border.all(
+                    color: EmlakColors.accent.withValues(alpha: 0.5),
+                    width: 1.5,
+                  )
+                : null,
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.06),
@@ -1654,14 +1715,16 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen> {
               Stack(
                 children: [
                   ClipRRect(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(14),
+                    ),
                     child: property.images.isNotEmpty
                         ? CachedNetworkImage(
                             imageUrl: property.images.first,
                             height: 200,
                             width: double.infinity,
                             fit: BoxFit.cover,
-                            placeholder: (_, __) => Container(
+                            placeholder: (_, _) => Container(
                               height: 200,
                               color: EmlakColors.surface(isDark),
                               child: Center(
@@ -1671,16 +1734,24 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen> {
                                 ),
                               ),
                             ),
-                            errorWidget: (_, __, ___) => Container(
+                            errorWidget: (_, _, _) => Container(
                               height: 200,
                               color: EmlakColors.surface(isDark),
-                              child: Icon(Icons.home, size: 48, color: EmlakColors.textTertiary(isDark)),
+                              child: Icon(
+                                Icons.home,
+                                size: 48,
+                                color: EmlakColors.textTertiary(isDark),
+                              ),
                             ),
                           )
                         : Container(
                             height: 200,
                             color: EmlakColors.surface(isDark),
-                            child: Icon(Icons.home, size: 48, color: EmlakColors.textTertiary(isDark)),
+                            child: Icon(
+                              Icons.home,
+                              size: 48,
+                              color: EmlakColors.textTertiary(isDark),
+                            ),
                           ),
                   ),
                   // Badges
@@ -1695,10 +1766,18 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen> {
                         ),
                         if (property.isPremium) ...[
                           const SizedBox(width: 6),
-                          _buildBadge('Premium', EmlakColors.accent, icon: Icons.workspace_premium_rounded),
+                          _buildBadge(
+                            'Premium',
+                            EmlakColors.accent,
+                            icon: Icons.workspace_premium_rounded,
+                          ),
                         ] else if (property.isFeatured) ...[
                           const SizedBox(width: 6),
-                          _buildBadge('Öne Çıkan', EmlakColors.accent.withValues(alpha: 0.8), icon: Icons.star_rounded),
+                          _buildBadge(
+                            'Öne Çıkan',
+                            EmlakColors.accent.withValues(alpha: 0.8),
+                            icon: Icons.star_rounded,
+                          ),
                         ],
                       ],
                     ),
@@ -1709,7 +1788,10 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen> {
                       bottom: 10,
                       right: 10,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.black54,
                           borderRadius: BorderRadius.circular(8),
@@ -1717,11 +1799,19 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen> {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.photo_library_rounded, size: 14, color: Colors.white),
+                            const Icon(
+                              Icons.photo_library_rounded,
+                              size: 14,
+                              color: Colors.white,
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               '${property.images.length}',
-                              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ],
                         ),
@@ -1748,12 +1838,18 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen> {
                           children: [
                             CircleAvatar(
                               radius: 16,
-                              backgroundColor: EmlakColors.primary.withValues(alpha: 0.1),
+                              backgroundColor: EmlakColors.primary.withValues(
+                                alpha: 0.1,
+                              ),
                               backgroundImage: property.agent?.imageUrl != null
                                   ? NetworkImage(property.agent!.imageUrl!)
                                   : null,
                               child: property.agent?.imageUrl == null
-                                  ? Icon(Icons.business, size: 16, color: EmlakColors.primary)
+                                  ? Icon(
+                                      Icons.business,
+                                      size: 16,
+                                      color: EmlakColors.primary,
+                                    )
                                   : null,
                             ),
                             if (property.agent?.isVerified == true)
@@ -1766,7 +1862,11 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen> {
                                     color: Colors.white,
                                     shape: BoxShape.circle,
                                   ),
-                                  child: Icon(Icons.verified, size: 10, color: EmlakColors.primary),
+                                  child: Icon(
+                                    Icons.verified,
+                                    size: 10,
+                                    color: EmlakColors.primary,
+                                  ),
                                 ),
                               ),
                           ],
@@ -1795,7 +1895,11 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen> {
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        Icon(Icons.location_on_outlined, size: 14, color: EmlakColors.textSecondary(isDark)),
+                        Icon(
+                          Icons.location_on_outlined,
+                          size: 14,
+                          color: EmlakColors.textSecondary(isDark),
+                        ),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
@@ -1814,11 +1918,23 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen> {
                     // Features + Price Row
                     Row(
                       children: [
-                        _buildSmallFeature(Icons.bed_outlined, '${property.rooms}+1', isDark),
+                        _buildSmallFeature(
+                          Icons.bed_outlined,
+                          '${property.rooms}+1',
+                          isDark,
+                        ),
                         const SizedBox(width: 12),
-                        _buildSmallFeature(Icons.bathtub_outlined, '${property.bathrooms}', isDark),
+                        _buildSmallFeature(
+                          Icons.bathtub_outlined,
+                          '${property.bathrooms}',
+                          isDark,
+                        ),
                         const SizedBox(width: 12),
-                        _buildSmallFeature(Icons.square_foot, '${property.squareMeters}m²', isDark),
+                        _buildSmallFeature(
+                          Icons.square_foot,
+                          '${property.squareMeters}m²',
+                          isDark,
+                        ),
                         const Spacer(),
                         Text(
                           property.fullFormattedPrice,
@@ -1866,10 +1982,7 @@ class _EmlakHomeScreenState extends ConsumerState<EmlakHomeScreen> {
       icon: const Icon(Icons.add_home_rounded, color: Colors.white),
       label: const Text(
         'İlan Ver',
-        style: TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.w600,
-        ),
+        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
       ),
     );
   }

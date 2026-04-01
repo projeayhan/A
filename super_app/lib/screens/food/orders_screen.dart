@@ -1,109 +1,97 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_responsive.dart';
+import '../../core/services/restaurant_service.dart';
 import 'food_home_screen.dart';
 
-class OrdersScreen extends StatefulWidget {
+class OrdersScreen extends ConsumerStatefulWidget {
   const OrdersScreen({super.key});
 
   @override
-  State<OrdersScreen> createState() => _OrdersScreenState();
+  ConsumerState<OrdersScreen> createState() => _OrdersScreenState();
 }
 
-class _OrdersScreenState extends State<OrdersScreen>
+class _OrdersScreenState extends ConsumerState<OrdersScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  // Örnek sipariş verileri
-  final List<Map<String, dynamic>> _activeOrders = [
-    {
-      'id': 'ORD-2024-001',
-      'restaurantName': 'Burger King',
-      'restaurantImage': 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=200',
-      'items': ['Whopper Menu', 'Onion Rings'],
-      'itemCount': 2,
-      'totalPrice': 250.00,
-      'status': 'preparing', // preparing, on_the_way, delivered
-      'statusText': 'Hazırlanıyor',
-      'estimatedTime': '25-30 dk',
-      'orderDate': '14:32',
-      'address': 'Levent Mah. Caddebostan Sok. No: 15/4',
-    },
-    {
-      'id': 'ORD-2024-002',
-      'restaurantName': 'Pizza Hut',
-      'restaurantImage': 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=200',
-      'items': ['Pepperoni Pizza (L)', 'Garlic Bread', 'Cola'],
-      'itemCount': 3,
-      'totalPrice': 385.00,
-      'status': 'on_the_way',
-      'statusText': 'Yolda',
-      'estimatedTime': '10-15 dk',
-      'orderDate': '13:45',
-      'address': 'Levent Mah. Caddebostan Sok. No: 15/4',
-    },
-  ];
+  List<Map<String, dynamic>> _activeOrders = [];
+  List<Map<String, dynamic>> _completedOrders = [];
+  bool _isLoading = true;
 
-  final List<Map<String, dynamic>> _completedOrders = [
-    {
-      'id': 'ORD-2024-098',
-      'restaurantName': 'McDonald\'s',
-      'restaurantImage': 'https://images.unsplash.com/photo-1586816001966-79b736744398?w=200',
-      'items': ['Big Mac Menu', 'McFlurry'],
-      'itemCount': 2,
-      'totalPrice': 195.00,
-      'status': 'delivered',
-      'statusText': 'Teslim Edildi',
-      'orderDate': '2 Ocak 2024',
-      'deliveredTime': '14:45',
-      'rating': 4.5,
-    },
-    {
-      'id': 'ORD-2024-095',
-      'restaurantName': 'Domino\'s Pizza',
-      'restaurantImage': 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=200',
-      'items': ['Margarita Pizza', 'Chicken Wings', 'Sprite'],
-      'itemCount': 3,
-      'totalPrice': 320.00,
-      'status': 'delivered',
-      'statusText': 'Teslim Edildi',
-      'orderDate': '31 Aralık 2023',
-      'deliveredTime': '20:15',
-      'rating': 5.0,
-    },
-    {
-      'id': 'ORD-2024-090',
-      'restaurantName': 'KFC',
-      'restaurantImage': 'https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?w=200',
-      'items': ['Bucket Menu', 'Coleslaw'],
-      'itemCount': 2,
-      'totalPrice': 275.00,
-      'status': 'delivered',
-      'statusText': 'Teslim Edildi',
-      'orderDate': '28 Aralık 2023',
-      'deliveredTime': '19:30',
-      'rating': 4.0,
-    },
-    {
-      'id': 'ORD-2024-085',
-      'restaurantName': 'Starbucks',
-      'restaurantImage': 'https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=200',
-      'items': ['Caramel Macchiato', 'Brownie'],
-      'itemCount': 2,
-      'totalPrice': 145.00,
-      'status': 'delivered',
-      'statusText': 'Teslim Edildi',
-      'orderDate': '25 Aralık 2023',
-      'deliveredTime': '11:20',
-      'rating': null, // Henüz değerlendirilmemiş
-    },
-  ];
+  static const _activeStatuses = {'pending', 'confirmed', 'preparing', 'on_the_way', 'ready_for_pickup'};
+
+  static String _statusText(String status) {
+    switch (status) {
+      case 'pending': return 'Bekliyor';
+      case 'confirmed': return 'Onaylandı';
+      case 'preparing': return 'Hazırlanıyor';
+      case 'on_the_way': return 'Yolda';
+      case 'ready_for_pickup': return 'Teslimata Hazır';
+      case 'delivered': return 'Teslim Edildi';
+      case 'cancelled': return 'İptal Edildi';
+      default: return status;
+    }
+  }
+
+  Map<String, dynamic> _mapOrder(Map<String, dynamic> order) {
+    final merchant = order['merchants'] as Map<String, dynamic>? ?? {};
+    final rawItems = order['items'] as List<dynamic>? ?? [];
+    final itemNames = rawItems
+        .map((i) => (i as Map<String, dynamic>?)?['name'] as String? ?? '')
+        .where((n) => n.isNotEmpty)
+        .toList();
+    final status = order['status'] as String? ?? 'pending';
+    final createdAt = order['created_at'] as String?;
+    String orderDate = '';
+    if (createdAt != null) {
+      final dt = DateTime.tryParse(createdAt);
+      if (dt != null) {
+        orderDate = '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+      }
+    }
+    return {
+      'id': order['order_number'] ?? order['id'] ?? '',
+      'restaurantName': merchant['business_name'] ?? '',
+      'restaurantImage': merchant['logo_url'] ?? '',
+      'items': itemNames,
+      'itemCount': rawItems.length,
+      'totalPrice': (order['total_amount'] as num?)?.toDouble() ?? 0.0,
+      'status': status,
+      'statusText': _statusText(status),
+      'estimatedTime': '',
+      'orderDate': orderDate,
+      'address': order['delivery_address'] ?? '',
+      'deliveredTime': orderDate,
+      'rating': null,
+    };
+  }
+
+  Future<void> _loadOrders() async {
+    setState(() => _isLoading = true);
+    try {
+      final orders = await RestaurantService.getUserOrders();
+      final mapped = orders.map(_mapOrder).toList();
+      if (mounted) {
+        setState(() {
+          _activeOrders = mapped.where((o) => _activeStatuses.contains(o['status'])).toList();
+          _completedOrders = mapped.where((o) => !_activeStatuses.contains(o['status'])).toList();
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading orders: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _loadOrders();
   }
 
   @override
@@ -117,7 +105,9 @@ class _OrdersScreenState extends State<OrdersScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? FoodColors.backgroundDark : FoodColors.backgroundLight,
+      backgroundColor: isDark
+          ? FoodColors.backgroundDark
+          : FoodColors.backgroundLight,
       appBar: AppBar(
         backgroundColor: isDark ? FoodColors.backgroundDark : Colors.white,
         elevation: 0,
@@ -155,7 +145,10 @@ class _OrdersScreenState extends State<OrdersScreen>
                   if (_activeOrders.isNotEmpty) ...[
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: FoodColors.primary,
                         borderRadius: BorderRadius.circular(10),
@@ -190,6 +183,9 @@ class _OrdersScreenState extends State<OrdersScreen>
   }
 
   Widget _buildActiveOrdersList(bool isDark) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
     if (_activeOrders.isEmpty) {
       return _buildEmptyState(
         isDark,
@@ -227,7 +223,8 @@ class _OrdersScreenState extends State<OrdersScreen>
     );
   }
 
-  Widget _buildEmptyState(bool isDark, {
+  Widget _buildEmptyState(
+    bool isDark, {
     required IconData icon,
     required String title,
     required String subtitle,
@@ -245,11 +242,7 @@ class _OrdersScreenState extends State<OrdersScreen>
                   : FoodColors.primary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              icon,
-              size: 50,
-              color: FoodColors.primary,
-            ),
+            child: Icon(icon, size: 50, color: FoodColors.primary),
           ),
           const SizedBox(height: 24),
           Text(
@@ -316,7 +309,9 @@ class _OrdersScreenState extends State<OrdersScreen>
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: statusColor.withValues(alpha: 0.1),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(16),
+              ),
             ),
             child: Row(
               children: [
@@ -353,7 +348,10 @@ class _OrdersScreenState extends State<OrdersScreen>
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: statusColor,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),
@@ -395,13 +393,15 @@ class _OrdersScreenState extends State<OrdersScreen>
                     width: 60,
                     height: 60,
                     fit: BoxFit.cover,
-                    placeholder: (_, __) => Container(
+                    placeholder: (_, _) => Container(
                       width: 60,
                       height: 60,
                       color: Colors.grey[200],
-                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                      child: const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
                     ),
-                    errorWidget: (_, __, ___) => Container(
+                    errorWidget: (_, _, _) => Container(
                       width: 60,
                       height: 60,
                       color: isDark ? Colors.grey[800] : Colors.grey[200],
@@ -419,7 +419,9 @@ class _OrdersScreenState extends State<OrdersScreen>
                         style: TextStyle(
                           fontSize: context.heading2Size,
                           fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : const Color(0xFF1C130D),
+                          color: isDark
+                              ? Colors.white
+                              : const Color(0xFF1C130D),
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -439,14 +441,13 @@ class _OrdersScreenState extends State<OrdersScreen>
                             '${order['itemCount']} ürün',
                             style: TextStyle(
                               fontSize: context.captionSize,
-                              color: isDark ? Colors.grey[500] : Colors.grey[500],
+                              color: isDark
+                                  ? Colors.grey[500]
+                                  : Colors.grey[500],
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Text(
-                            '•',
-                            style: TextStyle(color: Colors.grey[400]),
-                          ),
+                          Text('•', style: TextStyle(color: Colors.grey[400])),
                           const SizedBox(width: 8),
                           Text(
                             '${order['totalPrice'].toStringAsFixed(0)} TL',
@@ -469,8 +470,12 @@ class _OrdersScreenState extends State<OrdersScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              color: isDark ? Colors.black.withValues(alpha: 0.2) : FoodColors.backgroundLight,
-              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+              color: isDark
+                  ? Colors.black.withValues(alpha: 0.2)
+                  : FoodColors.backgroundLight,
+              borderRadius: const BorderRadius.vertical(
+                bottom: Radius.circular(16),
+              ),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -622,13 +627,15 @@ class _OrdersScreenState extends State<OrdersScreen>
                       width: 56,
                       height: 56,
                       fit: BoxFit.cover,
-                      placeholder: (_, __) => Container(
+                      placeholder: (_, _) => Container(
                         width: 56,
                         height: 56,
                         color: Colors.grey[200],
-                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                        child: const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
                       ),
-                      errorWidget: (_, __, ___) => Container(
+                      errorWidget: (_, _, _) => Container(
                         width: 56,
                         height: 56,
                         color: isDark ? Colors.grey[800] : Colors.grey[200],
@@ -649,7 +656,9 @@ class _OrdersScreenState extends State<OrdersScreen>
                               style: TextStyle(
                                 fontSize: context.heading2Size,
                                 fontWeight: FontWeight.bold,
-                                color: isDark ? Colors.white : const Color(0xFF1C130D),
+                                color: isDark
+                                    ? Colors.white
+                                    : const Color(0xFF1C130D),
                               ),
                             ),
                             Container(
@@ -658,7 +667,9 @@ class _OrdersScreenState extends State<OrdersScreen>
                                 vertical: 4,
                               ),
                               decoration: BoxDecoration(
-                                color: const Color(0xFF22C55E).withValues(alpha: 0.1),
+                                color: const Color(
+                                  0xFF22C55E,
+                                ).withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Row(
@@ -700,7 +711,9 @@ class _OrdersScreenState extends State<OrdersScreen>
                               order['orderDate'],
                               style: TextStyle(
                                 fontSize: context.captionSize,
-                                color: isDark ? Colors.grey[500] : Colors.grey[500],
+                                color: isDark
+                                    ? Colors.grey[500]
+                                    : Colors.grey[500],
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -731,21 +744,32 @@ class _OrdersScreenState extends State<OrdersScreen>
                   // Değerlendirme
                   if (order['rating'] != null)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
-                        color: isDark ? Colors.grey[800] : FoodColors.backgroundLight,
+                        color: isDark
+                            ? Colors.grey[800]
+                            : FoodColors.backgroundLight,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.star, size: 16, color: Color(0xFFFACC15)),
+                          const Icon(
+                            Icons.star,
+                            size: 16,
+                            color: Color(0xFFFACC15),
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             order['rating'].toString(),
                             style: TextStyle(
                               fontSize: context.bodySmallSize,
                               fontWeight: FontWeight.w600,
-                              color: isDark ? Colors.white : const Color(0xFF1C130D),
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF1C130D),
                             ),
                           ),
                         ],
@@ -754,7 +778,11 @@ class _OrdersScreenState extends State<OrdersScreen>
                   else
                     TextButton.icon(
                       onPressed: () => _showRatingDialog(order, isDark),
-                      icon: const Icon(Icons.star_border, size: 18, color: FoodColors.primary),
+                      icon: const Icon(
+                        Icons.star_border,
+                        size: 18,
+                        color: FoodColors.primary,
+                      ),
                       label: Text(
                         'Değerlendir',
                         style: TextStyle(
@@ -779,7 +807,11 @@ class _OrdersScreenState extends State<OrdersScreen>
                         ),
                       );
                     },
-                    icon: const Icon(Icons.replay, size: 16, color: Colors.white),
+                    icon: const Icon(
+                      Icons.replay,
+                      size: 16,
+                      color: Colors.white,
+                    ),
                     label: Text(
                       'Tekrarla',
                       style: TextStyle(
@@ -790,7 +822,10 @@ class _OrdersScreenState extends State<OrdersScreen>
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: FoodColors.primary,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
                       ),
@@ -836,7 +871,9 @@ class _OrdersScreenState extends State<OrdersScreen>
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: isDark ? FoodColors.surfaceDark : Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: Text(
             'Siparişi Değerlendir',
             style: TextStyle(
@@ -923,10 +960,7 @@ class _OrderDetailSheet extends StatelessWidget {
   final Map<String, dynamic> order;
   final bool isDark;
 
-  const _OrderDetailSheet({
-    required this.order,
-    required this.isDark,
-  });
+  const _OrderDetailSheet({required this.order, required this.isDark});
 
   @override
   Widget build(BuildContext context) {
@@ -968,13 +1002,17 @@ class _OrderDetailSheet extends StatelessWidget {
                             width: 60,
                             height: 60,
                             fit: BoxFit.cover,
-                            placeholder: (_, __) => Container(
+                            placeholder: (_, _) => Container(
                               width: 60,
                               height: 60,
                               color: Colors.grey[200],
-                              child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                              child: const Center(
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
                             ),
-                            errorWidget: (_, __, ___) => Container(
+                            errorWidget: (_, _, _) => Container(
                               width: 60,
                               height: 60,
                               color: Colors.grey[300],
@@ -992,7 +1030,9 @@ class _OrderDetailSheet extends StatelessWidget {
                                 style: TextStyle(
                                   fontSize: context.heading1Size,
                                   fontWeight: FontWeight.bold,
-                                  color: isDark ? Colors.white : const Color(0xFF1C130D),
+                                  color: isDark
+                                      ? Colors.white
+                                      : const Color(0xFF1C130D),
                                 ),
                               ),
                               const SizedBox(height: 4),
@@ -1000,7 +1040,9 @@ class _OrderDetailSheet extends StatelessWidget {
                                 'Sipariş No: ${order['id']}',
                                 style: TextStyle(
                                   fontSize: context.bodySmallSize,
-                                  color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                  color: isDark
+                                      ? Colors.grey[400]
+                                      : Colors.grey[600],
                                 ),
                               ),
                             ],
@@ -1016,7 +1058,9 @@ class _OrderDetailSheet extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: _getStatusColor(order['status']).withValues(alpha: 0.1),
+                          color: _getStatusColor(
+                            order['status'],
+                          ).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Row(
@@ -1054,7 +1098,9 @@ class _OrderDetailSheet extends StatelessWidget {
                                   width: 24,
                                   height: 24,
                                   decoration: BoxDecoration(
-                                    color: FoodColors.primary.withValues(alpha: 0.1),
+                                    color: FoodColors.primary.withValues(
+                                      alpha: 0.1,
+                                    ),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Center(
@@ -1074,7 +1120,9 @@ class _OrderDetailSheet extends StatelessWidget {
                                     item.toString(),
                                     style: TextStyle(
                                       fontSize: context.heading2Size,
-                                      color: isDark ? Colors.white : const Color(0xFF1C130D),
+                                      color: isDark
+                                          ? Colors.white
+                                          : const Color(0xFF1C130D),
                                     ),
                                   ),
                                 ),
@@ -1097,7 +1145,9 @@ class _OrderDetailSheet extends StatelessWidget {
                               width: 40,
                               height: 40,
                               decoration: BoxDecoration(
-                                color: FoodColors.primary.withValues(alpha: 0.1),
+                                color: FoodColors.primary.withValues(
+                                  alpha: 0.1,
+                                ),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: const Icon(
@@ -1111,7 +1161,9 @@ class _OrderDetailSheet extends StatelessWidget {
                                 order['address'],
                                 style: TextStyle(
                                   fontSize: context.bodySize,
-                                  color: isDark ? Colors.grey[300] : Colors.grey[700],
+                                  color: isDark
+                                      ? Colors.grey[300]
+                                      : Colors.grey[700],
                                 ),
                               ),
                             ),
@@ -1127,12 +1179,18 @@ class _OrderDetailSheet extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: isDark ? FoodColors.surfaceDark : FoodColors.backgroundLight,
+                          color: isDark
+                              ? FoodColors.surfaceDark
+                              : FoodColors.backgroundLight,
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Column(
                           children: [
-                            _buildPriceRow('Ara Toplam', '${(order['totalPrice'] - 15).toStringAsFixed(0)} TL', isDark),
+                            _buildPriceRow(
+                              'Ara Toplam',
+                              '${(order['totalPrice'] - 15).toStringAsFixed(0)} TL',
+                              isDark,
+                            ),
                             const SizedBox(height: 8),
                             _buildPriceRow('Teslimat', '15 TL', isDark),
                             const Divider(height: 24),
@@ -1242,7 +1300,9 @@ class _OrderDetailSheet extends StatelessWidget {
                             style: TextStyle(
                               fontSize: context.heading2Size,
                               fontWeight: FontWeight.w600,
-                              color: isDark ? Colors.grey[400] : Colors.grey[600],
+                              color: isDark
+                                  ? Colors.grey[400]
+                                  : Colors.grey[600],
                             ),
                           ),
                         ],
@@ -1276,7 +1336,12 @@ class _OrderDetailSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildPriceRow(String label, String value, bool isDark, {bool isBold = false}) {
+  Widget _buildPriceRow(
+    String label,
+    String value,
+    bool isDark, {
+    bool isBold = false,
+  }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -1330,92 +1395,92 @@ class _OrderDetailSheet extends StatelessWidget {
 }
 
 // Bottom Navigation içinde kullanmak için AppBar'sız versiyon
-class OrdersScreenContent extends StatefulWidget {
+class OrdersScreenContent extends ConsumerStatefulWidget {
   const OrdersScreenContent({super.key});
 
   @override
-  State<OrdersScreenContent> createState() => _OrdersScreenContentState();
+  ConsumerState<OrdersScreenContent> createState() => _OrdersScreenContentState();
 }
 
-class _OrdersScreenContentState extends State<OrdersScreenContent>
+class _OrdersScreenContentState extends ConsumerState<OrdersScreenContent>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
-  final List<Map<String, dynamic>> _activeOrders = [
-    {
-      'id': 'ORD-2024-001',
-      'restaurantName': 'Burger King',
-      'restaurantImage': 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=200',
-      'items': ['Whopper Menu', 'Onion Rings'],
-      'itemCount': 2,
-      'totalPrice': 250.00,
-      'status': 'preparing',
-      'statusText': 'Hazırlanıyor',
-      'estimatedTime': '25-30 dk',
-      'orderDate': '14:32',
-      'address': 'Levent Mah. Caddebostan Sok. No: 15/4',
-    },
-    {
-      'id': 'ORD-2024-002',
-      'restaurantName': 'Pizza Hut',
-      'restaurantImage': 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=200',
-      'items': ['Pepperoni Pizza (L)', 'Garlic Bread', 'Cola'],
-      'itemCount': 3,
-      'totalPrice': 385.00,
-      'status': 'on_the_way',
-      'statusText': 'Yolda',
-      'estimatedTime': '10-15 dk',
-      'orderDate': '13:45',
-      'address': 'Levent Mah. Caddebostan Sok. No: 15/4',
-    },
-  ];
+  List<Map<String, dynamic>> _activeOrders = [];
+  List<Map<String, dynamic>> _completedOrders = [];
+  bool _isLoading = true;
 
-  final List<Map<String, dynamic>> _completedOrders = [
-    {
-      'id': 'ORD-2024-098',
-      'restaurantName': 'McDonald\'s',
-      'restaurantImage': 'https://images.unsplash.com/photo-1586816001966-79b736744398?w=200',
-      'items': ['Big Mac Menu', 'McFlurry'],
-      'itemCount': 2,
-      'totalPrice': 195.00,
-      'status': 'delivered',
-      'statusText': 'Teslim Edildi',
-      'orderDate': '2 Ocak 2024',
-      'deliveredTime': '14:45',
-      'rating': 4.5,
-    },
-    {
-      'id': 'ORD-2024-095',
-      'restaurantName': 'Domino\'s Pizza',
-      'restaurantImage': 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=200',
-      'items': ['Margarita Pizza', 'Chicken Wings', 'Sprite'],
-      'itemCount': 3,
-      'totalPrice': 320.00,
-      'status': 'delivered',
-      'statusText': 'Teslim Edildi',
-      'orderDate': '31 Aralık 2023',
-      'deliveredTime': '20:15',
-      'rating': 5.0,
-    },
-    {
-      'id': 'ORD-2024-090',
-      'restaurantName': 'KFC',
-      'restaurantImage': 'https://images.unsplash.com/photo-1626645738196-c2a7c87a8f58?w=200',
-      'items': ['Bucket Menu', 'Coleslaw'],
-      'itemCount': 2,
-      'totalPrice': 275.00,
-      'status': 'delivered',
-      'statusText': 'Teslim Edildi',
-      'orderDate': '28 Aralık 2023',
-      'deliveredTime': '19:30',
-      'rating': 4.0,
-    },
-  ];
+  static const _activeStatuses = {'pending', 'confirmed', 'preparing', 'on_the_way', 'ready_for_pickup'};
+
+  static String _statusText(String status) {
+    switch (status) {
+      case 'pending': return 'Bekliyor';
+      case 'confirmed': return 'Onaylandı';
+      case 'preparing': return 'Hazırlanıyor';
+      case 'on_the_way': return 'Yolda';
+      case 'ready_for_pickup': return 'Teslimata Hazır';
+      case 'delivered': return 'Teslim Edildi';
+      case 'cancelled': return 'İptal Edildi';
+      default: return status;
+    }
+  }
+
+  Map<String, dynamic> _mapOrder(Map<String, dynamic> order) {
+    final merchant = order['merchants'] as Map<String, dynamic>? ?? {};
+    final rawItems = order['items'] as List<dynamic>? ?? [];
+    final itemNames = rawItems
+        .map((i) => (i as Map<String, dynamic>?)?['name'] as String? ?? '')
+        .where((n) => n.isNotEmpty)
+        .toList();
+    final status = order['status'] as String? ?? 'pending';
+    final createdAt = order['created_at'] as String?;
+    String orderDate = '';
+    if (createdAt != null) {
+      final dt = DateTime.tryParse(createdAt);
+      if (dt != null) {
+        orderDate = '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+      }
+    }
+    return {
+      'id': order['order_number'] ?? order['id'] ?? '',
+      'restaurantName': merchant['business_name'] ?? '',
+      'restaurantImage': merchant['logo_url'] ?? '',
+      'items': itemNames,
+      'itemCount': rawItems.length,
+      'totalPrice': (order['total_amount'] as num?)?.toDouble() ?? 0.0,
+      'status': status,
+      'statusText': _statusText(status),
+      'estimatedTime': '',
+      'orderDate': orderDate,
+      'address': order['delivery_address'] ?? '',
+      'deliveredTime': orderDate,
+      'rating': null,
+    };
+  }
+
+  Future<void> _loadOrders() async {
+    setState(() => _isLoading = true);
+    try {
+      final orders = await RestaurantService.getUserOrders();
+      final mapped = orders.map(_mapOrder).toList();
+      if (mounted) {
+        setState(() {
+          _activeOrders = mapped.where((o) => _activeStatuses.contains(o['status'])).toList();
+          _completedOrders = mapped.where((o) => !_activeStatuses.contains(o['status'])).toList();
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading orders: $e');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _loadOrders();
   }
 
   @override
@@ -1473,7 +1538,10 @@ class _OrdersScreenContentState extends State<OrdersScreenContent>
                     if (_activeOrders.isNotEmpty) ...[
                       const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: FoodColors.primary,
                           borderRadius: BorderRadius.circular(10),
@@ -1511,6 +1579,9 @@ class _OrdersScreenContentState extends State<OrdersScreenContent>
   }
 
   Widget _buildActiveOrdersList(bool isDark) {
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
     if (_activeOrders.isEmpty) {
       return _buildEmptyState(
         isDark,
@@ -1548,7 +1619,8 @@ class _OrdersScreenContentState extends State<OrdersScreenContent>
     );
   }
 
-  Widget _buildEmptyState(bool isDark, {
+  Widget _buildEmptyState(
+    bool isDark, {
     required IconData icon,
     required String title,
     required String subtitle,
@@ -1614,7 +1686,9 @@ class _OrdersScreenContentState extends State<OrdersScreenContent>
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: statusColor.withValues(alpha: 0.1),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(16),
+              ),
             ),
             child: Row(
               children: [
@@ -1626,7 +1700,9 @@ class _OrdersScreenContentState extends State<OrdersScreenContent>
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
-                    status == 'preparing' ? Icons.restaurant : Icons.delivery_dining,
+                    status == 'preparing'
+                        ? Icons.restaurant
+                        : Icons.delivery_dining,
                     color: statusColor,
                     size: 24,
                   ),
@@ -1660,7 +1736,10 @@ class _OrdersScreenContentState extends State<OrdersScreenContent>
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: statusColor,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),
@@ -1697,13 +1776,15 @@ class _OrdersScreenContentState extends State<OrdersScreenContent>
                     width: 56,
                     height: 56,
                     fit: BoxFit.cover,
-                    placeholder: (_, __) => Container(
+                    placeholder: (_, _) => Container(
                       width: 56,
                       height: 56,
                       color: Colors.grey[200],
-                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                      child: const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
                     ),
-                    errorWidget: (_, __, ___) => Container(
+                    errorWidget: (_, _, _) => Container(
                       width: 56,
                       height: 56,
                       color: Colors.grey[300],
@@ -1721,7 +1802,9 @@ class _OrdersScreenContentState extends State<OrdersScreenContent>
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : const Color(0xFF1C130D),
+                          color: isDark
+                              ? Colors.white
+                              : const Color(0xFF1C130D),
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -1770,13 +1853,15 @@ class _OrdersScreenContentState extends State<OrdersScreenContent>
                     width: 56,
                     height: 56,
                     fit: BoxFit.cover,
-                    placeholder: (_, __) => Container(
+                    placeholder: (_, _) => Container(
                       width: 56,
                       height: 56,
                       color: Colors.grey[200],
-                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                      child: const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
                     ),
-                    errorWidget: (_, __, ___) => Container(
+                    errorWidget: (_, _, _) => Container(
                       width: 56,
                       height: 56,
                       color: Colors.grey[300],
@@ -1797,19 +1882,30 @@ class _OrdersScreenContentState extends State<OrdersScreenContent>
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.bold,
-                              color: isDark ? Colors.white : const Color(0xFF1C130D),
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF1C130D),
                             ),
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF22C55E).withValues(alpha: 0.1),
+                              color: const Color(
+                                0xFF22C55E,
+                              ).withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: const Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.check_circle, size: 12, color: Color(0xFF22C55E)),
+                                Icon(
+                                  Icons.check_circle,
+                                  size: 12,
+                                  color: Color(0xFF22C55E),
+                                ),
                                 SizedBox(width: 4),
                                 Text(
                                   'Teslim Edildi',
@@ -1842,21 +1938,32 @@ class _OrdersScreenContentState extends State<OrdersScreenContent>
               children: [
                 if (order['rating'] != null)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
-                      color: isDark ? Colors.grey[800] : FoodColors.backgroundLight,
+                      color: isDark
+                          ? Colors.grey[800]
+                          : FoodColors.backgroundLight,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.star, size: 16, color: Color(0xFFFACC15)),
+                        const Icon(
+                          Icons.star,
+                          size: 16,
+                          color: Color(0xFFFACC15),
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           order['rating'].toString(),
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            color: isDark ? Colors.white : const Color(0xFF1C130D),
+                            color: isDark
+                                ? Colors.white
+                                : const Color(0xFF1C130D),
                           ),
                         ),
                       ],
@@ -1883,7 +1990,10 @@ class _OrdersScreenContentState extends State<OrdersScreenContent>
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: FoodColors.primary,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),

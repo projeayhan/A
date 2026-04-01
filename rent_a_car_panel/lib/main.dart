@@ -1,25 +1,35 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 import 'core/theme.dart';
 import 'core/router.dart';
 import 'core/supabase_config.dart';
+import 'core/services/log_service.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+void main() {
+  runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    await dotenv.load(fileName: '.env');
+    await initializeDateFormatting('tr_TR', null);
+    await initSupabase();
 
-  // Initialize date formatting for Turkish locale
-  await initializeDateFormatting('tr_TR', null);
+    FlutterError.onError = (details) {
+      FlutterError.presentError(details);
+      LogService.error(details.exceptionAsString(),
+          error: details.exception,
+          stackTrace: details.stack,
+          source: 'FlutterError');
+    };
 
-  // Initialize Supabase
-  await initSupabase();
-
-  runApp(
-    const ProviderScope(
-      child: RentACarPanelApp(),
-    ),
-  );
+    LogService.info('Rent a car panel started', source: 'main');
+    runApp(const ProviderScope(child: RentACarPanelApp()));
+  }, (error, stackTrace) {
+    LogService.error(error.toString(),
+        error: error, stackTrace: stackTrace, source: 'ZoneError');
+  });
 }
 
 class RentACarPanelApp extends ConsumerWidget {

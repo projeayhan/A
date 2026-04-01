@@ -20,7 +20,9 @@ class _KbArticleDialogState extends State<KbArticleDialog> {
   void initState() {
     super.initState();
     _titleCtrl = TextEditingController(text: widget.existing?['title'] ?? '');
-    _contentCtrl = TextEditingController(text: widget.existing?['content'] ?? '');
+    _contentCtrl = TextEditingController(
+      text: widget.existing?['content'] ?? '',
+    );
     final tags = (widget.existing?['tags'] as List?)?.cast<String>() ?? [];
     _tagsCtrl = TextEditingController(text: tags.join(', '));
     _category = widget.existing?['category'] ?? 'faq';
@@ -49,7 +51,10 @@ class _KbArticleDialogState extends State<KbArticleDialog> {
             children: [
               TextField(
                 controller: _titleCtrl,
-                decoration: const InputDecoration(labelText: 'Baslik', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'Baslik',
+                  border: OutlineInputBorder(),
+                ),
               ),
               const SizedBox(height: 12),
               TextField(
@@ -67,14 +72,29 @@ class _KbArticleDialogState extends State<KbArticleDialog> {
                 children: [
                   Expanded(
                     child: DropdownButtonFormField<String>(
-                      value: _category,
-                      decoration: const InputDecoration(labelText: 'Kategori', border: OutlineInputBorder()),
+                      initialValue: _category,
+                      decoration: const InputDecoration(
+                        labelText: 'Kategori',
+                        border: OutlineInputBorder(),
+                      ),
                       items: const [
                         DropdownMenuItem(value: 'faq', child: Text('SSS')),
-                        DropdownMenuItem(value: 'policy', child: Text('Politika')),
-                        DropdownMenuItem(value: 'procedure', child: Text('Prosedur')),
-                        DropdownMenuItem(value: 'troubleshooting', child: Text('Sorun Giderme')),
-                        DropdownMenuItem(value: 'guide', child: Text('Kilavuz')),
+                        DropdownMenuItem(
+                          value: 'policy',
+                          child: Text('Politika'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'procedure',
+                          child: Text('Prosedur'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'troubleshooting',
+                          child: Text('Sorun Giderme'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'guide',
+                          child: Text('Kilavuz'),
+                        ),
                       ],
                       onChanged: (v) => setState(() => _category = v ?? 'faq'),
                     ),
@@ -82,17 +102,32 @@ class _KbArticleDialogState extends State<KbArticleDialog> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: DropdownButtonFormField<String>(
-                      value: _serviceType,
-                      decoration: const InputDecoration(labelText: 'Servis Tipi', border: OutlineInputBorder()),
+                      initialValue: _serviceType,
+                      decoration: const InputDecoration(
+                        labelText: 'Servis Tipi',
+                        border: OutlineInputBorder(),
+                      ),
                       items: const [
                         DropdownMenuItem(value: null, child: Text('Genel')),
                         DropdownMenuItem(value: 'food', child: Text('Yemek')),
-                        DropdownMenuItem(value: 'grocery', child: Text('Market')),
+                        DropdownMenuItem(
+                          value: 'grocery',
+                          child: Text('Market'),
+                        ),
                         DropdownMenuItem(value: 'taxi', child: Text('Taksi')),
-                        DropdownMenuItem(value: 'courier', child: Text('Kurye')),
-                        DropdownMenuItem(value: 'rental', child: Text('Kiralama')),
+                        DropdownMenuItem(
+                          value: 'courier',
+                          child: Text('Kurye'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'rental',
+                          child: Text('Kiralama'),
+                        ),
                         DropdownMenuItem(value: 'emlak', child: Text('Emlak')),
-                        DropdownMenuItem(value: 'car_sales', child: Text('Arac Satis')),
+                        DropdownMenuItem(
+                          value: 'car_sales',
+                          child: Text('Arac Satis'),
+                        ),
                       ],
                       onChanged: (v) => setState(() => _serviceType = v),
                     ),
@@ -113,7 +148,10 @@ class _KbArticleDialogState extends State<KbArticleDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Iptal')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Iptal'),
+        ),
         if (widget.existing != null)
           TextButton(
             onPressed: () => Navigator.pop(context, {'_delete': true}),
@@ -121,7 +159,8 @@ class _KbArticleDialogState extends State<KbArticleDialog> {
             child: const Text('Sil'),
           ),
         ElevatedButton(
-          onPressed: _titleCtrl.text.trim().isEmpty || _contentCtrl.text.trim().isEmpty
+          onPressed:
+              _titleCtrl.text.trim().isEmpty || _contentCtrl.text.trim().isEmpty
               ? null
               : () {
                   final tags = _tagsCtrl.text

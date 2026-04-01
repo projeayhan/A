@@ -36,7 +36,7 @@ final realtorAppointmentsProvider = FutureProvider.family<List<Map<String, dynam
     final client = ref.watch(supabaseProvider);
     final response = await client
         .from('appointments')
-        .select('*, properties(title, city, district, images), user_profiles!requester_id(full_name, phone)')
+        .select('*, properties(title, city, district, images)')
         .eq('owner_id', realtorId)
         .order('appointment_date', ascending: false);
     return List<Map<String, dynamic>>.from(response);

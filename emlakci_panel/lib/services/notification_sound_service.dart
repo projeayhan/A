@@ -1,4 +1,5 @@
 import 'dart:js_interop';
+import 'package:emlakci_panel/core/services/log_service.dart';
 
 @JS('playNotificationSound')
 external void _jsPlayNotificationSound();
@@ -10,8 +11,8 @@ class NotificationSoundService {
     try {
       _jsPlayNotificationSound();
       _audioInitialized = true;
-    } catch (e) {
-      // Ignore errors
+    } catch (e, st) {
+      LogService.error('Notification sound failed', error: e, stackTrace: st, source: 'NotificationSoundService:playSound');
     }
   }
 

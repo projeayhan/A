@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:rent_a_car_panel/core/services/log_service.dart';
 
 import '../../core/theme.dart';
 import '../../core/supabase_config.dart';
@@ -39,10 +40,7 @@ class SettingsScreen extends ConsumerWidget {
           children: [
             const Text(
               'Ayarlar',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 24),
 
@@ -80,15 +78,18 @@ class SettingsScreen extends ConsumerWidget {
                                     ),
                                     child: company['logo_url'] != null
                                         ? ClipRRect(
-                                            borderRadius: BorderRadius.circular(16),
+                                            borderRadius: BorderRadius.circular(
+                                              16,
+                                            ),
                                             child: Image.network(
                                               company['logo_url'],
                                               fit: BoxFit.cover,
-                                              errorBuilder: (_, __, ___) => const Icon(
-                                                Icons.business,
-                                                size: 40,
-                                                color: AppColors.textMuted,
-                                              ),
+                                              errorBuilder: (_, _, _) =>
+                                                  const Icon(
+                                                    Icons.business,
+                                                    size: 40,
+                                                    color: AppColors.textMuted,
+                                                  ),
                                             ),
                                           )
                                         : const Icon(
@@ -100,7 +101,8 @@ class SettingsScreen extends ConsumerWidget {
                                   const SizedBox(width: 20),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           company['company_name'] ?? '',
@@ -112,7 +114,7 @@ class SettingsScreen extends ConsumerWidget {
                                         const SizedBox(height: 4),
                                         Row(
                                           children: [
-                                            Icon(
+                                            const Icon(
                                               Icons.star,
                                               size: 18,
                                               color: Colors.amber,
@@ -125,14 +127,20 @@ class SettingsScreen extends ConsumerWidget {
                                               ),
                                             ),
                                             const SizedBox(width: 16),
-                                            _buildStatusChip(company['is_approved'] == true),
+                                            _buildStatusChip(
+                                              company['is_approved'] == true,
+                                            ),
                                           ],
                                         ),
                                       ],
                                     ),
                                   ),
                                   OutlinedButton.icon(
-                                    onPressed: () => _showEditCompanyDialog(context, ref, company),
+                                    onPressed: () => _showEditCompanyDialog(
+                                      context,
+                                      ref,
+                                      company,
+                                    ),
                                     icon: const Icon(Icons.edit),
                                     label: const Text('Düzenle'),
                                   ),
@@ -144,16 +152,40 @@ class SettingsScreen extends ConsumerWidget {
 
                               // Company details
                               _buildInfoSection('İletişim Bilgileri', [
-                                _buildInfoRow(Icons.email, 'E-posta', company['email'] ?? '-'),
-                                _buildInfoRow(Icons.phone, 'Telefon', company['phone'] ?? '-'),
-                                _buildInfoRow(Icons.location_on, 'Adres', company['address'] ?? '-'),
-                                _buildInfoRow(Icons.location_city, 'Şehir', company['city'] ?? '-'),
+                                _buildInfoRow(
+                                  Icons.email,
+                                  'E-posta',
+                                  company['email'] ?? '-',
+                                ),
+                                _buildInfoRow(
+                                  Icons.phone,
+                                  'Telefon',
+                                  company['phone'] ?? '-',
+                                ),
+                                _buildInfoRow(
+                                  Icons.location_on,
+                                  'Adres',
+                                  company['address'] ?? '-',
+                                ),
+                                _buildInfoRow(
+                                  Icons.location_city,
+                                  'Şehir',
+                                  company['city'] ?? '-',
+                                ),
                               ]),
                               const SizedBox(height: 24),
 
                               _buildInfoSection('Vergi Bilgileri', [
-                                _buildInfoRow(Icons.badge, 'Vergi No', company['tax_number'] ?? '-'),
-                                _buildInfoRow(Icons.account_balance, 'Vergi Dairesi', company['tax_office'] ?? '-'),
+                                _buildInfoRow(
+                                  Icons.badge,
+                                  'Vergi No',
+                                  company['tax_number'] ?? '-',
+                                ),
+                                _buildInfoRow(
+                                  Icons.account_balance,
+                                  'Vergi Dairesi',
+                                  company['tax_office'] ?? '-',
+                                ),
                               ]),
                               const SizedBox(height: 24),
 
@@ -169,7 +201,8 @@ class SettingsScreen extends ConsumerWidget {
                         ),
                       );
                     },
-                    loading: () => const Center(child: CircularProgressIndicator()),
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
                     error: (e, _) => Center(child: Text('Hata: $e')),
                   ),
                 ),
@@ -339,14 +372,8 @@ class SettingsScreen extends ConsumerWidget {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: Icon(icon, color: color ?? AppColors.textSecondary),
-      title: Text(
-        title,
-        style: TextStyle(color: color),
-      ),
-      trailing: Icon(
-        Icons.chevron_right,
-        color: color ?? AppColors.textMuted,
-      ),
+      title: Text(title, style: TextStyle(color: color)),
+      trailing: Icon(Icons.chevron_right, color: color ?? AppColors.textMuted),
       onTap: onTap,
     );
   }
@@ -356,10 +383,14 @@ class SettingsScreen extends ConsumerWidget {
     WidgetRef ref,
     Map<String, dynamic> company,
   ) async {
-    final nameController = TextEditingController(text: company['company_name'] ?? '');
+    final nameController = TextEditingController(
+      text: company['company_name'] ?? '',
+    );
     final phoneController = TextEditingController(text: company['phone'] ?? '');
     final emailController = TextEditingController(text: company['email'] ?? '');
-    final addressController = TextEditingController(text: company['address'] ?? '');
+    final addressController = TextEditingController(
+      text: company['address'] ?? '',
+    );
 
     final result = await showDialog<bool>(
       context: context,
@@ -421,15 +452,16 @@ class SettingsScreen extends ConsumerWidget {
         ref.invalidate(companyInfoProvider);
 
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Bilgiler güncellendi')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Bilgiler güncellendi')));
         }
-      } catch (e) {
+      } catch (e, st) {
+        LogService.error('Failed to update company info', error: e, stackTrace: st, source: 'SettingsScreen:_showEditCompanyDialog');
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Hata: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Hata: $e')));
         }
       }
     }
@@ -467,7 +499,9 @@ class SettingsScreen extends ConsumerWidget {
             TextField(
               controller: confirmController,
               obscureText: true,
-              decoration: const InputDecoration(labelText: 'Yeni Şifre (Tekrar)'),
+              decoration: const InputDecoration(
+                labelText: 'Yeni Şifre (Tekrar)',
+              ),
             ),
           ],
         ),
@@ -485,6 +519,17 @@ class SettingsScreen extends ConsumerWidget {
     );
 
     if (result == true) {
+      if (newController.text.length < 8) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Şifre en az 8 karakter olmalıdır'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+        return;
+      }
       if (newController.text != confirmController.text) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -503,15 +548,16 @@ class SettingsScreen extends ConsumerWidget {
         );
 
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Şifre değiştirildi')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Şifre değiştirildi')));
         }
-      } catch (e) {
+      } catch (e, st) {
+        LogService.error('Failed to change password', error: e, stackTrace: st, source: 'SettingsScreen:_showChangePasswordDialog');
         if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Hata: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Hata: $e')));
         }
       }
     }

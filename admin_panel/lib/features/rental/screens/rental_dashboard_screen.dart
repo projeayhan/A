@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/router/app_router.dart';
 import '../services/rental_service.dart';
 
 class RentalDashboardScreen extends ConsumerStatefulWidget {
   const RentalDashboardScreen({super.key});
 
   @override
-  ConsumerState<RentalDashboardScreen> createState() => _RentalDashboardScreenState();
+  ConsumerState<RentalDashboardScreen> createState() =>
+      _RentalDashboardScreenState();
 }
 
 class _RentalDashboardScreenState extends ConsumerState<RentalDashboardScreen> {
@@ -40,7 +43,10 @@ class _RentalDashboardScreenState extends ConsumerState<RentalDashboardScreen> {
                     SizedBox(height: 4),
                     Text(
                       'Araç filosunu, rezervasyonları ve lokasyonları yönetin',
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 14,
+                      ),
                     ),
                   ],
                 ),
@@ -53,7 +59,7 @@ class _RentalDashboardScreenState extends ConsumerState<RentalDashboardScreen> {
                     ),
                     const SizedBox(width: 12),
                     ElevatedButton.icon(
-                      onPressed: () {},
+                      onPressed: () => context.go(AppRoutes.rentalVehicles),
                       icon: const Icon(Icons.add, size: 18),
                       label: const Text('Yeni Araç Ekle'),
                       style: ElevatedButton.styleFrom(
@@ -83,10 +89,7 @@ class _RentalDashboardScreenState extends ConsumerState<RentalDashboardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Left Column - Recent Bookings
-                  Expanded(
-                    flex: 2,
-                    child: _buildRecentBookingsCard(),
-                  ),
+                  Expanded(flex: 2, child: _buildRecentBookingsCard()),
                   const SizedBox(width: 24),
                   // Right Column - Quick Stats
                   Expanded(
@@ -151,11 +154,19 @@ class _RentalDashboardScreenState extends ConsumerState<RentalDashboardScreen> {
 
   Widget _buildStatsRowLoading() {
     return Row(
-      children: List.generate(5, (_) => Expanded(child: _buildStatCardLoading())),
+      children: List.generate(
+        5,
+        (_) => Expanded(child: _buildStatCardLoading()),
+      ),
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(20),
@@ -187,7 +198,13 @@ class _RentalDashboardScreenState extends ConsumerState<RentalDashboardScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  Text(title, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -234,10 +251,7 @@ class _RentalDashboardScreenState extends ConsumerState<RentalDashboardScreen> {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              TextButton(
-                onPressed: () {},
-                child: const Text('Tümünü Gör'),
-              ),
+              TextButton(onPressed: () => context.go(AppRoutes.rentalBookings), child: const Text('Tümünü Gör')),
             ],
           ),
           const SizedBox(height: 16),
@@ -248,22 +262,37 @@ class _RentalDashboardScreenState extends ConsumerState<RentalDashboardScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.event_busy, size: 48, color: AppColors.textMuted),
+                          Icon(
+                            Icons.event_busy,
+                            size: 48,
+                            color: AppColors.textMuted,
+                          ),
                           SizedBox(height: 12),
-                          Text('Henüz rezervasyon yok', style: TextStyle(color: AppColors.textMuted)),
+                          Text(
+                            'Henüz rezervasyon yok',
+                            style: TextStyle(color: AppColors.textMuted),
+                          ),
                         ],
                       ),
                     )
                   : ListView.separated(
                       itemCount: bookings.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.surfaceLight),
+                      separatorBuilder: (_, _) => const Divider(
+                        height: 1,
+                        color: AppColors.surfaceLight,
+                      ),
                       itemBuilder: (context, index) {
                         final booking = bookings[index];
                         return _buildBookingItem(booking);
                       },
                     ),
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('Hata: $e', style: const TextStyle(color: AppColors.error))),
+              error: (e, _) => Center(
+                child: Text(
+                  'Hata: $e',
+                  style: const TextStyle(color: AppColors.error),
+                ),
+              ),
             ),
           ),
         ],
@@ -289,7 +318,10 @@ class _RentalDashboardScreenState extends ConsumerState<RentalDashboardScreen> {
               child: Image.network(
                 booking.carImage,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const Icon(Icons.directions_car, color: AppColors.textMuted),
+                errorBuilder: (_, _, _) => const Icon(
+                  Icons.directions_car,
+                  color: AppColors.textMuted,
+                ),
               ),
             ),
           ),
@@ -309,7 +341,10 @@ class _RentalDashboardScreenState extends ConsumerState<RentalDashboardScreen> {
                 const SizedBox(height: 4),
                 Text(
                   booking.customerName,
-                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                  ),
                 ),
               ],
             ),
@@ -320,7 +355,10 @@ class _RentalDashboardScreenState extends ConsumerState<RentalDashboardScreen> {
             children: [
               Text(
                 '${_formatDate(booking.pickupDate)} - ${_formatDate(booking.dropoffDate)}',
-                style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
@@ -339,10 +377,15 @@ class _RentalDashboardScreenState extends ConsumerState<RentalDashboardScreen> {
           // Actions
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert, color: AppColors.textMuted),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
             onSelected: (value) => _handleBookingAction(value, booking),
             itemBuilder: (context) => [
-              const PopupMenuItem(value: 'view', child: Text('Detay Görüntüle')),
+              const PopupMenuItem(
+                value: 'view',
+                child: Text('Detay Görüntüle'),
+              ),
               const PopupMenuItem(value: 'confirm', child: Text('Onayla')),
               const PopupMenuItem(value: 'cancel', child: Text('İptal Et')),
             ],
@@ -388,7 +431,14 @@ class _RentalDashboardScreenState extends ConsumerState<RentalDashboardScreen> {
         color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Text(text, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w500)),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
     );
   }
 
@@ -412,40 +462,16 @@ class _RentalDashboardScreenState extends ConsumerState<RentalDashboardScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          _buildCategoryRow('Lüks', 3, 2, AppColors.primary),
-          _buildCategoryRow('SUV', 2, 1, AppColors.success),
-          _buildCategoryRow('Elektrikli', 1, 0, AppColors.info),
-          _buildCategoryRow('Sedan', 2, 1, AppColors.warning),
-          _buildCategoryRow('Kompakt', 1, 0, AppColors.textMuted),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCategoryRow(String category, int total, int rented, Color color) {
-    final available = total - rented;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          Container(
-            width: 4,
-            height: 24,
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(2),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(category, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-          ),
-          Text(
-            '$available / $total',
-            style: TextStyle(
-              color: available > 0 ? AppColors.success : AppColors.error,
-              fontWeight: FontWeight.w600,
-              fontSize: 13,
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Text(
+                'Kategori verileri filo bilgilerinden yüklenecektir.',
+                style: TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 13,
+                ),
+              ),
             ),
           ),
         ],
@@ -479,14 +505,28 @@ class _RentalDashboardScreenState extends ConsumerState<RentalDashboardScreen> {
             Expanded(
               child: topCarsAsync.when(
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => Center(child: Text('Hata: $e', style: const TextStyle(color: AppColors.error))),
+                error: (e, _) => Center(
+                  child: Text(
+                    'Hata: $e',
+                    style: const TextStyle(color: AppColors.error),
+                  ),
+                ),
                 data: (topCars) => topCars.isEmpty
-                    ? const Center(child: Text('Veri yok', style: TextStyle(color: AppColors.textMuted)))
+                    ? const Center(
+                        child: Text(
+                          'Veri yok',
+                          style: TextStyle(color: AppColors.textMuted),
+                        ),
+                      )
                     : ListView.builder(
                         itemCount: topCars.length,
                         itemBuilder: (context, index) {
                           final car = topCars[index];
-                          return _buildTopCarRow(car.carName, car.rentalCount, car.avgRating);
+                          return _buildTopCarRow(
+                            car.carName,
+                            car.rentalCount,
+                            car.avgRating,
+                          );
                         },
                       ),
               ),
@@ -502,18 +542,35 @@ class _RentalDashboardScreenState extends ConsumerState<RentalDashboardScreen> {
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         children: [
-          const Icon(Icons.directions_car, size: 18, color: AppColors.textMuted),
+          const Icon(
+            Icons.directions_car,
+            size: 18,
+            color: AppColors.textMuted,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w500)),
+                Text(
+                  name,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
                 Row(
                   children: [
                     Icon(Icons.star, size: 12, color: Colors.amber.shade600),
                     const SizedBox(width: 2),
-                    Text('$rating', style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                    Text(
+                      '$rating',
+                      style: const TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 11,
+                      ),
+                    ),
                   ],
                 ),
               ],
@@ -521,7 +578,10 @@ class _RentalDashboardScreenState extends ConsumerState<RentalDashboardScreen> {
           ),
           Text(
             '$rentCount kiralama',
-            style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 12,
+            ),
           ),
         ],
       ),
@@ -535,14 +595,155 @@ class _RentalDashboardScreenState extends ConsumerState<RentalDashboardScreen> {
   void _handleBookingAction(String action, RentalBookingView booking) {
     switch (action) {
       case 'view':
-        // TODO: Navigate to booking detail
+        _showBookingDetailDialog(booking);
         break;
       case 'confirm':
-        // TODO: Confirm booking
+        _updateBookingStatus(booking, 'confirmed');
         break;
       case 'cancel':
-        // TODO: Cancel booking
+        _updateBookingStatus(booking, 'cancelled');
         break;
+    }
+  }
+
+  void _showBookingDetailDialog(RentalBookingView booking) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Rezervasyon #${booking.bookingNumber}'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildDetailRow('Araç', booking.carName),
+              _buildDetailRow('Müşteri', booking.customerName),
+              _buildDetailRow('Telefon', booking.customerPhone),
+              _buildDetailRow('E-posta', booking.customerEmail),
+              _buildDetailRow('Şirket', booking.companyName),
+              _buildDetailRow('Alış Yeri', booking.pickupLocationName),
+              _buildDetailRow('İade Yeri', booking.dropoffLocationName),
+              _buildDetailRow('Alış Tarihi', _formatDate(booking.pickupDate)),
+              _buildDetailRow('İade Tarihi', _formatDate(booking.dropoffDate)),
+              _buildDetailRow('Gün Sayısı', '${booking.rentalDays} gün'),
+              _buildDetailRow(
+                'Günlük Ücret',
+                '₺${booking.dailyRate.toStringAsFixed(0)}',
+              ),
+              _buildDetailRow(
+                'Toplam',
+                '₺${booking.totalPrice.toStringAsFixed(0)}',
+              ),
+              _buildDetailRow('Durum', booking.status),
+              _buildDetailRow('Ödeme', booking.paymentStatus),
+              if (booking.notes != null && booking.notes!.isNotEmpty)
+                _buildDetailRow('Notlar', booking.notes!),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Kapat'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(
+              '$label:',
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(color: AppColors.textPrimary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _updateBookingStatus(
+    RentalBookingView booking,
+    String newStatus,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          newStatus == 'confirmed'
+              ? 'Rezervasyonu Onayla'
+              : 'Rezervasyonu İptal Et',
+        ),
+        content: Text(
+          newStatus == 'confirmed'
+              ? '#${booking.bookingNumber} rezervasyonunu onaylamak istiyor musunuz?'
+              : '#${booking.bookingNumber} rezervasyonunu iptal etmek istiyor musunuz?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Vazgeç'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: newStatus == 'confirmed'
+                  ? AppColors.success
+                  : AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            child: Text(newStatus == 'confirmed' ? 'Onayla' : 'İptal Et'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      final client = ref.read(supabaseClientProvider);
+      await client
+          .from('rental_bookings')
+          .update({'status': newStatus})
+          .eq('id', booking.id);
+      ref.invalidate(recentBookingsProvider);
+      ref.invalidate(rentalStatsProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              newStatus == 'confirmed'
+                  ? 'Rezervasyon onaylandı'
+                  : 'Rezervasyon iptal edildi',
+            ),
+            backgroundColor: newStatus == 'confirmed'
+                ? AppColors.success
+                : AppColors.error,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
+        );
+      }
     }
   }
 }

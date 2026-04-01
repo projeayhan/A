@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/emlak_models.dart';
 import '../../services/realtor_service.dart';
+import 'package:emlakci_panel/core/services/log_service.dart';
 
 class RealtorLoginScreen extends ConsumerStatefulWidget {
   const RealtorLoginScreen({super.key});
@@ -766,7 +767,8 @@ class _RealtorLoginScreenState extends ConsumerState<RealtorLoginScreen>
               borderRadius: BorderRadius.circular(12)),
         ),
       );
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Login failed', error: e, stackTrace: st, source: 'RealtorLoginScreen:_handleLogin');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -849,7 +851,8 @@ class _RealtorLoginScreenState extends ConsumerState<RealtorLoginScreen>
           ],
         ),
       );
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Forgot password failed', error: e, stackTrace: st, source: 'RealtorLoginScreen:_handleForgotPassword');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -905,7 +908,8 @@ class _RealtorLoginScreenState extends ConsumerState<RealtorLoginScreen>
           behavior: SnackBarBehavior.floating,
         ),
       );
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Register failed', error: e, stackTrace: st, source: 'RealtorLoginScreen:_handleRegister');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

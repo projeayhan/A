@@ -1,8 +1,12 @@
 import 'dart:typed_data';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:excel/excel.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:admin_panel/core/services/log_service.dart';
+import 'supabase_service.dart';
 
 class InvoiceService {
   static final DateFormat _dateFormat = DateFormat('dd/MM/yyyy HH:mm');
@@ -13,24 +17,182 @@ class InvoiceService {
     decimalDigits: 2,
   );
 
-  // Sirket Bilgileri
-  static const Map<String, String> companyInfo = {
-    'name': 'SuperCyp Teknoloji A.S.',
-    'address': 'Levent Mah. Buyukdere Cad. No:123\n34394 Sisli/Istanbul',
-    'phone': '+90 212 555 00 00',
-    'email': 'fatura@odabase.com',
-    'taxOffice': 'Besiktas Vergi Dairesi',
-    'taxNumber': '1234567890',
-    'website': 'www.supercyp.com',
-  };
+  static pw.Font? _cachedFont;
 
-  // Fatura numarasi uret
-  static String generateInvoiceNumber({String prefix = 'ODB'}) {
-    final now = DateTime.now();
-    final year = now.year.toString();
-    final month = now.month.toString().padLeft(2, '0');
-    final random = DateTime.now().millisecondsSinceEpoch.toString().substring(7);
-    return '$prefix$year$month-$random';
+  static Future<pw.Font> _loadFont() async {
+    if (_cachedFont != null) return _cachedFont!;
+    // Türkçe karakter destekli fontları sırayla dene
+    for (final fontPath in [
+      'assets/fonts/NotoSans.ttf',
+      'assets/fonts/DejaVuSans.ttf',
+    ]) {
+      try {
+        final data = await rootBundle.load(fontPath);
+        if (data.lengthInBytes > 0) {
+          final bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
+          _cachedFont = pw.Font.ttf(ByteData.sublistView(bytes));
+          return _cachedFont!;
+        }
+      } catch (e, st) {
+        LogService.error('Font loading failed: $fontPath', error: e, stackTrace: st, source: 'invoice_service.dart:_loadFont');
+        continue;
+      }
+    }
+    _cachedFont = pw.Font.helvetica();
+    return _cachedFont!;
+  }
+
+  /// Clear font cache (useful after hot reload)
+  static void clearFontCache() {
+    _cachedFont = null;
+  }
+
+  static Map<String, String>? _cachedCompanyInfo;
+
+  static Future<Map<String, String>> getCompanyInfo() async {
+    if (_cachedCompanyInfo != null) return _cachedCompanyInfo!;
+    final row = await SupabaseService.client
+        .from('company_settings')
+        .select()
+        .limit(1)
+        .single();
+    _cachedCompanyInfo = {
+      'name': row['name'] as String,
+      'address': row['address'] as String,
+      'phone': row['phone'] as String? ?? '',
+      'email': row['email'] as String? ?? '',
+      'taxOffice': row['tax_office'] as String,
+      'taxNumber': row['tax_number'] as String,
+      'website': row['website'] as String? ?? '',
+      'invoicePrefix': row['invoice_prefix'] as String? ?? 'ODB',
+    };
+    return _cachedCompanyInfo!;
+  }
+
+  static void clearCompanyInfoCache() => _cachedCompanyInfo = null;
+
+  static Future<String> generateInvoiceNumberFromDB() async {
+    final result = await SupabaseService.client.rpc('get_next_invoice_number');
+    return result as String;
+  }
+
+  // Faturayı DB'ye kaydet ve PDF'i Storage'a yükle
+  static Future<Map<String, dynamic>> saveInvoice({
+    required String sourceType,
+    required String sourceId,
+    required String buyerName,
+    String? buyerEmail,
+    String? buyerTaxNumber,
+    String? buyerTaxOffice,
+    String? buyerAddress,
+    String? buyerPhone,
+    required double subtotal,
+    required double kdvRate,
+    required double kdvAmount,
+    required double total,
+    required List<Map<String, dynamic>> items,
+    String invoiceType = 'sale',
+    String? parentInvoiceId,
+    String? invoicePeriod,
+    double? onlineTotal,
+    double? cashTotal,
+    double? netTransfer,
+    String? paymentMethod,
+    String? customInvoiceNumber,
+  }) async {
+    final supabase = SupabaseService.client;
+    final company = await getCompanyInfo();
+    final invoiceNumber = (customInvoiceNumber != null && customInvoiceNumber.isNotEmpty)
+        ? customInvoiceNumber
+        : await generateInvoiceNumberFromDB();
+
+    // 1. DB'ye kaydet
+    final invoice = await supabase.from('invoices').insert({
+      'invoice_number': invoiceNumber,
+      'invoice_type': invoiceType,
+      'source_type': sourceType,
+      'source_id': sourceId,
+      'parent_invoice_id': parentInvoiceId,
+      'seller_name': company['name'],
+      'seller_tax_number': company['taxNumber'],
+      'seller_tax_office': company['taxOffice'],
+      'seller_address': company['address'],
+      'buyer_name': buyerName,
+      'buyer_email': buyerEmail,
+      'buyer_tax_number': buyerTaxNumber,
+      'buyer_address': buyerAddress,
+      if (invoicePeriod != null) 'invoice_period': invoicePeriod,
+      'subtotal': subtotal,
+      'kdv_rate': kdvRate,
+      'kdv_amount': kdvAmount,
+      'total': total,
+      'currency': 'TRY',
+      'status': 'issued',
+    }).select().single();
+
+    // 2. Kalemleri ekle
+    if (items.isNotEmpty) {
+      await supabase.from('invoice_items').insert(
+        items.asMap().entries.map((e) {
+          final item = e.value;
+          final orderAmt = item['order_amount'] ?? item['unit_price'] ?? 0;
+          final commission = item['commission'] ?? item['total'] ?? 0;
+          return {
+            'invoice_id': invoice['id'],
+            'description': item['description'],
+            'quantity': item['quantity'] ?? 1,
+            'unit_price': orderAmt,
+            'kdv_rate': kdvRate,
+            'total': commission,
+            'sort_order': e.key,
+          };
+        }).toList(),
+      );
+    }
+
+    // 3. PDF oluştur
+    final pdfBytes = await generateInvoicePdf(
+      payment: {
+        'amount': total,
+        'users': {'full_name': buyerName},
+      },
+      invoiceNumber: invoiceNumber,
+      customerInfo: {
+        'name': buyerName,
+        if (buyerTaxNumber != null) 'taxNumber': buyerTaxNumber,
+        if (buyerTaxOffice != null) 'taxOffice': buyerTaxOffice,
+        if (buyerAddress != null) 'address': buyerAddress,
+        if (buyerPhone != null) 'phone': buyerPhone,
+        if (buyerEmail != null) 'email': buyerEmail,
+      },
+      invoiceType: invoiceType == 'refund' ? 'İADE FATURASI' : 'FATURA',
+      items: items,
+      subtotalOverride: subtotal,
+      kdvAmountOverride: kdvAmount,
+      kdvRateOverride: kdvRate,
+      onlineTotal: onlineTotal,
+      cashTotal: cashTotal,
+      netTransfer: netTransfer,
+      paymentMethod: paymentMethod,
+    );
+
+    // 4. Storage'a yükle — her seferinde benzersiz dosya adı (CDN cache sorunu önlenir)
+    final safeBuyerName = _sanitizeFileName(buyerName);
+    final ts = DateTime.now().millisecondsSinceEpoch;
+    final fileName = 'invoices/${safeBuyerName}_${invoiceNumber}_$ts.pdf';
+    await supabase.storage.from('invoices').uploadBinary(
+      fileName,
+      pdfBytes,
+      fileOptions: const FileOptions(contentType: 'application/pdf', upsert: true),
+    );
+    final pdfUrl = supabase.storage.from('invoices').getPublicUrl(fileName);
+
+    // 5. pdf_url güncelle
+    await supabase.from('invoices')
+        .update({'pdf_url': pdfUrl})
+        .eq('id', invoice['id']);
+
+    return {...invoice, 'pdf_url': pdfUrl};
   }
 
   // PDF Fatura Olustur
@@ -39,13 +201,60 @@ class InvoiceService {
     required String invoiceNumber,
     Map<String, String>? customerInfo,
     String? invoiceType,
+    List<Map<String, dynamic>>? items,
+    double? subtotalOverride,
+    double? kdvAmountOverride,
+    double? kdvRateOverride,
+    double? onlineTotal,
+    double? cashTotal,
+    double? netTransfer,
+    String? paymentMethod,
   }) async {
+    final company = await getCompanyInfo();
+    final font = await _loadFont();
     final pdf = pw.Document();
 
+    // Logo yükle
+    pw.ImageProvider? logoImage;
+    try {
+      final logoData = await rootBundle.load('assets/images/supercyp_logo_horizontal.png');
+      logoImage = pw.MemoryImage(logoData.buffer.asUint8List());
+    } catch (e, st) {
+      LogService.error('Logo loading failed', error: e, stackTrace: st, source: 'invoice_service.dart:generateInvoicePdf');
+    }
+
     final amount = double.tryParse(payment['amount']?.toString() ?? '0') ?? 0;
-    final kdvRate = 0.20;
-    final kdvAmount = amount * kdvRate / (1 + kdvRate);
-    final netAmount = amount - kdvAmount;
+    final kdvRateVal = kdvRateOverride ?? 0.20;
+    final kdvAmount = kdvAmountOverride ?? (amount * kdvRateVal / (1 + kdvRateVal));
+    final netAmount = subtotalOverride ?? (amount - kdvAmount);
+    final kdvPercent = (kdvRateVal * 100).round();
+
+    // items varsa onları kullan, yoksa eski payment-based satır
+    final tableRows = <pw.Widget>[];
+    if (items != null && items.isNotEmpty) {
+      for (final item in items) {
+        final orderAmount = double.tryParse(
+            (item['order_amount'] ?? item['unit_price'] ?? '0').toString()) ?? 0;
+        final commission = double.tryParse(
+            (item['commission'] ?? item['total'] ?? '0').toString()) ?? 0;
+        tableRows.add(_buildTableRow(
+          item['description']?.toString() ?? '-',
+          orderAmount > 0 ? _currencyFormat.format(orderAmount) : '',
+          commission > 0 ? _currencyFormat.format(commission) : (orderAmount > 0 ? _currencyFormat.format(orderAmount) : ''),
+          font: font,
+          isBoldRow: item['bold'] == true,
+        ));
+      }
+    } else {
+      tableRows.add(_buildTableRow(
+        payment['description']?.toString() ?? _getPaymentDescription(payment),
+        _currencyFormat.format(netAmount),
+        _currencyFormat.format(netAmount),
+        font: font,
+      ));
+    }
+
+    final buyerName = customerInfo?['name'] ?? payment['users']?['full_name'] ?? 'Müşteri';
 
     pdf.addPage(
       pw.Page(
@@ -62,17 +271,11 @@ class InvoiceService {
                   pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
                     children: [
-                      pw.Text(
-                        companyInfo['name']!,
-                        style: pw.TextStyle(
-                          fontSize: 20,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
+                      if (logoImage != null) pw.Image(logoImage, width: 180, height: 50, fit: pw.BoxFit.contain) else pw.Text(company['name']!, style: pw.TextStyle(font: font, fontSize: 20, fontWeight: pw.FontWeight.bold)),
                       pw.SizedBox(height: 5),
-                      pw.Text(companyInfo['address']!, style: const pw.TextStyle(fontSize: 10)),
-                      pw.Text('Tel: ${companyInfo['phone']}', style: const pw.TextStyle(fontSize: 10)),
-                      pw.Text('E-posta: ${companyInfo['email']}', style: const pw.TextStyle(fontSize: 10)),
+                      pw.Text(company['address']!, style: pw.TextStyle(font: font, fontSize: 10)),
+                      pw.Text('Tel: ${company['phone']}', style: pw.TextStyle(font: font, fontSize: 10)),
+                      pw.Text('E-posta: ${company['email']}', style: pw.TextStyle(font: font, fontSize: 10)),
                     ],
                   ),
                   pw.Container(
@@ -84,20 +287,10 @@ class InvoiceService {
                     child: pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.end,
                       children: [
-                        pw.Text(
-                          invoiceType ?? 'FATURA',
-                          style: pw.TextStyle(
-                            fontSize: 16,
-                            fontWeight: pw.FontWeight.bold,
-                            color: PdfColors.blue800,
-                          ),
-                        ),
+                        pw.Text(invoiceType ?? 'FATURA', style: pw.TextStyle(font: font, fontSize: 16, fontWeight: pw.FontWeight.bold, color: PdfColors.blue800)),
                         pw.SizedBox(height: 5),
-                        pw.Text('No: $invoiceNumber', style: const pw.TextStyle(fontSize: 11)),
-                        pw.Text(
-                          'Tarih: ${_invoiceDateFormat.format(DateTime.now())}',
-                          style: const pw.TextStyle(fontSize: 11),
-                        ),
+                        pw.Text('No: $invoiceNumber', style: pw.TextStyle(font: font, fontSize: 11)),
+                        pw.Text('Tarih: ${_invoiceDateFormat.format(DateTime.now())}', style: pw.TextStyle(font: font, fontSize: 11)),
                       ],
                     ),
                   ),
@@ -106,25 +299,22 @@ class InvoiceService {
 
               pw.SizedBox(height: 30),
 
-              // Sirket Bilgileri
+              // Satıcı / Alıcı Bilgileri
               pw.Row(
                 crossAxisAlignment: pw.CrossAxisAlignment.start,
                 children: [
                   pw.Expanded(
                     child: pw.Container(
                       padding: const pw.EdgeInsets.all(10),
-                      decoration: pw.BoxDecoration(
-                        color: PdfColors.grey100,
-                        borderRadius: pw.BorderRadius.circular(5),
-                      ),
+                      decoration: pw.BoxDecoration(color: PdfColors.grey100, borderRadius: pw.BorderRadius.circular(5)),
                       child: pw.Column(
                         crossAxisAlignment: pw.CrossAxisAlignment.start,
                         children: [
-                          pw.Text('Satici Bilgileri', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11)),
+                          pw.Text('Satıcı Bilgileri', style: pw.TextStyle(font: font, fontWeight: pw.FontWeight.bold, fontSize: 11)),
                           pw.SizedBox(height: 5),
-                          pw.Text(companyInfo['name']!, style: const pw.TextStyle(fontSize: 10)),
-                          pw.Text('Vergi Dairesi: ${companyInfo['taxOffice']}', style: const pw.TextStyle(fontSize: 10)),
-                          pw.Text('Vergi No: ${companyInfo['taxNumber']}', style: const pw.TextStyle(fontSize: 10)),
+                          pw.Text(company['name']!, style: pw.TextStyle(font: font, fontSize: 10)),
+                          pw.Text('Vergi Dairesi: ${company['taxOffice']}', style: pw.TextStyle(font: font, fontSize: 10)),
+                          pw.Text('Vergi No: ${company['taxNumber']}', style: pw.TextStyle(font: font, fontSize: 10)),
                         ],
                       ),
                     ),
@@ -133,23 +323,23 @@ class InvoiceService {
                   pw.Expanded(
                     child: pw.Container(
                       padding: const pw.EdgeInsets.all(10),
-                      decoration: pw.BoxDecoration(
-                        color: PdfColors.grey100,
-                        borderRadius: pw.BorderRadius.circular(5),
-                      ),
+                      decoration: pw.BoxDecoration(color: PdfColors.grey100, borderRadius: pw.BorderRadius.circular(5)),
                       child: pw.Column(
                         crossAxisAlignment: pw.CrossAxisAlignment.start,
                         children: [
-                          pw.Text('Alici Bilgileri', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 11)),
+                          pw.Text('Alıcı Bilgileri', style: pw.TextStyle(font: font, fontWeight: pw.FontWeight.bold, fontSize: 11)),
                           pw.SizedBox(height: 5),
-                          pw.Text(
-                            customerInfo?['name'] ?? payment['users']?['full_name'] ?? 'Musteri',
-                            style: const pw.TextStyle(fontSize: 10),
-                          ),
+                          pw.Text(buyerName, style: pw.TextStyle(font: font, fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                          if (customerInfo?['taxOffice'] != null)
+                            pw.Text('Vergi Dairesi: ${customerInfo!['taxOffice']}', style: pw.TextStyle(font: font, fontSize: 10)),
                           if (customerInfo?['taxNumber'] != null)
-                            pw.Text('Vergi/TC No: ${customerInfo!['taxNumber']}', style: const pw.TextStyle(fontSize: 10)),
-                          if (customerInfo?['address'] != null)
-                            pw.Text(customerInfo!['address']!, style: const pw.TextStyle(fontSize: 10)),
+                            pw.Text('Vergi No: ${customerInfo!['taxNumber']}', style: pw.TextStyle(font: font, fontSize: 10)),
+                          if (customerInfo?['address'] != null && (customerInfo!['address'] as String).isNotEmpty)
+                            pw.Text('Adres: ${customerInfo['address']}', style: pw.TextStyle(font: font, fontSize: 10)),
+                          if (customerInfo?['phone'] != null)
+                            pw.Text('Tel: ${customerInfo!['phone']}', style: pw.TextStyle(font: font, fontSize: 10)),
+                          if (customerInfo?['email'] != null)
+                            pw.Text('E-posta: ${customerInfo!['email']}', style: pw.TextStyle(font: font, fontSize: 10)),
                         ],
                       ),
                     ),
@@ -159,48 +349,300 @@ class InvoiceService {
 
               pw.SizedBox(height: 30),
 
-              // Tablo Basligi
+              // Tablo Başlığı
               pw.Container(
                 color: PdfColors.blue800,
                 padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 child: pw.Row(
                   children: [
-                    pw.Expanded(flex: 4, child: pw.Text('Aciklama', style: pw.TextStyle(color: PdfColors.white, fontWeight: pw.FontWeight.bold, fontSize: 11))),
-                    pw.Expanded(flex: 1, child: pw.Text('Miktar', style: pw.TextStyle(color: PdfColors.white, fontWeight: pw.FontWeight.bold, fontSize: 11), textAlign: pw.TextAlign.center)),
-                    pw.Expanded(flex: 2, child: pw.Text('Birim Fiyat', style: pw.TextStyle(color: PdfColors.white, fontWeight: pw.FontWeight.bold, fontSize: 11), textAlign: pw.TextAlign.right)),
-                    pw.Expanded(flex: 2, child: pw.Text('Toplam', style: pw.TextStyle(color: PdfColors.white, fontWeight: pw.FontWeight.bold, fontSize: 11), textAlign: pw.TextAlign.right)),
+                    pw.Expanded(flex: 4, child: pw.Text('Açıklama', style: pw.TextStyle(font: font, color: PdfColors.white, fontWeight: pw.FontWeight.bold, fontSize: 11))),
+                    pw.Expanded(flex: 2, child: pw.Text('Sipariş Tutarı', style: pw.TextStyle(font: font, color: PdfColors.white, fontWeight: pw.FontWeight.bold, fontSize: 11), textAlign: pw.TextAlign.right)),
+                    pw.Expanded(flex: 2, child: pw.Text('Komisyon', style: pw.TextStyle(font: font, color: PdfColors.white, fontWeight: pw.FontWeight.bold, fontSize: 11), textAlign: pw.TextAlign.right)),
                   ],
                 ),
               ),
 
-              // Tablo Icerigi
+              // Tablo İçeriği
               pw.Container(
-                decoration: pw.BoxDecoration(
-                  border: pw.Border.all(color: PdfColors.grey300),
+                decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey300)),
+                child: pw.Column(children: tableRows),
+              ),
+
+              pw.SizedBox(height: 20),
+
+              // Toplamlar
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.end,
+                children: [
+                  pw.Container(
+                    width: 250,
+                    child: pw.Column(
+                      children: [
+                        _buildTotalRow('Ara Toplam', _currencyFormat.format(netAmount), font: font),
+                        _buildTotalRow('KDV (%$kdvPercent)', _currencyFormat.format(kdvAmount), font: font),
+                        pw.Divider(color: PdfColors.grey400),
+                        _buildTotalRow('Genel Toplam', _currencyFormat.format(amount), isBold: true, font: font),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              // Ödeme yöntemi bilgisi
+              if (paymentMethod != null && paymentMethod.isNotEmpty) ...[
+                pw.SizedBox(height: 15),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.end,
+                  children: [
+                    pw.Container(
+                      width: 250,
+                      padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      decoration: pw.BoxDecoration(
+                        color: paymentMethod == 'online' ? PdfColors.green50 : PdfColors.grey100,
+                        border: pw.Border.all(
+                          color: paymentMethod == 'online' ? PdfColors.green400 : PdfColors.grey400,
+                        ),
+                        borderRadius: pw.BorderRadius.circular(5),
+                      ),
+                      child: pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text('Odeme Yontemi:', style: pw.TextStyle(font: font, fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                          pw.Text(
+                            _getPaymentMethodLabel(paymentMethod),
+                            style: pw.TextStyle(
+                              font: font, fontSize: 10, fontWeight: pw.FontWeight.bold,
+                              color: paymentMethod == 'online' ? PdfColors.green800 : PdfColors.grey800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
+              ],
+
+              // Online ödeme özet kutusu
+              if (onlineTotal != null && onlineTotal > 0) ...[
+                pw.SizedBox(height: 20),
+                pw.Container(
+                  width: double.infinity,
+                  padding: const pw.EdgeInsets.all(12),
+                  decoration: pw.BoxDecoration(
+                    color: PdfColors.blue50,
+                    border: pw.Border.all(color: PdfColors.blue300),
+                    borderRadius: pw.BorderRadius.circular(6),
+                  ),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text('Online Ödeme Özeti', style: pw.TextStyle(font: font, fontSize: 11, fontWeight: pw.FontWeight.bold, color: PdfColors.blue800)),
+                      pw.SizedBox(height: 8),
+                      pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
+                        pw.Text('Platform üzerinden tahsil edilen online ödemeler:', style: pw.TextStyle(font: font, fontSize: 10)),
+                        pw.Text(_currencyFormat.format(onlineTotal), style: pw.TextStyle(font: font, fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                      ]),
+                      if (cashTotal != null && cashTotal > 0) ...[
+                        pw.SizedBox(height: 4),
+                        pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
+                          pw.Text('Nakit/Kart tahsilat (işletme tarafından alındı):', style: pw.TextStyle(font: font, fontSize: 10)),
+                          pw.Text(_currencyFormat.format(cashTotal), style: pw.TextStyle(font: font, fontSize: 10)),
+                        ]),
+                      ],
+                      pw.SizedBox(height: 8),
+                      pw.Divider(color: PdfColors.blue300),
+                      pw.SizedBox(height: 4),
+                      if (netTransfer != null)
+                        pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
+                          pw.Text(
+                            netTransfer >= 0 ? 'İşletmeye gönderilecek net tutar:' : 'İşletmeden tahsil edilecek net tutar:',
+                            style: pw.TextStyle(font: font, fontSize: 11, fontWeight: pw.FontWeight.bold,
+                              color: netTransfer >= 0 ? PdfColors.green800 : PdfColors.red800),
+                          ),
+                          pw.Text(
+                            _currencyFormat.format(netTransfer.abs()),
+                            style: pw.TextStyle(font: font, fontSize: 11, fontWeight: pw.FontWeight.bold,
+                              color: netTransfer >= 0 ? PdfColors.green800 : PdfColors.red800),
+                          ),
+                        ]),
+                    ],
+                  ),
+                ),
+              ],
+
+              pw.Spacer(),
+
+              // Footer
+              pw.Divider(color: PdfColors.grey300),
+              pw.SizedBox(height: 10),
+              pw.Center(
                 child: pw.Column(
                   children: [
-                    _buildTableRow(
-                      _getPaymentDescription(payment),
-                      '1',
-                      _currencyFormat.format(netAmount),
-                      _currencyFormat.format(netAmount),
-                    ),
-                    if (payment['tip_amount'] != null && (double.tryParse(payment['tip_amount'].toString()) ?? 0) > 0)
-                      _buildTableRow(
-                        'Bahsis',
-                        '1',
-                        _currencyFormat.format(double.parse(payment['tip_amount'].toString())),
-                        _currencyFormat.format(double.parse(payment['tip_amount'].toString())),
-                      ),
-                    if (payment['toll_amount'] != null && (double.tryParse(payment['toll_amount'].toString()) ?? 0) > 0)
-                      _buildTableRow(
-                        'Gecis Ucreti',
-                        '1',
-                        _currencyFormat.format(double.parse(payment['toll_amount'].toString())),
-                        _currencyFormat.format(double.parse(payment['toll_amount'].toString())),
-                      ),
+                    pw.Text('Bu fatura elektronik ortamda oluşturulmuştur.', style: pw.TextStyle(font: font, fontSize: 9, color: PdfColors.grey600)),
+                    pw.Text('${company['website']} | ${company['email']}', style: pw.TextStyle(font: font, fontSize: 9, color: PdfColors.grey600)),
                   ],
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    return pdf.save();
+  }
+
+  /// Arşivdeki herhangi bir fatura kaydından PDF oluşturur
+  static Future<Uint8List> generateArchiveInvoicePdf({
+    required Map<String, dynamic> invoice,
+  }) async {
+    final company = await getCompanyInfo();
+    final font = await _loadFont();
+    final boldFont = font; // DejaVuSans has no separate bold, reuse
+    final pdf = pw.Document(
+      theme: pw.ThemeData.withFont(base: font, bold: boldFont),
+    );
+
+    pw.ImageProvider? logoImage;
+    try {
+      final logoData = await rootBundle.load('assets/images/supercyp_logo_horizontal.png');
+      logoImage = pw.MemoryImage(logoData.buffer.asUint8List());
+    } catch (e, st) {
+      LogService.error('Logo loading failed', error: e, stackTrace: st, source: 'invoice_service.dart:generateInvoicePdfFromRecord');
+    }
+
+    final invoiceNumber = invoice['invoice_number']?.toString() ?? '-';
+    final buyerName = invoice['buyer_name']?.toString() ?? 'Alıcı';
+    final subtotal = double.tryParse(invoice['subtotal']?.toString() ?? '0') ?? 0;
+    final kdvAmount = double.tryParse(invoice['kdv_amount']?.toString() ?? '0') ?? 0;
+    final total = double.tryParse(invoice['total']?.toString() ?? '0') ?? 0;
+    final kdvRate = double.tryParse(invoice['kdv_rate']?.toString() ?? '20') ?? 20;
+    final kdvPercent = kdvRate >= 1 ? kdvRate.round() : (kdvRate * 100).round();
+    final createdAt = invoice['created_at'] != null ? DateTime.tryParse(invoice['created_at'].toString()) : null;
+    final dateStr = createdAt != null ? _invoiceDateFormat.format(createdAt) : _invoiceDateFormat.format(DateTime.now());
+    final period = invoice['invoice_period']?.toString() ?? '-';
+    final sourceType = invoice['source_type']?.toString() ?? '-';
+
+    String sourceLabel;
+    switch (sourceType) {
+      case 'merchant_commission': sourceLabel = 'Komisyon Faturası'; break;
+      case 'merchant_invoice': sourceLabel = 'İşletme Faturası'; break;
+      case 'manual': sourceLabel = 'Manuel Fatura'; break;
+      case 'taxi_payment': sourceLabel = 'Taksi Ödeme Faturası'; break;
+      case 'food_order': sourceLabel = 'Yemek Sipariş Faturası'; break;
+      default: sourceLabel = 'Fatura';
+    }
+
+    pdf.addPage(
+      pw.Page(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(40),
+        build: (pw.Context context) {
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              // Header
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      if (logoImage != null) pw.Image(logoImage, width: 180, height: 50, fit: pw.BoxFit.contain) else pw.Text(company['name']!, style: pw.TextStyle(font: font, fontSize: 20, fontWeight: pw.FontWeight.bold)),
+                      pw.SizedBox(height: 5),
+                      pw.Text(company['address']!, style: pw.TextStyle(font: font, fontSize: 10)),
+                      pw.Text('Tel: ${company['phone']}', style: pw.TextStyle(font: font, fontSize: 10)),
+                      pw.Text('E-posta: ${company['email']}', style: pw.TextStyle(font: font, fontSize: 10)),
+                    ],
+                  ),
+                  pw.Container(
+                    padding: const pw.EdgeInsets.all(15),
+                    decoration: pw.BoxDecoration(
+                      border: pw.Border.all(color: PdfColors.grey400),
+                      borderRadius: pw.BorderRadius.circular(8),
+                    ),
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.end,
+                      children: [
+                        pw.Text(sourceLabel, style: pw.TextStyle(font: font, fontSize: 16, fontWeight: pw.FontWeight.bold, color: PdfColors.blue800)),
+                        pw.SizedBox(height: 5),
+                        pw.Text('No: $invoiceNumber', style: pw.TextStyle(font: font, fontSize: 11)),
+                        pw.Text('Tarih: $dateStr', style: pw.TextStyle(font: font, fontSize: 11)),
+                        if (period != '-') pw.Text('Dönem: $period', style: pw.TextStyle(font: font, fontSize: 11)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+
+              pw.SizedBox(height: 30),
+
+              // Satıcı / Alıcı
+              pw.Row(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Expanded(
+                    child: pw.Container(
+                      padding: const pw.EdgeInsets.all(10),
+                      decoration: pw.BoxDecoration(color: PdfColors.grey100, borderRadius: pw.BorderRadius.circular(5)),
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text('Satıcı Bilgileri', style: pw.TextStyle(font: font, fontWeight: pw.FontWeight.bold, fontSize: 11)),
+                          pw.SizedBox(height: 5),
+                          pw.Text(company['name']!, style: pw.TextStyle(font: font, fontSize: 10)),
+                          pw.Text('Vergi Dairesi: ${company['taxOffice']}', style: pw.TextStyle(font: font, fontSize: 10)),
+                          pw.Text('Vergi No: ${company['taxNumber']}', style: pw.TextStyle(font: font, fontSize: 10)),
+                        ],
+                      ),
+                    ),
+                  ),
+                  pw.SizedBox(width: 20),
+                  pw.Expanded(
+                    child: pw.Container(
+                      padding: const pw.EdgeInsets.all(10),
+                      decoration: pw.BoxDecoration(color: PdfColors.grey100, borderRadius: pw.BorderRadius.circular(5)),
+                      child: pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text('Alıcı Bilgileri', style: pw.TextStyle(font: font, fontWeight: pw.FontWeight.bold, fontSize: 11)),
+                          pw.SizedBox(height: 5),
+                          pw.Text(buyerName, style: pw.TextStyle(font: font, fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              pw.SizedBox(height: 30),
+
+              // Tablo Başlığı
+              pw.Container(
+                color: PdfColors.blue800,
+                padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                child: pw.Row(
+                  children: [
+                    pw.Expanded(flex: 4, child: pw.Text('Açıklama', style: pw.TextStyle(font: font, color: PdfColors.white, fontWeight: pw.FontWeight.bold, fontSize: 11))),
+                    pw.Expanded(flex: 2, child: pw.Text('Tutar', style: pw.TextStyle(font: font, color: PdfColors.white, fontWeight: pw.FontWeight.bold, fontSize: 11), textAlign: pw.TextAlign.right)),
+                  ],
+                ),
+              ),
+
+              // Satır
+              pw.Container(
+                decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey300)),
+                child: pw.Container(
+                  padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: const pw.BoxDecoration(
+                    border: pw.Border(bottom: pw.BorderSide(color: PdfColors.grey300)),
+                  ),
+                  child: pw.Row(
+                    children: [
+                      pw.Expanded(flex: 4, child: pw.Text(sourceLabel, style: pw.TextStyle(font: font, fontSize: 10))),
+                      pw.Expanded(flex: 2, child: pw.Text(_currencyFormat.format(subtotal), style: pw.TextStyle(font: font, fontSize: 10), textAlign: pw.TextAlign.right)),
+                    ],
+                  ),
                 ),
               ),
 
@@ -214,10 +656,10 @@ class InvoiceService {
                     width: 250,
                     child: pw.Column(
                       children: [
-                        _buildTotalRow('Ara Toplam', _currencyFormat.format(netAmount)),
-                        _buildTotalRow('KDV (%20)', _currencyFormat.format(kdvAmount)),
+                        _buildTotalRow('Ara Toplam', _currencyFormat.format(subtotal), font: font),
+                        _buildTotalRow('KDV (%$kdvPercent)', _currencyFormat.format(kdvAmount), font: font),
                         pw.Divider(color: PdfColors.grey400),
-                        _buildTotalRow('Genel Toplam', _currencyFormat.format(amount), isBold: true),
+                        _buildTotalRow('Genel Toplam', _currencyFormat.format(total), isBold: true, font: font),
                       ],
                     ),
                   ),
@@ -232,14 +674,8 @@ class InvoiceService {
               pw.Center(
                 child: pw.Column(
                   children: [
-                    pw.Text(
-                      'Bu fatura elektronik ortamda olusturulmustur.',
-                      style: pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
-                    ),
-                    pw.Text(
-                      '${companyInfo['website']} | ${companyInfo['email']}',
-                      style: pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
-                    ),
+                    pw.Text('Bu fatura elektronik ortamda oluşturulmuştur.', style: pw.TextStyle(font: font, fontSize: 9, color: PdfColors.grey600)),
+                    pw.Text('${company['website']} | ${company['email']}', style: pw.TextStyle(font: font, fontSize: 9, color: PdfColors.grey600)),
                   ],
                 ),
               ),
@@ -252,7 +688,8 @@ class InvoiceService {
     return pdf.save();
   }
 
-  static pw.Widget _buildTableRow(String description, String quantity, String unitPrice, String total) {
+  static pw.Widget _buildTableRow(String description, String col2, String col3, {pw.Font? font, bool isBoldRow = false}) {
+    final style = pw.TextStyle(font: font, fontSize: 10, fontWeight: isBoldRow ? pw.FontWeight.bold : pw.FontWeight.normal);
     return pw.Container(
       padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: const pw.BoxDecoration(
@@ -260,16 +697,15 @@ class InvoiceService {
       ),
       child: pw.Row(
         children: [
-          pw.Expanded(flex: 4, child: pw.Text(description, style: const pw.TextStyle(fontSize: 10))),
-          pw.Expanded(flex: 1, child: pw.Text(quantity, style: const pw.TextStyle(fontSize: 10), textAlign: pw.TextAlign.center)),
-          pw.Expanded(flex: 2, child: pw.Text(unitPrice, style: const pw.TextStyle(fontSize: 10), textAlign: pw.TextAlign.right)),
-          pw.Expanded(flex: 2, child: pw.Text(total, style: const pw.TextStyle(fontSize: 10), textAlign: pw.TextAlign.right)),
+          pw.Expanded(flex: 4, child: pw.Text(description, style: style)),
+          pw.Expanded(flex: 2, child: pw.Text(col2, style: style, textAlign: pw.TextAlign.right)),
+          pw.Expanded(flex: 2, child: pw.Text(col3, style: style, textAlign: pw.TextAlign.right)),
         ],
       ),
     );
   }
 
-  static pw.Widget _buildTotalRow(String label, String value, {bool isBold = false}) {
+  static pw.Widget _buildTotalRow(String label, String value, {bool isBold = false, pw.Font? font}) {
     return pw.Padding(
       padding: const pw.EdgeInsets.symmetric(vertical: 4),
       child: pw.Row(
@@ -278,6 +714,7 @@ class InvoiceService {
           pw.Text(
             label,
             style: pw.TextStyle(
+              font: font,
               fontSize: isBold ? 12 : 10,
               fontWeight: isBold ? pw.FontWeight.bold : pw.FontWeight.normal,
             ),
@@ -285,6 +722,7 @@ class InvoiceService {
           pw.Text(
             value,
             style: pw.TextStyle(
+              font: font,
               fontSize: isBold ? 12 : 10,
               fontWeight: isBold ? pw.FontWeight.bold : pw.FontWeight.normal,
             ),
@@ -292,6 +730,35 @@ class InvoiceService {
         ],
       ),
     );
+  }
+
+  /// Dosya adı için güvenli string: Türkçe karakterleri dönüştür, özel karakterleri kaldır
+  static String _sanitizeFileName(String name) {
+    const tr = 'çÇğĞıİöÖşŞüÜ';
+    const en = 'cCgGiIoOsSuU';
+    var result = name;
+    for (var i = 0; i < tr.length; i++) {
+      result = result.replaceAll(tr[i], en[i]);
+    }
+    return result
+        .replaceAll(RegExp(r'[^\w\s-]'), '')
+        .replaceAll(RegExp(r'\s+'), '_')
+        .toLowerCase();
+  }
+
+  static String _getPaymentMethodLabel(String? method) {
+    switch (method) {
+      case 'online':
+        return 'Online (Stripe)';
+      case 'cash':
+        return 'Nakit';
+      case 'card':
+        return 'Kredi Karti';
+      case 'credit_card_on_delivery':
+        return 'Kapida Kart';
+      default:
+        return method ?? '-';
+    }
   }
 
   static String _getPaymentDescription(Map<String, dynamic> payment) {
@@ -321,7 +788,9 @@ class InvoiceService {
   static Future<Uint8List> generateFoodOrderInvoicePdf({
     required Map<String, dynamic> order,
     required String invoiceNumber,
+    String? paymentMethod,
   }) async {
+    final company = await getCompanyInfo();
     final pdf = pw.Document();
 
     final amount = double.tryParse(order['total_amount']?.toString() ?? '0') ?? 0;
@@ -352,7 +821,7 @@ class InvoiceService {
                         ),
                       ),
                       pw.SizedBox(height: 5),
-                      pw.Text('SuperCyp Yemek Siparis Platformu', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600)),
+                      pw.Text('${company['name']} Yemek Siparis Platformu', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600)),
                     ],
                   ),
                   pw.Container(
@@ -471,6 +940,40 @@ class InvoiceService {
                   ),
                 ],
               ),
+
+              // Ödeme yöntemi
+              if ((paymentMethod ?? order['payment_method']) != null) ...[
+                pw.SizedBox(height: 15),
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.end,
+                  children: [
+                    pw.Container(
+                      width: 200,
+                      padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      decoration: pw.BoxDecoration(
+                        color: (paymentMethod ?? order['payment_method']) == 'online' ? PdfColors.green50 : PdfColors.grey100,
+                        border: pw.Border.all(
+                          color: (paymentMethod ?? order['payment_method']) == 'online' ? PdfColors.green400 : PdfColors.grey400,
+                        ),
+                        borderRadius: pw.BorderRadius.circular(5),
+                      ),
+                      child: pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Text('Odeme:', style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold)),
+                          pw.Text(
+                            _getPaymentMethodLabel(paymentMethod ?? order['payment_method']?.toString()),
+                            style: pw.TextStyle(
+                              fontSize: 10, fontWeight: pw.FontWeight.bold,
+                              color: (paymentMethod ?? order['payment_method']) == 'online' ? PdfColors.green800 : PdfColors.grey800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
 
               pw.Spacer(),
 
@@ -602,7 +1105,8 @@ class InvoiceService {
     if (dateStr == null) return '-';
     try {
       return _dateFormat.format(DateTime.parse(dateStr));
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Date format failed', error: e, stackTrace: st, source: 'invoice_service.dart:_formatDateTime');
       return '-';
     }
   }
@@ -636,6 +1140,86 @@ class InvoiceService {
     }
   }
 
+  static Future<List<int>> exportInvoicesToExcel(List<Map<String, dynamic>> invoices) async {
+    final excel = Excel.createExcel();
+    final sheet = excel['Faturalar'];
+
+    sheet.appendRow([
+      TextCellValue('Fatura No'),
+      TextCellValue('Tarih'),
+      TextCellValue('Dönem'),
+      TextCellValue('Alıcı'),
+      TextCellValue('Kaynak'),
+      TextCellValue('Ara Toplam'),
+      TextCellValue('KDV'),
+      TextCellValue('Toplam'),
+      TextCellValue('Ödeme Durumu'),
+      TextCellValue('Fatura Durumu'),
+      TextCellValue('Vade Tarihi'),
+    ]);
+
+    final headerStyle = CellStyle(
+      bold: true,
+      backgroundColorHex: ExcelColor.blue600,
+      fontColorHex: ExcelColor.white,
+    );
+
+    for (var i = 0; i < 11; i++) {
+      sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0)).cellStyle = headerStyle;
+    }
+
+    for (final inv in invoices) {
+      sheet.appendRow([
+        TextCellValue(inv['invoice_number']?.toString() ?? ''),
+        TextCellValue(_formatDateTime(inv['created_at'])),
+        TextCellValue(inv['invoice_period']?.toString() ?? '-'),
+        TextCellValue(inv['buyer_name']?.toString() ?? '-'),
+        TextCellValue(inv['source_type']?.toString() ?? '-'),
+        DoubleCellValue(double.tryParse(inv['subtotal']?.toString() ?? '0') ?? 0),
+        DoubleCellValue(double.tryParse(inv['kdv_amount']?.toString() ?? '0') ?? 0),
+        DoubleCellValue(double.tryParse(inv['total']?.toString() ?? '0') ?? 0),
+        TextCellValue(_getPaymentStatusLabel(inv['payment_status'])),
+        TextCellValue(_getInvoiceStatusLabel(inv['status'])),
+        TextCellValue(_formatDateTime(inv['payment_due_date'])),
+      ]);
+    }
+
+    sheet.setColumnWidth(0, 18);
+    sheet.setColumnWidth(1, 15);
+    sheet.setColumnWidth(2, 15);
+    sheet.setColumnWidth(3, 25);
+    sheet.setColumnWidth(4, 18);
+    sheet.setColumnWidth(5, 14);
+    sheet.setColumnWidth(6, 12);
+    sheet.setColumnWidth(7, 14);
+    sheet.setColumnWidth(8, 14);
+    sheet.setColumnWidth(9, 14);
+    sheet.setColumnWidth(10, 15);
+
+    excel.delete('Sheet1');
+    return excel.encode()!;
+  }
+
+  static String _getPaymentStatusLabel(String? status) {
+    switch (status) {
+      case 'paid': return 'Ödendi';
+      case 'pending': return 'Bekliyor';
+      case 'overdue': return 'Gecikmiş';
+      case 'partial': return 'Kısmi';
+      default: return status ?? '-';
+    }
+  }
+
+  static String _getInvoiceStatusLabel(String? status) {
+    switch (status) {
+      case 'issued': return 'Kesildi';
+      case 'sent': return 'Gönderildi';
+      case 'cancelled': return 'İptal';
+      case 'draft': return 'Taslak';
+      default: return status ?? '-';
+    }
+  }
+
   // ==================== GENERIC EXPORTS ====================
 
   /// Export users list to Excel
@@ -664,8 +1248,8 @@ class InvoiceService {
         TextCellValue(user['full_name']?.toString() ?? ''),
         TextCellValue(user['email']?.toString() ?? ''),
         TextCellValue(user['phone']?.toString() ?? ''),
-        TextCellValue(user['status']?.toString() ?? 'active'),
-        TextCellValue(user['is_banned'] == true ? 'Evet' : 'Hayir'),
+        TextCellValue('active'),
+        TextCellValue(''),
         TextCellValue(_formatDateTime(user['created_at']?.toString())),
       ]);
     }
@@ -708,7 +1292,7 @@ class InvoiceService {
         TextCellValue(order['id']?.toString() ?? ''),
         TextCellValue(_formatDateTime(order['created_at']?.toString())),
         TextCellValue(order['customer_name']?.toString() ?? ''),
-        TextCellValue(order['merchant_name']?.toString() ?? ''),
+        TextCellValue(order['merchants']?['business_name']?.toString() ?? order['merchant_name']?.toString() ?? ''),
         DoubleCellValue(double.tryParse(order['total_amount']?.toString() ?? '0') ?? 0),
         TextCellValue(order['payment_method']?.toString() ?? ''),
         TextCellValue(_getOrderStatusLabel(order['status'])),

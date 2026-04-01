@@ -37,12 +37,12 @@ final featuredMarketsProvider = FutureProvider<List<Store>>((ref) async {
 });
 
 // Markete göre ürünler provider
-final productsByMarketProvider = FutureProvider.family<List<StoreProduct>, String>((ref, marketId) async {
+final productsByMarketProvider = FutureProvider.autoDispose.family<List<StoreProduct>, String>((ref, marketId) async {
   return await MarketService.getProductsByMarket(marketId);
 });
 
 // Market arama provider (teslimat bölgesi filtreli)
-final marketSearchProvider = FutureProvider.family<List<Store>, String>((ref, query) async {
+final marketSearchProvider = FutureProvider.autoDispose.family<List<Store>, String>((ref, query) async {
   if (query.isEmpty) return [];
   final selectedAddress = ref.watch(selectedAddressProvider);
   return await MarketService.searchMarkets(

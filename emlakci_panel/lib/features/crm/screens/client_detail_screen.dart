@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:emlakci_panel/core/services/log_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../models/client_model.dart';
 import '../../../providers/client_provider.dart';
@@ -47,7 +48,8 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
           _isLoading = false;
         });
       }
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to load client detail', error: e, stackTrace: st, source: 'ClientDetailScreen:_loadClient');
       if (mounted) {
         setState(() {
           _error = e.toString();
@@ -113,8 +115,11 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline,
-                size: 48, color: AppColors.error.withValues(alpha: 0.5)),
+            Icon(
+              Icons.error_outline,
+              size: 48,
+              color: AppColors.error.withValues(alpha: 0.5),
+            ),
             const SizedBox(height: 12),
             Text(
               _client == null ? 'Musteri bulunamadi' : 'Bir hata olustu',
@@ -141,8 +146,11 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
           // Back button
           TextButton.icon(
             onPressed: () => context.go('/clients'),
-            icon: Icon(Icons.arrow_back_rounded,
-                size: 18, color: AppColors.textSecondary(isDark)),
+            icon: Icon(
+              Icons.arrow_back_rounded,
+              size: 18,
+              color: AppColors.textSecondary(isDark),
+            ),
             label: Text(
               'Musteriler',
               style: TextStyle(
@@ -332,8 +340,9 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
                   icon: Icons.message_rounded,
                   color: const Color(0xFF25D366),
                   tooltip: 'WhatsApp',
-                  onTap: () =>
-                      _launchUrl('https://wa.me/${_normalizePhone(client.phone!)}'),
+                  onTap: () => _launchUrl(
+                    'https://wa.me/${_normalizePhone(client.phone!)}',
+                  ),
                 ),
             ],
           ),
@@ -383,19 +392,9 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
           isDark,
         ),
         if (client.phone != null)
-          _buildInfoRow(
-            Icons.phone_outlined,
-            'Telefon',
-            client.phone!,
-            isDark,
-          ),
+          _buildInfoRow(Icons.phone_outlined, 'Telefon', client.phone!, isDark),
         if (client.email != null)
-          _buildInfoRow(
-            Icons.email_outlined,
-            'E-posta',
-            client.email!,
-            isDark,
-          ),
+          _buildInfoRow(Icons.email_outlined, 'E-posta', client.email!, isDark),
         if (client.lastContactAt != null)
           _buildInfoRow(
             Icons.history_rounded,
@@ -589,8 +588,11 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
                 ),
               ),
               const Spacer(),
-              Icon(Icons.chevron_right_rounded,
-                  color: color.withValues(alpha: 0.5), size: 20),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: color.withValues(alpha: 0.5),
+                size: 20,
+              ),
             ],
           ),
         ),
@@ -684,12 +686,13 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
   // ============================================
 
   Widget _buildEngagementMetrics(bool isDark) {
-    final activityAsync =
-        ref.watch(clientPropertyActivityProvider(widget.clientId));
+    final activityAsync = ref.watch(
+      clientPropertyActivityProvider(widget.clientId),
+    );
 
     return activityAsync.when(
       loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
       data: (activities) {
         if (activities.isEmpty && _client?.userId == null) {
           return Container(
@@ -707,10 +710,7 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
                 Expanded(
                   child: Text(
                     'Bu musteri henuz platform hesabina bagli degil. Hesap baglandiginda goruntulenme ve favori verileri burada gosterilecek.',
-                    style: TextStyle(
-                      color: AppColors.info,
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: AppColors.info, fontSize: 12),
                   ),
                 ),
               ],
@@ -718,10 +718,11 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
           );
         }
 
-        final totalViews =
-            activities.fold<int>(0, (sum, a) => sum + a.viewCount);
-        final totalFavs =
-            activities.where((a) => a.isFavorited).length;
+        final totalViews = activities.fold<int>(
+          0,
+          (sum, a) => sum + a.viewCount,
+        );
+        final totalFavs = activities.where((a) => a.isFavorited).length;
         final viewedCount = activities.where((a) => a.viewCount > 0).length;
 
         return Row(
@@ -753,7 +754,11 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
   }
 
   Widget _buildMetricChip(
-      IconData icon, String label, Color color, bool isDark) {
+    IconData icon,
+    String label,
+    Color color,
+    bool isDark,
+  ) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
@@ -783,8 +788,9 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
   // ============================================
 
   Widget _buildViewedPropertiesSection(bool isDark) {
-    final activityAsync =
-        ref.watch(clientPropertyActivityProvider(widget.clientId));
+    final activityAsync = ref.watch(
+      clientPropertyActivityProvider(widget.clientId),
+    );
 
     return _buildSection(
       title: 'Goruntulediği Ilanlar',
@@ -796,7 +802,7 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
             padding: EdgeInsets.all(16),
             child: Center(child: CircularProgressIndicator()),
           ),
-          error: (_, __) => Padding(
+          error: (_, _) => Padding(
             padding: const EdgeInsets.all(8),
             child: Text(
               'Veri yuklenemedi',
@@ -804,8 +810,7 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
             ),
           ),
           data: (activities) {
-            final viewed =
-                activities.where((a) => a.viewCount > 0).toList();
+            final viewed = activities.where((a) => a.viewCount > 0).toList();
             if (viewed.isEmpty) {
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
@@ -837,8 +842,9 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
   // ============================================
 
   Widget _buildFavoritedPropertiesSection(bool isDark) {
-    final activityAsync =
-        ref.watch(clientPropertyActivityProvider(widget.clientId));
+    final activityAsync = ref.watch(
+      clientPropertyActivityProvider(widget.clientId),
+    );
 
     return _buildSection(
       title: 'Favori Ilanlari',
@@ -850,7 +856,7 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
             padding: EdgeInsets.all(16),
             child: Center(child: CircularProgressIndicator()),
           ),
-          error: (_, __) => Padding(
+          error: (_, _) => Padding(
             padding: const EdgeInsets.all(8),
             child: Text(
               'Veri yuklenemedi',
@@ -858,8 +864,7 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
             ),
           ),
           data: (activities) {
-            final favorited =
-                activities.where((a) => a.isFavorited).toList();
+            final favorited = activities.where((a) => a.isFavorited).toList();
             if (favorited.isEmpty) {
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8),
@@ -891,8 +896,9 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
   // ============================================
 
   Widget _buildActivityTimelineSection(bool isDark) {
-    final activityAsync =
-        ref.watch(clientPropertyActivityProvider(widget.clientId));
+    final activityAsync = ref.watch(
+      clientPropertyActivityProvider(widget.clientId),
+    );
 
     return _buildSection(
       title: 'Aktivite Gecmisi',
@@ -904,7 +910,7 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
             padding: EdgeInsets.all(16),
             child: Center(child: CircularProgressIndicator()),
           ),
-          error: (_, __) => Padding(
+          error: (_, _) => Padding(
             padding: const EdgeInsets.all(8),
             child: Text(
               'Veri yuklenemedi',
@@ -970,11 +976,12 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
                       borderRadius: BorderRadius.circular(8),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? _getStatusColor(status)
-                                  .withValues(alpha: 0.1)
+                              ? _getStatusColor(status).withValues(alpha: 0.1)
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
@@ -1006,8 +1013,11 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
                             ),
                             const Spacer(),
                             if (isSelected)
-                              Icon(Icons.check_rounded,
-                                  color: _getStatusColor(status), size: 20),
+                              Icon(
+                                Icons.check_rounded,
+                                color: _getStatusColor(status),
+                                size: 20,
+                              ),
                           ],
                         ),
                       ),
@@ -1028,10 +1038,9 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
                     Navigator.of(dialogContext).pop();
 
                     try {
-                      await _clientService.updateClient(
-                        client.id,
-                        {'status': selectedStatus.name},
-                      );
+                      await _clientService.updateClient(client.id, {
+                        'status': selectedStatus.name,
+                      });
                       await _loadClient();
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -1041,7 +1050,8 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
                           ),
                         );
                       }
-                    } catch (e) {
+                    } catch (e, st) {
+                      LogService.error('Failed to update client status', error: e, stackTrace: st, source: 'ClientDetailScreen:updateStatus');
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
@@ -1131,7 +1141,8 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
           );
           context.go('/clients');
         }
-      } catch (e) {
+      } catch (e, st) {
+        LogService.error('Failed to delete client', error: e, stackTrace: st, source: 'ClientDetailScreen:_deleteClient');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -1152,7 +1163,8 @@ class _ClientDetailScreenState extends ConsumerState<ClientDetailScreen> {
     final uri = Uri.parse(url);
     try {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
-    } catch (_) {
+    } catch (e, st) {
+      LogService.error('URL açılamadı', error: e, stackTrace: st, source: 'ClientDetailScreen:_launchUrl');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

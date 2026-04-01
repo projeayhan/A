@@ -9,6 +9,7 @@ import '../core/providers/store_follow_provider.dart';
 import '../core/providers/notification_provider.dart';
 import '../core/providers/cart_provider.dart';
 import '../core/providers/store_cart_provider.dart';
+import '../l10n/app_localizations.dart';
 
 class DeliveryHeader extends ConsumerStatefulWidget {
   final Color? backgroundColor;
@@ -131,11 +132,13 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
                         child: Row(
                           children: [
                             Text(
-                              'Teslimat Adresi',
+                              S.of(context)!.deliveryAddress,
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: isDark ? Colors.white : const Color(0xFF1F2937),
+                                color: isDark
+                                    ? Colors.white
+                                    : const Color(0xFF1F2937),
                               ),
                             ),
                             const Spacer(),
@@ -145,9 +148,9 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
                                 setState(() => _showAddressDropdown = false);
                                 context.push('/settings/addresses');
                               },
-                              child: const Text(
-                                'Düzenle',
-                                style: TextStyle(
+                              child: Text(
+                                S.of(context)!.edit,
+                                style: const TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
                                   color: AppColors.primary,
@@ -180,7 +183,9 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
 
                         return InkWell(
                           onTap: () {
-                            ref.read(addressProvider.notifier).setDefaultAddress(address.id);
+                            ref
+                                .read(addressProvider.notifier)
+                                .setDefaultAddress(address.id);
                             _removeAddressOverlay();
                             setState(() => _showAddressDropdown = false);
                           },
@@ -207,14 +212,17 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         address.title,
                                         style: TextStyle(
                                           fontSize: 14,
                                           fontWeight: FontWeight.w600,
-                                          color: isDark ? Colors.white : const Color(0xFF1F2937),
+                                          color: isDark
+                                              ? Colors.white
+                                              : const Color(0xFF1F2937),
                                         ),
                                       ),
                                       Text(
@@ -228,7 +236,11 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
                                   ),
                                 ),
                                 if (isSelected)
-                                  const Icon(Icons.check_circle, color: AppColors.primary, size: 20),
+                                  const Icon(
+                                    Icons.check_circle,
+                                    color: AppColors.primary,
+                                    size: 20,
+                                  ),
                               ],
                             ),
                           ),
@@ -251,15 +263,21 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
                                 width: 40,
                                 height: 40,
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.1),
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.1,
+                                  ),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
-                                child: const Icon(Icons.add, color: AppColors.primary, size: 20),
+                                child: const Icon(
+                                  Icons.add,
+                                  color: AppColors.primary,
+                                  size: 20,
+                                ),
                               ),
                               const SizedBox(width: 12),
-                              const Text(
-                                'Yeni Adres Ekle',
-                                style: TextStyle(
+                              Text(
+                                S.of(context)!.addNewAddress,
+                                style: const TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w600,
                                   color: AppColors.primary,
@@ -286,7 +304,9 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final notificationState = ref.read(notificationProvider);
     final notifications = notificationState.notifications;
-    final storeNotifications = ref.read(storeNotificationProvider).notifications;
+    final storeNotifications = ref
+        .read(storeNotificationProvider)
+        .notifications;
 
     _notificationOverlay = OverlayEntry(
       builder: (context) => Stack(
@@ -305,13 +325,17 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
           Positioned(
             left: context.pagePaddingH,
             right: context.pagePaddingH,
-            top: MediaQuery.of(context).padding.top + (context.isMobile ? 62 : 68),
+            top:
+                MediaQuery.of(context).padding.top +
+                (context.isMobile ? 62 : 68),
             child: Material(
               elevation: 8,
               borderRadius: BorderRadius.circular(16),
               color: isDark ? AppColors.surfaceDark : Colors.white,
               child: Container(
-                constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.4),
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.4,
+                ),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(
@@ -319,128 +343,166 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
                   ),
                 ),
                 child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Header
-                      Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Row(
-                          children: [
-                            Text(
-                              'Bildirimler',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: isDark ? Colors.white : const Color(0xFF1F2937),
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Header
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        children: [
+                          Text(
+                            S.of(context)!.notifications,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: isDark
+                                  ? Colors.white
+                                  : const Color(0xFF1F2937),
+                            ),
+                          ),
+                          const Spacer(),
+                          GestureDetector(
+                            onTap: () {
+                              ref
+                                  .read(notificationProvider.notifier)
+                                  .markAllAsRead();
+                              ref
+                                  .read(storeNotificationProvider.notifier)
+                                  .markAllAsRead();
+                            },
+                            child: Text(
+                              S.of(context)!.markAllAsRead,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.primary,
                               ),
                             ),
-                            const Spacer(),
-                            GestureDetector(
-                              onTap: () {
-                                ref.read(notificationProvider.notifier).markAllAsRead();
-                                ref.read(storeNotificationProvider.notifier).markAllAsRead();
-                              },
-                              child: const Text(
-                                'Tümünü Okundu İşaretle',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.primary,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
-                      const Divider(height: 1),
-                      // Notifications List
-                      Flexible(
-                        child: (notifications.isEmpty && storeNotifications.isEmpty)
-                            ? Padding(
-                                padding: const EdgeInsets.all(32),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.notifications_off_outlined,
-                                        size: 48, color: Colors.grey[400]),
-                                    const SizedBox(height: 12),
-                                    Text(
-                                      'Bildirim yok',
-                                      style: TextStyle(color: Colors.grey[500]),
-                                    ),
-                                  ],
-                                ),
-                              )
-                            : ListView(
-                                shrinkWrap: true,
-                                padding: const EdgeInsets.all(8),
+                    ),
+                    const Divider(height: 1),
+                    // Notifications List
+                    Flexible(
+                      child:
+                          (notifications.isEmpty && storeNotifications.isEmpty)
+                          ? Padding(
+                              padding: const EdgeInsets.all(32),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  // Mağaza Bildirimleri
-                                  if (storeNotifications.isNotEmpty) ...[
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.store_rounded, size: 16, color: Colors.grey[500]),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            'Mağaza Bildirimleri',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.grey[500],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    ...storeNotifications.map((notification) =>
-                                      _buildStoreNotificationItem(notification, isDark)),
-                                    const SizedBox(height: 8),
-                                    const Divider(height: 1),
-                                    const SizedBox(height: 8),
-                                  ],
-                                  // Genel Bildirimler
-                                  if (notifications.isNotEmpty) ...[
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.notifications_rounded, size: 16, color: Colors.grey[500]),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            'Genel Bildirimler',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.grey[500],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    ...notifications.map((notification) =>
-                                      _buildNotificationItem(notification, isDark)),
-                                  ],
+                                  Icon(
+                                    Icons.notifications_off_outlined,
+                                    size: 48,
+                                    color: Colors.grey[400],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    S.of(context)!.noNotifications,
+                                    style: TextStyle(color: Colors.grey[500]),
+                                  ),
                                 ],
                               ),
-                      ),
-                    ],
-                  ),
+                            )
+                          : ListView(
+                              shrinkWrap: true,
+                              padding: const EdgeInsets.all(8),
+                              children: [
+                                // Mağaza Bildirimleri
+                                if (storeNotifications.isNotEmpty) ...[
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.store_rounded,
+                                          size: 16,
+                                          color: Colors.grey[500],
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          S.of(context)!.storeNotifications,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.grey[500],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  ...storeNotifications.map(
+                                    (notification) =>
+                                        _buildStoreNotificationItem(
+                                          notification,
+                                          isDark,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  const Divider(height: 1),
+                                  const SizedBox(height: 8),
+                                ],
+                                // Genel Bildirimler
+                                if (notifications.isNotEmpty) ...[
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.notifications_rounded,
+                                          size: 16,
+                                          color: Colors.grey[500],
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          S.of(context)!.generalNotifications,
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.grey[500],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  ...notifications.map(
+                                    (notification) => _buildNotificationItem(
+                                      notification,
+                                      isDark,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                    ),
+                  ],
                 ),
               ),
             ),
-          ],
-        ),
-      );
+          ),
+        ],
+      ),
+    );
 
     Overlay.of(context).insert(_notificationOverlay!);
   }
 
-  Widget _buildStoreNotificationItem(StoreNotification notification, bool isDark) {
+  Widget _buildStoreNotificationItem(
+    StoreNotification notification,
+    bool isDark,
+  ) {
     return GestureDetector(
       onTap: () {
-        ref.read(storeNotificationProvider.notifier).markAsRead(notification.id);
+        ref
+            .read(storeNotificationProvider.notifier)
+            .markAsRead(notification.id);
         _removeNotificationOverlay();
         setState(() => _showNotificationDropdown = false);
         // Mağaza sayfasına yönlendir
@@ -472,11 +534,13 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
                     ? CachedNetworkImage(
                         imageUrl: notification.storeLogoUrl,
                         fit: BoxFit.cover,
-                        placeholder: (_, __) => Container(
+                        placeholder: (_, _) => Container(
                           color: Colors.grey[200],
-                          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                          child: const Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
                         ),
-                        errorWidget: (_, __, ___) => Icon(
+                        errorWidget: (_, _, _) => Icon(
                           notification.icon,
                           color: notification.iconColor,
                           size: 18,
@@ -501,8 +565,12 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
                           notification.title,
                           style: TextStyle(
                             fontSize: 13,
-                            fontWeight: notification.isRead ? FontWeight.w500 : FontWeight.bold,
-                            color: isDark ? Colors.white : const Color(0xFF1F2937),
+                            fontWeight: notification.isRead
+                                ? FontWeight.w500
+                                : FontWeight.bold,
+                            color: isDark
+                                ? Colors.white
+                                : const Color(0xFF1F2937),
                           ),
                         ),
                       ),
@@ -520,10 +588,7 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
                   const SizedBox(height: 2),
                   Text(
                     notification.message,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.grey[500],
-                    ),
+                    style: TextStyle(fontSize: 11, color: Colors.grey[500]),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -531,7 +596,10 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 1,
+                        ),
                         decoration: BoxDecoration(
                           color: notification.iconColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(4),
@@ -548,10 +616,7 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
                       const SizedBox(width: 6),
                       Text(
                         notification.timeAgo,
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.grey[400],
-                        ),
+                        style: TextStyle(fontSize: 10, color: Colors.grey[400]),
                       ),
                     ],
                   ),
@@ -611,8 +676,12 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
                           notification.title,
                           style: TextStyle(
                             fontSize: 13,
-                            fontWeight: notification.isRead ? FontWeight.w500 : FontWeight.bold,
-                            color: isDark ? Colors.white : const Color(0xFF1F2937),
+                            fontWeight: notification.isRead
+                                ? FontWeight.w500
+                                : FontWeight.bold,
+                            color: isDark
+                                ? Colors.white
+                                : const Color(0xFF1F2937),
                           ),
                         ),
                       ),
@@ -630,20 +699,14 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
                   const SizedBox(height: 2),
                   Text(
                     notification.body,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.grey[500],
-                    ),
+                    style: TextStyle(fontSize: 11, color: Colors.grey[500]),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
                   Text(
                     timeAgo,
-                    style: TextStyle(
-                      fontSize: 10,
-                      color: Colors.grey[400],
-                    ),
+                    style: TextStyle(fontSize: 10, color: Colors.grey[400]),
                   ),
                 ],
               ),
@@ -684,13 +747,13 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
     final diff = now.difference(dateTime);
 
     if (diff.inMinutes < 1) {
-      return 'Az önce';
+      return S.of(context)!.justNow;
     } else if (diff.inMinutes < 60) {
-      return '${diff.inMinutes} dakika önce';
+      return S.of(context)!.minutesAgo(diff.inMinutes);
     } else if (diff.inHours < 24) {
-      return '${diff.inHours} saat önce';
+      return S.of(context)!.hoursAgo(diff.inHours);
     } else if (diff.inDays < 7) {
-      return '${diff.inDays} gün önce';
+      return S.of(context)!.daysAgo(diff.inDays);
     } else {
       return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
     }
@@ -775,9 +838,14 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
     }
 
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: context.pagePaddingH, vertical: context.isMobile ? 10 : 12),
+      padding: EdgeInsets.symmetric(
+        horizontal: context.pagePaddingH,
+        vertical: context.isMobile ? 10 : 12,
+      ),
       decoration: BoxDecoration(
-        color: widget.backgroundColor ?? (isDark ? AppColors.surfaceDark : Colors.white),
+        color:
+            widget.backgroundColor ??
+            (isDark ? AppColors.surfaceDark : Colors.white),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -797,7 +865,10 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
                 child: GestureDetector(
                   onTap: _toggleAddressDropdown,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: isDark ? Colors.grey[800] : Colors.grey[50],
                       borderRadius: BorderRadius.circular(12),
@@ -813,10 +884,16 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
                           width: 32,
                           height: 32,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFEC6D13).withValues(alpha: 0.1),
+                            color: const Color(
+                              0xFFEC6D13,
+                            ).withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Icon(addressIcon, color: const Color(0xFFEC6D13), size: 18),
+                          child: Icon(
+                            addressIcon,
+                            color: const Color(0xFFEC6D13),
+                            size: 18,
+                          ),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
@@ -825,7 +902,7 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                'Teslimat Adresi',
+                                S.of(context)!.deliveryAddress,
                                 style: TextStyle(
                                   fontSize: 10,
                                   color: Colors.grey[500],
@@ -841,7 +918,9 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
                                       style: TextStyle(
                                         fontSize: 13,
                                         fontWeight: FontWeight.w600,
-                                        color: isDark ? Colors.white : const Color(0xFF1F2937),
+                                        color: isDark
+                                            ? Colors.white
+                                            : const Color(0xFF1F2937),
                                       ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
@@ -854,7 +933,9 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
                                     child: Icon(
                                       Icons.keyboard_arrow_down,
                                       size: 18,
-                                      color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                      color: isDark
+                                          ? Colors.grey[400]
+                                          : Colors.grey[600],
                                     ),
                                   ),
                                 ],
@@ -934,7 +1015,11 @@ class _DeliveryHeaderState extends ConsumerState<DeliveryHeader> {
             if (widget.showCart) ...[
               const SizedBox(width: 8),
               GestureDetector(
-                onTap: widget.onCartTap ?? () => context.push(foodCartCount > 0 ? '/food/cart' : '/store/cart'),
+                onTap:
+                    widget.onCartTap ??
+                    () => context.push(
+                      foodCartCount > 0 ? '/food/cart' : '/store/cart',
+                    ),
                 child: Container(
                   width: 44,
                   height: 44,

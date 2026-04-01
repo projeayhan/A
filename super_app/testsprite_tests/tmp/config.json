@@ -1,0 +1,19 @@
+{
+  "status": "init",
+  "type": "frontend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:3000/",
+  "loginUser": "SUPERCYP",
+  "loginPassword": "Ayhan*1988",
+  "executionArgs": {
+    "projectName": "super_app",
+    "projectPath": "c:\\A\\super_app",
+    "testIds": [],
+    "additionalInstruction": "Test the Supabase REST API at https://mzgtvdgwxrlhgjboolys.supabase.co/rest/v1/ with anon key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im16Z3R2ZGd3eHJsaGdqYm9vbHlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgwNTUyODUsImV4cCI6MjA4MzYzMTI4NX0.B8xL9pKDX76eVnu-s2K-TjvRyPUDx4kus85qDFWO8SY. Test endpoints: GET /rest/v1/orders, GET /rest/v1/merchants, GET /rest/v1/users, GET /rest/v1/taxi_rides. Use both Authorization and apikey headers.",
+    "serverMode": "production",
+    "envs": {
+      "API_KEY": "sk-user-LzBlm2lw3ABQFcKF3v9ucsXxYvt-MNXQ4j05ht_EcdSFkhp6-b6kzvr8zFY_6pLH_RvYr1NAGqXeGuOSLiiOz4GW3q26Us_9vN8hKuZSfVwVSPIqoHz7XyM1sT88eCIHa4c"
+    }
+  },
+  "serverPort": 56185
+}

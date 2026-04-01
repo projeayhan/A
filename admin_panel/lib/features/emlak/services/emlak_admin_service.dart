@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -99,8 +98,6 @@ class EmlakListing {
   final String? district;
   final String status;
   final String userId;
-  final String? userEmail;
-  final String? userPhone;
   final DateTime createdAt;
   final List<String> images;
 
@@ -115,8 +112,6 @@ class EmlakListing {
     this.district,
     required this.status,
     required this.userId,
-    this.userEmail,
-    this.userPhone,
     required this.createdAt,
     required this.images,
   });
@@ -138,8 +133,6 @@ class EmlakListing {
       district: json['district'] as String?,
       status: json['status'] as String? ?? 'pending',
       userId: json['user_id'] as String? ?? '',
-      userEmail: json['user_email'] as String?,
-      userPhone: json['user_phone'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
       images: imagesList,
     );
@@ -654,14 +647,8 @@ class EmlakRecentActivity {
 final emlakRecentActivityProvider = FutureProvider<List<EmlakRecentActivity>>((ref) async {
   final client = Supabase.instance.client;
 
-  try {
-    final response = await client.rpc('get_emlak_recent_activity', params: {'p_limit': 10});
-    return List<Map<String, dynamic>>.from(response)
-        .map((json) => EmlakRecentActivity.fromJson(json))
-        .toList();
-  } catch (e) {
-    // RPC may not exist yet, graceful fallback
-    debugPrint('emlakRecentActivityProvider error: $e');
-    return [];
-  }
+  final response = await client.rpc('get_emlak_recent_activity', params: {'p_limit': 10});
+  return List<Map<String, dynamic>>.from(response)
+      .map((json) => EmlakRecentActivity.fromJson(json))
+      .toList();
 });

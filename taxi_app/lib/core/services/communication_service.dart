@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'log_service.dart';
 import 'supabase_service.dart';
 
 /// Güvenli İletişim Servisi
@@ -24,8 +27,8 @@ class CommunicationService {
         return SecureCustomerInfo.fromJson(response[0]);
       }
       return null;
-    } catch (e) {
-      debugPrint('getSecureCustomerInfo error: $e');
+    } catch (e, st) {
+      LogService.error('getSecureCustomerInfo error', error: e, stackTrace: st, source: 'CommunicationService:getSecureCustomerInfo');
       return null;
     }
   }
@@ -42,8 +45,8 @@ class CommunicationService {
         return SecureDriverInfo.fromJson(response[0]);
       }
       return null;
-    } catch (e) {
-      debugPrint('getSecureDriverInfo error: $e');
+    } catch (e, st) {
+      LogService.error('getSecureDriverInfo error', error: e, stackTrace: st, source: 'CommunicationService:getSecureDriverInfo');
       return null;
     }
   }
@@ -64,8 +67,8 @@ class CommunicationService {
       });
 
       return response as String?;
-    } catch (e) {
-      debugPrint('sendMessage error: $e');
+    } catch (e, st) {
+      LogService.error('sendMessage error', error: e, stackTrace: st, source: 'CommunicationService:sendMessage');
       return null;
     }
   }
@@ -107,8 +110,8 @@ class CommunicationService {
       return (response as List)
           .map((e) => RideMessage.fromJson(e))
           .toList();
-    } catch (e) {
-      debugPrint('getMessages error: $e');
+    } catch (e, st) {
+      LogService.error('getMessages error', error: e, stackTrace: st, source: 'CommunicationService:getMessages');
       return [];
     }
   }
@@ -126,8 +129,8 @@ class CommunicationService {
           .neq('sender_id', userId);
 
       return true;
-    } catch (e) {
-      debugPrint('markMessagesAsRead error: $e');
+    } catch (e, st) {
+      LogService.error('markMessagesAsRead error', error: e, stackTrace: st, source: 'CommunicationService:markMessagesAsRead');
       return false;
     }
   }
@@ -153,8 +156,8 @@ class CommunicationService {
               if (payload.newRecord.isEmpty) return;
               final message = RideMessage.fromJson(payload.newRecord);
               onNewMessage(message);
-            } catch (e) {
-              debugPrint('Realtime message parse error: $e');
+            } catch (e, st) {
+              LogService.error('Realtime message parse error', error: e, stackTrace: st, source: 'CommunicationService:subscribeToMessages');
             }
           },
         )
@@ -180,8 +183,8 @@ class CommunicationService {
         );
       }
       return null;
-    } catch (e) {
-      debugPrint('initiateCall error: $e');
+    } catch (e, st) {
+      LogService.error('initiateCall error', error: e, stackTrace: st, source: 'CommunicationService:initiateCall');
       return null;
     }
   }
@@ -211,8 +214,8 @@ class CommunicationService {
           .eq('id', callId);
 
       return true;
-    } catch (e) {
-      debugPrint('updateCallStatus error: $e');
+    } catch (e, st) {
+      LogService.error('updateCallStatus error', error: e, stackTrace: st, source: 'CommunicationService:updateCallStatus');
       return false;
     }
   }
@@ -234,8 +237,8 @@ class CommunicationService {
       return (response as List)
           .map((e) => QuickMessage.fromJson(e))
           .toList();
-    } catch (e) {
-      debugPrint('getQuickMessages error: $e');
+    } catch (e, st) {
+      LogService.error('getQuickMessages error', error: e, stackTrace: st, source: 'CommunicationService:getQuickMessages');
       return [];
     }
   }
@@ -261,8 +264,8 @@ class CommunicationService {
         return ShareLinkInfo.fromJson(response[0]);
       }
       return null;
-    } catch (e) {
-      debugPrint('createShareLink error: $e');
+    } catch (e, st) {
+      LogService.error('createShareLink error', error: e, stackTrace: st, source: 'CommunicationService:createShareLink');
       return null;
     }
   }
@@ -280,8 +283,8 @@ class CommunicationService {
       return (response as List)
           .map((e) => ShareLinkInfo.fromJson(e))
           .toList();
-    } catch (e) {
-      debugPrint('getShareLinks error: $e');
+    } catch (e, st) {
+      LogService.error('getShareLinks error', error: e, stackTrace: st, source: 'CommunicationService:getShareLinks');
       return [];
     }
   }
@@ -295,8 +298,8 @@ class CommunicationService {
           .eq('id', linkId);
 
       return true;
-    } catch (e) {
-      debugPrint('deactivateShareLink error: $e');
+    } catch (e, st) {
+      LogService.error('deactivateShareLink error', error: e, stackTrace: st, source: 'CommunicationService:deactivateShareLink');
       return false;
     }
   }
@@ -321,8 +324,8 @@ class CommunicationService {
       });
 
       return response as String?;
-    } catch (e) {
-      debugPrint('createEmergencyAlert error: $e');
+    } catch (e, st) {
+      LogService.error('createEmergencyAlert error', error: e, stackTrace: st, source: 'CommunicationService:createEmergencyAlert');
       return null;
     }
   }
@@ -346,8 +349,8 @@ class CommunicationService {
             .toList();
       }
       return [];
-    } catch (e) {
-      debugPrint('getEmergencyContacts error: $e');
+    } catch (e, st) {
+      LogService.error('getEmergencyContacts error', error: e, stackTrace: st, source: 'CommunicationService:getEmergencyContacts');
       return [];
     }
   }
@@ -371,8 +374,8 @@ class CommunicationService {
           });
 
       return true;
-    } catch (e) {
-      debugPrint('addEmergencyContact error: $e');
+    } catch (e, st) {
+      LogService.error('addEmergencyContact error', error: e, stackTrace: st, source: 'CommunicationService:addEmergencyContact');
       return false;
     }
   }
@@ -394,8 +397,8 @@ class CommunicationService {
           .eq('user_id', userId);
 
       return true;
-    } catch (e) {
-      debugPrint('removeEmergencyContact error: $e');
+    } catch (e, st) {
+      LogService.error('removeEmergencyContact error', error: e, stackTrace: st, source: 'CommunicationService:removeEmergencyContact');
       return false;
     }
   }
@@ -418,8 +421,8 @@ class CommunicationService {
         return CommunicationPreferences.fromJson(response);
       }
       return null;
-    } catch (e) {
-      debugPrint('getPreferences error: $e');
+    } catch (e, st) {
+      LogService.error('getPreferences error', error: e, stackTrace: st, source: 'CommunicationService:getPreferences');
       return null;
     }
   }
@@ -438,15 +441,15 @@ class CommunicationService {
           });
 
       return true;
-    } catch (e) {
-      debugPrint('updatePreferences error: $e');
+    } catch (e, st) {
+      LogService.error('updatePreferences error', error: e, stackTrace: st, source: 'CommunicationService:updatePreferences');
       return false;
     }
   }
 
   // ==================== SOS ====================
 
-  static const String _supabaseUrl = 'https://mzgtvdgwxrlhgjboolys.supabase.co';
+  static String get _supabaseUrl => dotenv.env['SUPABASE_URL'] ?? '';
 
   /// Aktif SOS token (GPS streaming için)
   static String? _activeSosToken;
@@ -477,8 +480,9 @@ class CommunicationService {
       final userId = SupabaseService.currentUser?.id;
       if (userId == null) return null;
 
-      final token = DateTime.now().millisecondsSinceEpoch.toRadixString(36) +
-          userId.substring(0, 8);
+      final rand = Random.secure();
+      final token = List.generate(32, (_) => rand.nextInt(256))
+          .map((b) => b.toRadixString(16).padLeft(2, '0')).join();
 
       await _client.from('sos_live_locations').insert({
         'user_id': userId,
@@ -494,8 +498,8 @@ class CommunicationService {
       });
 
       return token;
-    } catch (e) {
-      debugPrint('_createSosTracking error: $e');
+    } catch (e, st) {
+      LogService.error('_createSosTracking error', error: e, stackTrace: st, source: 'CommunicationService:_createSosTracking');
       return null;
     }
   }
@@ -512,8 +516,8 @@ class CommunicationService {
         'p_speed': speed,
         'p_heading': heading,
       });
-    } catch (e) {
-      debugPrint('_updateSosLocation error: $e');
+    } catch (e, st) {
+      LogService.error('_updateSosLocation error', error: e, stackTrace: st, source: 'CommunicationService:_updateSosLocation');
     }
   }
 
@@ -532,8 +536,8 @@ class CommunicationService {
           speed: position.speed,
           heading: position.heading,
         );
-      } catch (e) {
-        debugPrint('SOS location stream error: $e');
+      } catch (e, st) {
+        LogService.error('SOS location stream error', error: e, stackTrace: st, source: 'CommunicationService:startSosTracking');
       }
     });
   }
@@ -545,8 +549,8 @@ class CommunicationService {
     if (_activeSosToken != null) {
       try {
         await _client.rpc('deactivate_sos', params: {'p_share_token': _activeSosToken});
-      } catch (e) {
-        debugPrint('stopSosTracking error: $e');
+      } catch (e, st) {
+        LogService.error('stopSosTracking error', error: e, stackTrace: st, source: 'CommunicationService:stopSosTracking');
       }
       _activeSosToken = null;
     }
@@ -708,8 +712,8 @@ class CommunicationService {
           await launchUrl(smsUri);
           sentCount++;
         }
-      } catch (e) {
-        debugPrint('SOS send error for ${contact.name}: $e');
+      } catch (e, st) {
+        LogService.error('SOS send error for ${contact.name}', error: e, stackTrace: st, source: 'CommunicationService:_sendSosMessages');
       }
     }
 
@@ -732,8 +736,8 @@ class CommunicationService {
     try {
       final uri = Uri.parse('tel:155');
       await launchUrl(uri);
-    } catch (e) {
-      debugPrint('155 arama hatası: $e');
+    } catch (e, st) {
+      LogService.error('155 arama hatası', error: e, stackTrace: st, source: 'CommunicationService:call155');
     }
   }
 }

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../core/models/sector_type.dart';
 import '../widgets/stat_card.dart';
 import '../widgets/chart_card.dart';
 import '../widgets/recent_orders_card.dart';
@@ -269,6 +271,7 @@ class SummaryStats {
 class DashboardStats {
   final GeneralStats general;
   final ServiceStats restaurants;
+  final ServiceStats markets;
   final ServiceStats stores;
   final TaxiStats taxi;
   final RentalStats rental;
@@ -280,6 +283,7 @@ class DashboardStats {
   DashboardStats({
     required this.general,
     required this.restaurants,
+    required this.markets,
     required this.stores,
     required this.taxi,
     required this.rental,
@@ -292,6 +296,7 @@ class DashboardStats {
   factory DashboardStats.fromJson(Map<String, dynamic> json) {
     final generalData = json['general'] as Map<String, dynamic>? ?? {};
     final restaurantsData = json['restaurants'] as Map<String, dynamic>? ?? {};
+    final marketsData = json['markets'] as Map<String, dynamic>? ?? {};
     final storesData = json['stores'] as Map<String, dynamic>? ?? {};
     final taxiData = json['taxi'] as Map<String, dynamic>? ?? {};
     final rentalData = json['rental'] as Map<String, dynamic>? ?? {};
@@ -317,6 +322,15 @@ class DashboardStats {
         todayOrders: restaurantsData['today_orders'] as int? ?? 0,
         revenue: (restaurantsData['revenue'] as num?)?.toDouble() ?? 0,
         avgRating: (restaurantsData['avg_rating'] as num?)?.toDouble() ?? 0,
+      ),
+      markets: ServiceStats(
+        count: marketsData['count'] as int? ?? 0,
+        activeCount: marketsData['active_count'] as int? ?? 0,
+        pendingCount: marketsData['pending_count'] as int? ?? 0,
+        ordersCount: marketsData['orders_count'] as int? ?? 0,
+        todayOrders: marketsData['today_orders'] as int? ?? 0,
+        revenue: (marketsData['revenue'] as num?)?.toDouble() ?? 0,
+        avgRating: (marketsData['avg_rating'] as num?)?.toDouble() ?? 0,
       ),
       stores: ServiceStats(
         count: storesData['count'] as int? ?? 0,
@@ -395,6 +409,74 @@ class DashboardStats {
   }
 }
 
+// Son 10 aktivite provider
+final recentActivityProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  final supabase = ref.watch(supabaseProvider);
+
+  // Son siparişler, rezervasyonlar ve yeni kayıtları birleştir
+  final orders = await supabase
+      .from('orders')
+      .select('id, customer_name, total_amount, status, created_at, merchant_id, merchants(business_name)')
+      .order('created_at', ascending: false)
+      .limit(5);
+
+  final activities = <Map<String, dynamic>>[];
+
+  for (final order in orders) {
+    activities.add({
+      'type': 'order',
+      'icon': 'receipt',
+      'title': '${order['customer_name'] ?? 'Müşteri'} yeni sipariş verdi',
+      'subtitle': order['merchants']?['business_name'] ?? '',
+      'amount': order['total_amount'],
+      'status': order['status'],
+      'created_at': order['created_at'],
+    });
+  }
+
+  // Son 5 yeni işletme kaydı
+  try {
+    final merchants = await supabase
+        .from('merchants')
+        .select('id, business_name, type, is_approved, created_at')
+        .order('created_at', ascending: false)
+        .limit(5);
+
+    for (final m in merchants) {
+      activities.add({
+        'type': 'merchant',
+        'icon': 'store',
+        'title': '${m['business_name'] ?? 'İşletme'} kaydoldu',
+        'subtitle': _merchantTypeLabel(m['type'] as String?),
+        'status': m['is_approved'] == true ? 'active' : 'pending',
+        'created_at': m['created_at'],
+      });
+    }
+  } catch (_) {}
+
+  // Sort by created_at descending, take 10
+  activities.sort((a, b) {
+    final aDate = DateTime.tryParse(a['created_at']?.toString() ?? '') ?? DateTime(2000);
+    final bDate = DateTime.tryParse(b['created_at']?.toString() ?? '') ?? DateTime(2000);
+    return bDate.compareTo(aDate);
+  });
+
+  return activities.take(10).toList();
+});
+
+String _merchantTypeLabel(String? type) {
+  switch (type) {
+    case 'restaurant':
+      return 'Restoran';
+    case 'market':
+      return 'Market';
+    case 'store':
+      return 'Mağaza';
+    default:
+      return 'İşletme';
+  }
+}
+
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
@@ -402,6 +484,7 @@ class DashboardScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final statsAsync = ref.watch(dashboardStatsProvider);
     final dailyRevenueAsync = ref.watch(dailyRevenueProvider(7));
+    final activityAsync = ref.watch(recentActivityProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -440,7 +523,11 @@ class DashboardScreen extends ConsumerWidget {
                     _buildDateRangeButton(),
                     const SizedBox(width: 12),
                     ElevatedButton.icon(
-                      onPressed: () {},
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Rapor indirme özelliği yakında eklenecek')),
+                        );
+                      },
                       icon: const Icon(Icons.download, size: 18),
                       label: const Text('Rapor İndir'),
                       style: ElevatedButton.styleFrom(
@@ -454,6 +541,15 @@ class DashboardScreen extends ConsumerWidget {
               ],
             ),
 
+            const SizedBox(height: 24),
+
+            // ==================== SEKTÖR ÖZET KARTLARI ====================
+            statsAsync.when(
+              data: (stats) => _buildSectorSummaryCards(context, stats),
+              loading: () => _buildSectorSummaryCardsLoading(),
+              error: (e, _) => const SizedBox.shrink(),
+            ),
+
             const SizedBox(height: 32),
 
             // Stats Cards
@@ -465,60 +561,383 @@ class DashboardScreen extends ConsumerWidget {
 
             const SizedBox(height: 24),
 
-            // Charts Row
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Revenue Chart
-                Expanded(
-                  flex: 2,
-                  child: ChartCard(
-                    title: 'Gelir Grafiği',
-                    subtitle: 'Son 7 gün',
-                    chart: dailyRevenueAsync.when(
-                      data: (data) => _buildRevenueChart(data),
-                      loading: () => _buildRevenueChartLoading(),
-                      error: (e, _) => Center(child: Text('Hata: $e')),
+            // Charts Row (responsive)
+            LayoutBuilder(builder: (context, constraints) {
+              final isNarrow = constraints.maxWidth < 800;
+              if (isNarrow) {
+                return Column(
+                  children: [
+                    ChartCard(
+                      title: 'Gelir Grafiği',
+                      subtitle: 'Son 7 gün',
+                      chart: dailyRevenueAsync.when(
+                        data: (data) => _buildRevenueChart(data),
+                        loading: () => _buildRevenueChartLoading(),
+                        error: (e, _) => Center(child: Text('Hata: $e')),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    ChartCard(
+                      title: 'Hizmet Dağılımı',
+                      subtitle: 'İşlem bazında',
+                      chart: statsAsync.maybeWhen(
+                        data: (stats) => _buildPieChart(stats),
+                        orElse: () => _buildPieChart(null),
+                      ),
+                    ),
+                  ],
+                );
+              }
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: ChartCard(
+                      title: 'Gelir Grafiği',
+                      subtitle: 'Son 7 gün',
+                      chart: dailyRevenueAsync.when(
+                        data: (data) => _buildRevenueChart(data),
+                        loading: () => _buildRevenueChartLoading(),
+                        error: (e, _) => Center(child: Text('Hata: $e')),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 24),
-                // Orders by Category
-                Expanded(
-                  child: ChartCard(
-                    title: 'Hizmet Dağılımı',
-                    subtitle: 'İşlem bazında',
-                    chart: statsAsync.maybeWhen(
-                      data: (stats) => _buildPieChart(stats),
-                      orElse: () => _buildPieChart(null),
+                  const SizedBox(width: 24),
+                  Expanded(
+                    child: ChartCard(
+                      title: 'Hizmet Dağılımı',
+                      subtitle: 'İşlem bazında',
+                      chart: statsAsync.maybeWhen(
+                        data: (stats) => _buildPieChart(stats),
+                        orElse: () => _buildPieChart(null),
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              );
+            }),
 
             const SizedBox(height: 24),
 
-            // Bottom Row
-            const Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Recent Orders
-                Expanded(
-                  flex: 2,
-                  child: RecentOrdersCard(),
-                ),
-                SizedBox(width: 24),
-                // Top Merchants
-                Expanded(
-                  child: TopMerchantsCard(),
-                ),
-              ],
-            ),
+            // Bottom Row: Recent Orders + Top Merchants (responsive)
+            LayoutBuilder(builder: (context, constraints) {
+              if (constraints.maxWidth < 800) {
+                return const Column(
+                  children: [
+                    RecentOrdersCard(),
+                    SizedBox(height: 16),
+                    TopMerchantsCard(),
+                  ],
+                );
+              }
+              return const Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 2, child: RecentOrdersCard()),
+                  SizedBox(width: 24),
+                  Expanded(child: TopMerchantsCard()),
+                ],
+              );
+            }),
+
+            const SizedBox(height: 24),
+
+            // ==================== SON 10 AKTİVİTE ====================
+            _buildRecentActivitySection(activityAsync),
           ],
         ),
       ),
     );
+  }
+
+  /// Sektör özet kartları - tıklanabilir, sektöre navigasyon
+  Widget _buildSectorSummaryCards(BuildContext context, DashboardStats stats) {
+    final sectors = [
+      _SectorSummary(SectorType.food, 'Yemek', Icons.restaurant_rounded, Colors.deepOrange,
+          stats.restaurants.count, stats.restaurants.todayOrders, stats.restaurants.revenue),
+      _SectorSummary(SectorType.market, 'Market', Icons.local_grocery_store_rounded, Colors.green,
+          stats.markets.count, stats.markets.todayOrders, stats.markets.revenue),
+      _SectorSummary(SectorType.store, 'Mağaza', Icons.storefront_rounded, Colors.teal,
+          stats.stores.count, stats.stores.todayOrders, stats.stores.revenue),
+      _SectorSummary(SectorType.taxi, 'Taksi', Icons.local_taxi_rounded, Colors.amber.shade700,
+          stats.taxi.driversCount, stats.taxi.todayRides, stats.taxi.revenue),
+      _SectorSummary(SectorType.realEstate, 'Emlak', Icons.home_work_rounded, Colors.indigo,
+          stats.emlak.realtorsCount, stats.emlak.todayProperties, 0),
+      _SectorSummary(SectorType.carSales, 'Galeri', Icons.directions_car_filled_rounded, Colors.cyan.shade700,
+          stats.carSales.dealersCount, stats.carSales.todayListings, 0),
+      _SectorSummary(SectorType.jobs, 'İş İlanları', Icons.work_rounded, Colors.deepPurple,
+          stats.jobs.postersCount, stats.jobs.todayListings, 0),
+      _SectorSummary(SectorType.carRental, 'Kiralama', Icons.car_rental_rounded, Colors.blue,
+          stats.rental.companiesCount, stats.rental.todayBookings, stats.rental.revenue),
+    ];
+
+    final width = MediaQuery.of(context).size.width;
+    final crossAxisCount = width < 900 ? 2 : (width < 1200 ? 3 : 4);
+
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: crossAxisCount,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        childAspectRatio: 2.8,
+      ),
+      itemCount: sectors.length,
+      itemBuilder: (context, index) {
+        final s = sectors[index];
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => context.go(s.sector.baseRoute),
+            borderRadius: BorderRadius.circular(14),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: s.color.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: s.color.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(s.icon, color: s.color, size: 22),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          s.label,
+                          style: TextStyle(
+                            color: s.color,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${s.businessCount} işletme',
+                          style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        '${s.todayCount}',
+                        style: TextStyle(
+                          color: s.color,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Text(
+                        'bugün',
+                        style: TextStyle(color: AppColors.textMuted, fontSize: 11),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(Icons.chevron_right, color: s.color.withValues(alpha: 0.5), size: 20),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSectorSummaryCardsLoading() {
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 4,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        childAspectRatio: 2.8,
+      ),
+      itemCount: 8,
+      itemBuilder: (context, index) => Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.surfaceLight),
+        ),
+        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      ),
+    );
+  }
+
+  /// Son 10 aktivite bölümü
+  Widget _buildRecentActivitySection(AsyncValue<List<Map<String, dynamic>>> activityAsync) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.surfaceLight),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.update_rounded, color: AppColors.primary, size: 22),
+              SizedBox(width: 10),
+              Text(
+                'Son Aktiviteler',
+                style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          activityAsync.when(
+            data: (activities) {
+              if (activities.isEmpty) {
+                return const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Center(child: Text('Henüz aktivite yok', style: TextStyle(color: AppColors.textMuted))),
+                );
+              }
+              return Column(
+                children: activities.map((a) => _buildActivityRow(a)).toList(),
+              );
+            },
+            loading: () => const Center(
+              child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator(strokeWidth: 2)),
+            ),
+            error: (e, _) => Center(
+              child: Padding(padding: const EdgeInsets.all(24), child: Text('Hata: $e', style: const TextStyle(color: AppColors.error))),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActivityRow(Map<String, dynamic> activity) {
+    final type = activity['type'] as String? ?? '';
+    final title = activity['title'] as String? ?? '';
+    final subtitle = activity['subtitle'] as String? ?? '';
+    final status = activity['status'] as String? ?? '';
+    final createdAt = DateTime.tryParse(activity['created_at']?.toString() ?? '');
+    final timeAgo = createdAt != null ? _timeAgo(createdAt) : '';
+
+    IconData icon;
+    Color iconColor;
+    if (type == 'order') {
+      icon = Icons.receipt_long_rounded;
+      iconColor = AppColors.primary;
+    } else {
+      icon = Icons.store_rounded;
+      iconColor = AppColors.success;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: AppColors.surfaceLight.withValues(alpha: 0.5))),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: iconColor, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w500)),
+                if (subtitle.isNotEmpty)
+                  Text(subtitle, style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
+              ],
+            ),
+          ),
+          if (status.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              margin: const EdgeInsets.only(right: 12),
+              decoration: BoxDecoration(
+                color: _statusColor(status).withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                _statusLabel(status),
+                style: TextStyle(color: _statusColor(status), fontSize: 11, fontWeight: FontWeight.w500),
+              ),
+            ),
+          Text(timeAgo, style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+        ],
+      ),
+    );
+  }
+
+  String _timeAgo(DateTime date) {
+    final diff = DateTime.now().difference(date);
+    if (diff.inMinutes < 1) return 'az önce';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}dk';
+    if (diff.inHours < 24) return '${diff.inHours}sa';
+    return '${diff.inDays}g';
+  }
+
+  Color _statusColor(String status) {
+    switch (status) {
+      case 'delivered':
+      case 'active':
+      case 'approved':
+        return AppColors.success;
+      case 'pending':
+        return AppColors.warning;
+      case 'cancelled':
+      case 'rejected':
+        return AppColors.error;
+      case 'preparing':
+      case 'on_the_way':
+        return AppColors.info;
+      default:
+        return AppColors.textMuted;
+    }
+  }
+
+  String _statusLabel(String status) {
+    switch (status) {
+      case 'delivered':
+        return 'Teslim';
+      case 'active':
+        return 'Aktif';
+      case 'approved':
+        return 'Onaylı';
+      case 'pending':
+        return 'Bekliyor';
+      case 'cancelled':
+        return 'İptal';
+      case 'preparing':
+        return 'Hazırlanıyor';
+      case 'on_the_way':
+        return 'Yolda';
+      default:
+        return status;
+    }
   }
 
   Widget _buildDateRangeButton() {
@@ -1150,10 +1569,10 @@ class DashboardScreen extends ConsumerWidget {
 
   Widget _buildPieChart(DashboardStats? stats) {
     // Calculate percentages based on real data
-    final restaurantOrders = stats?.restaurants.ordersCount ?? 40;
-    final storeOrders = stats?.stores.ordersCount ?? 30;
-    final taxiRides = stats?.taxi.ridesCount ?? 20;
-    final rentalBookings = stats?.rental.bookingsCount ?? 10;
+    final restaurantOrders = stats?.restaurants.ordersCount ?? 0;
+    final storeOrders = stats?.stores.ordersCount ?? 0;
+    final taxiRides = stats?.taxi.ridesCount ?? 0;
+    final rentalBookings = stats?.rental.bookingsCount ?? 0;
 
     final total = restaurantOrders + storeOrders + taxiRides + rentalBookings;
     final hasData = total > 0;
@@ -1256,4 +1675,24 @@ class DashboardScreen extends ConsumerWidget {
     }
     return number.toString();
   }
+}
+
+class _SectorSummary {
+  final SectorType sector;
+  final String label;
+  final IconData icon;
+  final Color color;
+  final int businessCount;
+  final int todayCount;
+  final double revenue;
+
+  const _SectorSummary(
+    this.sector,
+    this.label,
+    this.icon,
+    this.color,
+    this.businessCount,
+    this.todayCount,
+    this.revenue,
+  );
 }

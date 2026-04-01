@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/services/support_auth_service.dart';
 import '../../../core/services/ticket_service.dart';
 import '../../../core/services/chat_service.dart';
 import '../../../core/providers/chat_providers.dart';
 import '../../../core/models/support_models.dart';
 import 'canned_responses_popup.dart';
 import 'whisper_panel.dart';
+import 'package:support_panel/core/services/log_service.dart';
 
 class ChatConversation extends ConsumerStatefulWidget {
   final String ticketId;
@@ -48,7 +48,9 @@ class _ChatConversationState extends ConsumerState<ChatConversation> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? AppColors.background : AppColors.lightBackground;
     final cardColor = isDark ? AppColors.surface : AppColors.lightSurface;
-    final borderColor = isDark ? AppColors.surfaceLight : const Color(0xFFE2E8F0);
+    final borderColor = isDark
+        ? AppColors.surfaceLight
+        : const Color(0xFFE2E8F0);
     final textMuted = isDark ? AppColors.textMuted : AppColors.lightTextMuted;
 
     return Column(
@@ -65,13 +67,22 @@ class _ChatConversationState extends ConsumerState<ChatConversation> {
               const Icon(Icons.chat, color: AppColors.primary, size: 20),
               const SizedBox(width: 12),
               Expanded(
-                child: Text('Ticket #${widget.ticketId.substring(0, 8)}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                child: Text(
+                  'Ticket #${widget.ticketId.substring(0, 8)}',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
               ),
               // Whisper toggle
               IconButton(
-                icon: Icon(_showWhisper ? Icons.visibility_off : Icons.visibility, size: 20, color: textMuted),
+                icon: Icon(
+                  _showWhisper ? Icons.visibility_off : Icons.visibility,
+                  size: 20,
+                  color: textMuted,
+                ),
                 onPressed: () => setState(() => _showWhisper = !_showWhisper),
-                tooltip: _showWhisper ? 'Whisper panelini kapat' : 'Whisper (iç not)',
+                tooltip: _showWhisper
+                    ? 'Whisper panelini kapat'
+                    : 'Whisper (iç not)',
               ),
             ],
           ),
@@ -87,7 +98,11 @@ class _ChatConversationState extends ConsumerState<ChatConversation> {
                   color: bgColor,
                   child: messagesAsync.when(
                     data: (messages) {
-                      final visibleMessages = messages.where((m) => m.messageType != 'whisper' || m.isWhisper).toList();
+                      final visibleMessages = messages
+                          .where(
+                            (m) => m.messageType != 'whisper' || m.isWhisper,
+                          )
+                          .toList();
 
                       WidgetsBinding.instance.addPostFrameCallback((_) {
                         if (_scrollCtrl.hasClients) {
@@ -100,7 +115,12 @@ class _ChatConversationState extends ConsumerState<ChatConversation> {
                       });
 
                       if (visibleMessages.isEmpty) {
-                        return Center(child: Text('Henüz mesaj yok', style: TextStyle(color: textMuted)));
+                        return Center(
+                          child: Text(
+                            'Henüz mesaj yok',
+                            style: TextStyle(color: textMuted),
+                          ),
+                        );
                       }
 
                       return ListView.builder(
@@ -113,15 +133,15 @@ class _ChatConversationState extends ConsumerState<ChatConversation> {
                         },
                       );
                     },
-                    loading: () => const Center(child: CircularProgressIndicator()),
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
                     error: (e, _) => Center(child: Text('Hata: $e')),
                   ),
                 ),
               ),
 
               // Whisper panel
-              if (_showWhisper)
-                WhisperPanel(ticketId: widget.ticketId),
+              if (_showWhisper) WhisperPanel(ticketId: widget.ticketId),
             ],
           ),
         ),
@@ -140,12 +160,22 @@ class _ChatConversationState extends ConsumerState<ChatConversation> {
                   controller: _messageCtrl,
                   decoration: InputDecoration(
                     hintText: 'Mesaj yazın... (/ ile hazır yanıt)',
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide.none,
+                    ),
                     filled: true,
                     fillColor: bgColor,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                     suffixIcon: IconButton(
-                      icon: const Icon(Icons.flash_on, color: AppColors.warning, size: 20),
+                      icon: const Icon(
+                        Icons.flash_on,
+                        color: AppColors.warning,
+                        size: 20,
+                      ),
                       onPressed: _showCannedResponsesDialog,
                       tooltip: 'Hazır yanıtlar',
                     ),
@@ -164,11 +194,21 @@ class _ChatConversationState extends ConsumerState<ChatConversation> {
               ElevatedButton.icon(
                 onPressed: _sending ? null : _sendMessage,
                 icon: _sending
-                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
                     : const Icon(Icons.send, size: 18),
                 label: const Text('Gönder'),
                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 14,
+                  ),
                 ),
               ),
             ],
@@ -193,7 +233,14 @@ class _ChatConversationState extends ConsumerState<ChatConversation> {
               color: textMuted.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Text(msg.message, style: TextStyle(color: textMuted, fontSize: 12, fontStyle: FontStyle.italic)),
+            child: Text(
+              msg.message,
+              style: TextStyle(
+                color: textMuted,
+                fontSize: 12,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
           ),
         ),
       );
@@ -205,12 +252,16 @@ class _ChatConversationState extends ConsumerState<ChatConversation> {
         child: Align(
           alignment: Alignment.centerRight,
           child: Container(
-            constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.5),
+            constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.5,
+            ),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: AppColors.warning.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.warning.withValues(alpha: 0.3)),
+              border: Border.all(
+                color: AppColors.warning.withValues(alpha: 0.3),
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -218,13 +269,32 @@ class _ChatConversationState extends ConsumerState<ChatConversation> {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.visibility_off, size: 14, color: AppColors.warning),
+                    const Icon(
+                      Icons.visibility_off,
+                      size: 14,
+                      color: AppColors.warning,
+                    ),
                     const SizedBox(width: 4),
-                    Text('Whisper - ${msg.senderName ?? ''}', style: const TextStyle(color: AppColors.warning, fontSize: 11, fontWeight: FontWeight.w600)),
+                    Text(
+                      'Whisper - ${msg.senderName ?? ''}',
+                      style: const TextStyle(
+                        color: AppColors.warning,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 4),
-                Text(msg.message, style: TextStyle(color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary, fontSize: 13)),
+                Text(
+                  msg.message,
+                  style: TextStyle(
+                    color: isDark
+                        ? AppColors.textPrimary
+                        : AppColors.lightTextPrimary,
+                    fontSize: 13,
+                  ),
+                ),
               ],
             ),
           ),
@@ -237,7 +307,9 @@ class _ChatConversationState extends ConsumerState<ChatConversation> {
       child: Align(
         alignment: isAgent ? Alignment.centerRight : Alignment.centerLeft,
         child: Container(
-          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.5),
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width * 0.5,
+          ),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: isAgent
@@ -281,15 +353,18 @@ class _ChatConversationState extends ConsumerState<ChatConversation> {
 
     setState(() => _sending = true);
     try {
-      await ref.read(ticketServiceProvider).sendMessage(
-        ticketId: widget.ticketId,
-        message: text,
-      );
+      await ref
+          .read(ticketServiceProvider)
+          .sendMessage(ticketId: widget.ticketId, message: text);
       _messageCtrl.clear();
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to send message', error: e, stackTrace: st, source: 'ChatConversation:_sendMessage');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Mesaj gönderilemedi: $e'), backgroundColor: AppColors.error),
+          SnackBar(
+            content: Text('Mesaj gönderilemedi: $e'),
+            backgroundColor: AppColors.error,
+          ),
         );
       }
     }

@@ -183,16 +183,16 @@ class RentalCarView {
   final double weeklyPrice;
   final double monthlyPrice;
   final String thumbnailUrl;
-  final double rating;
-  final int reviewCount;
   final String status;
-  final String color;
   final String licensePlate;
-  final int mileage;
-  final double fuelLevel;
+  final int mileageLimit;
   final bool isPremium;
   final String? currentLocationName;
   final double? discountPercentage;
+  final double rating;
+  final int reviewCount;
+  final String color;
+  final int mileage;
 
   const RentalCarView({
     required this.id,
@@ -210,16 +210,16 @@ class RentalCarView {
     required this.weeklyPrice,
     required this.monthlyPrice,
     required this.thumbnailUrl,
-    required this.rating,
-    required this.reviewCount,
     required this.status,
-    required this.color,
     required this.licensePlate,
-    required this.mileage,
-    required this.fuelLevel,
+    required this.mileageLimit,
     required this.isPremium,
     this.currentLocationName,
     this.discountPercentage,
+    this.rating = 0,
+    this.reviewCount = 0,
+    this.color = '',
+    this.mileage = 0,
   });
 
   factory RentalCarView.fromJson(Map<String, dynamic> json) {
@@ -242,16 +242,16 @@ class RentalCarView {
       weeklyPrice: (json['weekly_price'] as num?)?.toDouble() ?? 0,
       monthlyPrice: (json['monthly_price'] as num?)?.toDouble() ?? 0,
       thumbnailUrl: json['image_url'] ?? '',
-      rating: 0,
-      reviewCount: 0,
       status: json['status'] ?? 'available',
-      color: json['vehicle_color'] ?? '',
       licensePlate: json['plate'] ?? '',
-      mileage: 0,
-      fuelLevel: 1.0,
+      mileageLimit: (json['mileage_limit'] as num?)?.toInt() ?? 0,
       isPremium: json['category'] == 'luxury' || json['category'] == 'sports',
       currentLocationName: location?['name'],
-      discountPercentage: null,
+      discountPercentage: (json['discount_percentage'] as num?)?.toDouble(),
+      rating: (json['rating'] as num?)?.toDouble() ?? 0,
+      reviewCount: (json['review_count'] as num?)?.toInt() ?? 0,
+      color: json['color'] ?? '',
+      mileage: (json['mileage'] as num?)?.toInt() ?? 0,
     );
   }
 
@@ -326,8 +326,6 @@ class RentalLocationView {
   final bool isAirport;
   final bool is24Hours;
   final bool isActive;
-  final int availableCarCount;
-  final int totalCarCount;
 
   const RentalLocationView({
     required this.id,
@@ -343,8 +341,6 @@ class RentalLocationView {
     required this.isAirport,
     required this.is24Hours,
     required this.isActive,
-    required this.availableCarCount,
-    required this.totalCarCount,
   });
 
   factory RentalLocationView.fromJson(Map<String, dynamic> json) {
@@ -367,8 +363,6 @@ class RentalLocationView {
       isAirport: json['is_airport'] ?? false,
       is24Hours: is24,
       isActive: json['is_active'] ?? true,
-      availableCarCount: 0,
-      totalCarCount: 0,
     );
   }
 }
@@ -594,14 +588,10 @@ class TopRentalCar {
 final topRentalCarsProvider = FutureProvider<List<TopRentalCar>>((ref) async {
   final client = ref.watch(supabaseClientProvider);
 
-  try {
-    final response = await client.rpc('get_top_rental_cars', params: {'p_limit': 5});
-    return List<Map<String, dynamic>>.from(response)
-        .map((json) => TopRentalCar.fromJson(json))
-        .toList();
-  } catch (e) {
-    return [];
-  }
+  final response = await client.rpc('get_top_rental_cars', params: {'p_limit': 5});
+  return List<Map<String, dynamic>>.from(response)
+      .map((json) => TopRentalCar.fromJson(json))
+      .toList();
 });
 
 // ==================== ACTIONS ====================

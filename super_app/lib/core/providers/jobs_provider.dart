@@ -1,7 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/jobs/job_data_models.dart';
 import '../../services/jobs_service.dart';
+import 'package:super_app/core/services/log_service.dart';
 
 // ============================================
 // JOBS SERVICE PROVIDER
@@ -233,14 +233,15 @@ class JobListNotifier extends StateNotifier<JobListState> {
         offset: refresh ? 0 : state.currentPage * _pageSize,
       );
 
-      debugPrint('JobListNotifier.loadListings: Loaded ${listings.length} listings');
+      LogService.info('JobListNotifier.loadListings: Loaded ${listings.length} listings', source: 'JobsProvider:loadListings');
       state = state.copyWith(
         listings: refresh ? listings : [...state.listings, ...listings],
         isLoading: false,
         hasMore: listings.length >= _pageSize,
         currentPage: refresh ? 1 : state.currentPage + 1,
       );
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Error loading job listings', error: e, stackTrace: st, source: 'JobsProvider:loadListings');
       state = state.copyWith(
         isLoading: false,
         error: e.toString(),
@@ -358,7 +359,7 @@ final premiumJobsProvider = FutureProvider<List<JobListingData>>((ref) async {
 // KATEGORİYE GÖRE İLANLAR PROVIDER
 // ============================================
 
-final jobsByCategoryProvider = FutureProvider.family<List<JobListingData>, String>((ref, categoryId) async {
+final jobsByCategoryProvider = FutureProvider.autoDispose.family<List<JobListingData>, String>((ref, categoryId) async {
   final service = ref.watch(jobsServiceProvider);
   return service.getListingsByCategory(categoryId, limit: 20);
 });
@@ -367,7 +368,7 @@ final jobsByCategoryProvider = FutureProvider.family<List<JobListingData>, Strin
 // İLAN DETAY PROVIDER
 // ============================================
 
-final jobDetailProvider = FutureProvider.family<JobListingData?, String>((ref, listingId) async {
+final jobDetailProvider = FutureProvider.autoDispose.family<JobListingData?, String>((ref, listingId) async {
   final service = ref.watch(jobsServiceProvider);
   return service.getListing(listingId);
 });
@@ -376,7 +377,7 @@ final jobDetailProvider = FutureProvider.family<JobListingData?, String>((ref, l
 // İLAN YETENEKLERİ PROVIDER
 // ============================================
 
-final jobListingSkillsProvider = FutureProvider.family<List<JobSkillData>, String>((ref, listingId) async {
+final jobListingSkillsProvider = FutureProvider.autoDispose.family<List<JobSkillData>, String>((ref, listingId) async {
   final service = ref.watch(jobsServiceProvider);
   return service.getListingSkills(listingId);
 });
@@ -385,7 +386,7 @@ final jobListingSkillsProvider = FutureProvider.family<List<JobSkillData>, Strin
 // İLAN YAN HAKLARI PROVIDER
 // ============================================
 
-final jobListingBenefitsProvider = FutureProvider.family<List<JobBenefitData>, String>((ref, listingId) async {
+final jobListingBenefitsProvider = FutureProvider.autoDispose.family<List<JobBenefitData>, String>((ref, listingId) async {
   final service = ref.watch(jobsServiceProvider);
   return service.getListingBenefits(listingId);
 });
@@ -436,7 +437,8 @@ class UserJobListingsNotifier extends StateNotifier<UserJobListingsState> {
         listings: listings,
         isLoading: false,
       );
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Error loading user job listings', error: e, stackTrace: st, source: 'JobsProvider:UserJobListingsNotifier.loadListings');
       state = state.copyWith(
         isLoading: false,
         error: e.toString(),
@@ -475,7 +477,7 @@ final userApplicationsProvider = FutureProvider<List<JobApplicationData>>((ref) 
   return service.getUserApplications();
 });
 
-final listingApplicationsProvider = FutureProvider.family<List<JobApplicationData>, String>((ref, listingId) async {
+final listingApplicationsProvider = FutureProvider.autoDispose.family<List<JobApplicationData>, String>((ref, listingId) async {
   final service = ref.watch(jobsServiceProvider);
   return service.getListingApplications(listingId);
 });
@@ -525,7 +527,8 @@ class JobFavoritesNotifier extends StateNotifier<JobFavoritesState> {
         favoriteIds: favorites.map((f) => f.id).toSet(),
         isLoading: false,
       );
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Error loading job favorites', error: e, stackTrace: st, source: 'JobsProvider:JobFavoritesNotifier.loadFavorites');
       state = state.copyWith(isLoading: false);
     }
   }
@@ -563,7 +566,7 @@ final jobFavoritesProvider =
 // BAŞVURU DURUMU PROVIDER
 // ============================================
 
-final hasAppliedProvider = FutureProvider.family<bool, String>((ref, listingId) async {
+final hasAppliedProvider = FutureProvider.autoDispose.family<bool, String>((ref, listingId) async {
   final service = ref.watch(jobsServiceProvider);
   return service.hasApplied(listingId);
 });
@@ -685,7 +688,8 @@ class CreateJobListingNotifier extends StateNotifier<CreateJobListingState> {
       );
 
       return listing;
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Error creating job listing', error: e, stackTrace: st, source: 'JobsProvider:CreateJobListingNotifier.createListing');
       state = state.copyWith(
         isLoading: false,
         error: e.toString(),
@@ -770,7 +774,8 @@ class ApplyToJobNotifier extends StateNotifier<ApplyToJobState> {
         );
         return false;
       }
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Error applying to job', error: e, stackTrace: st, source: 'JobsProvider:ApplyToJobNotifier.apply');
       state = state.copyWith(
         isLoading: false,
         error: e.toString(),

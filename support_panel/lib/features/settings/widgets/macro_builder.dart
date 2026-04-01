@@ -19,10 +19,16 @@ class _MacroBuilderDialogState extends State<MacroBuilderDialog> {
   void initState() {
     super.initState();
     _nameCtrl = TextEditingController(text: widget.existing?['name'] ?? '');
-    _descCtrl = TextEditingController(text: widget.existing?['description'] ?? '');
+    _descCtrl = TextEditingController(
+      text: widget.existing?['description'] ?? '',
+    );
     _category = widget.existing?['category'] ?? 'general';
     _actions = widget.existing?['actions'] != null
-        ? List<Map<String, dynamic>>.from((widget.existing!['actions'] as List).map((a) => Map<String, dynamic>.from(a)))
+        ? List<Map<String, dynamic>>.from(
+            (widget.existing!['actions'] as List).map(
+              (a) => Map<String, dynamic>.from(a),
+            ),
+          )
         : [];
   }
 
@@ -49,18 +55,27 @@ class _MacroBuilderDialogState extends State<MacroBuilderDialog> {
             children: [
               TextField(
                 controller: _nameCtrl,
-                decoration: const InputDecoration(labelText: 'Makro Adi', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'Makro Adi',
+                  border: OutlineInputBorder(),
+                ),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _descCtrl,
-                decoration: const InputDecoration(labelText: 'Aciklama (opsiyonel)', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'Aciklama (opsiyonel)',
+                  border: OutlineInputBorder(),
+                ),
                 maxLines: 2,
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
-                value: _category,
-                decoration: const InputDecoration(labelText: 'Kategori', border: OutlineInputBorder()),
+                initialValue: _category,
+                decoration: const InputDecoration(
+                  labelText: 'Kategori',
+                  border: OutlineInputBorder(),
+                ),
                 items: const [
                   DropdownMenuItem(value: 'greeting', child: Text('Selamlama')),
                   DropdownMenuItem(value: 'order', child: Text('Siparis')),
@@ -73,7 +88,10 @@ class _MacroBuilderDialogState extends State<MacroBuilderDialog> {
               const SizedBox(height: 20),
               Row(
                 children: [
-                  Text('Aksiyonlar', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                  Text(
+                    'Aksiyonlar',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                  ),
                   const Spacer(),
                   TextButton.icon(
                     onPressed: _addAction,
@@ -86,7 +104,12 @@ class _MacroBuilderDialogState extends State<MacroBuilderDialog> {
               if (_actions.isEmpty)
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  child: Center(child: Text('Henuz aksiyon eklenmedi', style: TextStyle(color: textMuted, fontSize: 13))),
+                  child: Center(
+                    child: Text(
+                      'Henuz aksiyon eklenmedi',
+                      style: TextStyle(color: textMuted, fontSize: 13),
+                    ),
+                  ),
                 )
               else
                 ..._actions.asMap().entries.map((entry) {
@@ -99,14 +122,19 @@ class _MacroBuilderDialogState extends State<MacroBuilderDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Iptal')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Iptal'),
+        ),
         ElevatedButton(
           onPressed: _nameCtrl.text.trim().isEmpty || _actions.isEmpty
               ? null
               : () {
                   Navigator.pop(context, {
                     'name': _nameCtrl.text.trim(),
-                    'description': _descCtrl.text.trim().isEmpty ? null : _descCtrl.text.trim(),
+                    'description': _descCtrl.text.trim().isEmpty
+                        ? null
+                        : _descCtrl.text.trim(),
                     'category': _category,
                     'actions': _actions,
                   });
@@ -117,7 +145,11 @@ class _MacroBuilderDialogState extends State<MacroBuilderDialog> {
     );
   }
 
-  Widget _buildActionCard(int index, Map<String, dynamic> action, Color textMuted) {
+  Widget _buildActionCard(
+    int index,
+    Map<String, dynamic> action,
+    Color textMuted,
+  ) {
     final type = action['type'] as String? ?? 'send_message';
     final value = action['value'] as String? ?? '';
     final content = action['content'] as String? ?? '';
@@ -135,20 +167,40 @@ class _MacroBuilderDialogState extends State<MacroBuilderDialog> {
         children: [
           Row(
             children: [
-              Text('${index + 1}.', style: TextStyle(color: textMuted, fontWeight: FontWeight.w600)),
+              Text(
+                '${index + 1}.',
+                style: TextStyle(color: textMuted, fontWeight: FontWeight.w600),
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: DropdownButton<String>(
                   value: type,
                   isExpanded: true,
                   underline: const SizedBox.shrink(),
-                  style: TextStyle(color: Theme.of(context).brightness == Brightness.dark ? AppColors.textPrimary : AppColors.lightTextPrimary, fontSize: 13),
+                  style: TextStyle(
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? AppColors.textPrimary
+                        : AppColors.lightTextPrimary,
+                    fontSize: 13,
+                  ),
                   items: const [
-                    DropdownMenuItem(value: 'send_message', child: Text('Mesaj Gonder')),
-                    DropdownMenuItem(value: 'change_status', child: Text('Durum Degistir')),
-                    DropdownMenuItem(value: 'change_priority', child: Text('Oncelik Degistir')),
+                    DropdownMenuItem(
+                      value: 'send_message',
+                      child: Text('Mesaj Gonder'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'change_status',
+                      child: Text('Durum Degistir'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'change_priority',
+                      child: Text('Oncelik Degistir'),
+                    ),
                     DropdownMenuItem(value: 'add_tag', child: Text('Tag Ekle')),
-                    DropdownMenuItem(value: 'add_note', child: Text('Ic Not Ekle')),
+                    DropdownMenuItem(
+                      value: 'add_note',
+                      child: Text('Ic Not Ekle'),
+                    ),
                   ],
                   onChanged: (v) {
                     setState(() {
@@ -172,7 +224,9 @@ class _MacroBuilderDialogState extends State<MacroBuilderDialog> {
             TextField(
               controller: TextEditingController(text: content),
               decoration: InputDecoration(
-                labelText: type == 'send_message' ? 'Mesaj icerigi' : 'Not icerigi',
+                labelText: type == 'send_message'
+                    ? 'Mesaj icerigi'
+                    : 'Not icerigi',
                 border: const OutlineInputBorder(),
                 isDense: true,
               ),
@@ -181,13 +235,20 @@ class _MacroBuilderDialogState extends State<MacroBuilderDialog> {
             )
           else if (type == 'change_status')
             DropdownButtonFormField<String>(
-              value: value.isEmpty ? 'resolved' : value,
-              decoration: const InputDecoration(labelText: 'Yeni Durum', border: OutlineInputBorder(), isDense: true),
+              initialValue: value.isEmpty ? 'resolved' : value,
+              decoration: const InputDecoration(
+                labelText: 'Yeni Durum',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
               items: const [
                 DropdownMenuItem(value: 'open', child: Text('Acik')),
                 DropdownMenuItem(value: 'assigned', child: Text('Atandi')),
                 DropdownMenuItem(value: 'pending', child: Text('Beklemede')),
-                DropdownMenuItem(value: 'waiting_customer', child: Text('Musteri Bekleniyor')),
+                DropdownMenuItem(
+                  value: 'waiting_customer',
+                  child: Text('Musteri Bekleniyor'),
+                ),
                 DropdownMenuItem(value: 'resolved', child: Text('Cozuldu')),
                 DropdownMenuItem(value: 'closed', child: Text('Kapandi')),
               ],
@@ -195,8 +256,12 @@ class _MacroBuilderDialogState extends State<MacroBuilderDialog> {
             )
           else if (type == 'change_priority')
             DropdownButtonFormField<String>(
-              value: value.isEmpty ? 'normal' : value,
-              decoration: const InputDecoration(labelText: 'Yeni Oncelik', border: OutlineInputBorder(), isDense: true),
+              initialValue: value.isEmpty ? 'normal' : value,
+              decoration: const InputDecoration(
+                labelText: 'Yeni Oncelik',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
               items: const [
                 DropdownMenuItem(value: 'low', child: Text('Dusuk')),
                 DropdownMenuItem(value: 'normal', child: Text('Normal')),
@@ -208,7 +273,11 @@ class _MacroBuilderDialogState extends State<MacroBuilderDialog> {
           else if (type == 'add_tag')
             TextField(
               controller: TextEditingController(text: value),
-              decoration: const InputDecoration(labelText: 'Tag adi', border: OutlineInputBorder(), isDense: true),
+              decoration: const InputDecoration(
+                labelText: 'Tag adi',
+                border: OutlineInputBorder(),
+                isDense: true,
+              ),
               onChanged: (v) => action['value'] = v,
             ),
         ],

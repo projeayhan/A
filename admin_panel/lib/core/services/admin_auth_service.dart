@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:admin_panel/core/services/log_service.dart';
 import 'supabase_service.dart';
 
 // Admin user model
@@ -43,14 +44,14 @@ class AdminUser {
       userId: json['user_id'] as String?,
       fullName: json['full_name'] as String,
       email: json['email'] as String,
-      phone: json['phone'] as String?,
-      avatarUrl: json['avatar_url'] as String?,
+      phone: null, // phone column does not exist on admin_users
+      avatarUrl: null, // avatar_url column does not exist on admin_users
       roleId: json['role_id'] as String? ?? '',
       roleName: role?['name'] as String? ?? '',
       roleDisplayName: role?['display_name'] as String? ?? '',
       permissions: role?['permissions'] as Map<String, dynamic>? ?? {},
       status: json['status'] as String? ?? 'active',
-      twoFactorEnabled: json['two_factor_enabled'] as bool? ?? false,
+      twoFactorEnabled: false, // two_factor_enabled column does not exist on admin_users
       lastLoginAt: json['last_login_at'] != null
           ? DateTime.parse(json['last_login_at'] as String)
           : null,
@@ -131,8 +132,9 @@ class AdminNotifier extends StateNotifier<AsyncValue<AdminUser?>> {
       } else {
         state = const AsyncValue.data(null);
       }
-    } catch (e) {
-      state = AsyncValue.error(e, StackTrace.current);
+    } catch (e, st) {
+      LogService.error('Failed to load admin user', error: e, stackTrace: st, source: 'admin_auth_service.dart:loadAdmin');
+      state = AsyncValue.error(e, st);
     }
   }
 
@@ -186,12 +188,16 @@ class AdminAuthService {
         'last_login_at': DateTime.now().toIso8601String(),
       }).eq('id', admin.id);
 
-      // Note: Login is logged by AdminLogService in login_screen.dart
+      LogService.info('Admin login successful: ${admin.fullName}',
+          source: 'admin_auth_service.dart:signIn',
+          metadata: {'admin_id': admin.id, 'email': email});
 
       return AdminAuthResult.success(admin);
-    } on AuthException catch (e) {
+    } on AuthException catch (e, st) {
+      LogService.error('Auth exception during sign in', error: e, stackTrace: st, source: 'admin_auth_service.dart:signIn');
       return AdminAuthResult.error(_getErrorMessage(e.message));
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Unexpected error during sign in', error: e, stackTrace: st, source: 'admin_auth_service.dart:signIn');
       return AdminAuthResult.error('Beklenmeyen bir hata oluştu: $e');
     }
   }
@@ -214,7 +220,8 @@ class AdminAuthService {
         return AdminUser.fromJson(response);
       }
       return null;
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to get admin', error: e, stackTrace: st, source: 'admin_auth_service.dart:getAdmin');
       return null;
     }
   }

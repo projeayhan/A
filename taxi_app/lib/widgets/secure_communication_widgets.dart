@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../core/services/communication_service.dart';
+import '../core/services/log_service.dart';
 import '../core/theme/app_theme.dart';
 
 /// Güvenli Müşteri Bilgi Kartı (Sürücü için)
@@ -206,8 +207,8 @@ class _SecureCustomerCardState extends State<SecureCustomerCard> {
         final phoneUri = Uri.parse('tel:${callInfo.phoneNumber}');
         try {
           await launchUrl(phoneUri);
-        } catch (e) {
-          debugPrint('Could not launch phone: $e');
+        } catch (e, st) {
+          LogService.error('Could not launch phone', error: e, stackTrace: st, source: 'SecureCustomerCard:_makeCall');
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -373,8 +374,8 @@ class _RideChatSheetState extends State<RideChatSheet> {
           }
         }
       });
-    } catch (e) {
-      debugPrint('subscribeToMessages error: $e');
+    } catch (e, st) {
+      LogService.error('subscribeToMessages error', error: e, stackTrace: st, source: 'SecureChatPanel:_subscribeToMessages');
     }
   }
 
@@ -933,8 +934,8 @@ class _EmergencyButtonState extends State<EmergencyButton> {
             await launchUrl(smsUri);
             sentCount++;
           }
-        } catch (e) {
-          debugPrint('SOS send error for ${contact.name}: $e');
+        } catch (e, st) {
+          LogService.error('SOS send error for ${contact.name}', error: e, stackTrace: st, source: 'SOSButton:_triggerSOS');
         }
       }
 
@@ -975,8 +976,8 @@ class _EmergencyButtonState extends State<EmergencyButton> {
     try {
       final uri = Uri.parse('tel:155');
       await launchUrl(uri);
-    } catch (e) {
-      debugPrint('155 arama hatası: $e');
+    } catch (e, st) {
+      LogService.error('155 arama hatası', error: e, stackTrace: st, source: 'SOSButton:_call155');
     }
   }
 

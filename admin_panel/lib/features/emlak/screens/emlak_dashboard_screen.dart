@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/router/app_router.dart';
 import '../services/emlak_admin_service.dart';
 
 class EmlakDashboardScreen extends ConsumerStatefulWidget {
   const EmlakDashboardScreen({super.key});
 
   @override
-  ConsumerState<EmlakDashboardScreen> createState() => _EmlakDashboardScreenState();
+  ConsumerState<EmlakDashboardScreen> createState() =>
+      _EmlakDashboardScreenState();
 }
 
 class _EmlakDashboardScreenState extends ConsumerState<EmlakDashboardScreen> {
@@ -41,7 +44,10 @@ class _EmlakDashboardScreenState extends ConsumerState<EmlakDashboardScreen> {
                     SizedBox(height: 4),
                     Text(
                       'İlanları, şehirleri ve ilçeleri yönetin',
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 14,
+                      ),
                     ),
                   ],
                 ),
@@ -145,11 +151,19 @@ class _EmlakDashboardScreenState extends ConsumerState<EmlakDashboardScreen> {
 
   Widget _buildStatsRowLoading() {
     return Row(
-      children: List.generate(5, (_) => Expanded(child: _buildStatCardLoading())),
+      children: List.generate(
+        5,
+        (_) => Expanded(child: _buildStatCardLoading()),
+      ),
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(20),
@@ -181,7 +195,13 @@ class _EmlakDashboardScreenState extends ConsumerState<EmlakDashboardScreen> {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  Text(title, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -204,7 +224,9 @@ class _EmlakDashboardScreenState extends ConsumerState<EmlakDashboardScreen> {
     );
   }
 
-  Widget _buildPendingListingsCard(AsyncValue<List<EmlakListing>> pendingAsync) {
+  Widget _buildPendingListingsCard(
+    AsyncValue<List<EmlakListing>> pendingAsync,
+  ) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -226,10 +248,7 @@ class _EmlakDashboardScreenState extends ConsumerState<EmlakDashboardScreen> {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              TextButton(
-                onPressed: () {},
-                child: const Text('Tümünü Gör'),
-              ),
+              TextButton(onPressed: () => context.go(AppRoutes.emlakListings), child: const Text('Tümünü Gör')),
             ],
           ),
           const SizedBox(height: 16),
@@ -240,22 +259,37 @@ class _EmlakDashboardScreenState extends ConsumerState<EmlakDashboardScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.check_circle_outline, size: 48, color: AppColors.success),
+                          Icon(
+                            Icons.check_circle_outline,
+                            size: 48,
+                            color: AppColors.success,
+                          ),
                           SizedBox(height: 12),
-                          Text('Onay bekleyen ilan yok', style: TextStyle(color: AppColors.textMuted)),
+                          Text(
+                            'Onay bekleyen ilan yok',
+                            style: TextStyle(color: AppColors.textMuted),
+                          ),
                         ],
                       ),
                     )
                   : ListView.separated(
                       itemCount: listings.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.surfaceLight),
+                      separatorBuilder: (_, _) => const Divider(
+                        height: 1,
+                        color: AppColors.surfaceLight,
+                      ),
                       itemBuilder: (context, index) {
                         final listing = listings[index];
                         return _buildListingItem(listing);
                       },
                     ),
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('Hata: $e', style: const TextStyle(color: AppColors.error))),
+              error: (e, _) => Center(
+                child: Text(
+                  'Hata: $e',
+                  style: const TextStyle(color: AppColors.error),
+                ),
+              ),
             ),
           ),
         ],
@@ -282,7 +316,8 @@ class _EmlakDashboardScreenState extends ConsumerState<EmlakDashboardScreen> {
                   ? Image.network(
                       listing.images.first,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const Icon(Icons.home, color: AppColors.textMuted),
+                      errorBuilder: (_, _, _) =>
+                          const Icon(Icons.home, color: AppColors.textMuted),
                     )
                   : const Icon(Icons.home, color: AppColors.textMuted),
             ),
@@ -304,7 +339,10 @@ class _EmlakDashboardScreenState extends ConsumerState<EmlakDashboardScreen> {
                 const SizedBox(height: 4),
                 Text(
                   '${listing.city ?? ''} / ${listing.district ?? ''}',
-                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                  ),
                 ),
               ],
             ),
@@ -323,7 +361,10 @@ class _EmlakDashboardScreenState extends ConsumerState<EmlakDashboardScreen> {
               const SizedBox(height: 4),
               Text(
                 listing.listingType == 'sale' ? 'Satılık' : 'Kiralık',
-                style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                ),
               ),
             ],
           ),
@@ -379,28 +420,33 @@ class _EmlakDashboardScreenState extends ConsumerState<EmlakDashboardScreen> {
             'Şehir Ekle',
             Icons.add_location,
             AppColors.primary,
-            () {},
+            () => context.go(AppRoutes.emlakCities),
           ),
           const SizedBox(height: 8),
           _buildQuickActionButton(
             'İlçe Ekle',
             Icons.add_location_alt,
             AppColors.info,
-            () {},
+            () => context.go(AppRoutes.emlakDistricts),
           ),
           const SizedBox(height: 8),
           _buildQuickActionButton(
             'Emlak Türü Ekle',
             Icons.add_home,
             AppColors.success,
-            () {},
+            () => context.go(AppRoutes.emlakPropertyTypes),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildQuickActionButton(String label, IconData icon, Color color, VoidCallback onTap) {
+  Widget _buildQuickActionButton(
+    String label,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
@@ -449,9 +495,19 @@ class _EmlakDashboardScreenState extends ConsumerState<EmlakDashboardScreen> {
           Expanded(
             child: recentActivityAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (e, _) => Center(child: Text('Hata: $e', style: const TextStyle(color: AppColors.error))),
+              error: (e, _) => Center(
+                child: Text(
+                  'Hata: $e',
+                  style: const TextStyle(color: AppColors.error),
+                ),
+              ),
               data: (activities) => activities.isEmpty
-                  ? const Center(child: Text('Aktivite yok', style: TextStyle(color: AppColors.textMuted)))
+                  ? const Center(
+                      child: Text(
+                        'Aktivite yok',
+                        style: TextStyle(color: AppColors.textMuted),
+                      ),
+                    )
                   : ListView.builder(
                       itemCount: activities.length,
                       itemBuilder: (context, index) {
@@ -519,7 +575,13 @@ class _EmlakDashboardScreenState extends ConsumerState<EmlakDashboardScreen> {
     }
   }
 
-  Widget _buildActivityItem(String title, String subtitle, IconData icon, Color color, String time) {
+  Widget _buildActivityItem(
+    String title,
+    String subtitle,
+    IconData icon,
+    Color color,
+    String time,
+  ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -537,12 +599,28 @@ class _EmlakDashboardScreenState extends ConsumerState<EmlakDashboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(color: AppColors.textPrimary, fontSize: 13, fontWeight: FontWeight.w500)),
-                Text(subtitle, style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 11,
+                  ),
+                ),
               ],
             ),
           ),
-          Text(time, style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+          Text(
+            time,
+            style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+          ),
         ],
       ),
     );
@@ -565,7 +643,10 @@ class _EmlakDashboardScreenState extends ConsumerState<EmlakDashboardScreen> {
       ref.invalidate(emlakStatsProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('İlan onaylandı'), backgroundColor: AppColors.success),
+          const SnackBar(
+            content: Text('İlan onaylandı'),
+            backgroundColor: AppColors.success,
+          ),
         );
       }
     } catch (e) {
@@ -582,9 +663,14 @@ class _EmlakDashboardScreenState extends ConsumerState<EmlakDashboardScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('İlanı Reddet'),
-        content: Text('"${listing.title}" ilanını reddetmek istediğinize emin misiniz?'),
+        content: Text(
+          '"${listing.title}" ilanını reddetmek istediğinize emin misiniz?',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('İptal'),
+          ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
@@ -602,13 +688,19 @@ class _EmlakDashboardScreenState extends ConsumerState<EmlakDashboardScreen> {
         ref.invalidate(emlakStatsProvider);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('İlan reddedildi'), backgroundColor: AppColors.warning),
+            const SnackBar(
+              content: Text('İlan reddedildi'),
+              backgroundColor: AppColors.warning,
+            ),
           );
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
+            SnackBar(
+              content: Text('Hata: $e'),
+              backgroundColor: AppColors.error,
+            ),
           );
         }
       }

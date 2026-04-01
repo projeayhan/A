@@ -1,5 +1,5 @@
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:super_app/core/services/log_service.dart';
 
 /// Job mesaj modeli
 class JobChatMessage {
@@ -137,8 +137,8 @@ class JobChatService {
       return (response as List)
           .map((json) => JobConversation.fromJson(json))
           .toList();
-    } catch (e) {
-      debugPrint('JobChatService.getConversations error: $e');
+    } catch (e, st) {
+      LogService.error('getConversations error', error: e, stackTrace: st, source: 'JobChatService:getConversations');
       return [];
     }
   }
@@ -193,8 +193,8 @@ class JobChatService {
           .single();
 
       return JobConversation.fromJson(newConv);
-    } catch (e) {
-      debugPrint('JobChatService.getOrCreateConversation error: $e');
+    } catch (e, st) {
+      LogService.error('getOrCreateConversation error', error: e, stackTrace: st, source: 'JobChatService:getOrCreateConversation');
       rethrow;
     }
   }
@@ -218,8 +218,8 @@ class JobChatService {
         }
       }
       return total;
-    } catch (e) {
-      debugPrint('JobChatService.getTotalUnreadCount error: $e');
+    } catch (e, st) {
+      LogService.error('getTotalUnreadCount error', error: e, stackTrace: st, source: 'JobChatService:getTotalUnreadCount');
       return 0;
     }
   }
@@ -241,8 +241,8 @@ class JobChatService {
       return (response as List)
           .map((json) => JobChatMessage.fromJson(json))
           .toList();
-    } catch (e) {
-      debugPrint('JobChatService.getMessages error: $e');
+    } catch (e, st) {
+      LogService.error('getMessages error', error: e, stackTrace: st, source: 'JobChatService:getMessages');
       return [];
     }
   }
@@ -266,8 +266,8 @@ class JobChatService {
           .single();
 
       return JobChatMessage.fromJson(response);
-    } catch (e) {
-      debugPrint('JobChatService.sendMessage error: $e');
+    } catch (e, st) {
+      LogService.error('sendMessage error', error: e, stackTrace: st, source: 'JobChatService:sendMessage');
       return null;
     }
   }
@@ -307,8 +307,8 @@ class JobChatService {
               'poster_unread_count': 0,
           })
           .eq('id', conversationId);
-    } catch (e) {
-      debugPrint('JobChatService.markMessagesAsRead error: $e');
+    } catch (e, st) {
+      LogService.error('markMessagesAsRead error', error: e, stackTrace: st, source: 'JobChatService:markMessagesAsRead');
     }
   }
 

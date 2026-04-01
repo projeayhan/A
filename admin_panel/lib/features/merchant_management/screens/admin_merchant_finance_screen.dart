@@ -16,12 +16,7 @@ class AdminMerchantFinanceScreen extends ConsumerStatefulWidget {
 class _AdminMerchantFinanceScreenState
     extends ConsumerState<AdminMerchantFinanceScreen> {
   String _selectedPeriod = 'Bu Ay';
-  final List<String> _periods = [
-    'Bu Hafta',
-    'Bu Ay',
-    'Son 3 Ay',
-    'Bu Yıl',
-  ];
+  final List<String> _periods = ['Bu Hafta', 'Bu Ay', 'Son 3 Ay', 'Bu Yıl'];
 
   final _currencyFormat = NumberFormat.currency(
     locale: 'tr_TR',
@@ -91,7 +86,7 @@ class _AdminMerchantFinanceScreenState
                     color: AppColors.surface,
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(
-                      color: AppColors.surfaceLight.withOpacity(0.5),
+                      color: AppColors.surfaceLight.withValues(alpha: 0.5),
                     ),
                   ),
                   child: DropdownButtonHideUnderline(
@@ -134,8 +129,11 @@ class _AdminMerchantFinanceScreenState
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.error_outline,
-                          color: AppColors.error, size: 48),
+                      const Icon(
+                        Icons.error_outline,
+                        color: AppColors.error,
+                        size: 48,
+                      ),
                       const SizedBox(height: 16),
                       const Text(
                         'Finansal veriler yüklenirken hata oluştu',
@@ -165,12 +163,12 @@ class _AdminMerchantFinanceScreenState
 
   Widget _buildContent(Map<String, dynamic> data) {
     final totalRevenue = (data['total_revenue'] as num?)?.toDouble() ?? 0;
-    final totalCommission =
-        (data['total_commission'] as num?)?.toDouble() ?? 0;
+    final totalCommission = (data['total_commission'] as num?)?.toDouble() ?? 0;
     final netRevenue = (data['net_revenue'] as num?)?.toDouble() ?? 0;
     final orderCount = (data['order_count'] as num?)?.toInt() ?? 0;
-    final orders =
-        List<Map<String, dynamic>>.from(data['orders'] as List? ?? []);
+    final orders = List<Map<String, dynamic>>.from(
+      data['orders'] as List? ?? [],
+    );
 
     return SingleChildScrollView(
       child: Column(
@@ -250,7 +248,9 @@ class _AdminMerchantFinanceScreenState
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.surfaceLight.withOpacity(0.5)),
+          border: Border.all(
+            color: AppColors.surfaceLight.withValues(alpha: 0.5),
+          ),
         ),
         child: const Center(
           child: Text(
@@ -261,15 +261,18 @@ class _AdminMerchantFinanceScreenState
       );
     }
 
-    final maxValue =
-        monthlyRevenue.values.reduce((a, b) => a > b ? a : b).clamp(1, double.infinity);
+    final maxValue = monthlyRevenue.values
+        .reduce((a, b) => a > b ? a : b)
+        .clamp(1, double.infinity);
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.surfaceLight.withOpacity(0.5)),
+        border: Border.all(
+          color: AppColors.surfaceLight.withValues(alpha: 0.5),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -284,14 +287,19 @@ class _AdminMerchantFinanceScreenState
           ),
           const SizedBox(height: 20),
           SizedBox(
-            height: 200,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: monthlyRevenue.entries.map((entry) {
-                final barHeight = (entry.value / maxValue) * 170;
-                return Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
+            height: 220,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final entryCount = monthlyRevenue.length;
+                final barWidth = entryCount <= 6
+                    ? (constraints.maxWidth / entryCount).clamp(40.0, 80.0)
+                    : 60.0;
+                final needsScroll = barWidth * entryCount > constraints.maxWidth;
+
+                final bars = monthlyRevenue.entries.map((entry) {
+                  final barHeight = (entry.value / maxValue) * 150;
+                  return SizedBox(
+                    width: barWidth,
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
@@ -305,14 +313,18 @@ class _AdminMerchantFinanceScreenState
                         ),
                         const SizedBox(height: 4),
                         Container(
-                          height: barHeight.clamp(4, 170),
+                          width: 32,
+                          height: barHeight.clamp(4.0, 150.0),
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
-                              colors: [AppColors.primary, AppColors.primaryLight],
+                              colors: [
+                                AppColors.primary,
+                                AppColors.primaryLight,
+                              ],
                               begin: Alignment.bottomCenter,
                               end: Alignment.topCenter,
                             ),
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: BorderRadius.circular(6),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -325,9 +337,24 @@ class _AdminMerchantFinanceScreenState
                         ),
                       ],
                     ),
-                  ),
+                  );
+                }).toList();
+
+                if (needsScroll) {
+                  return SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: bars,
+                    ),
+                  );
+                }
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: bars,
                 );
-              }).toList(),
+              },
             ),
           ),
         ],
@@ -342,7 +369,9 @@ class _AdminMerchantFinanceScreenState
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.surfaceLight.withOpacity(0.5)),
+        border: Border.all(
+          color: AppColors.surfaceLight.withValues(alpha: 0.5),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -372,7 +401,7 @@ class _AdminMerchantFinanceScreenState
                   width: double.infinity,
                   child: DataTable(
                     headingRowColor: WidgetStateProperty.all(
-                      AppColors.surfaceLight.withOpacity(0.3),
+                      AppColors.surfaceLight.withValues(alpha: 0.3),
                     ),
                     headingTextStyle: const TextStyle(
                       color: AppColors.textSecondary,
@@ -429,9 +458,7 @@ class _AdminMerchantFinanceScreenState
                           DataCell(
                             Text(
                               _currencyFormat.format(commission),
-                              style: const TextStyle(
-                                color: AppColors.warning,
-                              ),
+                              style: const TextStyle(color: AppColors.warning),
                             ),
                           ),
                           DataCell(
@@ -464,14 +491,14 @@ class _AdminMerchantFinanceScreenState
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: color, size: 24),
@@ -536,9 +563,9 @@ class _AdminMerchantFinanceScreenState
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Text(
         label,

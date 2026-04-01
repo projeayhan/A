@@ -11,49 +11,68 @@ class NotificationService {
 
   NotificationService(this._supabase);
 
-  // Get notification history
-  Future<List<Map<String, dynamic>>> getNotificationHistory() async {
-    try {
-      final response = await _supabase
-          .from('notifications')
-          .select()
-          .order('created_at', ascending: false)
-          .limit(50);
+  // ── History ────────────────────────────────────────────────────────────────
 
-      return List<Map<String, dynamic>>.from(response);
-    } catch (e) {
-      // If table doesn't exist or error, return empty list for now
-      return [];
-    }
+  Future<List<Map<String, dynamic>>> getNotificationHistory() async {
+    final response = await _supabase
+        .from('notifications')
+        .select()
+        .order('created_at', ascending: false)
+        .limit(50);
+    return List<Map<String, dynamic>>.from(response);
   }
 
-  // Send notification
+  // ── User search (for specific-user targeting) ──────────────────────────────
+
+  Future<List<Map<String, dynamic>>> searchUsers(String query) async {
+    final response = await _supabase
+        .from('users')
+        .select('id, full_name, email, phone')
+        .or('full_name.ilike.%$query%,email.ilike.%$query%,phone.ilike.%$query%')
+        .limit(15);
+    return List<Map<String, dynamic>>.from(response);
+  }
+
+  // ── Send ───────────────────────────────────────────────────────────────────
+
   Future<void> sendNotification({
     required String title,
     required String body,
-    required String targetType, // 'all', 'users', 'couriers', 'merchants'
-    String? targetId,
+    required String targetType, // 'all' | 'users' | 'couriers' | 'merchants' | 'specific_user' | segment key
+    String? targetId,           // user id when targetType == 'specific_user'
+    String notificationType = 'info', // 'info' | 'warning' | 'promo' | 'system'
+    DateTime? scheduledAt,      // null = send immediately
   }) async {
-    // 1. Insert into database for history
+    final now = DateTime.now().toIso8601String();
+
+    // 1. Persist in DB
     await _supabase.from('notifications').insert({
+      'user_id': targetId,
       'title': title,
       'body': body,
-      'target_type': targetType,
-      'target_id': targetId,
-      'status': 'pending',
-      'created_at': DateTime.now().toIso8601String(),
+      'type': notificationType,
+      'data': {
+        'target_type': targetType,
+      },
+      'is_read': false,
+      'created_at': now,
     });
 
-    // 2. Call Edge Function to send push notification
+    // 2. If scheduled for the future, skip edge function call now
+    if (scheduledAt != null && scheduledAt.isAfter(DateTime.now())) return;
+
+    // 3. Invoke edge function for immediate delivery
     try {
       await _supabase.functions.invoke('send-push-notification', body: {
         'title': title,
         'body': body,
         'target_type': targetType,
         'target_id': targetId,
+        'notification_type': notificationType,
       });
     } catch (e) {
-      // Edge function çağrısı başarısız olsa bile DB kaydı mevcut
+      // Edge function failure doesn't roll back the DB record – rethrow so
+      // the UI can inform the admin, but history entry is already saved.
       rethrow;
     }
   }

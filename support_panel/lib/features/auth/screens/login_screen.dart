@@ -5,6 +5,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/services/support_auth_service.dart';
 import '../../../core/services/audit_service.dart';
 import '../../../core/router/app_router.dart';
+import 'package:support_panel/core/services/log_service.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -55,7 +56,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           agentName: result.agent!.fullName,
           agentId: result.agent!.id,
         );
-      } catch (_) {}
+      } catch (e, st) {
+        LogService.error('Audit log failed', error: e, stackTrace: st, source: 'LoginScreen:_handleLogin');
+      }
       context.go(AppRoutes.dashboard);
     } else {
       setState(() {

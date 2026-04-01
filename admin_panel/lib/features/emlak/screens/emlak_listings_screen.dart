@@ -7,7 +7,8 @@ class EmlakListingsScreen extends ConsumerStatefulWidget {
   const EmlakListingsScreen({super.key});
 
   @override
-  ConsumerState<EmlakListingsScreen> createState() => _EmlakListingsScreenState();
+  ConsumerState<EmlakListingsScreen> createState() =>
+      _EmlakListingsScreenState();
 }
 
 class _EmlakListingsScreenState extends ConsumerState<EmlakListingsScreen> {
@@ -43,14 +44,19 @@ class _EmlakListingsScreenState extends ConsumerState<EmlakListingsScreen> {
                     SizedBox(height: 4),
                     Text(
                       'Emlak ilanlarını inceleyin ve yönetin',
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 14,
+                      ),
                     ),
                   ],
                 ),
                 Row(
                   children: [
                     OutlinedButton.icon(
-                      onPressed: () => ref.invalidate(emlakListingsProvider(_selectedStatus)),
+                      onPressed: () => ref.invalidate(
+                        emlakListingsProvider(_selectedStatus),
+                      ),
                       icon: const Icon(Icons.refresh, size: 18),
                       label: const Text('Yenile'),
                     ),
@@ -85,12 +91,30 @@ class _EmlakListingsScreenState extends ConsumerState<EmlakListingsScreen> {
                         ),
                       ),
                       items: const [
-                        DropdownMenuItem<String?>(value: null, child: Text('Tüm İlanlar')),
-                        DropdownMenuItem<String?>(value: 'pending', child: Text('Onay Bekleyen')),
-                        DropdownMenuItem<String?>(value: 'active', child: Text('Aktif')),
-                        DropdownMenuItem<String?>(value: 'rejected', child: Text('Reddedilen')),
-                        DropdownMenuItem<String?>(value: 'sold', child: Text('Satıldı')),
-                        DropdownMenuItem<String?>(value: 'rented', child: Text('Kiralandı')),
+                        DropdownMenuItem<String?>(
+                          value: null,
+                          child: Text('Tüm İlanlar'),
+                        ),
+                        DropdownMenuItem<String?>(
+                          value: 'pending',
+                          child: Text('Onay Bekleyen'),
+                        ),
+                        DropdownMenuItem<String?>(
+                          value: 'active',
+                          child: Text('Aktif'),
+                        ),
+                        DropdownMenuItem<String?>(
+                          value: 'rejected',
+                          child: Text('Reddedilen'),
+                        ),
+                        DropdownMenuItem<String?>(
+                          value: 'sold',
+                          child: Text('Satıldı'),
+                        ),
+                        DropdownMenuItem<String?>(
+                          value: 'rented',
+                          child: Text('Kiralandı'),
+                        ),
                       ],
                       onChanged: (value) {
                         setState(() => _selectedStatus = value);
@@ -102,17 +126,24 @@ class _EmlakListingsScreenState extends ConsumerState<EmlakListingsScreen> {
                   Expanded(
                     flex: 2,
                     child: TextField(
-                      onChanged: (value) => setState(() => _searchQuery = value),
+                      onChanged: (value) =>
+                          setState(() => _searchQuery = value),
                       decoration: InputDecoration(
                         hintText: 'İlan ara...',
-                        prefixIcon: const Icon(Icons.search, color: AppColors.textMuted),
+                        prefixIcon: const Icon(
+                          Icons.search,
+                          color: AppColors.textMuted,
+                        ),
                         filled: true,
                         fillColor: AppColors.background,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
                           borderSide: BorderSide.none,
                         ),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
                       ),
                     ),
                   ),
@@ -132,14 +163,24 @@ class _EmlakListingsScreenState extends ConsumerState<EmlakListingsScreen> {
                 ),
                 child: listingsAsync.when(
                   data: (listings) => _buildListingsTable(listings),
-                  loading: () => const Center(child: CircularProgressIndicator()),
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
                   error: (e, _) => Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.error_outline, size: 64, color: AppColors.error),
+                        const Icon(
+                          Icons.error_outline,
+                          size: 64,
+                          color: AppColors.error,
+                        ),
                         const SizedBox(height: 16),
-                        Text('Hata: $e', style: const TextStyle(color: AppColors.textSecondary)),
+                        Text(
+                          'Hata: $e',
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -156,8 +197,12 @@ class _EmlakListingsScreenState extends ConsumerState<EmlakListingsScreen> {
     final filteredListings = listings.where((listing) {
       return _searchQuery.isEmpty ||
           listing.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          (listing.city?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false) ||
-          (listing.district?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false);
+          (listing.city?.toLowerCase().contains(_searchQuery.toLowerCase()) ??
+              false) ||
+          (listing.district?.toLowerCase().contains(
+                _searchQuery.toLowerCase(),
+              ) ??
+              false);
     }).toList();
 
     if (filteredListings.isEmpty) {
@@ -167,7 +212,10 @@ class _EmlakListingsScreenState extends ConsumerState<EmlakListingsScreen> {
           children: [
             const Icon(Icons.home_work, size: 64, color: AppColors.textMuted),
             const SizedBox(height: 16),
-            const Text('İlan bulunamadı', style: TextStyle(color: AppColors.textSecondary, fontSize: 16)),
+            const Text(
+              'İlan bulunamadı',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
+            ),
             if (_searchQuery.isNotEmpty)
               TextButton(
                 onPressed: () => setState(() => _searchQuery = ''),
@@ -189,12 +237,66 @@ class _EmlakListingsScreenState extends ConsumerState<EmlakListingsScreen> {
           child: const Row(
             children: [
               SizedBox(width: 60),
-              Expanded(flex: 3, child: Text('İlan', style: TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.w600))),
-              Expanded(flex: 2, child: Text('Konum', style: TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.w600))),
-              Expanded(flex: 1, child: Text('Fiyat', style: TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.w600))),
-              Expanded(flex: 1, child: Text('Tür', style: TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.w600))),
-              Expanded(flex: 1, child: Text('Durum', style: TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.w600))),
-              SizedBox(width: 120, child: Text('İşlemler', style: TextStyle(color: AppColors.textMuted, fontWeight: FontWeight.w600))),
+              Expanded(
+                flex: 3,
+                child: Text(
+                  'İlan',
+                  style: TextStyle(
+                    color: AppColors.textMuted,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  'Konum',
+                  style: TextStyle(
+                    color: AppColors.textMuted,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 1,
+                child: Text(
+                  'Fiyat',
+                  style: TextStyle(
+                    color: AppColors.textMuted,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 1,
+                child: Text(
+                  'Tür',
+                  style: TextStyle(
+                    color: AppColors.textMuted,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 1,
+                child: Text(
+                  'Durum',
+                  style: TextStyle(
+                    color: AppColors.textMuted,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 120,
+                child: Text(
+                  'İşlemler',
+                  style: TextStyle(
+                    color: AppColors.textMuted,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -216,8 +318,12 @@ class _EmlakListingsScreenState extends ConsumerState<EmlakListingsScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       decoration: BoxDecoration(
-        color: index.isEven ? Colors.transparent : AppColors.background.withValues(alpha: 0.5),
-        border: const Border(bottom: BorderSide(color: AppColors.surfaceLight, width: 0.5)),
+        color: index.isEven
+            ? Colors.transparent
+            : AppColors.background.withValues(alpha: 0.5),
+        border: const Border(
+          bottom: BorderSide(color: AppColors.surfaceLight, width: 0.5),
+        ),
       ),
       child: Row(
         children: [
@@ -235,9 +341,17 @@ class _EmlakListingsScreenState extends ConsumerState<EmlakListingsScreen> {
                   ? Image.network(
                       listing.images.first,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const Icon(Icons.home, color: AppColors.textMuted, size: 20),
+                      errorBuilder: (_, _, _) => const Icon(
+                        Icons.home,
+                        color: AppColors.textMuted,
+                        size: 20,
+                      ),
                     )
-                  : const Icon(Icons.home, color: AppColors.textMuted, size: 20),
+                  : const Icon(
+                      Icons.home,
+                      color: AppColors.textMuted,
+                      size: 20,
+                    ),
             ),
           ),
           const SizedBox(width: 12),
@@ -249,12 +363,18 @@ class _EmlakListingsScreenState extends ConsumerState<EmlakListingsScreen> {
               children: [
                 Text(
                   listing.title,
-                  style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w500),
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w500,
+                  ),
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
                   _getPropertyTypeText(listing.propertyType),
-                  style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                  style: const TextStyle(
+                    color: AppColors.textMuted,
+                    fontSize: 12,
+                  ),
                 ),
               ],
             ),
@@ -264,7 +384,10 @@ class _EmlakListingsScreenState extends ConsumerState<EmlakListingsScreen> {
             flex: 2,
             child: Text(
               '${listing.city ?? '-'} / ${listing.district ?? '-'}',
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 13,
+              ),
               overflow: TextOverflow.ellipsis,
             ),
           ),
@@ -273,7 +396,10 @@ class _EmlakListingsScreenState extends ConsumerState<EmlakListingsScreen> {
             flex: 1,
             child: Text(
               _formatPrice(listing.price),
-              style: const TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w500),
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ),
           // Listing Type
@@ -290,7 +416,9 @@ class _EmlakListingsScreenState extends ConsumerState<EmlakListingsScreen> {
               child: Text(
                 listing.listingType == 'sale' ? 'Satılık' : 'Kiralık',
                 style: TextStyle(
-                  color: listing.listingType == 'sale' ? AppColors.info : AppColors.warning,
+                  color: listing.listingType == 'sale'
+                      ? AppColors.info
+                      : AppColors.warning,
                   fontSize: 11,
                   fontWeight: FontWeight.w500,
                 ),
@@ -299,10 +427,7 @@ class _EmlakListingsScreenState extends ConsumerState<EmlakListingsScreen> {
             ),
           ),
           // Status
-          Expanded(
-            flex: 1,
-            child: _buildStatusBadge(listing.status),
-          ),
+          Expanded(flex: 1, child: _buildStatusBadge(listing.status)),
           // Actions
           SizedBox(
             width: 120,
@@ -382,7 +507,11 @@ class _EmlakListingsScreenState extends ConsumerState<EmlakListingsScreen> {
       ),
       child: Text(
         text,
-        style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w500),
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+        ),
         textAlign: TextAlign.center,
       ),
     );
@@ -427,7 +556,10 @@ class _EmlakListingsScreenState extends ConsumerState<EmlakListingsScreen> {
       ref.invalidate(emlakListingsProvider(_selectedStatus));
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('İlan onaylandı'), backgroundColor: AppColors.success),
+          const SnackBar(
+            content: Text('İlan onaylandı'),
+            backgroundColor: AppColors.success,
+          ),
         );
       }
     } catch (e) {
@@ -444,9 +576,14 @@ class _EmlakListingsScreenState extends ConsumerState<EmlakListingsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('İlanı Reddet'),
-        content: Text('"${listing.title}" ilanını reddetmek istediğinize emin misiniz?'),
+        content: Text(
+          '"${listing.title}" ilanını reddetmek istediğinize emin misiniz?',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('İptal')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('İptal'),
+          ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
@@ -463,13 +600,19 @@ class _EmlakListingsScreenState extends ConsumerState<EmlakListingsScreen> {
         ref.invalidate(emlakListingsProvider(_selectedStatus));
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('İlan reddedildi'), backgroundColor: AppColors.warning),
+            const SnackBar(
+              content: Text('İlan reddedildi'),
+              backgroundColor: AppColors.warning,
+            ),
           );
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
+            SnackBar(
+              content: Text('Hata: $e'),
+              backgroundColor: AppColors.error,
+            ),
           );
         }
       }
@@ -500,23 +643,41 @@ class _EmlakListingsScreenState extends ConsumerState<EmlakListingsScreen> {
                     ),
                   ),
                 const SizedBox(height: 16),
-                _buildDetailRow('Konum', '${listing.city ?? '-'} / ${listing.district ?? '-'}'),
+                _buildDetailRow(
+                  'Konum',
+                  '${listing.city ?? '-'} / ${listing.district ?? '-'}',
+                ),
                 _buildDetailRow('Fiyat', _formatPrice(listing.price)),
-                _buildDetailRow('Tür', _getPropertyTypeText(listing.propertyType)),
-                _buildDetailRow('İlan Tipi', listing.listingType == 'sale' ? 'Satılık' : 'Kiralık'),
+                _buildDetailRow(
+                  'Tür',
+                  _getPropertyTypeText(listing.propertyType),
+                ),
+                _buildDetailRow(
+                  'İlan Tipi',
+                  listing.listingType == 'sale' ? 'Satılık' : 'Kiralık',
+                ),
                 _buildDetailRow('Durum', listing.status),
                 if (listing.description != null) ...[
                   const Divider(),
-                  const Text('Açıklama:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Açıklama:',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 4),
-                  Text(listing.description!, style: const TextStyle(color: AppColors.textSecondary)),
+                  Text(
+                    listing.description!,
+                    style: const TextStyle(color: AppColors.textSecondary),
+                  ),
                 ],
               ],
             ),
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Kapat')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Kapat'),
+          ),
         ],
       ),
     );
@@ -540,9 +701,14 @@ class _EmlakListingsScreenState extends ConsumerState<EmlakListingsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('İlanı Sil'),
-        content: Text('"${listing.title}" ilanını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.'),
+        content: Text(
+          '"${listing.title}" ilanını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('İptal')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('İptal'),
+          ),
           ElevatedButton(
             onPressed: () async {
               final service = ref.read(emlakAdminServiceProvider);
@@ -558,7 +724,10 @@ class _EmlakListingsScreenState extends ConsumerState<EmlakListingsScreen> {
               } catch (e) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
+                    SnackBar(
+                      content: Text('Hata: $e'),
+                      backgroundColor: AppColors.error,
+                    ),
                   );
                 }
               }

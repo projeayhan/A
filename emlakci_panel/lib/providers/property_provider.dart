@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/property_service.dart';
 import '../models/emlak_models.dart';
+import 'package:emlakci_panel/core/services/log_service.dart';
 
 // ============================================
 // PROPERTY SERVICE PROVIDER
@@ -67,7 +68,8 @@ class UserPropertiesNotifier extends StateNotifier<UserPropertiesState> {
     try {
       final properties = await _service.getUserProperties();
       state = state.copyWith(allProperties: properties, isLoading: false);
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to load properties', error: e, stackTrace: st, source: 'UserPropertiesNotifier:loadProperties');
       state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
@@ -76,7 +78,8 @@ class UserPropertiesNotifier extends StateNotifier<UserPropertiesState> {
     try {
       await _service.createProperty(property);
       await loadProperties();
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to create property', error: e, stackTrace: st, source: 'UserPropertiesNotifier:createProperty');
       state = state.copyWith(error: e.toString());
     }
   }
@@ -85,7 +88,8 @@ class UserPropertiesNotifier extends StateNotifier<UserPropertiesState> {
     try {
       await _service.updateProperty(propertyId, updates);
       await loadProperties();
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to update property', error: e, stackTrace: st, source: 'UserPropertiesNotifier:updateProperty');
       state = state.copyWith(error: e.toString());
     }
   }
@@ -94,7 +98,8 @@ class UserPropertiesNotifier extends StateNotifier<UserPropertiesState> {
     try {
       await _service.deleteProperty(propertyId);
       await loadProperties();
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to delete property', error: e, stackTrace: st, source: 'UserPropertiesNotifier:deleteProperty');
       state = state.copyWith(error: e.toString());
     }
   }
@@ -103,7 +108,8 @@ class UserPropertiesNotifier extends StateNotifier<UserPropertiesState> {
     try {
       await _service.updatePropertyStatus(propertyId, status);
       await loadProperties();
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to update property status', error: e, stackTrace: st, source: 'UserPropertiesNotifier:updatePropertyStatus');
       state = state.copyWith(error: e.toString());
     }
   }

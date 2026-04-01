@@ -185,8 +185,8 @@ class _JobSkillsScreenState extends ConsumerState<JobSkillsScreen> {
           columns: const [
             DataColumn(label: Text('Yetenek Adı')),
             DataColumn(label: Text('Kategori')),
-            DataColumn(label: Text('Sıra')),
-            DataColumn(label: Text('Durum')),
+            DataColumn(label: Text('Kullanım')),
+            DataColumn(label: Text('Popüler')),
             DataColumn(label: Text('İşlemler')),
           ],
           rows: skills.map((skill) => _buildSkillRow(skill)).toList(),
@@ -200,8 +200,8 @@ class _JobSkillsScreenState extends ConsumerState<JobSkillsScreen> {
       cells: [
         DataCell(Text(skill.name, style: const TextStyle(fontWeight: FontWeight.w500))),
         DataCell(_buildCategoryBadge(skill.category)),
-        DataCell(Text(skill.sortOrder.toString())),
-        DataCell(_buildStatusBadge(skill.isActive)),
+        DataCell(Text(skill.usageCount.toString())),
+        DataCell(Icon(skill.isPopular ? Icons.star : Icons.star_border, size: 18, color: skill.isPopular ? AppColors.warning : AppColors.textMuted)),
         DataCell(
           Row(
             mainAxisSize: MainAxisSize.min,
@@ -262,30 +262,11 @@ class _JobSkillsScreenState extends ConsumerState<JobSkillsScreen> {
     );
   }
 
-  Widget _buildStatusBadge(bool isActive) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      decoration: BoxDecoration(
-        color: (isActive ? AppColors.success : AppColors.error).withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        isActive ? 'Aktif' : 'Pasif',
-        style: TextStyle(
-          color: isActive ? AppColors.success : AppColors.error,
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-    );
-  }
-
   void _showSkillDialog({JobSkill? skill}) {
     final isEdit = skill != null;
     final nameController = TextEditingController(text: skill?.name ?? '');
-    final sortOrderController = TextEditingController(text: (skill?.sortOrder ?? 0).toString());
     String? selectedCategory = skill?.category ?? 'Diğer';
-    bool isActive = skill?.isActive ?? true;
+    bool isPopular = skill?.isPopular ?? false;
 
     showDialog(
       context: context,
@@ -312,16 +293,10 @@ class _JobSkillsScreenState extends ConsumerState<JobSkillsScreen> {
                   onChanged: (v) => setDialogState(() => selectedCategory = v),
                 ),
                 const SizedBox(height: 16),
-                TextField(
-                  controller: sortOrderController,
-                  decoration: const InputDecoration(labelText: 'Sıra'),
-                  keyboardType: TextInputType.number,
-                ),
-                const SizedBox(height: 16),
                 SwitchListTile(
-                  title: const Text('Aktif'),
-                  value: isActive,
-                  onChanged: (v) => setDialogState(() => isActive = v),
+                  title: const Text('Popüler'),
+                  value: isPopular,
+                  onChanged: (v) => setDialogState(() => isPopular = v),
                   contentPadding: EdgeInsets.zero,
                 ),
               ],
@@ -344,8 +319,7 @@ class _JobSkillsScreenState extends ConsumerState<JobSkillsScreen> {
                 final data = {
                   'name': nameController.text,
                   'category': selectedCategory,
-                  'sort_order': int.tryParse(sortOrderController.text) ?? 0,
-                  'is_active': isActive,
+                  'is_popular': isPopular,
                 };
 
                 final service = ref.read(jobListingsAdminServiceProvider);

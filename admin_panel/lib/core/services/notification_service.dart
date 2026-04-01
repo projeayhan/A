@@ -3,6 +3,7 @@ import 'dart:js_interop';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:admin_panel/core/services/log_service.dart';
 import 'supabase_service.dart';
 
 /// JavaScript fonksiyonu çağırma
@@ -64,6 +65,7 @@ class NotificationService extends StateNotifier<PendingApplicationCounts> {
   RealtimeChannel? _carListingsChannel;
   int _previousTotal = 0;
   bool _isInitialized = false;
+  Timer? _refreshDebounce;
 
   NotificationService(this._supabase) : super(PendingApplicationCounts()) {
     _init();
@@ -81,126 +83,153 @@ class NotificationService extends StateNotifier<PendingApplicationCounts> {
   }
 
   void _setupRealtimeListeners() {
-    // Emlakçı başvuruları için realtime
+    // Sadece INSERT ve UPDATE dinliyoruz — DELETE badge sayısını düşürmek için
+    // yeterli değil ama çok nadir olduğundan periyodik refresh ile karşılanır.
+    // INSERT: yeni başvuru geldi, UPDATE: status değişti (approve/reject)
+
     _realtorChannel = _supabase
         .channel('realtor_applications_changes')
         .onPostgresChanges(
-          event: PostgresChangeEvent.all,
+          event: PostgresChangeEvent.insert,
           schema: 'public',
           table: 'realtor_applications',
-          callback: (payload) {
-            _onNewApplication('realtor', payload);
-          },
+          callback: (payload) => _onNewApplication('realtor', payload),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'realtor_applications',
+          callback: (_) => _debouncedRefresh(),
         )
         .subscribe();
 
-    // Partner başvuruları için realtime
     _partnerChannel = _supabase
         .channel('partner_applications_changes')
         .onPostgresChanges(
-          event: PostgresChangeEvent.all,
+          event: PostgresChangeEvent.insert,
           schema: 'public',
           table: 'partner_applications',
-          callback: (payload) {
-            _onNewApplication('partner', payload);
-          },
+          callback: (payload) => _onNewApplication('partner', payload),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'partner_applications',
+          callback: (_) => _debouncedRefresh(),
         )
         .subscribe();
 
-    // Kurye başvuruları için realtime
     _courierChannel = _supabase
         .channel('couriers_changes')
         .onPostgresChanges(
-          event: PostgresChangeEvent.all,
+          event: PostgresChangeEvent.insert,
           schema: 'public',
           table: 'couriers',
-          callback: (payload) {
-            _onNewApplication('courier', payload);
-          },
+          callback: (payload) => _onNewApplication('courier', payload),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'couriers',
+          callback: (_) => _debouncedRefresh(),
         )
         .subscribe();
 
-    // Merchant değişiklikleri için realtime
     _merchantChannel = _supabase
         .channel('merchants_changes')
         .onPostgresChanges(
-          event: PostgresChangeEvent.all,
+          event: PostgresChangeEvent.insert,
           schema: 'public',
           table: 'merchants',
-          callback: (payload) {
-            _onNewApplication('merchant', payload);
-          },
+          callback: (payload) => _onNewApplication('merchant', payload),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'merchants',
+          callback: (_) => _debouncedRefresh(),
         )
         .subscribe();
 
-    // Car Dealer başvuruları için realtime
     _carDealerChannel = _supabase
         .channel('car_dealer_applications_changes')
         .onPostgresChanges(
-          event: PostgresChangeEvent.all,
+          event: PostgresChangeEvent.insert,
           schema: 'public',
           table: 'car_dealer_applications',
-          callback: (payload) {
-            _onNewApplication('car_dealer', payload);
-          },
+          callback: (payload) => _onNewApplication('car_dealer', payload),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'car_dealer_applications',
+          callback: (_) => _debouncedRefresh(),
         )
         .subscribe();
 
-    // Rental Company başvuruları için realtime
     _rentalCompanyChannel = _supabase
         .channel('rental_companies_changes')
         .onPostgresChanges(
-          event: PostgresChangeEvent.all,
+          event: PostgresChangeEvent.insert,
           schema: 'public',
           table: 'rental_companies',
-          callback: (payload) {
-            _onNewApplication('rental_company', payload);
-          },
+          callback: (payload) => _onNewApplication('rental_company', payload),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'rental_companies',
+          callback: (_) => _debouncedRefresh(),
         )
         .subscribe();
 
-    // Araç ilanları için realtime (yeni ilan geldiğinde)
     _carListingsChannel = _supabase
         .channel('car_listings_admin_changes')
         .onPostgresChanges(
-          event: PostgresChangeEvent.all,
+          event: PostgresChangeEvent.insert,
           schema: 'public',
           table: 'car_listings',
-          callback: (payload) {
-            _onNewCarListing(payload);
-          },
+          callback: (payload) => _onNewCarListing(payload),
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'car_listings',
+          callback: (_) => _debouncedRefresh(),
         )
         .subscribe();
   }
 
+  /// Birden fazla event art arda geldiğinde tek bir refreshCounts çağrısı yapar
+  void _debouncedRefresh() {
+    _refreshDebounce?.cancel();
+    _refreshDebounce = Timer(const Duration(seconds: 2), () => refreshCounts());
+  }
+
   void _onNewApplication(String type, PostgresChangePayload payload) {
-    // Sayıları yenile
-    refreshCounts();
+    // Debounce ile sayıları yenile
+    _debouncedRefresh();
 
-    // Yeni başvuru ise ses çal
-    if (payload.eventType == PostgresChangeEvent.insert) {
-      final newRecord = payload.newRecord;
-      final status = newRecord['status'] ??
-          (newRecord['is_approved'] == false ? 'pending' : 'approved');
+    // Yeni başvuru ve pending ise ses çal
+    final newRecord = payload.newRecord;
+    final status = newRecord['status'] ??
+        (newRecord['is_approved'] == false ? 'pending' : 'approved');
 
-      if (status == 'pending') {
-        playNotificationSound();
-      }
+    if (status == 'pending') {
+      playNotificationSound();
     }
   }
 
   void _onNewCarListing(PostgresChangePayload payload) {
-    // Sayıları yenile
-    refreshCounts();
+    // Debounce ile sayıları yenile
+    _debouncedRefresh();
 
-    // Yeni ilan eklendiyse ve pending durumundaysa ses çal
-    if (payload.eventType == PostgresChangeEvent.insert) {
-      final newRecord = payload.newRecord;
-      final status = newRecord['status'];
+    // Pending ise ses çal
+    final newRecord = payload.newRecord;
+    final status = newRecord['status'];
 
-      if (status == 'pending') {
-        playNotificationSound();
-      }
+    if (status == 'pending') {
+      playNotificationSound();
     }
   }
 
@@ -234,8 +263,8 @@ class NotificationService extends StateNotifier<PendingApplicationCounts> {
 
       _previousTotal = newCounts.total;
       state = newCounts;
-    } catch (e) {
-      debugPrint('Error refreshing notification counts: $e');
+    } catch (e, st) {
+      LogService.error('Error refreshing notification counts', error: e, stackTrace: st, source: 'notification_service.dart:_refresh');
     }
   }
 
@@ -247,8 +276,8 @@ class NotificationService extends StateNotifier<PendingApplicationCounts> {
           .eq('status', 'pending')
           .eq('application_type', type);
       return (response as List).length;
-    } catch (e) {
-      debugPrint('Notification count error: $e');
+    } catch (e, st) {
+      LogService.error('Notification count error', error: e, stackTrace: st, source: 'notification_service.dart:_getPartnerPendingCount');
       return 0;
     }
   }
@@ -260,8 +289,8 @@ class NotificationService extends StateNotifier<PendingApplicationCounts> {
           .select('id')
           .eq('status', 'pending');
       return (response as List).length;
-    } catch (e) {
-      debugPrint('Notification count error: $e');
+    } catch (e, st) {
+      LogService.error('Notification count error', error: e, stackTrace: st, source: 'notification_service.dart:_getCourierPendingCount');
       return 0;
     }
   }
@@ -273,8 +302,8 @@ class NotificationService extends StateNotifier<PendingApplicationCounts> {
           .select('id')
           .eq('is_approved', false);
       return (response as List).length;
-    } catch (e) {
-      debugPrint('Notification count error: $e');
+    } catch (e, st) {
+      LogService.error('Notification count error', error: e, stackTrace: st, source: 'notification_service.dart:_getMerchantPendingCount');
       return 0;
     }
   }
@@ -286,8 +315,8 @@ class NotificationService extends StateNotifier<PendingApplicationCounts> {
           .select('id')
           .eq('status', 'pending');
       return (response as List).length;
-    } catch (e) {
-      debugPrint('Notification count error: $e');
+    } catch (e, st) {
+      LogService.error('Notification count error', error: e, stackTrace: st, source: 'notification_service.dart:_getRealtorPendingCount');
       return 0;
     }
   }
@@ -299,8 +328,8 @@ class NotificationService extends StateNotifier<PendingApplicationCounts> {
           .select('id')
           .eq('status', 'pending');
       return (response as List).length;
-    } catch (e) {
-      debugPrint('Notification count error: $e');
+    } catch (e, st) {
+      LogService.error('Notification count error', error: e, stackTrace: st, source: 'notification_service.dart:_getCarDealerPendingCount');
       return 0;
     }
   }
@@ -312,8 +341,8 @@ class NotificationService extends StateNotifier<PendingApplicationCounts> {
           .select('id')
           .eq('is_approved', false);
       return (response as List).length;
-    } catch (e) {
-      debugPrint('Notification count error: $e');
+    } catch (e, st) {
+      LogService.error('Notification count error', error: e, stackTrace: st, source: 'notification_service.dart:_getRentalCompanyPendingCount');
       return 0;
     }
   }
@@ -325,8 +354,8 @@ class NotificationService extends StateNotifier<PendingApplicationCounts> {
           .select('id')
           .eq('status', 'pending');
       return (response as List).length;
-    } catch (e) {
-      debugPrint('Notification count error: $e');
+    } catch (e, st) {
+      LogService.error('Notification count error', error: e, stackTrace: st, source: 'notification_service.dart:_getPendingCarListingsCount');
       return 0;
     }
   }
@@ -336,14 +365,15 @@ class NotificationService extends StateNotifier<PendingApplicationCounts> {
     if (kIsWeb) {
       try {
         _jsPlayNotificationSound();
-      } catch (e) {
-        debugPrint('Error playing notification sound: $e');
+      } catch (e, st) {
+        LogService.error('Error playing notification sound', error: e, stackTrace: st, source: 'notification_service.dart:playNotificationSound');
       }
     }
   }
 
   @override
   void dispose() {
+    _refreshDebounce?.cancel();
     _realtorChannel?.unsubscribe();
     _partnerChannel?.unsubscribe();
     _courierChannel?.unsubscribe();

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../config/app_config.dart';
 
 // Supabase client provider
 final supabaseProvider = Provider<SupabaseClient>((ref) {
@@ -39,9 +40,8 @@ final isAuthenticatedProvider = Provider<bool>((ref) {
 });
 
 class SupabaseService {
-  static const String supabaseUrl = 'https://mzgtvdgwxrlhgjboolys.supabase.co';
-  static const String supabaseAnonKey =
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im16Z3R2ZGd3eHJsaGdqYm9vbHlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgwNTUyODUsImV4cCI6MjA4MzYzMTI4NX0.B8xL9pKDX76eVnu-s2K-TjvRyPUDx4kus85qDFWO8SY';
+  static String get supabaseUrl => AppConfig.supabaseUrl;
+  static String get supabaseAnonKey => AppConfig.supabaseAnonKey;
 
   static Future<void> initialize() async {
     await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);

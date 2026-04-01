@@ -18,8 +18,7 @@ class _CarConversationsScreenState extends State<CarConversationsScreen> {
   List<Map<String, dynamic>>? _conversations;
   String? _error;
 
-  String? get _currentUserId =>
-      Supabase.instance.client.auth.currentUser?.id;
+  String? get _currentUserId => Supabase.instance.client.auth.currentUser?.id;
 
   @override
   void initState() {
@@ -39,8 +38,7 @@ class _CarConversationsScreenState extends State<CarConversationsScreen> {
       for (var i = 0; i < conversations.length; i++) {
         final conv = conversations[i];
         final isBuyer = conv['buyer_id'] == _currentUserId;
-        final otherUserId =
-            isBuyer ? conv['seller_id'] : conv['buyer_id'];
+        final otherUserId = isBuyer ? conv['seller_id'] : conv['buyer_id'];
 
         // car_dealers'dan dene
         final dealer = await Supabase.instance.client
@@ -120,12 +118,16 @@ class _CarConversationsScreenState extends State<CarConversationsScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error_outline,
-                size: 48, color: CarSalesColors.textTertiary(isDark)),
+            Icon(
+              Icons.error_outline,
+              size: 48,
+              color: CarSalesColors.textTertiary(isDark),
+            ),
             const SizedBox(height: 12),
-            Text('Mesajlar yuklenirken hata olustu',
-                style:
-                    TextStyle(color: CarSalesColors.textSecondary(isDark))),
+            Text(
+              'Mesajlar yuklenirken hata olustu',
+              style: TextStyle(color: CarSalesColors.textSecondary(isDark)),
+            ),
             const SizedBox(height: 12),
             TextButton(
               onPressed: _loadConversations,
@@ -141,8 +143,11 @@ class _CarConversationsScreenState extends State<CarConversationsScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.chat_bubble_outline_rounded,
-                size: 64, color: CarSalesColors.textTertiary(isDark)),
+            Icon(
+              Icons.chat_bubble_outline_rounded,
+              size: 64,
+              color: CarSalesColors.textTertiary(isDark),
+            ),
             const SizedBox(height: 16),
             Text(
               'Henuz mesajiniz yok',
@@ -172,15 +177,13 @@ class _CarConversationsScreenState extends State<CarConversationsScreen> {
         padding: const EdgeInsets.all(16),
         itemCount: _conversations!.length,
         itemBuilder: (context, index) {
-          return _buildConversationTile(
-              _conversations![index], isDark);
+          return _buildConversationTile(_conversations![index], isDark);
         },
       ),
     );
   }
 
-  Widget _buildConversationTile(
-      Map<String, dynamic> conv, bool isDark) {
+  Widget _buildConversationTile(Map<String, dynamic> conv, bool isDark) {
     final listing = conv['car_listings'] as Map<String, dynamic>?;
     final isBuyer = conv['_is_buyer'] == true;
     final otherName = conv['_other_name'] as String? ?? 'Kullanici';
@@ -195,22 +198,19 @@ class _CarConversationsScreenState extends State<CarConversationsScreen> {
     final hasUnread = unreadCount > 0;
 
     final listingImages = listing?['images'] as List?;
-    final firstImage =
-        listingImages != null && listingImages.isNotEmpty
-            ? listingImages.first.toString()
-            : null;
+    final firstImage = listingImages != null && listingImages.isNotEmpty
+        ? listingImages.first.toString()
+        : null;
 
     final brandName = listing?['brand_name'] as String? ?? '';
     final modelName = listing?['model_name'] as String? ?? '';
     final year = listing?['year'] as int?;
-    final listingTitle = '$brandName $modelName${year != null ? ' ($year)' : ''}';
+    final listingTitle =
+        '$brandName $modelName${year != null ? ' ($year)' : ''}';
 
     return InkWell(
       onTap: () {
-        context.push(
-          '/car-sales/chat/${conv['id']}',
-          extra: listing,
-        );
+        context.push('/car-sales/chat/${conv['id']}', extra: listing);
       },
       borderRadius: BorderRadius.circular(14),
       child: Container(
@@ -238,8 +238,8 @@ class _CarConversationsScreenState extends State<CarConversationsScreen> {
                       width: 56,
                       height: 56,
                       fit: BoxFit.cover,
-                      placeholder: (_, __) => _buildPlaceholder(),
-                      errorWidget: (_, __, ___) => _buildPlaceholder(),
+                      placeholder: (_, _) => _buildPlaceholder(),
+                      errorWidget: (_, _, _) => _buildPlaceholder(),
                     )
                   : _buildPlaceholder(),
             ),
@@ -304,7 +304,9 @@ class _CarConversationsScreenState extends State<CarConversationsScreen> {
                         const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
                             color: CarSalesColors.primary,
                             borderRadius: BorderRadius.circular(12),

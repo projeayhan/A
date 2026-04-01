@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:super_app/core/services/log_service.dart';
 
 enum AiStreamEventType { session, chunk, actions, searchResults, rentalResults, priceComparison, done, error }
 
@@ -69,7 +70,8 @@ class AiChatService {
         try {
           final refreshed = await _client.auth.refreshSession();
           return refreshed.session?.accessToken;
-        } catch (_) {
+        } catch (e, st) {
+          LogService.error('Error getting preferred voice', error: e, stackTrace: st, source: 'AiChatService:sendMessage');
           return null;
         }
       }
@@ -107,7 +109,7 @@ class AiChatService {
 
       return await _invokeAiChat(message, sessionId, screenContext, accessToken: token, generateAudio: generateAudio);
     } on FunctionException catch (e) {
-      print('AI Chat FunctionException: ${e.status} - ${e.details}');
+      LogService.error('AI Chat FunctionException: ${e.status}', error: e, source: 'AiChatService:sendMessage');
 
       // Handle 401 - refresh and retry with explicit new token
       if (e.status == 401) {
@@ -117,8 +119,8 @@ class AiChatService {
           if (newToken != null) {
             return await _invokeAiChat(message, sessionId, screenContext, accessToken: newToken, generateAudio: generateAudio);
           }
-        } catch (refreshError) {
-          print('Refresh and retry failed: $refreshError');
+        } catch (refreshError, st) {
+          LogService.error('Refresh and retry failed', error: refreshError, stackTrace: st, source: 'AiChatService:sendMessage');
         }
         return {
           'success': false,
@@ -131,8 +133,8 @@ class AiChatService {
         'success': false,
         'error': 'AI servisi hatası: ${e.details?['error'] ?? e.details?['message'] ?? e.status}',
       };
-    } catch (e) {
-      print('AI Chat Error: $e');
+    } catch (e, st) {
+      LogService.error('AI Chat Error', error: e, stackTrace: st, source: 'AiChatService:sendMessage');
       return {
         'success': false,
         'error': e.toString(),
@@ -219,7 +221,8 @@ class AiChatService {
         try {
           final json = jsonDecode(responseBody);
           yield AiStreamEvent.error(json['error'] ?? 'HTTP ${response.statusCode}');
-        } catch (_) {
+        } catch (e, st) {
+          LogService.error('HTTP error response parse failed', error: e, stackTrace: st, source: 'AiChatService:streamChat');
           yield AiStreamEvent.error('HTTP ${response.statusCode}');
         }
         return;
@@ -246,7 +249,8 @@ class AiChatService {
         final event = _parseSseChunk(buffer.trim());
         if (event != null) yield event;
       }
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Stream connection error', error: e, stackTrace: st, source: 'AiChatService:streamChat');
       yield AiStreamEvent.error('Bağlantı hatası: $e');
     } finally {
       client?.close();
@@ -300,8 +304,8 @@ class AiChatService {
         default:
           return null;
       }
-    } catch (e) {
-      print('SSE parse error [$eventType]: $e | data: ${dataStr.length > 200 ? dataStr.substring(0, 200) : dataStr}');
+    } catch (e, st) {
+      LogService.error('SSE parse error [$eventType]', error: e, stackTrace: st, source: 'AiChatService:_parseEvent');
       return null;
     }
   }
@@ -316,7 +320,8 @@ class AiChatService {
           .order('created_at', ascending: true);
 
       return List<Map<String, dynamic>>.from(response);
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Error getting chat history', error: e, stackTrace: st, source: 'AiChatService:getChatHistory');
       return [];
     }
   }
@@ -336,7 +341,8 @@ class AiChatService {
           .limit(20);
 
       return List<Map<String, dynamic>>.from(response);
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Error getting user sessions', error: e, stackTrace: st, source: 'AiChatService:getUserSessions');
       return [];
     }
   }
@@ -358,7 +364,8 @@ class AiChatService {
           .maybeSingle();
 
       return response?['id'];
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Error getting active session', error: e, stackTrace: st, source: 'AiChatService:getActiveSessionId');
       return null;
     }
   }
@@ -374,7 +381,8 @@ class AiChatService {
           })
           .eq('id', sessionId);
       return true;
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Error closing session', error: e, stackTrace: st, source: 'AiChatService:closeSession');
       return false;
     }
   }
@@ -387,7 +395,8 @@ class AiChatService {
           .update({'satisfaction_rating': rating})
           .eq('id', sessionId);
       return true;
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Error rating session', error: e, stackTrace: st, source: 'AiChatService:rateSession');
       return false;
     }
   }
@@ -404,7 +413,8 @@ class AiChatService {
           })
           .eq('id', sessionId);
       return true;
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Error escalating to human', error: e, stackTrace: st, source: 'AiChatService:escalateToHuman');
       return false;
     }
   }

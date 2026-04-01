@@ -1,6 +1,7 @@
-import 'package:flutter/foundation.dart';
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/log_service.dart';
 import '../services/supabase_service.dart';
 import '../services/taxi_service.dart';
 import '../services/security_service.dart';
@@ -42,30 +43,38 @@ class AuthState {
 }
 
 class AuthNotifier extends Notifier<AuthState> {
+  StreamSubscription? _authSub;
+
   @override
   AuthState build() {
+    ref.onDispose(() => _authSub?.cancel());
     _init();
     return const AuthState();
   }
 
   void _init() async {
-    final user = SupabaseService.currentUser;
-    if (user != null) {
-      await _loadDriverProfile(user);
-    } else {
-      state = const AuthState(status: AuthStatus.unauthenticated);
-    }
-
-    // Auth değişikliklerini dinle
-    SupabaseService.authStateChanges.listen((authState) async {
-      // Explicit auth işlemi sırasında (loading) listener'ın müdahale etmesini engelle
-      if (state.status == AuthStatus.loading) return;
-      if (authState.session != null) {
-        await _loadDriverProfile(authState.session!.user);
+    try {
+      final user = SupabaseService.currentUser;
+      if (user != null) {
+        await _loadDriverProfile(user);
       } else {
         state = const AuthState(status: AuthStatus.unauthenticated);
       }
-    });
+
+      // Auth değişikliklerini dinle
+      _authSub = SupabaseService.authStateChanges.listen((authState) async {
+        // Explicit auth işlemi sırasında (loading) listener'ın müdahale etmesini engelle
+        if (state.status == AuthStatus.loading) return;
+        if (authState.session != null) {
+          await _loadDriverProfile(authState.session!.user);
+        } else {
+          state = const AuthState(status: AuthStatus.unauthenticated);
+        }
+      });
+    } catch (e, st) {
+      LogService.error('_init error', error: e, stackTrace: st, source: 'AuthProvider:_init');
+      state = AuthState(status: AuthStatus.error, errorMessage: 'Başlatma hatası');
+    }
   }
 
   // Kullanıcının rolünü kontrol et
@@ -79,8 +88,8 @@ class AuthNotifier extends Notifier<AuthState> {
         return Map<String, dynamic>.from(response);
       }
       return {'role': 'none', 'message': 'Rol bulunamadı'};
-    } catch (e) {
-      debugPrint('_checkUserRole error: $e');
+    } catch (e, st) {
+      LogService.error('_checkUserRole error', error: e, stackTrace: st, source: 'AuthProvider:_checkUserRole');
       return {'role': 'none', 'message': 'Rol kontrolü başarısız'};
     }
   }
@@ -179,7 +188,8 @@ class AuthNotifier extends Notifier<AuthState> {
         errorMessage: _getErrorMessage(e.message),
       );
       return false;
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('signIn error', error: e, stackTrace: st, source: 'AuthProvider:signIn');
       await SecurityService.trackFailedLogin(identifier: email, errorMessage: 'Bir hata oluştu');
       state = state.copyWith(
         status: AuthStatus.error,
@@ -196,7 +206,8 @@ class AuthNotifier extends Notifier<AuthState> {
       await SupabaseService.sendPhoneOtp(phone: phone);
       state = const AuthState(status: AuthStatus.unauthenticated);
       return true;
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('sendOtp error', error: e, stackTrace: st, source: 'AuthProvider:sendOtp');
       state = AuthState(
         status: AuthStatus.error,
         errorMessage: e.toString().replaceAll('Exception: ', ''),
@@ -221,7 +232,8 @@ class AuthNotifier extends Notifier<AuthState> {
         'success': true,
         'is_new_user': result['is_new_user'] ?? false,
       };
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('verifyOtp error', error: e, stackTrace: st, source: 'AuthProvider:verifyOtp');
       state = AuthState(
         status: AuthStatus.error,
         errorMessage: e.toString().replaceAll('Exception: ', ''),
@@ -266,7 +278,8 @@ class AuthNotifier extends Notifier<AuthState> {
       }
       state = state.copyWith(status: AuthStatus.error, errorMessage: 'Profil oluşturulamadı');
       return false;
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('completeRegistration error', error: e, stackTrace: st, source: 'AuthProvider:completeRegistration');
       state = state.copyWith(status: AuthStatus.error, errorMessage: 'Bir hata oluştu: $e');
       return false;
     }
@@ -322,7 +335,7 @@ class AuthNotifier extends Notifier<AuthState> {
             final existingUser = user!;
 
             // Telefonu auth.users'a yaz (OTP login için)
-            try { await SupabaseService.client.rpc('set_user_phone', params: {'p_user_id': existingUser.id, 'p_phone': phone}); } catch (_) {}
+            try { await SupabaseService.client.rpc('set_user_phone', params: {'p_user_id': existingUser.id, 'p_phone': phone}); } catch (e, st) { LogService.error('set_user_phone error', error: e, stackTrace: st, source: 'AuthProvider:registerDriver'); }
 
             // Zaten sürücü profili var mı kontrol et
             final existingProfile = await TaxiService.getDriverProfile();
@@ -344,10 +357,10 @@ class AuthNotifier extends Notifier<AuthState> {
 
       if (user != null) {
         // Auto-confirm email (no email verification for taxi drivers)
-        try { await SupabaseService.client.rpc('auto_confirm_email', params: {'p_user_id': user.id}); } catch (_) {}
+        try { await SupabaseService.client.rpc('auto_confirm_email', params: {'p_user_id': user.id}); } catch (e, st) { LogService.error('auto_confirm_email error', error: e, stackTrace: st, source: 'AuthProvider:registerDriver'); }
         // Telefonu auth.users'a yaz (OTP login için)
-        try { await SupabaseService.client.rpc('set_user_phone', params: {'p_user_id': user.id, 'p_phone': phone}); } catch (_) {}
-        try { await SupabaseService.signOut(); } catch (_) {}
+        try { await SupabaseService.client.rpc('set_user_phone', params: {'p_user_id': user.id, 'p_phone': phone}); } catch (e, st) { LogService.error('set_user_phone error', error: e, stackTrace: st, source: 'AuthProvider:registerDriver'); }
+        try { await SupabaseService.signOut(); } catch (e, st) { LogService.error('signOut error', error: e, stackTrace: st, source: 'AuthProvider:registerDriver'); }
         state = const AuthState(status: AuthStatus.unauthenticated);
         return true;
       }
@@ -363,7 +376,8 @@ class AuthNotifier extends Notifier<AuthState> {
         errorMessage: _getErrorMessage(e.message),
       );
       return false;
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('signUp error', error: e, stackTrace: st, source: 'AuthProvider:signUp');
       state = state.copyWith(
         status: AuthStatus.error,
         errorMessage: 'Bir hata oluştu: $e',
@@ -374,6 +388,7 @@ class AuthNotifier extends Notifier<AuthState> {
 
   // Çıkış yap
   Future<void> signOut() async {
+    TaxiService.invalidateProfileCache();
     await SupabaseService.signOut();
     state = const AuthState(status: AuthStatus.unauthenticated);
   }

@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../services/supabase_service.dart';
+import 'package:super_app/core/services/log_service.dart';
 
 // Promosyon Modeli
 class Promotion {
@@ -242,6 +242,7 @@ class PaymentMethodState {
   final bool cashEnabled;
   final bool walletEnabled;
   final bool creditCardOnDeliveryEnabled;
+  final bool onlinePaymentEnabled;
   final double walletBalance;
 
   const PaymentMethodState({
@@ -251,13 +252,15 @@ class PaymentMethodState {
     this.cashEnabled = true,
     this.walletEnabled = true,
     this.creditCardOnDeliveryEnabled = true,
+    this.onlinePaymentEnabled = true,
     this.walletBalance = 0,
   });
 
   SavedPaymentCard? get defaultCard {
     try {
       return cards.firstWhere((c) => c.isDefault);
-    } catch (_) {
+    } catch (e, st) {
+      LogService.error('Error getting default card', error: e, stackTrace: st, source: 'PaymentMethodProvider:_getDefaultCard');
       return cards.isNotEmpty ? cards.first : null;
     }
   }
@@ -295,6 +298,7 @@ class PaymentMethodState {
     bool? cashEnabled,
     bool? walletEnabled,
     bool? creditCardOnDeliveryEnabled,
+    bool? onlinePaymentEnabled,
     double? walletBalance,
   }) {
     return PaymentMethodState(
@@ -305,6 +309,7 @@ class PaymentMethodState {
       walletEnabled: walletEnabled ?? this.walletEnabled,
       creditCardOnDeliveryEnabled:
           creditCardOnDeliveryEnabled ?? this.creditCardOnDeliveryEnabled,
+      onlinePaymentEnabled: onlinePaymentEnabled ?? this.onlinePaymentEnabled,
       walletBalance: walletBalance ?? this.walletBalance,
     );
   }
@@ -317,22 +322,48 @@ class PaymentMethodNotifier extends StateNotifier<PaymentMethodState> {
   }
 
   Future<void> _initialize() async {
-    await _loadPreferences();
+    await _loadSystemSettings();
     await _loadFromSupabase();
   }
 
-  Future<void> _loadPreferences() async {
-    final prefs = await SharedPreferences.getInstance();
-    final cashEnabled = prefs.getBool('payment_cash_enabled') ?? true;
-    final walletEnabled = prefs.getBool('payment_wallet_enabled') ?? true;
-    final creditCardOnDeliveryEnabled =
-        prefs.getBool('payment_cc_delivery_enabled') ?? true;
+  /// Admin panelindeki system_settings tablosundan global ödeme ayarlarını çeker
+  Future<void> _loadSystemSettings() async {
+    try {
+      final response = await SupabaseService.client
+          .from('system_settings')
+          .select('key, value')
+          .eq('category', 'payment');
 
-    state = state.copyWith(
-      cashEnabled: cashEnabled,
-      walletEnabled: walletEnabled,
-      creditCardOnDeliveryEnabled: creditCardOnDeliveryEnabled,
-    );
+      final settings = <String, dynamic>{};
+      for (final row in (response as List)) {
+        final key = row['key'] as String;
+        final rawValue = row['value'];
+        // DB'de boolean "true"/"false" string veya jsonb true/false olabilir
+        if (rawValue is bool) {
+          settings[key] = rawValue;
+        } else if (rawValue is String) {
+          settings[key] = rawValue.replaceAll('"', '') == 'true';
+        } else {
+          settings[key] = rawValue == true;
+        }
+      }
+
+      state = state.copyWith(
+        cashEnabled: settings['cash_payment_enabled'] as bool? ?? true,
+        walletEnabled: true,
+        creditCardOnDeliveryEnabled: settings['card_on_delivery_enabled'] as bool? ?? true,
+        onlinePaymentEnabled: settings['online_payment_enabled'] as bool? ?? true,
+      );
+    } catch (e, st) {
+      // system_settings tablosu yoksa veya hata olursa varsayılan değerlerle devam et
+      LogService.error('System settings yüklenemedi', error: e, stackTrace: st, source: 'PaymentMethodProvider:_loadSystemSettings');
+      state = state.copyWith(
+        cashEnabled: true,
+        walletEnabled: true,
+        creditCardOnDeliveryEnabled: true,
+        onlinePaymentEnabled: true,
+      );
+    }
   }
 
   Future<void> _loadFromSupabase() async {
@@ -355,8 +386,8 @@ class PaymentMethodNotifier extends StateNotifier<PaymentMethodState> {
           .toList();
 
       state = state.copyWith(cards: cards, isLoading: false);
-    } catch (e) {
-      if (kDebugMode) print('Error loading payment methods: $e');
+    } catch (e, st) {
+      LogService.error('Error loading payment methods', error: e, stackTrace: st, source: 'PaymentMethodProvider:loadPaymentMethods');
       state = state.copyWith(isLoading: false);
     }
   }
@@ -382,8 +413,8 @@ class PaymentMethodNotifier extends StateNotifier<PaymentMethodState> {
       );
 
       return true;
-    } catch (e) {
-      if (kDebugMode) print('Error verifying promo code: $e');
+    } catch (e, st) {
+      LogService.error('Error verifying promo code', error: e, stackTrace: st, source: 'PaymentMethodProvider:verifyPromoCode');
       return false;
     }
   }
@@ -421,8 +452,8 @@ class PaymentMethodNotifier extends StateNotifier<PaymentMethodState> {
       state = state.copyWith(cards: [...state.cards, newCard]);
 
       return true;
-    } catch (e) {
-      if (kDebugMode) print('Error adding card: $e');
+    } catch (e, st) {
+      LogService.error('Error adding card', error: e, stackTrace: st, source: 'PaymentMethodProvider:addCard');
       return false;
     }
   }
@@ -444,8 +475,8 @@ class PaymentMethodNotifier extends StateNotifier<PaymentMethodState> {
       }
 
       return true;
-    } catch (e) {
-      if (kDebugMode) print('Error removing card: $e');
+    } catch (e, st) {
+      LogService.error('Error removing card', error: e, stackTrace: st, source: 'PaymentMethodProvider:removeCard');
       return false;
     }
   }
@@ -472,27 +503,22 @@ class PaymentMethodNotifier extends StateNotifier<PaymentMethodState> {
       }).toList();
 
       state = state.copyWith(cards: updatedCards);
-    } catch (e) {
-      if (kDebugMode) print('Error setting default card: $e');
+    } catch (e, st) {
+      LogService.error('Error setting default card', error: e, stackTrace: st, source: 'PaymentMethodProvider:setDefaultCard');
     }
   }
 
-  Future<void> setCashEnabled(bool enabled) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('payment_cash_enabled', enabled);
-    state = state.copyWith(cashEnabled: enabled);
+  void setCashEnabled(bool value) {
+    state = state.copyWith(cashEnabled: value);
   }
 
-  Future<void> setWalletEnabled(bool enabled) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('payment_wallet_enabled', enabled);
-    state = state.copyWith(walletEnabled: enabled);
+  void setCreditCardOnDeliveryEnabled(bool value) {
+    state = state.copyWith(creditCardOnDeliveryEnabled: value);
   }
 
-  Future<void> setCreditCardOnDeliveryEnabled(bool enabled) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('payment_cc_delivery_enabled', enabled);
-    state = state.copyWith(creditCardOnDeliveryEnabled: enabled);
+  /// Admin panelinden system_settings'i yeniden yükler
+  Future<void> refreshSystemSettings() async {
+    await _loadSystemSettings();
   }
 
   void updateWalletBalance(double balance) {

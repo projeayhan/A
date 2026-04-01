@@ -318,7 +318,11 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> with SingleTick
                           children: [
                             Text('Kazanc Detaylari', style: Theme.of(context).textTheme.titleMedium),
                             OutlinedButton.icon(
-                              onPressed: () {},
+                              onPressed: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Excel dışa aktarma yakında eklenecek')),
+                                );
+                              },
                               icon: const Icon(Icons.download, size: 18),
                               label: const Text('Excel'),
                             ),
@@ -677,7 +681,7 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> with SingleTick
     switch (status) {
       case 'completed':
         color = AppColors.success;
-        label = 'Tamamlandi';
+        label = 'Tamamlandı';
         break;
       case 'pending':
         color = AppColors.warning;
@@ -780,12 +784,63 @@ class _EarningsScreenState extends ConsumerState<EarningsScreen> with SingleTick
             child: const Text('Iptal'),
           ),
           ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Toplu odeme islemi basladi')),
-              );
-            },
+            onPressed: totalCount == 0
+                ? null
+                : () async {
+                    Navigator.pop(context);
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(this.context).showSnackBar(
+                      const SnackBar(content: Text('Toplu odeme islemi baslatildi...')),
+                    );
+                    try {
+                      final supabase = ref.read(supabaseProvider);
+
+                      // Approve all pending driver payouts
+                      await supabase
+                          .from('driver_payouts')
+                          .update({'status': 'completed'})
+                          .eq('status', 'pending');
+
+                      // Approve all pending driver earnings
+                      await supabase
+                          .from('driver_earnings')
+                          .update({
+                            'status': 'paid',
+                            'paid_at': DateTime.now().toIso8601String(),
+                          })
+                          .eq('status', 'pending');
+
+                      // Approve all pending partner/courier earnings
+                      await supabase
+                          .from('partner_earnings')
+                          .update({
+                            'status': 'paid',
+                            'paid_at': DateTime.now().toIso8601String(),
+                          })
+                          .eq('status', 'pending');
+
+                      ref.invalidate(driverEarningsProvider);
+                      ref.invalidate(partnerEarningsProvider);
+                      ref.invalidate(driverPayoutsProvider);
+                      ref.invalidate(earningsStatsProvider(_selectedPeriod));
+
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(this.context).showSnackBar(
+                        SnackBar(
+                          content: Text('$totalCount odeme basariyla onaylandi'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    } catch (e) {
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(this.context).showSnackBar(
+                        SnackBar(
+                          content: Text('Toplu odeme hatasi: $e'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  },
             child: const Text('Tum Odemeleri Onayla'),
           ),
         ],

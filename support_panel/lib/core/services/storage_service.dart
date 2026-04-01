@@ -1,8 +1,8 @@
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:support_panel/core/services/log_service.dart';
 import 'supabase_service.dart';
 
 final storageServiceProvider = Provider<StorageService>((ref) {
@@ -31,22 +31,31 @@ class StorageService {
         return (bytes: file.bytes!, name: file.name);
       }
       return null;
-    } catch (e) {
-      if (kDebugMode) print('File pick error: $e');
+    } catch (e, st) {
+      LogService.error('File pick error', error: e, stackTrace: st, source: 'StorageService:pickImage');
       rethrow;
     }
   }
 
   /// Upload image to Supabase Storage
-  Future<String> uploadImage(String folder, Uint8List bytes, String fileName) async {
+  Future<String> uploadImage(
+    String folder,
+    Uint8List bytes,
+    String fileName,
+  ) async {
     final safeName = fileName.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
     final path = '$folder/${DateTime.now().millisecondsSinceEpoch}_$safeName';
 
-    await _supabase.storage.from('images').uploadBinary(
-      path,
-      bytes,
-      fileOptions: const FileOptions(cacheControl: '31536000', upsert: true),
-    );
+    await _supabase.storage
+        .from('images')
+        .uploadBinary(
+          path,
+          bytes,
+          fileOptions: const FileOptions(
+            cacheControl: '31536000',
+            upsert: true,
+          ),
+        );
 
     return _supabase.storage.from('images').getPublicUrl(path);
   }
@@ -62,8 +71,8 @@ class StorageService {
         final path = segments.sublist(storageIndex + 1).join('/');
         await _supabase.storage.from('images').remove([path]);
       }
-    } catch (e) {
-      if (kDebugMode) print('Image delete error: $e');
+    } catch (e, st) {
+      LogService.error('Image delete error', error: e, stackTrace: st, source: 'StorageService:deleteImage');
     }
   }
 }

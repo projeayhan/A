@@ -10,7 +10,8 @@ class EmlakFavoritesScreen extends ConsumerStatefulWidget {
   const EmlakFavoritesScreen({super.key});
 
   @override
-  ConsumerState<EmlakFavoritesScreen> createState() => _EmlakFavoritesScreenState();
+  ConsumerState<EmlakFavoritesScreen> createState() =>
+      _EmlakFavoritesScreenState();
 }
 
 class _EmlakFavoritesScreenState extends ConsumerState<EmlakFavoritesScreen>
@@ -74,7 +75,9 @@ class _EmlakFavoritesScreenState extends ConsumerState<EmlakFavoritesScreen>
         final isDark = Theme.of(context).brightness == Brightness.dark;
         return AlertDialog(
           backgroundColor: EmlakColors.card(isDark),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           title: Text(
             'Favorilerden Kaldır',
             style: TextStyle(color: EmlakColors.textPrimary(isDark)),
@@ -104,15 +107,14 @@ class _EmlakFavoritesScreenState extends ConsumerState<EmlakFavoritesScreen>
                 });
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: const Text('Seçili ilanlar favorilerden kaldırıldı'),
+                    content: const Text(
+                      'Seçili ilanlar favorilerden kaldırıldı',
+                    ),
                     backgroundColor: EmlakColors.primary,
                   ),
                 );
               },
-              child: Text(
-                'Kaldır',
-                style: TextStyle(color: EmlakColors.error),
-              ),
+              child: Text('Kaldır', style: TextStyle(color: EmlakColors.error)),
             ),
           ],
         );
@@ -141,9 +143,7 @@ class _EmlakFavoritesScreenState extends ConsumerState<EmlakFavoritesScreen>
             onPressed: () => Navigator.of(context).pop(),
           ),
           title: Text(
-            _isSelectionMode
-                ? '${_selectedIds.length} seçildi'
-                : 'Favorilerim',
+            _isSelectionMode ? '${_selectedIds.length} seçildi' : 'Favorilerim',
             style: TextStyle(
               color: EmlakColors.textPrimary(isDark),
               fontSize: 20,
@@ -169,7 +169,9 @@ class _EmlakFavoritesScreenState extends ConsumerState<EmlakFavoritesScreen>
                         ? EmlakColors.textTertiary(isDark)
                         : EmlakColors.error,
                   ),
-                  onPressed: _selectedIds.isEmpty ? null : () => _removeSelected(favorites),
+                  onPressed: _selectedIds.isEmpty
+                      ? null
+                      : () => _removeSelected(favorites),
                 ),
               ],
               IconButton(
@@ -291,17 +293,20 @@ class _EmlakFavoritesScreenState extends ConsumerState<EmlakFavoritesScreen>
           animation: _animationController,
           builder: (context, child) {
             return SlideTransition(
-              position: Tween<Offset>(
-                begin: Offset(0, 0.1 * (index + 1)),
-                end: Offset.zero,
-              ).animate(CurvedAnimation(
-                parent: _animationController,
-                curve: Interval(
-                  0.1 * index,
-                  0.1 * index + 0.5,
-                  curve: Curves.easeOut,
-                ),
-              )),
+              position:
+                  Tween<Offset>(
+                    begin: Offset(0, 0.1 * (index + 1)),
+                    end: Offset.zero,
+                  ).animate(
+                    CurvedAnimation(
+                      parent: _animationController,
+                      curve: Interval(
+                        0.1 * index,
+                        0.1 * index + 0.5,
+                        curve: Curves.easeOut,
+                      ),
+                    ),
+                  ),
               child: FadeTransition(
                 opacity: _animationController,
                 child: child,
@@ -314,7 +319,11 @@ class _EmlakFavoritesScreenState extends ConsumerState<EmlakFavoritesScreen>
     );
   }
 
-  Widget _buildFavoriteCard(FavoriteProperty property, bool isDark, bool isSelected) {
+  Widget _buildFavoriteCard(
+    FavoriteProperty property,
+    bool isDark,
+    bool isSelected,
+  ) {
     final isSale = property.type == 'sale';
 
     return Padding(
@@ -349,185 +358,194 @@ class _EmlakFavoritesScreenState extends ConsumerState<EmlakFavoritesScreen>
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
               border: Border.all(
-                color: isSelected
-                    ? EmlakColors.primary
-                    : Colors.transparent,
+                color: isSelected ? EmlakColors.primary : Colors.transparent,
                 width: 2,
               ),
             ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Image - full width
-            Stack(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-                  child: CachedNetworkImage(
-                    imageUrl: property.imageUrl,
-                    height: 170,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    placeholder: (_, __) => Container(
-                      height: 170,
-                      color: Colors.grey[200],
-                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                    ),
-                    errorWidget: (_, __, ___) => Container(
-                      height: 170,
-                      color: EmlakColors.surface(isDark),
-                      child: Icon(
-                        Icons.home,
-                        size: 40,
-                        color: EmlakColors.textTertiary(isDark),
+                // Image - full width
+                Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(12),
                       ),
-                    ),
-                  ),
-                ),
-                // Selection checkbox
-                if (_isSelectionMode)
-                  Positioned(
-                    top: 10,
-                    left: 10,
-                    child: Container(
-                      width: 26,
-                      height: 26,
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? EmlakColors.primary
-                            : Colors.white.withValues(alpha: 0.9),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: isSelected
-                              ? EmlakColors.primary
-                              : EmlakColors.border(isDark),
-                          width: 2,
+                      child: CachedNetworkImage(
+                        imageUrl: property.imageUrl,
+                        height: 170,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                        placeholder: (_, _) => Container(
+                          height: 170,
+                          color: Colors.grey[200],
+                          child: const Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
                         ),
-                      ),
-                      child: isSelected
-                          ? const Icon(Icons.check, color: Colors.white, size: 16)
-                          : null,
-                    ),
-                  ),
-                // Listing type badge
-                Positioned(
-                  top: 10,
-                  right: 10,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: isSale
-                          ? EmlakColors.primary
-                          : const Color(0xFF8B5CF6),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      isSale ? 'Satılık' : 'Kiralık',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-                // Remove favorite button
-                if (!_isSelectionMode)
-                  Positioned(
-                    bottom: 10,
-                    right: 10,
-                    child: Material(
-                      color: Colors.white.withValues(alpha: 0.9),
-                      shape: const CircleBorder(),
-                      clipBehavior: Clip.antiAlias,
-                      child: InkWell(
-                        onTap: () => _removeFavorite(property),
-                        customBorder: const CircleBorder(),
-                        child: SizedBox(
-                          width: 36,
-                          height: 36,
+                        errorWidget: (_, _, _) => Container(
+                          height: 170,
+                          color: EmlakColors.surface(isDark),
                           child: Icon(
-                            Icons.favorite,
-                            color: EmlakColors.error,
-                            size: 18,
+                            Icons.home,
+                            size: 40,
+                            color: EmlakColors.textTertiary(isDark),
                           ),
                         ),
                       ),
                     ),
-                  ),
-              ],
-            ),
-
-            // Info
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    property.title,
-                    style: TextStyle(
-                      color: EmlakColors.textPrimary(isDark),
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.location_on,
-                        size: 13,
-                        color: EmlakColors.textSecondary(isDark),
+                    // Selection checkbox
+                    if (_isSelectionMode)
+                      Positioned(
+                        top: 10,
+                        left: 10,
+                        child: Container(
+                          width: 26,
+                          height: 26,
+                          decoration: BoxDecoration(
+                            color: isSelected
+                                ? EmlakColors.primary
+                                : Colors.white.withValues(alpha: 0.9),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isSelected
+                                  ? EmlakColors.primary
+                                  : EmlakColors.border(isDark),
+                              width: 2,
+                            ),
+                          ),
+                          child: isSelected
+                              ? const Icon(
+                                  Icons.check,
+                                  color: Colors.white,
+                                  size: 16,
+                                )
+                              : null,
+                        ),
                       ),
-                      const SizedBox(width: 4),
-                      Expanded(
+                    // Listing type badge
+                    Positioned(
+                      top: 10,
+                      right: 10,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSale
+                              ? EmlakColors.primary
+                              : const Color(0xFF8B5CF6),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
                         child: Text(
-                          property.location,
-                          style: TextStyle(
-                            color: EmlakColors.textSecondary(isDark),
-                            fontSize: 12,
+                          isSale ? 'Satılık' : 'Kiralık',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
+                    ),
+                    // Remove favorite button
+                    if (!_isSelectionMode)
+                      Positioned(
+                        bottom: 10,
+                        right: 10,
+                        child: Material(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          shape: const CircleBorder(),
+                          clipBehavior: Clip.antiAlias,
+                          child: InkWell(
+                            onTap: () => _removeFavorite(property),
+                            customBorder: const CircleBorder(),
+                            child: SizedBox(
+                              width: 36,
+                              height: 36,
+                              child: Icon(
+                                Icons.favorite,
+                                color: EmlakColors.error,
+                                size: 18,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+
+                // Info
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildFeatureChip(
-                        '${property.rooms}+1',
-                        Icons.bed,
-                        isDark,
-                      ),
-                      const SizedBox(width: 8),
-                      _buildFeatureChip(
-                        '${property.area} m²',
-                        Icons.square_foot,
-                        isDark,
-                      ),
-                      const Spacer(),
                       Text(
-                        property.formattedPrice,
+                        property.title,
                         style: TextStyle(
-                          color: EmlakColors.primary,
-                          fontSize: 16,
+                          color: EmlakColors.textPrimary(isDark),
+                          fontSize: 15,
                           fontWeight: FontWeight.bold,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.location_on,
+                            size: 13,
+                            color: EmlakColors.textSecondary(isDark),
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              property.location,
+                              style: TextStyle(
+                                color: EmlakColors.textSecondary(isDark),
+                                fontSize: 12,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          _buildFeatureChip(
+                            '${property.rooms}+1',
+                            Icons.bed,
+                            isDark,
+                          ),
+                          const SizedBox(width: 8),
+                          _buildFeatureChip(
+                            '${property.area} m²',
+                            Icons.square_foot,
+                            isDark,
+                          ),
+                          const Spacer(),
+                          Text(
+                            property.formattedPrice,
+                            style: TextStyle(
+                              color: EmlakColors.primary,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
-      ),
-      ),
       ),
     );
   }

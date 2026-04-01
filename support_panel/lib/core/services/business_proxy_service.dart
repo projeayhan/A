@@ -1,6 +1,6 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:support_panel/core/services/log_service.dart';
 import 'supabase_service.dart';
 import 'audit_service.dart';
 
@@ -27,8 +27,8 @@ class BusinessProxyService {
           .select('id, business_name, type, phone, email, is_open, is_approved, logo_url')
           .or('business_name.ilike.%$query%,email.ilike.%$query%,phone.ilike.%$query%')
           .limit(20);
-    } catch (e) {
-      if (kDebugMode) print('Error searching merchants: $e');
+    } catch (e, st) {
+      LogService.error('Error searching merchants', error: e, stackTrace: st, source: 'BusinessProxyService:searchMerchants');
       return [];
     }
   }
@@ -587,8 +587,8 @@ class BusinessProxyService {
           .select('id, name, phone, email, status, logo_url')
           .or('name.ilike.%$query%,email.ilike.%$query%,phone.ilike.%$query%')
           .limit(20);
-    } catch (e) {
-      if (kDebugMode) print('Error searching rental companies: $e');
+    } catch (e, st) {
+      LogService.error('Error searching rental companies', error: e, stackTrace: st, source: 'BusinessProxyService:searchRentalCompanies');
       return [];
     }
   }
@@ -857,8 +857,8 @@ class BusinessProxyService {
           .select('id, full_name, company_name, phone, email, status')
           .or('full_name.ilike.%$query%,company_name.ilike.%$query%,phone.ilike.%$query%')
           .limit(20);
-    } catch (e) {
-      if (kDebugMode) print('Error searching realtors: $e');
+    } catch (e, st) {
+      LogService.error('Error searching realtors', error: e, stackTrace: st, source: 'BusinessProxyService:searchRealtors');
       return [];
     }
   }
@@ -998,8 +998,8 @@ class BusinessProxyService {
           .select('id, name, phone, email, status, logo_url')
           .or('name.ilike.%$query%,email.ilike.%$query%,phone.ilike.%$query%')
           .limit(20);
-    } catch (e) {
-      if (kDebugMode) print('Error searching dealers: $e');
+    } catch (e, st) {
+      LogService.error('Error searching dealers', error: e, stackTrace: st, source: 'BusinessProxyService:searchDealers');
       return [];
     }
   }
@@ -1077,7 +1077,8 @@ class BusinessProxyService {
   Future<List<Map<String, dynamic>>> getCarBrands() async {
     try {
       return await _supabase.from('car_brands').select().order('name');
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to get car brands', error: e, stackTrace: st, source: 'BusinessProxyService:getCarBrands');
       return [];
     }
   }
@@ -1137,8 +1138,8 @@ class BusinessProxyService {
           .select('id, full_name, phone, email, status, vehicle_plate, rating')
           .or('full_name.ilike.%$query%,phone.ilike.%$query%,vehicle_plate.ilike.%$query%')
           .limit(20);
-    } catch (e) {
-      if (kDebugMode) print('Error searching taxi drivers: $e');
+    } catch (e, st) {
+      LogService.error('Error searching taxi drivers', error: e, stackTrace: st, source: 'BusinessProxyService:searchTaxiDrivers');
       return [];
     }
   }
@@ -1171,8 +1172,8 @@ class BusinessProxyService {
           .select('id, full_name, phone, email, status, work_mode, rating')
           .or('full_name.ilike.%$query%,phone.ilike.%$query%,email.ilike.%$query%')
           .limit(20);
-    } catch (e) {
-      if (kDebugMode) print('Error searching couriers: $e');
+    } catch (e, st) {
+      LogService.error('Error searching couriers', error: e, stackTrace: st, source: 'BusinessProxyService:searchCouriers');
       return [];
     }
   }

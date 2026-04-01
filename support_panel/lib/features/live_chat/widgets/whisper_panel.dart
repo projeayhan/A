@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/chat_service.dart';
 import '../../../core/providers/chat_providers.dart';
-import '../../../core/models/support_models.dart';
 
 class WhisperPanel extends ConsumerStatefulWidget {
   final String ticketId;
@@ -27,7 +26,9 @@ class _WhisperPanelState extends ConsumerState<WhisperPanel> {
   Widget build(BuildContext context) {
     final messagesAsync = ref.watch(liveChatMessagesProvider(widget.ticketId));
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderColor = isDark ? AppColors.surfaceLight : const Color(0xFFE2E8F0);
+    final borderColor = isDark
+        ? AppColors.surfaceLight
+        : const Color(0xFFE2E8F0);
     final bgColor = isDark ? AppColors.surface : AppColors.lightSurface;
     final textMuted = isDark ? AppColors.textMuted : AppColors.lightTextMuted;
 
@@ -49,21 +50,36 @@ class _WhisperPanelState extends ConsumerState<WhisperPanel> {
               children: [
                 Icon(Icons.visibility_off, size: 16, color: AppColors.warning),
                 SizedBox(width: 8),
-                Text('Whisper (İç Notlar)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                Text(
+                  'Whisper (İç Notlar)',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                ),
               ],
             ),
           ),
           const SizedBox(height: 4),
-          Text('Müşteri bu mesajları göremez', style: TextStyle(color: textMuted, fontSize: 11)),
+          Text(
+            'Müşteri bu mesajları göremez',
+            style: TextStyle(color: textMuted, fontSize: 11),
+          ),
           const SizedBox(height: 4),
 
           // Whisper messages
           Expanded(
             child: messagesAsync.when(
               data: (messages) {
-                final whispers = messages.where((m) => m.isWhisper || m.messageType == 'internal_note').toList();
+                final whispers = messages
+                    .where(
+                      (m) => m.isWhisper || m.messageType == 'internal_note',
+                    )
+                    .toList();
                 if (whispers.isEmpty) {
-                  return Center(child: Text('Henüz iç not yok', style: TextStyle(color: textMuted, fontSize: 12)));
+                  return Center(
+                    child: Text(
+                      'Henüz iç not yok',
+                      style: TextStyle(color: textMuted, fontSize: 12),
+                    ),
+                  );
                 }
                 return ListView.builder(
                   padding: const EdgeInsets.all(8),
@@ -76,7 +92,9 @@ class _WhisperPanelState extends ConsumerState<WhisperPanel> {
                       decoration: BoxDecoration(
                         color: AppColors.warning.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: AppColors.warning.withValues(alpha: 0.2)),
+                        border: Border.all(
+                          color: AppColors.warning.withValues(alpha: 0.2),
+                        ),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -85,24 +103,36 @@ class _WhisperPanelState extends ConsumerState<WhisperPanel> {
                             children: [
                               Text(
                                 msg.senderName ?? 'Agent',
-                                style: const TextStyle(color: AppColors.warning, fontSize: 11, fontWeight: FontWeight.w600),
+                                style: const TextStyle(
+                                  color: AppColors.warning,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                               const Spacer(),
                               Text(
                                 DateFormat('HH:mm').format(msg.createdAt),
-                                style: TextStyle(color: textMuted, fontSize: 10),
+                                style: TextStyle(
+                                  color: textMuted,
+                                  fontSize: 10,
+                                ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 4),
-                          Text(msg.message, style: const TextStyle(fontSize: 12)),
+                          Text(
+                            msg.message,
+                            style: const TextStyle(fontSize: 12),
+                          ),
                         ],
                       ),
                     );
                   },
                 );
               },
-              loading: () => const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+              loading: () => const Center(
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
               error: (_, __) => const SizedBox.shrink(),
             ),
           ),
@@ -121,10 +151,18 @@ class _WhisperPanelState extends ConsumerState<WhisperPanel> {
                     decoration: InputDecoration(
                       hintText: 'İç not yazın...',
                       hintStyle: TextStyle(fontSize: 12, color: textMuted),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: BorderSide.none,
+                      ),
                       filled: true,
-                      fillColor: isDark ? AppColors.background : AppColors.lightBackground,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      fillColor: isDark
+                          ? AppColors.background
+                          : AppColors.lightBackground,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       isDense: true,
                     ),
                     style: const TextStyle(fontSize: 12),
@@ -135,10 +173,17 @@ class _WhisperPanelState extends ConsumerState<WhisperPanel> {
                 ),
                 const SizedBox(width: 4),
                 IconButton(
-                  icon: const Icon(Icons.send, size: 16, color: AppColors.warning),
+                  icon: const Icon(
+                    Icons.send,
+                    size: 16,
+                    color: AppColors.warning,
+                  ),
                   onPressed: _sendWhisper,
                   tooltip: 'Whisper gönder',
-                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  constraints: const BoxConstraints(
+                    minWidth: 32,
+                    minHeight: 32,
+                  ),
                   padding: EdgeInsets.zero,
                 ),
               ],
@@ -153,10 +198,9 @@ class _WhisperPanelState extends ConsumerState<WhisperPanel> {
     final text = _whisperCtrl.text.trim();
     if (text.isEmpty) return;
 
-    await ref.read(chatServiceProvider).sendWhisper(
-      ticketId: widget.ticketId,
-      message: text,
-    );
+    await ref
+        .read(chatServiceProvider)
+        .sendWhisper(ticketId: widget.ticketId, message: text);
     _whisperCtrl.clear();
   }
 }

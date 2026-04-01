@@ -8,13 +8,14 @@ import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../core/services/log_service.dart';
 import '../../core/services/taxi_service.dart';
 import '../../core/services/directions_service.dart';
 import '../../core/services/communication_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../models/ride_models.dart';
 import '../../widgets/secure_communication_widgets.dart';
-import '../home/home_screen.dart' show driverProfileProvider;
+import '../../core/providers/home_providers.dart' show driverProfileProvider;
 
 class RideDetailScreen extends ConsumerStatefulWidget {
   final String rideId;
@@ -102,8 +103,8 @@ class _RideDetailScreenState extends ConsumerState<RideDetailScreen>
           });
         }
       }
-    } catch (e) {
-      debugPrint('Load ride error: $e');
+    } catch (e, st) {
+      LogService.error('Load ride error', error: e, stackTrace: st, source: 'RideDetailScreen:_loadRide');
       if (mounted) {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -167,8 +168,8 @@ class _RideDetailScreenState extends ConsumerState<RideDetailScreen>
           ),
         );
         await TaxiService.updateLocation(position.latitude, position.longitude);
-      } catch (e) {
-        debugPrint('Location broadcast error: $e');
+      } catch (e, st) {
+        LogService.error('Location broadcast error', error: e, stackTrace: st, source: 'RideDetailScreen:_startLocationBroadcast');
       }
     });
     // Ilk konumu hemen gonder
@@ -184,8 +185,8 @@ class _RideDetailScreenState extends ConsumerState<RideDetailScreen>
         ),
       );
       await TaxiService.updateLocation(position.latitude, position.longitude);
-    } catch (e) {
-      debugPrint('Initial location broadcast error: $e');
+    } catch (e, st) {
+      LogService.error('Initial location broadcast error', error: e, stackTrace: st, source: 'RideDetailScreen:_broadcastCurrentLocation');
     }
   }
 
@@ -210,8 +211,8 @@ class _RideDetailScreenState extends ConsumerState<RideDetailScreen>
               .toList();
         });
       }
-    } catch (e) {
-      debugPrint('Error loading route: $e');
+    } catch (e, st) {
+      LogService.error('Error loading route', error: e, stackTrace: st, source: 'RideDetailScreen:_loadRoute');
     }
   }
 
@@ -271,9 +272,8 @@ class _RideDetailScreenState extends ConsumerState<RideDetailScreen>
       _mapController?.animateCamera(
         gmaps.CameraUpdate.newLatLngBounds(bounds, 80),
       );
-    } catch (e) {
-      // Map controller disposed olmuş olabilir, hata sessizce yoksay
-      debugPrint('Map update skipped: controller disposed');
+    } catch (e, st) {
+      LogService.error('Map update skipped: controller disposed', error: e, stackTrace: st, source: 'RideDetailScreen:_updateMapView');
     }
   }
 
@@ -288,8 +288,8 @@ class _RideDetailScreenState extends ConsumerState<RideDetailScreen>
           ShareParams(text: 'Sürüşümü canlı takip et: ${link.shareUrl}'),
         );
       }
-    } catch (e) {
-      debugPrint('Share location error: $e');
+    } catch (e, st) {
+      LogService.error('Share location error', error: e, stackTrace: st, source: 'RideDetailScreen:_shareLocation');
     }
   }
 

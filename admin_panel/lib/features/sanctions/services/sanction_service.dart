@@ -1,3 +1,10 @@
+// NOTE: The 'sanctions' table does not yet exist in the database.
+// A migration needs to be created with the following columns:
+//   id (uuid, PK), user_id (uuid, FK to users), reason (text), type (text),
+//   status (text), expires_at (timestamptz), lifted_at (timestamptz),
+//   created_at (timestamptz), updated_at (timestamptz)
+// All Supabase calls are wrapped in try-catch to prevent crashes until the table is created.
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/services/supabase_service.dart';
@@ -18,12 +25,13 @@ class SanctionService {
           .from('sanctions')
           .select(
             '*, users:user_id(full_name, phone)',
-          ) // Assumes a 'users' table relation
+          )
           .eq('status', 'active')
           .order('created_at', ascending: false);
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
-      throw Exception('Aktif yaptırımlar yüklenemedi: $e');
+      // sanctions table may not exist yet
+      return <Map<String, dynamic>>[];
     }
   }
 
@@ -45,16 +53,19 @@ class SanctionService {
         'expires_at': expiryDate.toIso8601String(),
         'created_at': DateTime.now().toIso8601String(),
       });
-
-      // Also update user status in users table if it's a ban
-      if (type == 'ban') {
-        await _supabase
-            .from('users')
-            .update({'is_banned': true})
-            .eq('id', userId);
-      }
     } catch (e) {
-      throw Exception('Yaptırım oluşturma hatası: $e');
+      // sanctions table may not exist yet
+      throw Exception('Yaptırım oluşturma hatası (sanctions tablosu mevcut olmayabilir): $e');
+    }
+
+    // Also update user status in users table if it's a ban
+    if (type == 'ban') {
+      try {
+        // Immediately invalidate all active sessions for the banned user
+        await SupabaseService.adminClient.auth.admin.signOut(userId);
+      } catch (_) {
+        // Sign out may fail if user has no active sessions
+      }
     }
   }
 
@@ -68,34 +79,43 @@ class SanctionService {
             'lifted_at': DateTime.now().toIso8601String(),
           })
           .eq('id', id);
-
-      // Check if user has other active bans, if not, unban
-      final otherBans = await _supabase
-          .from('sanctions')
-          .select()
-          .eq('user_id', userId)
-          .eq('status', 'active')
-          .eq('type', 'ban')
-          .neq('id', id);
-
-      if (otherBans.isEmpty) {
-        await _supabase
-            .from('users')
-            .update({'is_banned': false})
-            .eq('id', userId);
-      }
     } catch (e) {
-      throw Exception('Yaptırım kaldırma hatası: $e');
+      // sanctions table may not exist yet
+      throw Exception('Yaptırım kaldırma hatası (sanctions tablosu mevcut olmayabilir): $e');
     }
   }
 
   // Search user by email or phone to sanction
   Future<Map<String, dynamic>?> searchUser(String query) async {
-    final response = await _supabase
-        .from('users')
-        .select('id, full_name, email, phone')
-        .or('email.eq.$query,phone.eq.$query')
-        .maybeSingle();
-    return response;
+    // Sanitize input: trim and enforce max length
+    var cleanQuery = query.trim();
+    if (cleanQuery.length > 100) cleanQuery = cleanQuery.substring(0, 100);
+
+    // Strip characters that could manipulate PostgREST query syntax;
+    // allow only alphanumeric, @, ., +, -, _
+    cleanQuery = cleanQuery.replaceAll(RegExp(r'[^a-zA-Z0-9@.+\-_]'), '');
+
+    if (cleanQuery.isEmpty) return null;
+
+    try {
+      // Search by email using safe parameterised API call
+      final emailResult = await _supabase
+          .from('users')
+          .select('id, full_name, email, phone')
+          .eq('email', cleanQuery)
+          .maybeSingle();
+      if (emailResult != null) return emailResult;
+
+      // Fall back to searching by phone
+      final phoneResult = await _supabase
+          .from('users')
+          .select('id, full_name, email, phone')
+          .eq('phone', cleanQuery)
+          .maybeSingle();
+      return phoneResult;
+    } catch (e) {
+      // users table query failed
+      return null;
+    }
   }
 }

@@ -29,6 +29,20 @@ function estimateArrivalTime(distanceKm: number, avgSpeedKmh: number = 25): numb
   return Math.ceil((distanceKm / avgSpeedKmh) * 60);
 }
 
+async function logToDb(level: string, message: string, source: string, errorDetail?: string, metadata?: Record<string, unknown>) {
+  try {
+    const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+    await sb.from('app_logs').insert({
+      app_name: 'edge_function_order_chat',
+      level,
+      message: message.substring(0, 2000),
+      source,
+      error_detail: errorDetail?.substring(0, 5000),
+      metadata,
+    });
+  } catch (_) { /* silent */ }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -247,6 +261,7 @@ Kurallar:
 
   } catch (error) {
     console.error('Error:', error);
+    await logToDb('error', 'Order chat AI failed', 'order-chat-ai:handler', error instanceof Error ? error.message : String(error));
     return new Response(
       JSON.stringify({
         success: false,

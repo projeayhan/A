@@ -1,7 +1,7 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
+import 'package:super_app/core/services/log_service.dart';
 
 class PlacePrediction {
   final String placeId;
@@ -160,12 +160,12 @@ class GooglePlacesService {
         } else if (data['status'] == 'ZERO_RESULTS') {
           return [];
         } else {
-          if (kDebugMode) print('Places API Error: ${data['status']} - ${data['error_message'] ?? ''}');
+          LogService.error('Places API Error: ${data['status']} - ${data['error_message'] ?? ''}', source: 'GooglePlacesService:getAutocompletePredictions');
           return [];
         }
       }
-    } catch (e) {
-      if (kDebugMode) print('Error fetching autocomplete predictions: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching autocomplete predictions', error: e, stackTrace: st, source: 'GooglePlacesService:getAutocompletePredictions');
     }
 
     return [];
@@ -245,8 +245,8 @@ class GooglePlacesService {
           }).toList();
         }
       }
-    } catch (e) {
-      if (kDebugMode) print('Error fetching Nominatim predictions: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching Nominatim predictions', error: e, stackTrace: st, source: 'GooglePlacesService:getNominatimPredictions');
     }
 
     return [];
@@ -286,11 +286,11 @@ class GooglePlacesService {
         if (data['status'] == 'OK') {
           return PlaceDetails.fromJson(data);
         } else {
-          if (kDebugMode) print('Place Details API Error: ${data['status']}');
+          LogService.error('Place Details API Error: ${data['status']}', source: 'GooglePlacesService:getPlaceDetails');
         }
       }
-    } catch (e) {
-      if (kDebugMode) print('Error fetching place details: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching place details', error: e, stackTrace: st, source: 'GooglePlacesService:getPlaceDetails');
     }
 
     return null;
@@ -361,8 +361,8 @@ class GooglePlacesService {
           );
         }
       }
-    } catch (e) {
-      if (kDebugMode) print('Error fetching Nominatim place details: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching Nominatim place details', error: e, stackTrace: st, source: 'GooglePlacesService:getNominatimPlaceDetails');
     }
 
     return null;
@@ -433,10 +433,10 @@ class GooglePlacesService {
           routePoints: routePoints,
         );
       } else {
-        if (kDebugMode) print('Directions Edge Function Error: ${response.statusCode} - ${response.body}');
+        LogService.error('Directions Edge Function Error: ${response.statusCode}', source: 'GooglePlacesService:getDirections');
       }
-    } catch (e) {
-      if (kDebugMode) print('Error fetching directions from edge function: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching directions from edge function', error: e, stackTrace: st, source: 'GooglePlacesService:getDirections');
     }
 
     return null;
@@ -509,8 +509,8 @@ class GooglePlacesService {
           }
         }
       }
-    } catch (e) {
-      if (kDebugMode) print('Error reverse geocoding: $e');
+    } catch (e, st) {
+      LogService.error('Error reverse geocoding', error: e, stackTrace: st, source: 'GooglePlacesService:reverseGeocode');
     }
 
     return null;

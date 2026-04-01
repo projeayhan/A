@@ -1,5 +1,6 @@
 /// İş İlanları Data Modelleri - Supabase Entegrasyonu
 /// Bu dosya veritabanından gelen verileri temsil eder
+library;
 
 import 'package:flutter/material.dart';
 
@@ -506,18 +507,26 @@ class JobListingData {
       latitude: (json['latitude'] as num?)?.toDouble(),
       longitude: (json['longitude'] as num?)?.toDouble(),
       positions: json['positions'] as int? ?? 1,
-      responsibilities: (json['responsibilities'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList() ?? [],
-      qualifications: (json['qualifications'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList() ?? [],
-      requiredSkills: (json['required_skills'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList() ?? [],
-      manualBenefits: (json['manual_benefits'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList() ?? [],
+      responsibilities:
+          (json['responsibilities'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          [],
+      qualifications:
+          (json['qualifications'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          [],
+      requiredSkills:
+          (json['required_skills'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          [],
+      manualBenefits:
+          (json['manual_benefits'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          [],
       externalLink: json['external_link'] as String?,
       deadline: json['deadline'] != null
           ? DateTime.parse(json['deadline'] as String)
@@ -601,13 +610,15 @@ class JobListingData {
       return num.toStringAsFixed(0);
     }
 
-    final periodLabel = {
-      'hourly': 'saat',
-      'daily': 'gün',
-      'weekly': 'hafta',
-      'monthly': 'ay',
-      'yearly': 'yıl',
-    }[salaryPeriod] ?? 'ay';
+    final periodLabel =
+        {
+          'hourly': 'saat',
+          'daily': 'gün',
+          'weekly': 'hafta',
+          'monthly': 'ay',
+          'yearly': 'yıl',
+        }[salaryPeriod] ??
+        'ay';
 
     if (salaryMin != null && salaryMax != null) {
       return '${formatNum(salaryMin!)} - ${formatNum(salaryMax!)} $salaryCurrency/$periodLabel';
@@ -779,9 +790,11 @@ class JobApplicationData {
       applicantPhone: json['applicant_phone'] as String?,
       coverLetter: json['cover_letter'] as String?,
       resumeUrl: json['resume_url'] as String?,
-      portfolioLinks: (json['portfolio_links'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList() ?? [],
+      portfolioLinks:
+          (json['portfolio_links'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          [],
       status: json['status'] as String? ?? 'pending',
       notes: json['notes'] as String?,
       appliedAt: DateTime.parse(json['applied_at'] as String),

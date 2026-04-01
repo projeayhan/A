@@ -9,7 +9,6 @@ import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models/emlak/emlak_models.dart';
-import '../../services/emlak/property_service.dart';
 import '../../core/providers/emlak_provider.dart';
 import '../../core/utils/app_dialogs.dart';
 
@@ -59,7 +58,10 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
   final _latitudeController = TextEditingController();
   final _longitudeController = TextEditingController();
   bool _isGettingLocation = false;
-  static const LatLng _defaultCenter = LatLng(35.1856, 33.3823); // Kuzey Kıbrıs merkez
+  static const LatLng _defaultCenter = LatLng(
+    35.1856,
+    33.3823,
+  ); // Kuzey Kıbrıs merkez
 
   // Para Birimi
   String _selectedCurrency = 'TL';
@@ -113,7 +115,9 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
 
     try {
       final propertyService = ref.read(propertyServiceProvider);
-      final property = await propertyService.getPropertyById(widget.propertyId!);
+      final property = await propertyService.getPropertyById(
+        widget.propertyId!,
+      );
 
       if (property != null && mounted) {
         setState(() {
@@ -164,7 +168,8 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
           _heatingType = property.heatingType;
           _deedType = property.deedType;
           if (property.netSquareMeters != null) {
-            _netSquareMetersController.text = property.netSquareMeters.toString();
+            _netSquareMetersController.text = property.netSquareMeters
+                .toString();
           }
           // Quick amenities (bunlar da feature map'ine eklenmeli)
           _features['hasFurniture'] = property.hasFurniture;
@@ -328,7 +333,10 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
 
       if (permission == LocationPermission.deniedForever) {
         if (mounted) {
-          AppDialogs.showWarning(context, 'Konum izni kalıcı olarak reddedildi. Ayarlardan izin verin.');
+          AppDialogs.showWarning(
+            context,
+            'Konum izni kalıcı olarak reddedildi. Ayarlardan izin verin.',
+          );
         }
         return;
       }
@@ -373,7 +381,9 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
   void _showCoordinateDialog() {
     if (_selectedLocation != null) {
       _latitudeController.text = _selectedLocation!.latitude.toStringAsFixed(6);
-      _longitudeController.text = _selectedLocation!.longitude.toStringAsFixed(6);
+      _longitudeController.text = _selectedLocation!.longitude.toStringAsFixed(
+        6,
+      );
     }
 
     showDialog(
@@ -390,7 +400,10 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
                 hintText: 'Örn: 35.185600',
                 border: OutlineInputBorder(),
               ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+                signed: true,
+              ),
             ),
             const SizedBox(height: 16),
             TextField(
@@ -400,15 +413,15 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
                 hintText: 'Örn: 33.382300',
                 border: OutlineInputBorder(),
               ),
-              keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+                signed: true,
+              ),
             ),
             const SizedBox(height: 12),
             Text(
               'Google Maps\'ten koordinat alabilirsiniz:\nSağ tık → "Buradaki koordinatları kopyala"',
-              style: TextStyle(
-                fontSize: 12,
-                color: Colors.grey[600],
-              ),
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
             ),
           ],
         ),
@@ -514,15 +527,20 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
 
       for (int i = 0; i < _uploadedImages.length; i++) {
         final image = _uploadedImages[i];
-        final fileName = '${userId}_${DateTime.now().millisecondsSinceEpoch}_$i.jpg';
+        final fileName =
+            '${userId}_${DateTime.now().millisecondsSinceEpoch}_$i.jpg';
 
-        await supabase.storage.from('images').uploadBinary(
-          'properties/$fileName',
-          image.bytes,
-          fileOptions: const FileOptions(contentType: 'image/jpeg'),
-        );
+        await supabase.storage
+            .from('images')
+            .uploadBinary(
+              'properties/$fileName',
+              image.bytes,
+              fileOptions: const FileOptions(contentType: 'image/jpeg'),
+            );
 
-        final publicUrl = supabase.storage.from('images').getPublicUrl('properties/$fileName');
+        final publicUrl = supabase.storage
+            .from('images')
+            .getPublicUrl('properties/$fileName');
         imageUrls.add(publicUrl);
       }
 
@@ -530,23 +548,47 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
 
       // Amenities listesi oluştur (display amaçlı)
       const featureLabels = {
-        'hasGarage': 'Garaj', 'hasGarden': 'Bahçe', 'hasPrivatePool': 'Özel Havuz',
-        'hasSharedPool': 'Ortak Havuz', 'hasSecurityCamera': 'Güvenlik Kamerası',
-        'hasTerrace': 'Teras', 'hasInsulation': 'Isı Yalıtımı', 'hasWaterTank': 'Su Deposu',
-        'hasWell': 'Su Kuyusu', 'hasBarbeque': 'Barbekü', 'hasDoubleGlazing': 'Çift Cam',
-        'hasCoveredParking': 'Kapalı Otopark', 'hasGenerator': 'Jeneratör',
-        'hasElevator': 'Asansör', 'hasParking': 'Otopark', 'hasSandstoneHouse': 'Taş Ev',
-        'isDuplex': 'Dubleks', 'hasAirConditioning': 'Klima', 'hasBalcony': 'Balkon',
-        'hasShutter': 'Kepenk', 'hasBuiltinKitchen': 'Ankastre Mutfak',
-        'hasBuiltinWardrobe': 'Gömme Dolap', 'hasIntercom': 'İnterkom',
-        'hasFireplace': 'Şömine', 'hasCrown': 'Kartonpiyer',
-        'hasLaundryRoom': 'Çamaşır Odası', 'hasParentBathroom': 'Ebeveyn Banyosu',
-        'hasParentCloset': 'Ebeveyn Giyinme', 'hasNaturalMarble': 'Doğal Mermer',
-        'hasPanelDoor': 'Panel Kapı', 'hasParquet': 'Parke', 'hasShower': 'Duşakabin',
-        'hasSteelDoor': 'Çelik Kapı', 'hasTvInfra': 'TV Altyapısı',
-        'hasVestibule': 'Vestiyer', 'hasWallpaper': 'Duvar Kağıdı',
-        'hasCeramic': 'Seramik', 'hasFireAlarm': 'Yangın Alarmı', 'hasPantry': 'Kiler',
-        'hasSolarPower': 'Güneş Enerjisi', 'hasHydrophore': 'Hidrofor',
+        'hasGarage': 'Garaj',
+        'hasGarden': 'Bahçe',
+        'hasPrivatePool': 'Özel Havuz',
+        'hasSharedPool': 'Ortak Havuz',
+        'hasSecurityCamera': 'Güvenlik Kamerası',
+        'hasTerrace': 'Teras',
+        'hasInsulation': 'Isı Yalıtımı',
+        'hasWaterTank': 'Su Deposu',
+        'hasWell': 'Su Kuyusu',
+        'hasBarbeque': 'Barbekü',
+        'hasDoubleGlazing': 'Çift Cam',
+        'hasCoveredParking': 'Kapalı Otopark',
+        'hasGenerator': 'Jeneratör',
+        'hasElevator': 'Asansör',
+        'hasParking': 'Otopark',
+        'hasSandstoneHouse': 'Taş Ev',
+        'isDuplex': 'Dubleks',
+        'hasAirConditioning': 'Klima',
+        'hasBalcony': 'Balkon',
+        'hasShutter': 'Kepenk',
+        'hasBuiltinKitchen': 'Ankastre Mutfak',
+        'hasBuiltinWardrobe': 'Gömme Dolap',
+        'hasIntercom': 'İnterkom',
+        'hasFireplace': 'Şömine',
+        'hasCrown': 'Kartonpiyer',
+        'hasLaundryRoom': 'Çamaşır Odası',
+        'hasParentBathroom': 'Ebeveyn Banyosu',
+        'hasParentCloset': 'Ebeveyn Giyinme',
+        'hasNaturalMarble': 'Doğal Mermer',
+        'hasPanelDoor': 'Panel Kapı',
+        'hasParquet': 'Parke',
+        'hasShower': 'Duşakabin',
+        'hasSteelDoor': 'Çelik Kapı',
+        'hasTvInfra': 'TV Altyapısı',
+        'hasVestibule': 'Vestiyer',
+        'hasWallpaper': 'Duvar Kağıdı',
+        'hasCeramic': 'Seramik',
+        'hasFireAlarm': 'Yangın Alarmı',
+        'hasPantry': 'Kiler',
+        'hasSolarPower': 'Güneş Enerjisi',
+        'hasHydrophore': 'Hidrofor',
       };
       final amenities = <String>[];
       for (final entry in _features.entries) {
@@ -570,15 +612,25 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
         description: _descriptionController.text.trim(),
         type: propertyType,
         listingType: _listingType,
-        price: double.tryParse(_priceController.text.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0,
+        price:
+            double.tryParse(
+              _priceController.text.replaceAll(RegExp(r'[^0-9]'), ''),
+            ) ??
+            0,
         currency: _selectedCurrency,
         location: PropertyLocation(
           city: _selectedCity,
           district: _selectedDistrict,
           neighborhood: _neighborhoodController.text.trim(),
           address: _addressController.text.trim(),
-          latitude: _selectedLocation?.latitude ?? _existingProperty?.location.latitude ?? 0,
-          longitude: _selectedLocation?.longitude ?? _existingProperty?.location.longitude ?? 0,
+          latitude:
+              _selectedLocation?.latitude ??
+              _existingProperty?.location.latitude ??
+              0,
+          longitude:
+              _selectedLocation?.longitude ??
+              _existingProperty?.location.longitude ??
+              0,
         ),
         squareMeters: int.tryParse(_squareMetersController.text) ?? 0,
         rooms: int.tryParse(_roomsController.text) ?? 0,
@@ -651,7 +703,9 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
         isWestFacing: f('isWestFacing'),
         amenities: amenities,
         images: imageUrls,
-        status: widget.isEditMode ? (_existingProperty?.status ?? PropertyStatus.pending) : PropertyStatus.pending,
+        status: widget.isEditMode
+            ? (_existingProperty?.status ?? PropertyStatus.pending)
+            : PropertyStatus.pending,
         isFeatured: _existingProperty?.isFeatured ?? false,
         isPremium: _existingProperty?.isPremium ?? false,
         viewCount: _existingProperty?.viewCount ?? 0,
@@ -669,7 +723,10 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
         updates.remove('is_premium');
         updates['images'] = property.images;
         updates['updated_at'] = DateTime.now().toIso8601String();
-        resultProperty = await propertyService.updateProperty(widget.propertyId!, updates);
+        resultProperty = await propertyService.updateProperty(
+          widget.propertyId!,
+          updates,
+        );
       } else {
         // Yeni oluştur
         resultProperty = await propertyService.createProperty(property);
@@ -697,12 +754,18 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
           );
         }
       } else {
-        throw Exception(widget.isEditMode ? 'İlan güncellenemedi' : 'İlan oluşturulamadı');
+        throw Exception(
+          widget.isEditMode ? 'İlan güncellenemedi' : 'İlan oluşturulamadı',
+        );
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isSubmitting = false);
-        _showError(widget.isEditMode ? 'İlan güncellenirken hata oluştu: $e' : 'İlan oluşturulurken hata oluştu: $e');
+        _showError(
+          widget.isEditMode
+              ? 'İlan güncellenirken hata oluştu: $e'
+              : 'İlan oluşturulurken hata oluştu: $e',
+        );
       }
     }
   }
@@ -720,9 +783,7 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
     if (_isLoadingProperty) {
       return Scaffold(
         backgroundColor: EmlakColors.background(isDark),
-        body: const Center(
-          child: CircularProgressIndicator(),
-        ),
+        body: const Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -908,49 +969,56 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
                     borderRadius: BorderRadius.circular(16),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 16,
+                        horizontal: 12,
+                      ),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(16),
-                      border: isSelected
-                          ? null
-                          : Border.all(
-                              color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
-                            ),
-                      boxShadow: isSelected
-                          ? [
-                              BoxShadow(
-                                color: type.color.withValues(alpha: 0.3),
-                                blurRadius: 15,
-                                offset: const Offset(0, 5),
+                        border: isSelected
+                            ? null
+                            : Border.all(
+                                color: isDark
+                                    ? Colors.grey[800]!
+                                    : Colors.grey[200]!,
                               ),
-                            ]
-                          : null,
-                    ),
-                    child: Column(
-                      children: [
-                        Icon(
-                          icon,
-                          color: isSelected
-                              ? Colors.white
-                              : (isDark ? Colors.grey[400] : Colors.grey[600]),
-                          size: 28,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          type.label,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
+                        boxShadow: isSelected
+                            ? [
+                                BoxShadow(
+                                  color: type.color.withValues(alpha: 0.3),
+                                  blurRadius: 15,
+                                  offset: const Offset(0, 5),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(
+                            icon,
                             color: isSelected
                                 ? Colors.white
-                                : (isDark ? Colors.white : Colors.grey[800]),
+                                : (isDark
+                                      ? Colors.grey[400]
+                                      : Colors.grey[600]),
+                            size: 28,
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 8),
+                          Text(
+                            type.label,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: isSelected
+                                  ? Colors.white
+                                  : (isDark ? Colors.white : Colors.grey[800]),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
                 ),
               );
             }).toList(),
@@ -977,74 +1045,90 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
               crossAxisSpacing: 10,
               childAspectRatio: 1.0,
             ),
-            itemCount: ref.watch(propertyTypesProvider).when(
-              data: (types) => types.length,
-              loading: () => PropertyType.values.length,
-              error: (_, __) => PropertyType.values.length,
-            ),
+            itemCount: ref
+                .watch(propertyTypesProvider)
+                .when(
+                  data: (types) => types.length,
+                  loading: () => PropertyType.values.length,
+                  error: (_, _) => PropertyType.values.length,
+                ),
             itemBuilder: (context, index) {
-              return ref.watch(propertyTypesProvider).when(
-                data: (types) {
-                  final type = types[index];
-                  final isSelected = _selectedPropertyTypeName == type.name;
-                  return Material(
-                    color: isSelected
-                        ? EmlakColors.primary
-                        : (isDark ? const Color(0xFF1E293B) : Colors.grey[100]),
-                    borderRadius: BorderRadius.circular(12),
-                    clipBehavior: Clip.antiAlias,
-                    child: InkWell(
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        setState(() {
-                          _selectedPropertyTypeName = type.name;
-                          _selectedPropertyTypeModel = type;
-                        });
-                      },
-                      borderRadius: BorderRadius.circular(12),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        decoration: BoxDecoration(
+              return ref
+                  .watch(propertyTypesProvider)
+                  .when(
+                    data: (types) {
+                      final type = types[index];
+                      final isSelected = _selectedPropertyTypeName == type.name;
+                      return Material(
+                        color: isSelected
+                            ? EmlakColors.primary
+                            : (isDark
+                                  ? const Color(0xFF1E293B)
+                                  : Colors.grey[100]),
+                        borderRadius: BorderRadius.circular(12),
+                        clipBehavior: Clip.antiAlias,
+                        child: InkWell(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setState(() {
+                              _selectedPropertyTypeName = type.name;
+                              _selectedPropertyTypeModel = type;
+                            });
+                          },
                           borderRadius: BorderRadius.circular(12),
-                        border: isSelected
-                            ? null
-                            : Border.all(
-                                color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
-                              ),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            type.iconData,
-                            color: isSelected
-                                ? Colors.white
-                                : (isDark ? Colors.grey[400] : Colors.grey[600]),
-                            size: 28,
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            type.label,
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                              color: isSelected
-                                  ? Colors.white
-                                  : (isDark ? Colors.grey[400] : Colors.grey[700]),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(12),
+                              border: isSelected
+                                  ? null
+                                  : Border.all(
+                                      color: isDark
+                                          ? Colors.grey[800]!
+                                          : Colors.grey[200]!,
+                                    ),
                             ),
-                            textAlign: TextAlign.center,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  type.iconData,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : (isDark
+                                            ? Colors.grey[400]
+                                            : Colors.grey[600]),
+                                  size: 28,
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  type.label,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: isSelected
+                                        ? FontWeight.w600
+                                        : FontWeight.w500,
+                                    color: isSelected
+                                        ? Colors.white
+                                        : (isDark
+                                              ? Colors.grey[400]
+                                              : Colors.grey[700]),
+                                  ),
+                                  textAlign: TextAlign.center,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
                           ),
-                        ],
-                      ),
-                    ),
-                  ),
+                        ),
+                      );
+                    },
+                    loading: () =>
+                        _buildFallbackPropertyTypeItem(index, isDark),
+                    error: (_, _) =>
+                        _buildFallbackPropertyTypeItem(index, isDark),
                   );
-                },
-                loading: () => _buildFallbackPropertyTypeItem(index, isDark),
-                error: (_, __) => _buildFallbackPropertyTypeItem(index, isDark),
-              );
             },
           ),
         ],
@@ -1108,7 +1192,9 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
                     value: _selectedCurrency,
-                    dropdownColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+                    dropdownColor: isDark
+                        ? const Color(0xFF1E293B)
+                        : Colors.white,
                     icon: Icon(
                       Icons.keyboard_arrow_down_rounded,
                       color: isDark ? Colors.grey[400] : Colors.grey[600],
@@ -1152,8 +1238,13 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
                       color: isDark ? Colors.grey[600] : Colors.grey[400],
                     ),
                     filled: true,
-                    fillColor: isDark ? const Color(0xFF1E293B) : Colors.grey[100],
-                    prefixIcon: Icon(Icons.attach_money_rounded, color: EmlakColors.primary),
+                    fillColor: isDark
+                        ? const Color(0xFF1E293B)
+                        : Colors.grey[100],
+                    prefixIcon: Icon(
+                      Icons.attach_money_rounded,
+                      color: EmlakColors.primary,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(
@@ -1433,10 +1524,12 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
                   borderRadius: BorderRadius.circular(12),
                   clipBehavior: Clip.antiAlias,
                   child: InkWell(
-                    onTap: _isGettingLocation ? null : () {
-                      HapticFeedback.selectionClick();
-                      _getCurrentLocation();
-                    },
+                    onTap: _isGettingLocation
+                        ? null
+                        : () {
+                            HapticFeedback.selectionClick();
+                            _getCurrentLocation();
+                          },
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 12),
@@ -1444,33 +1537,37 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: EmlakColors.primary),
                       ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        if (_isGettingLocation)
-                          SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          if (_isGettingLocation)
+                            SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: EmlakColors.primary,
+                              ),
+                            )
+                          else
+                            Icon(
+                              Icons.my_location,
                               color: EmlakColors.primary,
+                              size: 20,
                             ),
-                          )
-                        else
-                          Icon(Icons.my_location, color: EmlakColors.primary, size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          _isGettingLocation ? 'Alınıyor...' : 'Konumumu Al',
-                          style: TextStyle(
-                            color: EmlakColors.primary,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
+                          const SizedBox(width: 8),
+                          Text(
+                            _isGettingLocation ? 'Alınıyor...' : 'Konumumu Al',
+                            style: TextStyle(
+                              color: EmlakColors.primary,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -1495,7 +1592,11 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.edit_location_alt, color: EmlakColors.secondary, size: 20),
+                          Icon(
+                            Icons.edit_location_alt,
+                            color: EmlakColors.secondary,
+                            size: 20,
+                          ),
                           const SizedBox(width: 8),
                           Text(
                             'Koordinat Gir',
@@ -1536,14 +1637,17 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
                     onTap: (tapPosition, point) {
                       setState(() {
                         _selectedLocation = point;
-                        _latitudeController.text = point.latitude.toStringAsFixed(6);
-                        _longitudeController.text = point.longitude.toStringAsFixed(6);
+                        _latitudeController.text = point.latitude
+                            .toStringAsFixed(6);
+                        _longitudeController.text = point.longitude
+                            .toStringAsFixed(6);
                       });
                     },
                   ),
                   children: [
                     TileLayer(
-                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      urlTemplate:
+                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                       userAgentPackageName: 'com.example.super_app',
                     ),
                     if (_selectedLocation != null)
@@ -1570,7 +1674,10 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
                     left: 12,
                     right: 12,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.95),
                         borderRadius: BorderRadius.circular(8),
@@ -1583,7 +1690,11 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.check_circle, color: EmlakColors.success, size: 20),
+                          Icon(
+                            Icons.check_circle,
+                            color: EmlakColors.success,
+                            size: 20,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
@@ -1604,7 +1715,11 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
                               });
                             },
                             customBorder: const CircleBorder(),
-                            child: const Icon(Icons.close, size: 18, color: Colors.grey),
+                            child: const Icon(
+                              Icons.close,
+                              size: 18,
+                              color: Colors.grey,
+                            ),
                           ),
                         ],
                       ),
@@ -1653,19 +1768,92 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
           ),
           const SizedBox(height: 20),
           // Oda Tipi
-          _buildFormDropdown(label: 'Oda Tipi', value: _roomType, items: const ['1+0','1+1','2+1','2+2','3+1','3+2','4+1','4+2','5','5+1','5+2','5+3','5+4','6+1','6+2','6+3','6+4','7+1','7+2','7+3','8+'], onChanged: (v) => setState(() => _roomType = v), isDark: isDark),
+          _buildFormDropdown(
+            label: 'Oda Tipi',
+            value: _roomType,
+            items: const [
+              '1+0',
+              '1+1',
+              '2+1',
+              '2+2',
+              '3+1',
+              '3+2',
+              '4+1',
+              '4+2',
+              '5',
+              '5+1',
+              '5+2',
+              '5+3',
+              '5+4',
+              '6+1',
+              '6+2',
+              '6+3',
+              '6+4',
+              '7+1',
+              '7+2',
+              '7+3',
+              '8+',
+            ],
+            onChanged: (v) => setState(() => _roomType = v),
+            isDark: isDark,
+          ),
           const SizedBox(height: 16),
           // Eşya Durumu
-          _buildFormDropdown(label: 'Eşya Durumu', value: _furnitureStatus, items: const ['Eşyasız','Yarı Eşyalı','Eşyalı','Ful Eşyalı','Sadece Beyaz Eşya'], onChanged: (v) => setState(() => _furnitureStatus = v), isDark: isDark),
+          _buildFormDropdown(
+            label: 'Eşya Durumu',
+            value: _furnitureStatus,
+            items: const [
+              'Eşyasız',
+              'Yarı Eşyalı',
+              'Eşyalı',
+              'Ful Eşyalı',
+              'Sadece Beyaz Eşya',
+            ],
+            onChanged: (v) => setState(() => _furnitureStatus = v),
+            isDark: isDark,
+          ),
           const SizedBox(height: 16),
           // Isıtma Tipi
-          _buildFormDropdown(label: 'Isıtma Tipi', value: _heatingType, items: const ['Kombi','Merkezi','Yerden Isıtma','Doğalgaz','Klima','Soba','Güneş Enerjisi','Yok'], onChanged: (v) => setState(() => _heatingType = v), isDark: isDark),
+          _buildFormDropdown(
+            label: 'Isıtma Tipi',
+            value: _heatingType,
+            items: const [
+              'Kombi',
+              'Merkezi',
+              'Yerden Isıtma',
+              'Doğalgaz',
+              'Klima',
+              'Soba',
+              'Güneş Enerjisi',
+              'Yok',
+            ],
+            onChanged: (v) => setState(() => _heatingType = v),
+            isDark: isDark,
+          ),
           const SizedBox(height: 16),
           // Tapu Tipi
-          _buildFormDropdown(label: 'Tapu Tipi', value: _deedType, items: const ['Kat Mülkiyeti','Kat İrtifakı','Arsa Tapusu','Hisseli','Koçan'], onChanged: (v) => setState(() => _deedType = v), isDark: isDark),
+          _buildFormDropdown(
+            label: 'Tapu Tipi',
+            value: _deedType,
+            items: const [
+              'Kat Mülkiyeti',
+              'Kat İrtifakı',
+              'Arsa Tapusu',
+              'Hisseli',
+              'Koçan',
+            ],
+            onChanged: (v) => setState(() => _deedType = v),
+            isDark: isDark,
+          ),
           const SizedBox(height: 16),
           // Net m²
-          _buildTextField(controller: _netSquareMetersController, label: 'Net m²', hint: '0', isDark: isDark, keyboardType: TextInputType.number),
+          _buildTextField(
+            controller: _netSquareMetersController,
+            label: 'Net m²',
+            hint: '0',
+            isDark: isDark,
+            keyboardType: TextInputType.number,
+          ),
           const SizedBox(height: 20),
           // Toggles
           _buildFeatureToggle('Takasa Açık', 'isOpenToTrade', isDark),
@@ -1673,37 +1861,82 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
           _buildFeatureToggle('Site İçerisinde', 'isInComplex', isDark),
           const SizedBox(height: 20),
           // Dış Özellikler
-          _buildFeatureSection(title: 'Dış Özellikler', icon: Icons.home_outlined, features: const [
-            ['hasGarage','Garaj'],['hasGarden','Bahçe'],['hasPrivatePool','Özel Havuz'],
-            ['hasSharedPool','Ortak Havuz'],['hasSecurityCamera','Güvenlik Kamerası'],
-            ['hasTerrace','Teras'],['hasInsulation','Isı Yalıtımı'],['hasWaterTank','Su Deposu'],
-            ['hasWell','Su Kuyusu'],['hasBarbeque','Barbekü'],['hasDoubleGlazing','Çift Cam'],
-            ['hasCoveredParking','Kapalı Otopark'],['hasGenerator','Jeneratör'],
-            ['hasElevator','Asansör'],['hasParking','Otopark'],['hasSandstoneHouse','Taş Ev'],
-          ], isDark: isDark),
+          _buildFeatureSection(
+            title: 'Dış Özellikler',
+            icon: Icons.home_outlined,
+            features: const [
+              ['hasGarage', 'Garaj'],
+              ['hasGarden', 'Bahçe'],
+              ['hasPrivatePool', 'Özel Havuz'],
+              ['hasSharedPool', 'Ortak Havuz'],
+              ['hasSecurityCamera', 'Güvenlik Kamerası'],
+              ['hasTerrace', 'Teras'],
+              ['hasInsulation', 'Isı Yalıtımı'],
+              ['hasWaterTank', 'Su Deposu'],
+              ['hasWell', 'Su Kuyusu'],
+              ['hasBarbeque', 'Barbekü'],
+              ['hasDoubleGlazing', 'Çift Cam'],
+              ['hasCoveredParking', 'Kapalı Otopark'],
+              ['hasGenerator', 'Jeneratör'],
+              ['hasElevator', 'Asansör'],
+              ['hasParking', 'Otopark'],
+              ['hasSandstoneHouse', 'Taş Ev'],
+            ],
+            isDark: isDark,
+          ),
           const SizedBox(height: 12),
           // İç Özellikler
-          _buildFeatureSection(title: 'İç Özellikler', icon: Icons.chair_outlined, features: const [
-            ['isDuplex','Dubleks'],['hasAirConditioning','Klima'],['hasBalcony','Balkon'],
-            ['hasShutter','Kepenk'],['hasBuiltinKitchen','Ankastre Mutfak'],
-            ['hasBuiltinWardrobe','Gömme Dolap'],['hasIntercom','İnterkom'],
-            ['hasFireplace','Şömine'],['hasCrown','Kartonpiyer'],['hasLaundryRoom','Çamaşır Odası'],
-            ['hasParentBathroom','Ebeveyn Banyosu'],['hasParentCloset','Ebeveyn Giyinme'],
-            ['hasNaturalMarble','Doğal Mermer'],['hasPanelDoor','Panel Kapı'],
-            ['hasParquet','Parke'],['hasShower','Duşakabin'],['hasSteelDoor','Çelik Kapı'],
-            ['hasTvInfra','TV Altyapısı'],['hasVestibule','Vestiyer'],['hasWallpaper','Duvar Kağıdı'],
-            ['hasCeramic','Seramik'],['hasFireAlarm','Yangın Alarmı'],['hasPantry','Kiler'],
-            ['hasSolarPower','Güneş Enerjisi'],['hasHydrophore','Hidrofor'],
-          ], isDark: isDark),
+          _buildFeatureSection(
+            title: 'İç Özellikler',
+            icon: Icons.chair_outlined,
+            features: const [
+              ['isDuplex', 'Dubleks'],
+              ['hasAirConditioning', 'Klima'],
+              ['hasBalcony', 'Balkon'],
+              ['hasShutter', 'Kepenk'],
+              ['hasBuiltinKitchen', 'Ankastre Mutfak'],
+              ['hasBuiltinWardrobe', 'Gömme Dolap'],
+              ['hasIntercom', 'İnterkom'],
+              ['hasFireplace', 'Şömine'],
+              ['hasCrown', 'Kartonpiyer'],
+              ['hasLaundryRoom', 'Çamaşır Odası'],
+              ['hasParentBathroom', 'Ebeveyn Banyosu'],
+              ['hasParentCloset', 'Ebeveyn Giyinme'],
+              ['hasNaturalMarble', 'Doğal Mermer'],
+              ['hasPanelDoor', 'Panel Kapı'],
+              ['hasParquet', 'Parke'],
+              ['hasShower', 'Duşakabin'],
+              ['hasSteelDoor', 'Çelik Kapı'],
+              ['hasTvInfra', 'TV Altyapısı'],
+              ['hasVestibule', 'Vestiyer'],
+              ['hasWallpaper', 'Duvar Kağıdı'],
+              ['hasCeramic', 'Seramik'],
+              ['hasFireAlarm', 'Yangın Alarmı'],
+              ['hasPantry', 'Kiler'],
+              ['hasSolarPower', 'Güneş Enerjisi'],
+              ['hasHydrophore', 'Hidrofor'],
+            ],
+            isDark: isDark,
+          ),
           const SizedBox(height: 12),
           // Konum Özellikleri
-          _buildFeatureSection(title: 'Konum Özellikleri', icon: Icons.location_on_outlined, features: const [
-            ['hasCityView','Şehir Manzarası'],['isEastFacing','Doğu Cepheli'],
-            ['isCityCenter','Şehir Merkezi'],['hasMountainView','Dağ Manzarası'],
-            ['hasNatureView','Doğa Manzarası'],['isNorthFacing','Kuzey Cepheli'],
-            ['isSeafront','Denize Sıfır'],['hasSeaView','Deniz Manzarası'],
-            ['isSouthFacing','Güney Cepheli'],['isWestFacing','Batı Cepheli'],
-          ], isDark: isDark),
+          _buildFeatureSection(
+            title: 'Konum Özellikleri',
+            icon: Icons.location_on_outlined,
+            features: const [
+              ['hasCityView', 'Şehir Manzarası'],
+              ['isEastFacing', 'Doğu Cepheli'],
+              ['isCityCenter', 'Şehir Merkezi'],
+              ['hasMountainView', 'Dağ Manzarası'],
+              ['hasNatureView', 'Doğa Manzarası'],
+              ['isNorthFacing', 'Kuzey Cepheli'],
+              ['isSeafront', 'Denize Sıfır'],
+              ['hasSeaView', 'Deniz Manzarası'],
+              ['isSouthFacing', 'Güney Cepheli'],
+              ['isWestFacing', 'Batı Cepheli'],
+            ],
+            isDark: isDark,
+          ),
           const SizedBox(height: 20),
         ],
       ),
@@ -1720,23 +1953,52 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: isDark ? Colors.grey[300] : Colors.grey[700])),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: isDark ? Colors.grey[300] : Colors.grey[700],
+          ),
+        ),
         const SizedBox(height: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
             color: isDark ? const Color(0xFF1E293B) : Colors.grey[100],
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: isDark ? Colors.grey[800]! : Colors.grey[200]!),
+            border: Border.all(
+              color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
+            ),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: value,
               isExpanded: true,
-              hint: Text('Seçiniz', style: TextStyle(color: isDark ? Colors.grey[500] : Colors.grey[400])),
+              hint: Text(
+                'Seçiniz',
+                style: TextStyle(
+                  color: isDark ? Colors.grey[500] : Colors.grey[400],
+                ),
+              ),
               dropdownColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-              icon: Icon(Icons.keyboard_arrow_down_rounded, color: isDark ? Colors.grey[400] : Colors.grey[600]),
-              items: items.map((item) => DropdownMenuItem(value: item, child: Text(item, style: TextStyle(color: isDark ? Colors.white : Colors.grey[900])))).toList(),
+              icon: Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: isDark ? Colors.grey[400] : Colors.grey[600],
+              ),
+              items: items
+                  .map(
+                    (item) => DropdownMenuItem(
+                      value: item,
+                      child: Text(
+                        item,
+                        style: TextStyle(
+                          color: isDark ? Colors.white : Colors.grey[900],
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
               onChanged: onChanged,
             ),
           ),
@@ -1751,12 +2013,23 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E293B) : Colors.grey[100],
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isActive ? EmlakColors.primary : (isDark ? Colors.grey[800]! : Colors.grey[200]!)),
+        border: Border.all(
+          color: isActive
+              ? EmlakColors.primary
+              : (isDark ? Colors.grey[800]! : Colors.grey[200]!),
+        ),
       ),
       child: SwitchListTile(
-        title: Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: isDark ? Colors.white : Colors.grey[800])),
+        title: Text(
+          label,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: isDark ? Colors.white : Colors.grey[800],
+          ),
+        ),
         value: isActive,
-        activeColor: EmlakColors.primary,
+        activeThumbColor: EmlakColors.primary,
         onChanged: (v) => setState(() => _features[key] = v),
         dense: true,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -1775,7 +2048,14 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
       data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
       child: ExpansionTile(
         leading: Icon(icon, color: EmlakColors.primary, size: 22),
-        title: Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: isDark ? Colors.white : Colors.grey[900])),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: isDark ? Colors.white : Colors.grey[900],
+          ),
+        ),
         tilePadding: const EdgeInsets.symmetric(horizontal: 16),
         childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         children: [
@@ -1792,10 +2072,24 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
                 onSelected: (v) => setState(() => _features[key] = v),
                 selectedColor: EmlakColors.primary.withValues(alpha: 0.2),
                 checkmarkColor: EmlakColors.primary,
-                labelStyle: TextStyle(color: sel ? EmlakColors.primary : (isDark ? Colors.grey[400] : Colors.grey[700]), fontWeight: sel ? FontWeight.w600 : FontWeight.w400, fontSize: 13),
-                backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.grey[100],
-                side: BorderSide(color: sel ? EmlakColors.primary : (isDark ? Colors.grey[700]! : Colors.grey[300]!)),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                labelStyle: TextStyle(
+                  color: sel
+                      ? EmlakColors.primary
+                      : (isDark ? Colors.grey[400] : Colors.grey[700]),
+                  fontWeight: sel ? FontWeight.w600 : FontWeight.w400,
+                  fontSize: 13,
+                ),
+                backgroundColor: isDark
+                    ? const Color(0xFF1E293B)
+                    : Colors.grey[100],
+                side: BorderSide(
+                  color: sel
+                      ? EmlakColors.primary
+                      : (isDark ? Colors.grey[700]! : Colors.grey[300]!),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               );
             }).toList(),
           ),
@@ -1855,43 +2149,45 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
                           width: 2,
                         ),
                       ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 50,
-                          height: 50,
-                          decoration: BoxDecoration(
-                            color: EmlakColors.primary.withValues(alpha: 0.1),
-                            shape: BoxShape.circle,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 50,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: EmlakColors.primary.withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.photo_library_rounded,
+                              color: EmlakColors.primary,
+                              size: 26,
+                            ),
                           ),
-                          child: Icon(
-                            Icons.photo_library_rounded,
-                            color: EmlakColors.primary,
-                            size: 26,
+                          const SizedBox(height: 10),
+                          Text(
+                            'Galeriden Seç',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: EmlakColors.primary,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          'Galeriden Seç',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: EmlakColors.primary,
+                          const SizedBox(height: 2),
+                          Text(
+                            'Çoklu seçim',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isDark
+                                  ? Colors.grey[500]
+                                  : Colors.grey[600],
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Çoklu seçim',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: isDark ? Colors.grey[500] : Colors.grey[600],
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -1916,43 +2212,47 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
                           width: 2,
                         ),
                       ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 50,
-                          height: 50,
-                          decoration: BoxDecoration(
-                            color: EmlakColors.secondary.withValues(alpha: 0.1),
-                            shape: BoxShape.circle,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 50,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: EmlakColors.secondary.withValues(
+                                alpha: 0.1,
+                              ),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Icons.camera_alt_rounded,
+                              color: EmlakColors.secondary,
+                              size: 26,
+                            ),
                           ),
-                          child: Icon(
-                            Icons.camera_alt_rounded,
-                            color: EmlakColors.secondary,
-                            size: 26,
+                          const SizedBox(height: 10),
+                          Text(
+                            'Fotoğraf Çek',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: EmlakColors.secondary,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 10),
-                        Text(
-                          'Fotoğraf Çek',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: EmlakColors.secondary,
+                          const SizedBox(height: 2),
+                          Text(
+                            'Kamera',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isDark
+                                  ? Colors.grey[500]
+                                  : Colors.grey[600],
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Kamera',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: isDark ? Colors.grey[500] : Colors.grey[600],
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
                 ),
               ),
             ],
@@ -1969,9 +2269,7 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
                     ? Colors.amber.withValues(alpha: 0.1)
                     : Colors.amber.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: Colors.amber.withValues(alpha: 0.3),
-                ),
+                border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
               ),
               child: Row(
                 children: [
@@ -2029,17 +2327,22 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
                           ? CachedNetworkImage(
                               imageUrl: _existingImageUrls[index],
                               fit: BoxFit.cover,
-                              placeholder: (_, __) => Container(
+                              placeholder: (_, _) => Container(
                                 color: Colors.grey[200],
-                                child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                child: const Center(
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                ),
                               ),
-                              errorWidget: (_, __, ___) => Container(
+                              errorWidget: (_, _, _) => Container(
                                 color: Colors.grey[300],
                                 child: const Icon(Icons.broken_image),
                               ),
                             )
                           : Image.memory(
-                              _uploadedImages[index - _existingImageUrls.length].bytes,
+                              _uploadedImages[index - _existingImageUrls.length]
+                                  .bytes,
                               fit: BoxFit.cover,
                             ),
                     ),
@@ -2057,7 +2360,9 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
                               if (isExisting) {
                                 _existingImageUrls.removeAt(index);
                               } else {
-                                _uploadedImages.removeAt(index - _existingImageUrls.length);
+                                _uploadedImages.removeAt(
+                                  index - _existingImageUrls.length,
+                                );
                               }
                             });
                           },
@@ -2127,39 +2432,39 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
           duration: const Duration(milliseconds: 200),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-          border: isSelected
-              ? null
-              : Border.all(
-                  color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
-                ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              type.icon,
-              color: isSelected
-                  ? Colors.white
-                  : (isDark ? Colors.grey[400] : Colors.grey[600]),
-              size: 28,
-            ),
-            const SizedBox(height: 6),
-            Text(
-              type.label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+            border: isSelected
+                ? null
+                : Border.all(
+                    color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
+                  ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                type.icon,
                 color: isSelected
                     ? Colors.white
-                    : (isDark ? Colors.grey[400] : Colors.grey[700]),
+                    : (isDark ? Colors.grey[400] : Colors.grey[600]),
+                size: 28,
               ),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
+              const SizedBox(height: 6),
+              Text(
+                type.label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  color: isSelected
+                      ? Colors.white
+                      : (isDark ? Colors.grey[400] : Colors.grey[700]),
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -2191,9 +2496,7 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
           maxLines: maxLines,
           maxLength: maxLength,
           keyboardType: keyboardType,
-          style: TextStyle(
-            color: isDark ? Colors.white : Colors.grey[900],
-          ),
+          style: TextStyle(color: isDark ? Colors.white : Colors.grey[900]),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: TextStyle(
@@ -2218,10 +2521,7 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(
-                color: EmlakColors.primary,
-                width: 2,
-              ),
+              borderSide: BorderSide(color: EmlakColors.primary, width: 2),
             ),
             counterStyle: TextStyle(
               color: isDark ? Colors.grey[500] : Colors.grey[600],
@@ -2360,10 +2660,9 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
           if (_uploadedImages.length + _existingImageUrls.length < 20) {
             final bytes = await image.readAsBytes();
             setState(() {
-              _uploadedImages.add(_UploadedImage(
-                bytes: bytes,
-                name: image.name,
-              ));
+              _uploadedImages.add(
+                _UploadedImage(bytes: bytes, name: image.name),
+              );
             });
           }
         }
@@ -2387,13 +2686,11 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
         maxHeight: 1080,
       );
 
-      if (photo != null && (_uploadedImages.length + _existingImageUrls.length) < 20) {
+      if (photo != null &&
+          (_uploadedImages.length + _existingImageUrls.length) < 20) {
         final bytes = await photo.readAsBytes();
         setState(() {
-          _uploadedImages.add(_UploadedImage(
-            bytes: bytes,
-            name: photo.name,
-          ));
+          _uploadedImages.add(_UploadedImage(bytes: bytes, name: photo.name));
         });
       }
     } catch (e) {
@@ -2403,7 +2700,6 @@ class _AddPropertyScreenState extends ConsumerState<AddPropertyScreen>
     }
   }
 }
-
 
 class _SuccessDialog extends StatefulWidget {
   final VoidCallback onDone;

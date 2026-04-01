@@ -1,6 +1,6 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:support_panel/core/services/log_service.dart';
 import 'supabase_service.dart';
 
 final searchServiceProvider = Provider<SearchService>((ref) {
@@ -45,8 +45,8 @@ class SearchService {
       for (final list in futures) {
         results.addAll(list);
       }
-    } catch (e) {
-      if (kDebugMode) print('Global search error: $e');
+    } catch (e, st) {
+      LogService.error('Global search error', error: e, stackTrace: st, source: 'SearchService:search');
     }
 
     return results;
@@ -67,7 +67,8 @@ class SearchService {
         subtitle: u['phone'] ?? u['email'],
         route: '/customers/${u['id']}',
       )).toList();
-    } catch (_) {
+    } catch (e, st) {
+      LogService.error('Error searching customers', error: e, stackTrace: st, source: 'SearchService:_searchCustomers');
       return [];
     }
   }
@@ -87,7 +88,8 @@ class SearchService {
         subtitle: t['status'],
         route: '/tickets/${t['id']}',
       )).toList();
-    } catch (_) {
+    } catch (e, st) {
+      LogService.error('Error searching tickets', error: e, stackTrace: st, source: 'SearchService:_searchTickets');
       return [];
     }
   }
@@ -106,7 +108,8 @@ class SearchService {
         title: '#${o['order_number']} - ${o['customer_name'] ?? 'Müşteri'}',
         subtitle: o['status'],
       )).toList();
-    } catch (_) {
+    } catch (e, st) {
+      LogService.error('Error searching orders', error: e, stackTrace: st, source: 'SearchService:_searchOrders');
       return [];
     }
   }
@@ -126,7 +129,8 @@ class SearchService {
         subtitle: m['business_type'],
         route: '/businesses?id=${m['id']}',
       )).toList();
-    } catch (_) {
+    } catch (e, st) {
+      LogService.error('Error searching merchants', error: e, stackTrace: st, source: 'SearchService:_searchMerchants');
       return [];
     }
   }

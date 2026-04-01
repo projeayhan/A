@@ -25,8 +25,11 @@ class MessagesScreen extends ConsumerWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error_outline,
-                size: 48, color: CarSalesColors.textTertiary(isDark)),
+            Icon(
+              Icons.error_outline,
+              size: 48,
+              color: CarSalesColors.textTertiary(isDark),
+            ),
             const SizedBox(height: 12),
             Text(
               'Mesajlar yuklenirken hata olustu',
@@ -123,8 +126,7 @@ class _ConversationTile extends StatelessWidget {
                       child: Image.network(
                         otherProfile!.avatarUrl!,
                         fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) =>
-                            _buildInitials(otherProfile),
+                        errorBuilder: (_, _, _) => _buildInitials(otherProfile),
                       ),
                     )
                   : _buildInitials(otherProfile),
@@ -142,8 +144,9 @@ class _ConversationTile extends StatelessWidget {
                         child: Text(
                           otherProfile?.displayName ?? 'Kullanici',
                           style: TextStyle(
-                            fontWeight:
-                                hasUnread ? FontWeight.bold : FontWeight.w600,
+                            fontWeight: hasUnread
+                                ? FontWeight.bold
+                                : FontWeight.w600,
                             fontSize: 15,
                             color: CarSalesColors.textPrimary(isDark),
                           ),
@@ -159,8 +162,9 @@ class _ConversationTile extends StatelessWidget {
                                 ? CarSalesColors.primary
                                 : CarSalesColors.textTertiary(isDark),
                             fontSize: 12,
-                            fontWeight:
-                                hasUnread ? FontWeight.w600 : FontWeight.normal,
+                            fontWeight: hasUnread
+                                ? FontWeight.w600
+                                : FontWeight.normal,
                           ),
                         ),
                     ],
@@ -178,8 +182,9 @@ class _ConversationTile extends StatelessWidget {
                                 ? CarSalesColors.textPrimary(isDark)
                                 : CarSalesColors.textSecondary(isDark),
                             fontSize: 13,
-                            fontWeight:
-                                hasUnread ? FontWeight.w500 : FontWeight.normal,
+                            fontWeight: hasUnread
+                                ? FontWeight.w500
+                                : FontWeight.normal,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -189,7 +194,9 @@ class _ConversationTile extends StatelessWidget {
                         const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 3),
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
                             color: CarSalesColors.primary,
                             borderRadius: BorderRadius.circular(12),
@@ -220,7 +227,7 @@ class _ConversationTile extends StatelessWidget {
                               width: 28,
                               height: 20,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) =>
+                              errorBuilder: (_, _, _) =>
                                   const SizedBox.shrink(),
                             ),
                           ),

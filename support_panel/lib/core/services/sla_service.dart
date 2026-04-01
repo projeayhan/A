@@ -1,6 +1,6 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:support_panel/core/services/log_service.dart';
 import 'supabase_service.dart';
 import 'ticket_service.dart';
 import '../utils/sla_calculator.dart';
@@ -25,8 +25,8 @@ class SlaService {
           .inFilter('status', ['open', 'assigned', 'pending', 'waiting_customer'])
           .lte('sla_due_at', DateTime.now().toIso8601String())
           .order('sla_due_at');
-    } catch (e) {
-      if (kDebugMode) print('Error fetching breached tickets: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching breached tickets', error: e, stackTrace: st, source: 'SlaService:getBreachedTickets');
       return [];
     }
   }
@@ -44,8 +44,8 @@ class SlaService {
           .gt('sla_due_at', now.toIso8601String())
           .lte('sla_due_at', threshold.toIso8601String())
           .order('sla_due_at');
-    } catch (e) {
-      if (kDebugMode) print('Error fetching at-risk tickets: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching at-risk tickets', error: e, stackTrace: st, source: 'SlaService:getAtRiskTickets');
       return [];
     }
   }
@@ -94,8 +94,8 @@ class SlaService {
         'within_sla': withinSla,
         'compliance_rate': complianceRate,
       };
-    } catch (e) {
-      if (kDebugMode) print('Error fetching SLA stats: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching SLA stats', error: e, stackTrace: st, source: 'SlaService:getSlaStats');
       return {'breached': 0, 'resolved_today': 0, 'within_sla': 0, 'compliance_rate': 100};
     }
   }
@@ -148,8 +148,8 @@ class SlaService {
         'avg_response_minutes': responseCount > 0 ? (totalResponseMinutes / responseCount).round() : 0,
         'avg_resolution_minutes': resolutionCount > 0 ? (totalResolutionMinutes / resolutionCount).round() : 0,
       };
-    } catch (e) {
-      if (kDebugMode) print('Error fetching response metrics: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching response metrics', error: e, stackTrace: st, source: 'SlaService:getResponseMetrics');
       return {'avg_response_minutes': 0, 'avg_resolution_minutes': 0};
     }
   }

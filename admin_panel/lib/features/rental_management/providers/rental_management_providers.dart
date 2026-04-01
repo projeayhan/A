@@ -22,7 +22,7 @@ final rentalCompanyBookingsProvider = FutureProvider.family<List<Map<String, dyn
     final client = ref.watch(supabaseProvider);
     final response = await client
         .from('rental_bookings')
-        .select('*, rental_cars(brand, model, plate_number, image_url), rental_locations!pickup_location_id(name), rental_locations!dropoff_location_id(name)')
+        .select('*, rental_cars(brand, model, plate, image_url), rental_locations!pickup_location_id(name), rental_locations!dropoff_location_id(name)')
         .eq('company_id', companyId)
         .order('created_at', ascending: false);
     return List<Map<String, dynamic>>.from(response);
@@ -77,10 +77,32 @@ final rentalCompanyFinanceProvider = FutureProvider.family<Map<String, dynamic>,
   (ref, params) async {
     final client = ref.watch(supabaseProvider);
 
-    final bookings = await client
+    // Calculate date filter based on period
+    DateTime? startDate;
+    final now = DateTime.now();
+    switch (params.period) {
+      case 'week':
+        startDate = now.subtract(const Duration(days: 7));
+        break;
+      case 'month':
+        startDate = now.subtract(const Duration(days: 30));
+        break;
+      case 'quarter':
+        startDate = now.subtract(const Duration(days: 90));
+        break;
+      case 'year':
+        startDate = now.subtract(const Duration(days: 365));
+        break;
+    }
+
+    var query = client
         .from('rental_bookings')
         .select('total_amount, status, payment_status, payment_method, rental_days, created_at')
         .eq('company_id', params.companyId);
+    if (startDate != null) {
+      query = query.gte('created_at', startDate.toIso8601String());
+    }
+    final bookings = await query;
     final bookingList = List<Map<String, dynamic>>.from(bookings);
 
     double totalRevenue = 0;
@@ -112,7 +134,10 @@ final rentalCompanyFinanceProvider = FutureProvider.family<Map<String, dynamic>,
       'completed_bookings': completedCount,
       'total_bookings': bookingList.length,
       'total_rental_days': totalRentalDays,
-      'avg_booking_value': bookingList.isNotEmpty ? totalRevenue / bookingList.where((b) => b['status'] == 'completed' || b['status'] == 'active').length : 0,
+      'avg_booking_value': () {
+        final activeCompleted = bookingList.where((b) => b['status'] == 'completed' || b['status'] == 'active').length;
+        return activeCompleted > 0 ? totalRevenue / activeCompleted : 0.0;
+      }(),
       'bookings': bookingList,
     };
   },
@@ -127,7 +152,7 @@ final rentalCalendarBookingsProvider = FutureProvider.family<List<Map<String, dy
     final client = ref.watch(supabaseProvider);
     final response = await client
         .from('rental_bookings')
-        .select('*, rental_cars(brand, model, plate_number)')
+        .select('*, rental_cars(brand, model, plate)')
         .eq('company_id', params.companyId)
         .gte('pickup_date', params.start.toIso8601String())
         .lte('dropoff_date', params.end.toIso8601String())

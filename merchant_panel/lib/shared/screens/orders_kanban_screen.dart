@@ -463,24 +463,37 @@ class _OrdersKanbanScreenState extends ConsumerState<OrdersKanbanScreen>
     _updateOrderStatus(order, newStatus);
   }
 
-  void _updateOrderStatus(Order order, OrderStatus newStatus) {
-    ref.read(ordersProvider.notifier).updateOrderStatus(order.id, newStatus);
+  Future<void> _updateOrderStatus(Order order, OrderStatus newStatus) async {
+    try {
+      await ref.read(ordersProvider.notifier).updateOrderStatus(order.id, newStatus);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            Icon(newStatus.icon, color: Colors.white, size: 20),
-            const SizedBox(width: 12),
-            Text('Sipariş #${order.orderNumber} - ${newStatus.displayName}'),
-          ],
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(newStatus.icon, color: Colors.white, size: 20),
+              const SizedBox(width: 12),
+              Text('Sipariş #${order.orderNumber} - ${newStatus.displayName}'),
+            ],
+          ),
+          backgroundColor: newStatus.color,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          duration: const Duration(seconds: 2),
         ),
-        backgroundColor: newStatus.color,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Sipariş güncellenemedi: $e'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    }
   }
 
   void _showOrderDetail(Order order) {
@@ -552,6 +565,7 @@ class _OrdersKanbanScreenState extends ConsumerState<OrdersKanbanScreen>
                       _KanbanOrderMessagesCard(
                         orderId: order.id,
                         merchantId: order.merchantId,
+                        merchantName: ref.read(currentMerchantProvider).valueOrNull?.businessName ?? 'Restoran',
                       ),
                     ],
                   ),
@@ -569,10 +583,12 @@ class _OrdersKanbanScreenState extends ConsumerState<OrdersKanbanScreen>
 class _KanbanOrderMessagesCard extends StatefulWidget {
   final String orderId;
   final String merchantId;
+  final String merchantName;
 
   const _KanbanOrderMessagesCard({
     required this.orderId,
     required this.merchantId,
+    required this.merchantName,
   });
 
   @override
@@ -693,7 +709,7 @@ class _KanbanOrderMessagesCardState extends State<_KanbanOrderMessagesCard> {
         'merchant_id': widget.merchantId,
         'sender_type': 'merchant',
         'sender_id': widget.merchantId,
-        'sender_name': 'Restoran',
+        'sender_name': widget.merchantName,
         'message': text,
       });
 

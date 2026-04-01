@@ -18,6 +18,7 @@ import '../features/calendar/calendar_screen.dart';
 import '../features/reviews/reviews_screen.dart';
 import '../features/packages/packages_screen.dart';
 import '../features/services/services_screen.dart';
+import '../features/banner_ads/banner_ads_screen.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -105,6 +106,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/services',
             builder: (context, state) => const ServicesScreen(),
+          ),
+          GoRoute(
+            path: '/banner-ads',
+            builder: (context, state) => const BannerAdsScreen(),
           ),
         ],
       ),

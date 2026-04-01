@@ -6,6 +6,7 @@ import 'package:data_table_2/data_table_2.dart';
 
 import '../../core/theme.dart';
 import '../../core/supabase_config.dart';
+import 'package:rent_a_car_panel/core/services/log_service.dart';
 
 // Bookings provider
 final bookingsProvider = FutureProvider.autoDispose((ref) async {
@@ -87,8 +88,11 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
     final dropoff = DateTime.tryParse(booking['dropoff_date'] ?? '');
     if (dropoff == null) return false;
     final today = DateTime.now();
-    return DateTime(dropoff.year, dropoff.month, dropoff.day)
-        .isBefore(DateTime(today.year, today.month, today.day));
+    return DateTime(
+      dropoff.year,
+      dropoff.month,
+      dropoff.day,
+    ).isBefore(DateTime(today.year, today.month, today.day));
   }
 
   @override
@@ -111,14 +115,17 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                 return _buildHeader(context, counts);
               },
               loading: () => _buildHeader(context, {}),
-              error: (_, __) => _buildHeader(context, {}),
+              error: (_, _) => _buildHeader(context, {}),
             ),
             const SizedBox(height: 20),
 
             // Search
             Card(
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 child: TextField(
                   decoration: const InputDecoration(
                     hintText: 'Rezervasyon ara (musteri adi, telefon, plaka)',
@@ -141,15 +148,24 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                 child: bookingsAsync.when(
                   data: (bookings) {
                     var filtered = bookings.where((b) {
-                      if (_statusFilter != null && b['status'] != _statusFilter) {
+                      if (_statusFilter != null &&
+                          b['status'] != _statusFilter) {
                         return false;
                       }
                       if (_searchQuery.isNotEmpty) {
-                        final name = (b['customer_name'] ?? '').toString().toLowerCase();
-                        final phone = (b['customer_phone'] ?? '').toString().toLowerCase();
+                        final name = (b['customer_name'] ?? '')
+                            .toString()
+                            .toLowerCase();
+                        final phone = (b['customer_phone'] ?? '')
+                            .toString()
+                            .toLowerCase();
                         final car = b['rental_cars'] as Map<String, dynamic>?;
-                        final plate = (car?['plate'] ?? '').toString().toLowerCase();
-                        final bookingNo = (b['booking_number'] ?? '').toString().toLowerCase();
+                        final plate = (car?['plate'] ?? '')
+                            .toString()
+                            .toLowerCase();
+                        final bookingNo = (b['booking_number'] ?? '')
+                            .toString()
+                            .toLowerCase();
                         if (!name.contains(_searchQuery) &&
                             !phone.contains(_searchQuery) &&
                             !plate.contains(_searchQuery) &&
@@ -165,18 +181,26 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.book_online, size: 56, color: AppColors.textMuted),
+                            const Icon(
+                              Icons.book_online,
+                              size: 56,
+                              color: AppColors.textMuted,
+                            ),
                             const SizedBox(height: 12),
                             Text(
                               _statusFilter != null
                                   ? 'Bu durumda rezervasyon yok'
                                   : 'Rezervasyon bulunamadi',
-                              style: const TextStyle(color: AppColors.textMuted, fontSize: 15),
+                              style: const TextStyle(
+                                color: AppColors.textMuted,
+                                fontSize: 15,
+                              ),
                             ),
                             if (_statusFilter != null) ...[
                               const SizedBox(height: 8),
                               TextButton(
-                                onPressed: () => setState(() => _statusFilter = null),
+                                onPressed: () =>
+                                    setState(() => _statusFilter = null),
                                 child: const Text('Tum rezervasyonlari goster'),
                               ),
                             ],
@@ -199,22 +223,36 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                         DataColumn2(label: Text('Islemler'), fixedWidth: 180),
                       ],
                       rows: filtered.map((booking) {
-                        final car = booking['rental_cars'] as Map<String, dynamic>?;
-                        final pickupDate = DateTime.tryParse(booking['pickup_date'] ?? '');
-                        final dropoffDate = DateTime.tryParse(booking['dropoff_date'] ?? '');
-                        final rentalDays = (booking['rental_days'] as num?)?.toInt() ?? 0;
+                        final car =
+                            booking['rental_cars'] as Map<String, dynamic>?;
+                        final pickupDate = DateTime.tryParse(
+                          booking['pickup_date'] ?? '',
+                        );
+                        final dropoffDate = DateTime.tryParse(
+                          booking['dropoff_date'] ?? '',
+                        );
+                        final rentalDays =
+                            (booking['rental_days'] as num?)?.toInt() ?? 0;
                         final isOverdue = _isOverdue(booking);
-                        final isTodayPickup = booking['status'] == 'confirmed' &&
+                        final isTodayPickup =
+                            booking['status'] == 'confirmed' &&
                             _isToday(booking['pickup_date']);
-                        final isTodayReturn = booking['status'] == 'active' &&
+                        final isTodayReturn =
+                            booking['status'] == 'active' &&
                             _isToday(booking['dropoff_date']);
 
                         return DataRow2(
                           onTap: () => context.go('/bookings/${booking['id']}'),
                           color: WidgetStateProperty.resolveWith((states) {
-                            if (isOverdue) return AppColors.error.withValues(alpha: 0.08);
-                            if (isTodayPickup) return AppColors.info.withValues(alpha: 0.06);
-                            if (isTodayReturn) return AppColors.success.withValues(alpha: 0.06);
+                            if (isOverdue) {
+                              return AppColors.error.withValues(alpha: 0.08);
+                            }
+                            if (isTodayPickup) {
+                              return AppColors.info.withValues(alpha: 0.06);
+                            }
+                            if (isTodayReturn) {
+                              return AppColors.success.withValues(alpha: 0.06);
+                            }
                             return null;
                           }),
                           cells: [
@@ -231,15 +269,18 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                                     ),
                                     child: car?['image_url'] != null
                                         ? ClipRRect(
-                                            borderRadius: BorderRadius.circular(8),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
                                             child: Image.network(
                                               car!['image_url'],
                                               fit: BoxFit.cover,
-                                              errorBuilder: (_, __, ___) => const Icon(
-                                                Icons.directions_car,
-                                                color: AppColors.textMuted,
-                                                size: 20,
-                                              ),
+                                              errorBuilder: (_, _, _) =>
+                                                  const Icon(
+                                                    Icons.directions_car,
+                                                    color: AppColors.textMuted,
+                                                    size: 20,
+                                                  ),
                                             ),
                                           )
                                         : const Icon(
@@ -251,14 +292,18 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                                   const SizedBox(width: 12),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
                                         Text(
                                           car != null
                                               ? '${car['brand']} ${car['model']}'
                                               : '-',
-                                          style: const TextStyle(fontWeight: FontWeight.w600),
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                         Text(
@@ -285,12 +330,16 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                                       Flexible(
                                         child: Text(
                                           booking['customer_name'] ?? '',
-                                          style: const TextStyle(fontWeight: FontWeight.w600),
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
-                                      if (booking['is_pickup_custom_address'] == true ||
-                                          booking['is_dropoff_custom_address'] == true) ...[
+                                      if (booking['is_pickup_custom_address'] ==
+                                              true ||
+                                          booking['is_dropoff_custom_address'] ==
+                                              true) ...[
                                         const SizedBox(width: 4),
                                         const Tooltip(
                                           message: 'Adrese Teslim',
@@ -323,21 +372,34 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                                     children: [
                                       if (isTodayPickup)
                                         Container(
-                                          margin: const EdgeInsets.only(right: 4),
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 4, vertical: 1),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.info.withValues(alpha: 0.2),
-                                            borderRadius: BorderRadius.circular(3),
+                                          margin: const EdgeInsets.only(
+                                            right: 4,
                                           ),
-                                          child: const Text('Bugun',
-                                              style: TextStyle(
-                                                  fontSize: 9,
-                                                  color: AppColors.info,
-                                                  fontWeight: FontWeight.w600)),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 4,
+                                            vertical: 1,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.info.withValues(
+                                              alpha: 0.2,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              3,
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            'Bugun',
+                                            style: TextStyle(
+                                              fontSize: 9,
+                                              color: AppColors.info,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
                                         ),
                                       Text(
-                                        pickupDate != null ? dateFormat.format(pickupDate) : '-',
+                                        pickupDate != null
+                                            ? dateFormat.format(pickupDate)
+                                            : '-',
                                         style: const TextStyle(fontSize: 13),
                                       ),
                                     ],
@@ -346,36 +408,60 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                                     children: [
                                       if (isOverdue)
                                         Container(
-                                          margin: const EdgeInsets.only(right: 4),
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 4, vertical: 1),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.error.withValues(alpha: 0.2),
-                                            borderRadius: BorderRadius.circular(3),
+                                          margin: const EdgeInsets.only(
+                                            right: 4,
                                           ),
-                                          child: const Text('Gecikti',
-                                              style: TextStyle(
-                                                  fontSize: 9,
-                                                  color: AppColors.error,
-                                                  fontWeight: FontWeight.w600)),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 4,
+                                            vertical: 1,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.error.withValues(
+                                              alpha: 0.2,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              3,
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            'Gecikti',
+                                            style: TextStyle(
+                                              fontSize: 9,
+                                              color: AppColors.error,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
                                         )
                                       else if (isTodayReturn)
                                         Container(
-                                          margin: const EdgeInsets.only(right: 4),
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 4, vertical: 1),
-                                          decoration: BoxDecoration(
-                                            color: AppColors.success.withValues(alpha: 0.2),
-                                            borderRadius: BorderRadius.circular(3),
+                                          margin: const EdgeInsets.only(
+                                            right: 4,
                                           ),
-                                          child: const Text('Bugun',
-                                              style: TextStyle(
-                                                  fontSize: 9,
-                                                  color: AppColors.success,
-                                                  fontWeight: FontWeight.w600)),
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 4,
+                                            vertical: 1,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.success.withValues(
+                                              alpha: 0.2,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              3,
+                                            ),
+                                          ),
+                                          child: const Text(
+                                            'Bugun',
+                                            style: TextStyle(
+                                              fontSize: 9,
+                                              color: AppColors.success,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
                                         ),
                                       Text(
-                                        dropoffDate != null ? dateFormat.format(dropoffDate) : '-',
+                                        dropoffDate != null
+                                            ? dateFormat.format(dropoffDate)
+                                            : '-',
                                         style: const TextStyle(
                                           color: AppColors.textMuted,
                                           fontSize: 12,
@@ -404,7 +490,9 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                               ),
                             ),
                             // Durum
-                            DataCell(_buildStatusBadge(booking['status'] ?? '')),
+                            DataCell(
+                              _buildStatusBadge(booking['status'] ?? ''),
+                            ),
                             // Islemler
                             DataCell(_buildActionButtons(booking)),
                           ],
@@ -412,7 +500,8 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                       }).toList(),
                     );
                   },
-                  loading: () => const Center(child: CircularProgressIndicator()),
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
                   error: (e, _) => Center(child: Text('Hata: $e')),
                 ),
               ),
@@ -452,7 +541,10 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
               label: const Text('Manuel Kiralama'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.secondary,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
               ),
             ),
           ],
@@ -687,7 +779,8 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
             final client = ref.read(supabaseClientProvider);
             final companyId = await ref.read(companyIdProvider.future);
 
-            final bookingNumber = 'MN-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
+            final bookingNumber =
+                'MN-${DateTime.now().millisecondsSinceEpoch.toString().substring(5)}';
 
             await client.from('rental_bookings').insert({
               ...bookingData,
@@ -712,11 +805,12 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
                 const SnackBar(content: Text('Manuel kiralama olusturuldu')),
               );
             }
-          } catch (e) {
+          } catch (e, st) {
+            LogService.error('Failed to create manual booking', error: e, stackTrace: st, source: 'BookingsScreen:_showManualBookingDialog');
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Hata: $e')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text('Hata: $e')));
             }
           }
         },
@@ -724,7 +818,10 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
     );
   }
 
-  Future<void> _handleAction(Map<String, dynamic> booking, String action) async {
+  Future<void> _handleAction(
+    Map<String, dynamic> booking,
+    String action,
+  ) async {
     if (action == 'view') {
       context.go('/bookings/${booking['id']}');
       return;
@@ -749,9 +846,12 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
             .from('rental_bookings')
             .update({
               'status': newStatus,
-              if (newStatus == 'confirmed') 'confirmed_at': DateTime.now().toIso8601String(),
-              if (newStatus == 'active') 'actual_pickup_date': DateTime.now().toIso8601String(),
-              if (newStatus == 'completed') 'actual_dropoff_date': DateTime.now().toIso8601String(),
+              if (newStatus == 'confirmed')
+                'confirmed_at': DateTime.now().toIso8601String(),
+              if (newStatus == 'active')
+                'actual_pickup_date': DateTime.now().toIso8601String(),
+              if (newStatus == 'completed')
+                'actual_dropoff_date': DateTime.now().toIso8601String(),
             })
             .eq('id', booking['id']);
 
@@ -774,28 +874,31 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
           notificationType: newStatus == 'confirmed'
               ? 'booking_confirmed'
               : newStatus == 'completed'
-                  ? 'rental_completed'
-                  : newStatus == 'active'
-                      ? 'car_ready'
-                      : null,
+              ? 'rental_completed'
+              : newStatus == 'active'
+              ? 'car_ready'
+              : null,
         );
 
         ref.invalidate(bookingsProvider);
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(
-              newStatus == 'confirmed'
-                  ? 'Rezervasyon onaylandi ve musteriye bildirim gonderildi'
-                  : 'Rezervasyon guncellendi',
-            )),
+            SnackBar(
+              content: Text(
+                newStatus == 'confirmed'
+                    ? 'Rezervasyon onaylandi ve musteriye bildirim gonderildi'
+                    : 'Rezervasyon guncellendi',
+              ),
+            ),
           );
         }
-      } catch (e) {
+      } catch (e, st) {
+        LogService.error('Failed to update booking status', error: e, stackTrace: st, source: 'BookingsScreen:_updateBookingStatus');
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Hata: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Hata: $e')));
         }
       }
     }
@@ -811,13 +914,10 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
       final client = ref.read(supabaseClientProvider);
       await client.functions.invoke(
         'send-booking-notification',
-        body: {
-          'booking_id': bookingId,
-          'notification_type': notificationType,
-        },
+        body: {'booking_id': bookingId, 'notification_type': notificationType},
       );
-    } catch (e) {
-      debugPrint('Notification error: $e');
+    } catch (e, st) {
+      LogService.error('Notification error', error: e, stackTrace: st, source: 'BookingsScreen:_sendNotification');
     }
   }
 
@@ -864,13 +964,16 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
     if (confirmed == true) {
       try {
         final client = ref.read(supabaseClientProvider);
-        await client.from('rental_bookings').update({
-          'status': 'cancelled',
-          'cancellation_reason': reasonController.text.trim().isEmpty
-              ? 'Sirket tarafindan reddedildi'
-              : reasonController.text.trim(),
-          'cancelled_at': DateTime.now().toIso8601String(),
-        }).eq('id', booking['id']);
+        await client
+            .from('rental_bookings')
+            .update({
+              'status': 'cancelled',
+              'cancellation_reason': reasonController.text.trim().isEmpty
+                  ? 'Sirket tarafindan reddedildi'
+                  : reasonController.text.trim(),
+              'cancelled_at': DateTime.now().toIso8601String(),
+            })
+            .eq('id', booking['id']);
 
         await _sendNotification(
           bookingId: booking['id'],
@@ -881,14 +984,17 @@ class _BookingsScreenState extends ConsumerState<BookingsScreen> {
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Rezervasyon reddedildi ve musteriye bildirildi')),
+            const SnackBar(
+              content: Text('Rezervasyon reddedildi ve musteriye bildirildi'),
+            ),
           );
         }
-      } catch (e) {
+      } catch (e, st) {
+        LogService.error('Failed to reject booking', error: e, stackTrace: st, source: 'BookingsScreen:_rejectBooking');
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Hata: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Hata: $e')));
         }
       }
     }
@@ -947,7 +1053,9 @@ class _ManualBookingDialogState extends State<_ManualBookingDialog> {
       final brand = (car['brand'] ?? '').toString().toLowerCase();
       final model = (car['model'] ?? '').toString().toLowerCase();
       final plate = (car['plate'] ?? '').toString().toLowerCase();
-      return brand.contains(query) || model.contains(query) || plate.contains(query);
+      return brand.contains(query) ||
+          model.contains(query) ||
+          plate.contains(query);
     }).toList();
   }
 
@@ -1001,7 +1109,10 @@ class _ManualBookingDialogState extends State<_ManualBookingDialog> {
                               color: AppColors.secondary.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Icon(Icons.edit_note, color: AppColors.secondary),
+                            child: const Icon(
+                              Icons.edit_note,
+                              color: AppColors.secondary,
+                            ),
                           ),
                           const SizedBox(width: 12),
                           const Text(
@@ -1022,7 +1133,10 @@ class _ManualBookingDialogState extends State<_ManualBookingDialog> {
                   const SizedBox(height: 8),
                   const Text(
                     'Uygulama disindan yapilan kiralamalari sisteme kaydedin',
-                    style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                    ),
                   ),
                   const SizedBox(height: 24),
 
@@ -1043,14 +1157,20 @@ class _ManualBookingDialogState extends State<_ManualBookingDialog> {
                             final date = await showDatePicker(
                               context: context,
                               initialDate: _pickupDate,
-                              firstDate: DateTime.now().subtract(const Duration(days: 30)),
-                              lastDate: DateTime.now().add(const Duration(days: 365)),
+                              firstDate: DateTime.now().subtract(
+                                const Duration(days: 30),
+                              ),
+                              lastDate: DateTime.now().add(
+                                const Duration(days: 365),
+                              ),
                             );
                             if (date != null) {
                               setState(() {
                                 _pickupDate = date;
                                 if (_dropoffDate.isBefore(_pickupDate)) {
-                                  _dropoffDate = _pickupDate.add(const Duration(days: 1));
+                                  _dropoffDate = _pickupDate.add(
+                                    const Duration(days: 1),
+                                  );
                                 }
                               });
                             }
@@ -1105,7 +1225,9 @@ class _ManualBookingDialogState extends State<_ManualBookingDialog> {
                               context: context,
                               initialDate: _dropoffDate,
                               firstDate: _pickupDate,
-                              lastDate: DateTime.now().add(const Duration(days: 365)),
+                              lastDate: DateTime.now().add(
+                                const Duration(days: 365),
+                              ),
                             );
                             if (date != null) {
                               setState(() => _dropoffDate = date);
@@ -1161,7 +1283,8 @@ class _ManualBookingDialogState extends State<_ManualBookingDialog> {
                             labelText: 'Ad Soyad *',
                             prefixIcon: Icon(Icons.person),
                           ),
-                          validator: (v) => v?.isEmpty == true ? 'Zorunlu' : null,
+                          validator: (v) =>
+                              v?.isEmpty == true ? 'Zorunlu' : null,
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -1172,7 +1295,8 @@ class _ManualBookingDialogState extends State<_ManualBookingDialog> {
                             labelText: 'Telefon *',
                             prefixIcon: Icon(Icons.phone),
                           ),
-                          validator: (v) => v?.isEmpty == true ? 'Zorunlu' : null,
+                          validator: (v) =>
+                              v?.isEmpty == true ? 'Zorunlu' : null,
                         ),
                       ),
                     ],
@@ -1208,15 +1332,24 @@ class _ManualBookingDialogState extends State<_ManualBookingDialog> {
                     children: [
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          value: _paymentStatus,
+                          initialValue: _paymentStatus,
                           decoration: const InputDecoration(
                             labelText: 'Odeme Durumu',
                             prefixIcon: Icon(Icons.payment),
                           ),
                           items: const [
-                            DropdownMenuItem(value: 'pending', child: Text('Bekliyor')),
-                            DropdownMenuItem(value: 'paid', child: Text('Odendi')),
-                            DropdownMenuItem(value: 'partial', child: Text('Kismi Odeme')),
+                            DropdownMenuItem(
+                              value: 'pending',
+                              child: Text('Bekliyor'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'paid',
+                              child: Text('Odendi'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'partial',
+                              child: Text('Kismi Odeme'),
+                            ),
                           ],
                           onChanged: (v) => setState(() => _paymentStatus = v!),
                         ),
@@ -1224,15 +1357,24 @@ class _ManualBookingDialogState extends State<_ManualBookingDialog> {
                       const SizedBox(width: 16),
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          value: _paymentMethod,
+                          initialValue: _paymentMethod,
                           decoration: const InputDecoration(
                             labelText: 'Odeme Yontemi',
                             prefixIcon: Icon(Icons.account_balance_wallet),
                           ),
                           items: const [
-                            DropdownMenuItem(value: 'cash', child: Text('Nakit')),
-                            DropdownMenuItem(value: 'credit_card', child: Text('Kredi Karti')),
-                            DropdownMenuItem(value: 'bank_transfer', child: Text('Havale/EFT')),
+                            DropdownMenuItem(
+                              value: 'cash',
+                              child: Text('Nakit'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'credit_card',
+                              child: Text('Kredi Karti'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'bank_transfer',
+                              child: Text('Havale/EFT'),
+                            ),
                           ],
                           onChanged: (v) => setState(() => _paymentMethod = v!),
                         ),
@@ -1306,7 +1448,9 @@ class _ManualBookingDialogState extends State<_ManualBookingDialog> {
                             ? const SizedBox(
                                 width: 20,
                                 height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               )
                             : const Icon(Icons.check),
                         label: const Text('Kiralamavi Baslat'),
@@ -1334,7 +1478,9 @@ class _ManualBookingDialogState extends State<_ManualBookingDialog> {
             decoration: BoxDecoration(
               color: AppColors.surface,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.primary.withValues(alpha: 0.5)),
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.5),
+              ),
             ),
             child: Row(
               children: [
@@ -1416,7 +1562,7 @@ class _ManualBookingDialogState extends State<_ManualBookingDialog> {
                 : ListView.separated(
                     shrinkWrap: true,
                     itemCount: _filteredCars.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    separatorBuilder: (_, _) => const Divider(height: 1),
                     itemBuilder: (context, index) {
                       final car = _filteredCars[index];
                       return ListTile(
@@ -1445,10 +1591,7 @@ class _ManualBookingDialogState extends State<_ManualBookingDialog> {
             padding: const EdgeInsets.only(top: 4),
             child: Text(
               '${_filteredCars.length} / ${widget.availableCars.length} musait arac',
-              style: const TextStyle(
-                fontSize: 11,
-                color: AppColors.textMuted,
-              ),
+              style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
             ),
           ),
         ],
@@ -1459,9 +1602,9 @@ class _ManualBookingDialogState extends State<_ManualBookingDialog> {
   void _save() {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedCarId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lutfen bir arac secin')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Lutfen bir arac secin')));
       return;
     }
 

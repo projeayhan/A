@@ -4,11 +4,13 @@ import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../core/theme/app_responsive.dart';
 import '../../core/theme/store_colors.dart';
+import '../../core/providers/store_provider.dart';
 import '../../models/store/store_model.dart';
 import '../../models/store/store_product_model.dart';
 
 class StoreSearchScreen extends ConsumerStatefulWidget {
-  const StoreSearchScreen({super.key});
+  final String? initialFilter;
+  const StoreSearchScreen({super.key, this.initialFilter});
 
   @override
   ConsumerState<StoreSearchScreen> createState() => _StoreSearchScreenState();
@@ -23,6 +25,8 @@ class _StoreSearchScreenState extends ConsumerState<StoreSearchScreen>
   String _query = '';
   List<Store> _storeResults = [];
   List<StoreProduct> _productResults = [];
+  bool _isFilterMode = false;
+  String _filterTitle = '';
 
   final List<String> _recentSearches = [
     'iPhone',
@@ -47,8 +51,38 @@ class _StoreSearchScreenState extends ConsumerState<StoreSearchScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _focusNode.requestFocus();
+    if (widget.initialFilter != null) {
+      _isFilterMode = true;
+      if (widget.initialFilter == 'best_sellers') {
+        _filterTitle = 'Çok Satanlar';
+        _loadBestSellers();
+      } else if (widget.initialFilter == 'featured_stores') {
+        _filterTitle = 'Öne Çıkan Mağazalar';
+        _tabController.index = 1;
+        _loadFeaturedStores();
+      }
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _focusNode.requestFocus();
+      });
+    }
+  }
+
+  Future<void> _loadBestSellers() async {
+    final products = await ref.read(bestSellersProvider.future);
+    if (!mounted) return;
+    setState(() {
+      _productResults = products;
+      _query = _filterTitle;
+    });
+  }
+
+  Future<void> _loadFeaturedStores() async {
+    final stores = await ref.read(storesProvider.future);
+    if (!mounted) return;
+    setState(() {
+      _storeResults = stores.where((s) => s.isVerified).toList();
+      _query = _filterTitle;
     });
   }
 
@@ -66,17 +100,25 @@ class _StoreSearchScreenState extends ConsumerState<StoreSearchScreen>
       if (query.isEmpty) {
         _storeResults = [];
         _productResults = [];
-      } else {
-        final lowerQuery = query.toLowerCase();
-        _storeResults = Store.mockStores
-            .where((s) => s.name.toLowerCase().contains(lowerQuery))
-            .toList();
-        _productResults = StoreProduct.mockProducts
-            .where((p) =>
-                p.name.toLowerCase().contains(lowerQuery) ||
-                p.storeName.toLowerCase().contains(lowerQuery))
-            .toList();
       }
+    });
+    if (query.isNotEmpty) {
+      _performSearch(query);
+    }
+  }
+
+  Future<void> _performSearch(String query) async {
+    final lowerQuery = query.toLowerCase();
+    final stores = await ref.read(storesProvider.future);
+    final products = await ref.read(storeProductsProvider.future);
+    if (!mounted || _query != query) return;
+    setState(() {
+      _storeResults = stores
+          .where((s) => s.name.toLowerCase().contains(lowerQuery))
+          .toList();
+      _productResults = products
+          .where((p) => p.name.toLowerCase().contains(lowerQuery))
+          .toList();
     });
   }
 
@@ -85,7 +127,9 @@ class _StoreSearchScreenState extends ConsumerState<StoreSearchScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? StoreColors.backgroundDark : StoreColors.backgroundLight,
+      backgroundColor: isDark
+          ? StoreColors.backgroundDark
+          : StoreColors.backgroundLight,
       appBar: AppBar(
         backgroundColor: isDark ? Colors.grey[900] : Colors.white,
         elevation: 0,
@@ -96,26 +140,35 @@ class _StoreSearchScreenState extends ConsumerState<StoreSearchScreen>
           ),
           onPressed: () => context.pop(),
         ),
-        title: TextField(
-          controller: _searchController,
-          focusNode: _focusNode,
-          onChanged: _search,
-          style: TextStyle(
-            color: isDark ? Colors.white : Colors.black87,
-            fontSize: context.heading2Size,
-          ),
-          decoration: InputDecoration(
-            hintText: 'Mağaza veya ürün ara...',
-            hintStyle: TextStyle(
-              color: Colors.grey[500],
-              fontSize: context.heading2Size,
-            ),
-            border: InputBorder.none,
-            contentPadding: EdgeInsets.zero,
-          ),
-        ),
+        title: _isFilterMode
+            ? Text(
+                _filterTitle,
+                style: TextStyle(
+                  color: isDark ? Colors.white : Colors.black87,
+                  fontSize: context.heading2Size,
+                  fontWeight: FontWeight.bold,
+                ),
+              )
+            : TextField(
+                controller: _searchController,
+                focusNode: _focusNode,
+                onChanged: _search,
+                style: TextStyle(
+                  color: isDark ? Colors.white : Colors.black87,
+                  fontSize: context.heading2Size,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'Mağaza veya ürün ara...',
+                  hintStyle: TextStyle(
+                    color: Colors.grey[500],
+                    fontSize: context.heading2Size,
+                  ),
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
         actions: [
-          if (_query.isNotEmpty)
+          if (_query.isNotEmpty && !_isFilterMode)
             IconButton(
               icon: Icon(
                 Icons.close_rounded,
@@ -141,7 +194,9 @@ class _StoreSearchScreenState extends ConsumerState<StoreSearchScreen>
               )
             : null,
       ),
-      body: _query.isEmpty ? _buildInitialContent(isDark) : _buildSearchResults(isDark),
+      body: _query.isEmpty
+          ? _buildInitialContent(isDark)
+          : _buildSearchResults(isDark),
     );
   }
 
@@ -293,7 +348,7 @@ class _StoreSearchScreenState extends ConsumerState<StoreSearchScreen>
             : ListView.separated(
                 padding: const EdgeInsets.all(16),
                 itemCount: _productResults.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                separatorBuilder: (_, _) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
                   final product = _productResults[index];
                   return _buildProductItem(product, isDark);
@@ -306,7 +361,7 @@ class _StoreSearchScreenState extends ConsumerState<StoreSearchScreen>
             : ListView.separated(
                 padding: const EdgeInsets.all(16),
                 itemCount: _storeResults.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                separatorBuilder: (_, _) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
                   final store = _storeResults[index];
                   return _buildStoreItem(store, isDark);
@@ -320,9 +375,10 @@ class _StoreSearchScreenState extends ConsumerState<StoreSearchScreen>
     return GestureDetector(
       onTap: () {
         // Navigate to product detail
-        context.push('/store/product/${product.id}', extra: {
-          'product': product,
-        });
+        context.push(
+          '/store/product/${product.id}',
+          extra: {'product': product},
+        );
       },
       child: Container(
         padding: const EdgeInsets.all(12),
@@ -346,20 +402,19 @@ class _StoreSearchScreenState extends ConsumerState<StoreSearchScreen>
                 width: 70,
                 height: 70,
                 fit: BoxFit.cover,
-                placeholder: (_, __) => Container(
+                placeholder: (_, _) => Container(
                   width: 70,
                   height: 70,
                   color: Colors.grey[200],
-                  child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                  child: const Center(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
                 ),
-                errorWidget: (_, __, ___) => Container(
+                errorWidget: (_, _, _) => Container(
                   width: 70,
                   height: 70,
                   color: StoreColors.primary.withValues(alpha: 0.1),
-                  child: Icon(
-                    Icons.image_outlined,
-                    color: StoreColors.primary,
-                  ),
+                  child: Icon(Icons.image_outlined, color: StoreColors.primary),
                 ),
               ),
             ),
@@ -462,9 +517,7 @@ class _StoreSearchScreenState extends ConsumerState<StoreSearchScreen>
     return GestureDetector(
       onTap: () {
         // Navigate to store detail
-        context.push('/store/detail/${store.id}', extra: {
-          'store': store,
-        });
+        context.push('/store/detail/${store.id}', extra: {'store': store});
       },
       child: Container(
         padding: const EdgeInsets.all(12),
@@ -488,20 +541,19 @@ class _StoreSearchScreenState extends ConsumerState<StoreSearchScreen>
                 width: 60,
                 height: 60,
                 fit: BoxFit.cover,
-                placeholder: (_, __) => Container(
+                placeholder: (_, _) => Container(
                   width: 60,
                   height: 60,
                   color: Colors.grey[200],
-                  child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                  child: const Center(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
                 ),
-                errorWidget: (_, __, ___) => Container(
+                errorWidget: (_, _, _) => Container(
                   width: 60,
                   height: 60,
                   color: StoreColors.primary.withValues(alpha: 0.1),
-                  child: Icon(
-                    Icons.store_rounded,
-                    color: StoreColors.primary,
-                  ),
+                  child: Icon(Icons.store_rounded, color: StoreColors.primary),
                 ),
               ),
             ),
@@ -606,11 +658,7 @@ class _StoreSearchScreenState extends ConsumerState<StoreSearchScreen>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.search_off_rounded,
-            size: 64,
-            color: Colors.grey[400],
-          ),
+          Icon(Icons.search_off_rounded, size: 64, color: Colors.grey[400]),
           const SizedBox(height: 16),
           Text(
             message,

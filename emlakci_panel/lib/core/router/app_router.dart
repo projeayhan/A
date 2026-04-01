@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:emlakci_panel/core/services/log_service.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/application_screen.dart';
 import '../../features/dashboard/screens/dashboard_screen.dart';
@@ -15,6 +16,8 @@ import '../../features/chat/screens/chat_list_screen.dart';
 import '../../features/chat/screens/chat_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
 import '../../features/settings/screens/settings_screen.dart';
+import '../../features/promotions/screens/promotions_screen.dart';
+import '../../features/banner_ads/screens/banner_ads_screen.dart';
 import '../../shared/widgets/emlak_shell.dart';
 
 /// Route path constants
@@ -33,6 +36,7 @@ class AppRoutes {
   static const String chatDetail = '/chat/:id';
   static const String profile = '/profile';
   static const String settings = '/settings';
+  static const String promotions = '/promotions';
 }
 
 /// Auth state notifier for router refresh
@@ -46,11 +50,43 @@ class AuthNotifier extends ChangeNotifier {
 
 final _authNotifier = AuthNotifier();
 
+/// Cache for realtor role check to avoid repeated DB queries per navigation event
+bool? _cachedIsRealtor;
+String? _cachedIsRealtorUserId;
+
+/// Check whether the current user has an approved realtor record
+Future<bool> _checkIsRealtor() async {
+  final user = Supabase.instance.client.auth.currentUser;
+  if (user == null) {
+    _cachedIsRealtor = null;
+    _cachedIsRealtorUserId = null;
+    return false;
+  }
+  // Return cached value if it belongs to the same user session
+  if (_cachedIsRealtorUserId == user.id && _cachedIsRealtor != null) {
+    return _cachedIsRealtor!;
+  }
+  try {
+    final response = await Supabase.instance.client
+        .from('realtors')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('status', 'approved')
+        .maybeSingle();
+    _cachedIsRealtor = response != null;
+    _cachedIsRealtorUserId = user.id;
+    return _cachedIsRealtor!;
+  } catch (e, st) {
+    LogService.error('Realtor check failed', error: e, stackTrace: st, source: 'AppRouter:_isRealtor');
+    return false;
+  }
+}
+
 /// Emlakci Panel Router
 final appRouter = GoRouter(
   initialLocation: AppRoutes.login,
   refreshListenable: _authNotifier,
-  redirect: (context, state) {
+  redirect: (context, state) async {
     final isLoggedIn = Supabase.instance.client.auth.currentUser != null;
     final isLoginRoute = state.matchedLocation == AppRoutes.login;
     final isApplicationRoute = state.matchedLocation == AppRoutes.application;
@@ -58,6 +94,19 @@ final appRouter = GoRouter(
     // Not logged in and trying to access a protected route
     if (!isLoggedIn && !isLoginRoute && !isApplicationRoute) {
       return AppRoutes.login;
+    }
+
+    // Logged in — verify the user actually has a realtor role before
+    // granting access to any panel route.
+    if (isLoggedIn && !isLoginRoute && !isApplicationRoute) {
+      final hasRealtorRole = await _checkIsRealtor();
+      if (!hasRealtorRole) {
+        // Invalidate cache so a fresh check runs after the user logs out
+        _cachedIsRealtor = null;
+        _cachedIsRealtorUserId = null;
+        await Supabase.instance.client.auth.signOut();
+        return AppRoutes.login;
+      }
     }
 
     // Logged in and on login page -> redirect to dashboard
@@ -153,6 +202,16 @@ final appRouter = GoRouter(
           path: AppRoutes.profile,
           name: 'profile',
           builder: (context, state) => const ProfileScreen(),
+        ),
+        GoRoute(
+          path: AppRoutes.promotions,
+          name: 'promotions',
+          builder: (context, state) => const EmlakPromotionsScreen(),
+        ),
+        GoRoute(
+          path: '/banner-ads',
+          name: 'banner-ads',
+          builder: (context, state) => const BannerAdsScreen(),
         ),
         GoRoute(
           path: AppRoutes.settings,

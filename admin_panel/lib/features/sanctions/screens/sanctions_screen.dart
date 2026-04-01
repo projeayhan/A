@@ -11,6 +11,9 @@ class SanctionsScreen extends ConsumerStatefulWidget {
 }
 
 class _SanctionsScreenState extends ConsumerState<SanctionsScreen> {
+  final Set<String> _selectedIds = {};
+  bool _isSelectionMode = false;
+
   @override
   Widget build(BuildContext context) {
     final sanctionsAsync = ref.watch(sanctionsListProvider);
@@ -47,18 +50,64 @@ class _SanctionsScreenState extends ConsumerState<SanctionsScreen> {
                     ),
                   ],
                 ),
-                ElevatedButton.icon(
-                  onPressed: () => _showBanDialog(context),
-                  icon: const Icon(Icons.gavel_rounded, size: 18),
-                  label: const Text('Yeni Yaptırım Uygula'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.error,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 20,
-                      vertical: 16,
-                    ),
-                  ),
+                Row(
+                  children: [
+                    if (_isSelectionMode && _selectedIds.isNotEmpty) ...[
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '${_selectedIds.length} öğe seçildi',
+                          style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton.icon(
+                        onPressed: () => _bulkLiftSanctions(sanctionsAsync),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.success,
+                          foregroundColor: Colors.white,
+                        ),
+                        icon: const Icon(Icons.lock_open, size: 18),
+                        label: const Text('Toplu Kaldır'),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        onPressed: () => setState(() {
+                          _isSelectionMode = false;
+                          _selectedIds.clear();
+                        }),
+                        icon: const Icon(Icons.close),
+                        tooltip: 'Seçimi İptal Et',
+                      ),
+                    ] else ...[
+                      OutlinedButton.icon(
+                        onPressed: () => setState(() {
+                          _isSelectionMode = !_isSelectionMode;
+                          if (!_isSelectionMode) _selectedIds.clear();
+                        }),
+                        icon: Icon(_isSelectionMode ? Icons.close : Icons.checklist, size: 18),
+                        label: Text(_isSelectionMode ? 'Seçimi Kapat' : 'Toplu İşlem'),
+                      ),
+                      const SizedBox(width: 12),
+                      ElevatedButton.icon(
+                        onPressed: () => _showBanDialog(context),
+                        icon: const Icon(Icons.gavel_rounded, size: 18),
+                        label: const Text('Yeni Yaptırım Uygula'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.error,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 16,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),
@@ -75,15 +124,47 @@ class _SanctionsScreenState extends ConsumerState<SanctionsScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Padding(
-                      padding: EdgeInsets.all(20),
-                      child: Text(
-                        'Aktif Yaptırımlar',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textPrimary,
-                        ),
+                    // Section header with select-all
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      child: Row(
+                        children: [
+                          if (_isSelectionMode)
+                            sanctionsAsync.when(
+                              data: (sanctions) {
+                                final allIds = sanctions.map((s) => s['id'].toString()).toSet();
+                                final allSelected = allIds.isNotEmpty &&
+                                    allIds.every((id) => _selectedIds.contains(id));
+                                return Row(
+                                  children: [
+                                    Checkbox(
+                                      value: allSelected,
+                                      onChanged: (v) {
+                                        setState(() {
+                                          if (v == true) {
+                                            _selectedIds.addAll(allIds);
+                                          } else {
+                                            _selectedIds.removeAll(allIds);
+                                          }
+                                        });
+                                      },
+                                    ),
+                                    const SizedBox(width: 4),
+                                  ],
+                                );
+                              },
+                              loading: () => const SizedBox.shrink(),
+                              error: (e, _) => const SizedBox.shrink(),
+                            ),
+                          const Text(
+                            'Aktif Yaptırımlar',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     const Divider(height: 1, color: AppColors.surfaceLight),
@@ -106,32 +187,47 @@ class _SanctionsScreenState extends ConsumerState<SanctionsScreen> {
                             ),
                             itemBuilder: (context, index) {
                               final item = sanctions[index];
-                              final user =
-                                  item['users'] ?? {'full_name': 'Bilinmiyor'};
+                              final sanctionId = item['id'].toString();
+                              final user = item['users'] ?? {'full_name': 'Bilinmiyor'};
                               final expiry = DateTime.parse(item['expires_at']);
-                              final daysLeft = expiry
-                                  .difference(DateTime.now())
-                                  .inDays;
+                              final daysLeft = expiry.difference(DateTime.now()).inDays;
 
                               return ListTile(
                                 contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 24,
                                   vertical: 12,
                                 ),
-                                leading: CircleAvatar(
-                                  backgroundColor: AppColors.error.withValues(
-                                    alpha: 0.1,
-                                  ),
-                                  child: const Icon(
-                                    Icons.block,
-                                    color: AppColors.error,
-                                  ),
+                                leading: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (_isSelectionMode)
+                                      Padding(
+                                        padding: const EdgeInsets.only(right: 8),
+                                        child: Checkbox(
+                                          value: _selectedIds.contains(sanctionId),
+                                          onChanged: (v) {
+                                            setState(() {
+                                              if (v == true) {
+                                                _selectedIds.add(sanctionId);
+                                              } else {
+                                                _selectedIds.remove(sanctionId);
+                                              }
+                                            });
+                                          },
+                                        ),
+                                      ),
+                                    CircleAvatar(
+                                      backgroundColor: AppColors.error.withValues(alpha: 0.1),
+                                      child: const Icon(
+                                        Icons.block,
+                                        color: AppColors.error,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                                 title: Text(
                                   user['full_name'] ?? 'Kullanıcı',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                  style: const TextStyle(fontWeight: FontWeight.w600),
                                 ),
                                 subtitle: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -148,22 +244,23 @@ class _SanctionsScreenState extends ConsumerState<SanctionsScreen> {
                                     ),
                                   ],
                                 ),
-                                trailing: TextButton(
-                                  onPressed: () => _liftSanction(
-                                    item['id'],
-                                    item['user_id'],
-                                  ),
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: AppColors.success,
-                                  ),
-                                  child: const Text('Yasağı Kaldır'),
-                                ),
+                                trailing: _isSelectionMode
+                                    ? null
+                                    : TextButton(
+                                        onPressed: () => _liftSanction(
+                                          item['id'],
+                                          item['user_id'],
+                                        ),
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: AppColors.success,
+                                        ),
+                                        child: const Text('Yasağı Kaldır'),
+                                      ),
                               );
                             },
                           );
                         },
-                        loading: () =>
-                            const Center(child: CircularProgressIndicator()),
+                        loading: () => const Center(child: CircularProgressIndicator()),
                         error: (err, _) => Center(child: Text('Hata: $err')),
                       ),
                     ),
@@ -205,12 +302,73 @@ class _SanctionsScreenState extends ConsumerState<SanctionsScreen> {
       ref.invalidate(sanctionsListProvider);
     }
   }
+
+  Future<void> _bulkLiftSanctions(AsyncValue<List<Map<String, dynamic>>> sanctionsAsync) async {
+    if (_selectedIds.isEmpty) return;
+
+    final count = _selectedIds.length;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Toplu Yaptırım Kaldır'),
+        content: Text('Seçilen $count yaptırım kaldırılsın mı?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Vazgeç'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
+            child: const Text('Kaldır'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      final sanctions = sanctionsAsync.value ?? [];
+      final service = ref.read(sanctionServiceProvider);
+
+      for (final id in _selectedIds) {
+        final sanction = sanctions.firstWhere(
+          (s) => s['id'].toString() == id,
+          orElse: () => {},
+        );
+        if (sanction.isNotEmpty) {
+          await service.liftSanction(id, sanction['user_id'].toString());
+        }
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _selectedIds.clear();
+        _isSelectionMode = false;
+      });
+
+      ref.invalidate(sanctionsListProvider);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$count yaptırım başarıyla kaldırıldı'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
+      );
+    }
+  }
 }
 
 // Provider
-final sanctionsListProvider = FutureProvider<List<Map<String, dynamic>>>((
-  ref,
-) async {
+final sanctionsListProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
   return ref.read(sanctionServiceProvider).getActiveSanctions();
 });
 
@@ -346,15 +504,15 @@ class _BanUserDialogState extends ConsumerState<BanUserDialog> {
       setState(() {
         _foundUser = user;
         if (user == null) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Kullanıcı bulunamadı')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Kullanıcı bulunamadı')),
+          );
         }
       });
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Hata: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Hata: $e')),
+      );
     } finally {
       setState(() => _isSearching = false);
     }
@@ -362,34 +520,38 @@ class _BanUserDialogState extends ConsumerState<BanUserDialog> {
 
   Future<void> _submit() async {
     if (_reasonController.text.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Sebep giriniz')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sebep giriniz')),
+      );
       return;
     }
 
     setState(() => _isSubmitting = true);
     try {
-      await ref
-          .read(sanctionServiceProvider)
-          .imposeSanction(
-            userId: _foundUser!['id'],
-            reason: _reasonController.text,
-            durationDays: int.parse(_daysController.text),
-            type: 'ban',
-          );
+      await ref.read(sanctionServiceProvider).imposeSanction(
+        userId: _foundUser!['id'],
+        reason: _reasonController.text,
+        durationDays: () {
+          final days = int.tryParse(_daysController.text);
+          if (days == null || days <= 0) {
+            throw ArgumentError('Süre (gün) 0\'dan büyük olmalıdır');
+          }
+          return days;
+        }(),
+        type: 'ban',
+      );
       if (mounted) {
         Navigator.pop(context);
         ref.invalidate(sanctionsListProvider);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Kullanıcı yasaklandı')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Kullanıcı yasaklandı')),
+        );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Hata: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Hata: $e')),
+        );
       }
     } finally {
       if (mounted) setState(() => _isSubmitting = false);

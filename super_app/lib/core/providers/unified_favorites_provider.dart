@@ -1,9 +1,12 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'product_favorite_provider.dart';
 import 'store_favorite_provider.dart';
 import '../services/favorites_service.dart';
 import '../services/supabase_service.dart';
+import 'package:super_app/core/services/log_service.dart';
 
 // ============================================
 // YEMEK FAVORİLERİ
@@ -105,8 +108,8 @@ class FoodFavoriteNotifier extends StateNotifier<FoodFavoriteState> {
             addedAt: DateTime.now(),
           ));
         }
-      } catch (e) {
-        // Skip if error
+      } catch (e, st) {
+        LogService.error('Error loading store favorite', error: e, stackTrace: st, source: 'UnifiedFavoritesProvider:loadFavorites');
       }
     }
 
@@ -277,8 +280,8 @@ class EmlakFavoriteNotifier extends StateNotifier<EmlakFavoriteState> {
       }
 
       state = state.copyWith(properties: favorites);
-    } catch (e) {
-      debugPrint('Emlak favorileri yuklenemedi: $e');
+    } catch (e, st) {
+      LogService.error('Emlak favorileri yuklenemedi', error: e, stackTrace: st, source: 'UnifiedFavoritesProvider:_loadEmlakFavorites');
     }
   }
 
@@ -296,8 +299,8 @@ class EmlakFavoriteNotifier extends StateNotifier<EmlakFavoriteState> {
           'property_id': property.id,
           'user_id': user.id,
         });
-      } catch (e) {
-        debugPrint('Favori eklenemedi: $e');
+      } catch (e, st) {
+        LogService.error('Favori eklenemedi', error: e, stackTrace: st, source: 'UnifiedFavoritesProvider:toggleEmlakFavorite');
       }
     }
   }
@@ -317,8 +320,8 @@ class EmlakFavoriteNotifier extends StateNotifier<EmlakFavoriteState> {
             .delete()
             .eq('property_id', id)
             .eq('user_id', user.id);
-      } catch (e) {
-        debugPrint('Favori kaldirilamadi: $e');
+      } catch (e, st) {
+        LogService.error('Favori kaldirilamadi', error: e, stackTrace: st, source: 'UnifiedFavoritesProvider:toggleEmlakFavorite');
       }
     }
   }
@@ -439,21 +442,46 @@ class CarFavoriteState {
 }
 
 class CarFavoriteNotifier extends StateNotifier<CarFavoriteState> {
+  static const _prefsKey = 'car_favorites';
+
   CarFavoriteNotifier() : super(const CarFavoriteState()) {
     _loadFavorites();
   }
 
   Future<void> _loadFavorites() async {
-    // Car favorites use local state only (no DB table for generic favorites)
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getStringList(_prefsKey) ?? [];
+    final cars = raw
+        .map((s) {
+          try {
+            return FavoriteCar.fromJson(jsonDecode(s) as Map<String, dynamic>);
+          } catch (e, st) {
+            LogService.error('Error mapping car favorite', error: e, stackTrace: st, source: 'UnifiedFavoritesProvider:_loadCarFavorites');
+            return null;
+          }
+        })
+        .whereType<FavoriteCar>()
+        .toList();
+    if (mounted) state = state.copyWith(cars: cars);
+  }
+
+  Future<void> _persist() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(
+      _prefsKey,
+      state.cars.map((c) => jsonEncode(c.toJson())).toList(),
+    );
   }
 
   Future<void> addCar(FavoriteCar car) async {
     if (state.isFavorite(car.id)) return;
     state = state.copyWith(cars: [...state.cars, car]);
+    await _persist();
   }
 
   Future<void> removeCar(String id) async {
     state = state.copyWith(cars: state.cars.where((c) => c.id != id).toList());
+    await _persist();
   }
 
   void toggleCar(FavoriteCar car) {
@@ -587,8 +615,8 @@ class JobFavoriteNotifier extends StateNotifier<JobFavoriteState> {
       }
 
       state = state.copyWith(jobs: favorites);
-    } catch (e) {
-      debugPrint('Job favorileri yuklenemedi: $e');
+    } catch (e, st) {
+      LogService.error('Job favorileri yuklenemedi', error: e, stackTrace: st, source: 'UnifiedFavoritesProvider:_loadJobFavorites');
     }
   }
 
@@ -619,8 +647,8 @@ class JobFavoriteNotifier extends StateNotifier<JobFavoriteState> {
           'listing_id': job.id,
           'user_id': user.id,
         });
-      } catch (e) {
-        debugPrint('Job favori eklenemedi: $e');
+      } catch (e, st) {
+        LogService.error('Job favori eklenemedi', error: e, stackTrace: st, source: 'UnifiedFavoritesProvider:toggleJobFavorite');
       }
     }
   }
@@ -638,8 +666,8 @@ class JobFavoriteNotifier extends StateNotifier<JobFavoriteState> {
             .delete()
             .eq('listing_id', id)
             .eq('user_id', user.id);
-      } catch (e) {
-        debugPrint('Job favori kaldirilamadi: $e');
+      } catch (e, st) {
+        LogService.error('Job favori kaldirilamadi', error: e, stackTrace: st, source: 'UnifiedFavoritesProvider:toggleJobFavorite');
       }
     }
   }

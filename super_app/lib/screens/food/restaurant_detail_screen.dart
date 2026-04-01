@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_responsive.dart';
 import '../../core/utils/image_utils.dart';
 import '../../core/utils/name_masking.dart';
@@ -15,15 +16,19 @@ import '../../core/providers/ai_context_provider.dart';
 import 'food_home_screen.dart';
 
 // Reviews provider for a merchant
-final merchantReviewsProvider = FutureProvider.family<List<Map<String, dynamic>>, String>((ref, merchantId) async {
-  final response = await SupabaseService.client
-      .from('reviews')
-      .select('*')
-      .eq('merchant_id', merchantId)
-      .order('created_at', ascending: false)
-      .limit(10);
-  return List<Map<String, dynamic>>.from(response);
-});
+final merchantReviewsProvider =
+    FutureProvider.family<List<Map<String, dynamic>>, String>((
+      ref,
+      merchantId,
+    ) async {
+      final response = await SupabaseService.client
+          .from('reviews')
+          .select('*')
+          .eq('merchant_id', merchantId)
+          .order('created_at', ascending: false)
+          .limit(10);
+      return List<Map<String, dynamic>>.from(response);
+    });
 
 class RestaurantDetailScreen extends ConsumerStatefulWidget {
   final String restaurantId;
@@ -44,10 +49,12 @@ class RestaurantDetailScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<RestaurantDetailScreen> createState() => _RestaurantDetailScreenState();
+  ConsumerState<RestaurantDetailScreen> createState() =>
+      _RestaurantDetailScreenState();
 }
 
-class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen> {
+class _RestaurantDetailScreenState
+    extends ConsumerState<RestaurantDetailScreen> {
   int _selectedCategoryIndex = 0;
   bool _isFavorite = false;
   bool _isLoadingMenu = true;
@@ -55,7 +62,8 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
   List<String> _categories = ['Tümü'];
 
   final GlobalKey _cartIconKey = GlobalKey();
-  final GlobalKey<CartIconBounceState> _cartBounceKey = GlobalKey<CartIconBounceState>();
+  final GlobalKey<CartIconBounceState> _cartBounceKey =
+      GlobalKey<CartIconBounceState>();
   final GlobalKey _reviewsKey = GlobalKey();
 
   // Merchant details
@@ -65,6 +73,8 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
   double? _minOrderAmount;
   double? _deliveryFee;
   double? _freeDeliveryThreshold;
+  double? _merchantLat;
+  double? _merchantLng;
 
   // Grid card keys for cart animation
   final Map<String, GlobalKey> _gridAddButtonKeys = {};
@@ -97,7 +107,9 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
     try {
       final response = await SupabaseService.client
           .from('merchants')
-          .select('address, phone, min_order_amount, delivery_fee, free_delivery_threshold')
+          .select(
+            'address, phone, min_order_amount, delivery_fee, free_delivery_threshold, latitude, longitude',
+          )
           .eq('id', widget.restaurantId)
           .single();
 
@@ -118,11 +130,25 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
           _merchantPhone = response['phone'] as String?;
           _minOrderAmount = (response['min_order_amount'] as num?)?.toDouble();
           _deliveryFee = (response['delivery_fee'] as num?)?.toDouble();
-          _freeDeliveryThreshold = (response['free_delivery_threshold'] as num?)?.toDouble();
+          _freeDeliveryThreshold = (response['free_delivery_threshold'] as num?)
+              ?.toDouble();
+          _merchantLat = (response['latitude'] as num?)?.toDouble();
+          _merchantLng = (response['longitude'] as num?)?.toDouble();
 
-          if (workingHoursResponse != null && workingHoursResponse['is_open'] == true) {
-            final openTime = (workingHoursResponse['open_time'] as String?)?.substring(0, 5) ?? '';
-            final closeTime = (workingHoursResponse['close_time'] as String?)?.substring(0, 5) ?? '';
+          if (workingHoursResponse != null &&
+              workingHoursResponse['is_open'] == true) {
+            final openTime =
+                (workingHoursResponse['open_time'] as String?)?.substring(
+                  0,
+                  5,
+                ) ??
+                '';
+            final closeTime =
+                (workingHoursResponse['close_time'] as String?)?.substring(
+                  0,
+                  5,
+                ) ??
+                '';
             _workingHours = '$openTime - $closeTime';
           } else {
             _workingHours = 'Kapalı';
@@ -202,10 +228,14 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(newState ? 'Favorilere eklendi' : 'Favorilerden çıkarıldı'),
+          content: Text(
+            newState ? 'Favorilere eklendi' : 'Favorilerden çıkarıldı',
+          ),
           backgroundColor: FoodColors.primary,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
           duration: const Duration(seconds: 2),
         ),
       );
@@ -226,7 +256,9 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                 : _menuItems.where((item) {
                     final q = searchQuery.toLowerCase();
                     final words = q.split(RegExp(r'\s+'));
-                    final text = '${item.name} ${item.category ?? ''} ${item.description ?? ''}'.toLowerCase();
+                    final text =
+                        '${item.name} ${item.category ?? ''} ${item.description ?? ''}'
+                            .toLowerCase();
                     return words.every((w) => w.isEmpty || text.contains(w));
                   }).toList();
 
@@ -261,23 +293,33 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                       padding: const EdgeInsets.all(16),
                       child: TextField(
                         autofocus: true,
-                        onChanged: (value) => setDialogState(() => searchQuery = value),
+                        onChanged: (value) =>
+                            setDialogState(() => searchQuery = value),
                         decoration: InputDecoration(
                           hintText: 'Menüde ara...',
-                          prefixIcon: Icon(Icons.search, color: FoodColors.primary),
+                          prefixIcon: Icon(
+                            Icons.search,
+                            color: FoodColors.primary,
+                          ),
                           suffixIcon: searchQuery.isNotEmpty
                               ? IconButton(
                                   icon: const Icon(Icons.close),
-                                  onPressed: () => setDialogState(() => searchQuery = ''),
+                                  onPressed: () =>
+                                      setDialogState(() => searchQuery = ''),
                                 )
                               : null,
                           filled: true,
-                          fillColor: isDark ? Colors.grey[800] : Colors.grey[100],
+                          fillColor: isDark
+                              ? Colors.grey[800]
+                              : Colors.grey[100],
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide.none,
                           ),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
                         ),
                       ),
                     ),
@@ -288,12 +330,18 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                         padding: const EdgeInsets.all(32),
                         child: Column(
                           children: [
-                            Icon(Icons.search_off, size: 48, color: Colors.grey[400]),
+                            Icon(
+                              Icons.search_off,
+                              size: 48,
+                              color: Colors.grey[400],
+                            ),
                             const SizedBox(height: 12),
                             Text(
                               'Sonuç bulunamadı',
                               style: TextStyle(
-                                color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                color: isDark
+                                    ? Colors.grey[400]
+                                    : Colors.grey[600],
                               ),
                             ),
                           ],
@@ -305,15 +353,18 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                           shrinkWrap: true,
                           padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                           itemCount: filteredItems.length,
-                          separatorBuilder: (_, __) => Divider(
+                          separatorBuilder: (_, _) => Divider(
                             color: isDark ? Colors.grey[800] : Colors.grey[200],
                           ),
                           itemBuilder: (context, index) {
                             final item = filteredItems[index];
-                            final displayPrice = item.discountedPrice ?? item.price;
+                            final displayPrice =
+                                item.discountedPrice ?? item.price;
                             return ListTile(
                               contentPadding: EdgeInsets.zero,
-                              leading: item.imageUrl != null && item.imageUrl!.isNotEmpty
+                              leading:
+                                  item.imageUrl != null &&
+                                      item.imageUrl!.isNotEmpty
                                   ? ClipRRect(
                                       borderRadius: BorderRadius.circular(8),
                                       child: CachedNetworkImage(
@@ -321,7 +372,8 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                                         width: 44,
                                         height: 44,
                                         fit: BoxFit.cover,
-                                        errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                                        errorWidget: (_, _, _) =>
+                                            const SizedBox.shrink(),
                                       ),
                                     )
                                   : null,
@@ -335,7 +387,9 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                               subtitle: Text(
                                 item.category ?? '',
                                 style: TextStyle(
-                                  color: isDark ? Colors.grey[500] : Colors.grey[600],
+                                  color: isDark
+                                      ? Colors.grey[500]
+                                      : Colors.grey[600],
                                   fontSize: 12,
                                 ),
                               ),
@@ -355,7 +409,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                                     'description': item.description ?? '',
                                     'price': item.discountedPrice ?? item.price,
                                     'imageUrl': item.imageUrl ?? '',
-                                    'rating': 4.5,
+                                    'rating': widget.rating,
                                     'restaurantName': widget.name,
                                     'deliveryTime': '30-40 dk',
                                   },
@@ -412,24 +466,51 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                     ),
                   ),
                   const SizedBox(height: 16),
-                  _buildInfoRow(Icons.location_on, 'Adres', _merchantAddress ?? 'Belirtilmemiş', isDark),
-                  _buildInfoRow(Icons.phone, 'Telefon', _merchantPhone ?? 'Belirtilmemiş', isDark),
-                  _buildInfoRow(Icons.access_time, 'Çalışma Saatleri', _workingHours ?? 'Belirtilmemiş', isDark),
-                  _buildInfoRow(Icons.delivery_dining, 'Teslimat Süresi', widget.deliveryTime, isDark),
-                  _buildInfoRow(Icons.attach_money, 'Min. Sipariş', _minOrderAmount != null ? '₺${_minOrderAmount!.toStringAsFixed(0)}' : 'Belirtilmemiş', isDark),
+                  _buildInfoRow(
+                    Icons.location_on,
+                    'Adres',
+                    _merchantAddress ?? 'Belirtilmemiş',
+                    isDark,
+                  ),
+                  _buildInfoRow(
+                    Icons.phone,
+                    'Telefon',
+                    _merchantPhone ?? 'Belirtilmemiş',
+                    isDark,
+                  ),
+                  _buildInfoRow(
+                    Icons.access_time,
+                    'Çalışma Saatleri',
+                    _workingHours ?? 'Belirtilmemiş',
+                    isDark,
+                  ),
+                  _buildInfoRow(
+                    Icons.delivery_dining,
+                    'Teslimat Süresi',
+                    widget.deliveryTime,
+                    isDark,
+                  ),
+                  _buildInfoRow(
+                    Icons.attach_money,
+                    'Min. Sipariş',
+                    _minOrderAmount != null
+                        ? '₺${_minOrderAmount!.toStringAsFixed(0)}'
+                        : 'Belirtilmemiş',
+                    isDark,
+                  ),
                   const SizedBox(height: 16),
                   Row(
                     children: [
                       Expanded(
                         child: GestureDetector(
-                          onTap: () {
+                          onTap: () async {
                             Navigator.pop(ctx);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: const Text('Aranıyor...'),
-                                backgroundColor: FoodColors.primary,
-                              ),
-                            );
+                            if (_merchantPhone != null && _merchantPhone!.isNotEmpty) {
+                              final uri = Uri.parse('tel:$_merchantPhone');
+                              if (await canLaunchUrl(uri)) {
+                                await launchUrl(uri);
+                              }
+                            }
                           },
                           child: Container(
                             padding: const EdgeInsets.symmetric(vertical: 14),
@@ -456,14 +537,19 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                       ),
                       const SizedBox(width: 12),
                       GestureDetector(
-                        onTap: () {
+                        onTap: () async {
                           Navigator.pop(ctx);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: const Text('Haritada açılıyor...'),
-                              backgroundColor: FoodColors.primary,
-                            ),
-                          );
+                          final Uri uri;
+                          if (_merchantLat != null && _merchantLng != null) {
+                            uri = Uri.parse('https://maps.google.com/?q=$_merchantLat,$_merchantLng');
+                          } else if (_merchantAddress != null && _merchantAddress!.isNotEmpty) {
+                            uri = Uri.parse('https://maps.google.com/?q=${Uri.encodeComponent(_merchantAddress!)}');
+                          } else {
+                            return;
+                          }
+                          if (await canLaunchUrl(uri)) {
+                            await launchUrl(uri, mode: LaunchMode.externalApplication);
+                          }
                         },
                         child: Container(
                           padding: const EdgeInsets.all(14),
@@ -471,10 +557,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                             color: isDark ? Colors.grey[800] : Colors.grey[100],
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Icon(
-                            Icons.map,
-                            color: FoodColors.primary,
-                          ),
+                          child: Icon(Icons.map, color: FoodColors.primary),
                         ),
                       ),
                     ],
@@ -529,7 +612,9 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
     final cartItemCount = cartState.itemCount;
 
     return Scaffold(
-      backgroundColor: isDark ? FoodColors.backgroundDark : FoodColors.backgroundLight,
+      backgroundColor: isDark
+          ? FoodColors.backgroundDark
+          : FoodColors.backgroundLight,
       body: Stack(
         children: [
           // Main Content
@@ -559,7 +644,9 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
               SliverToBoxAdapter(child: _buildMenuSection(isDark)),
 
               // Bottom padding for cart button
-              SliverToBoxAdapter(child: SizedBox(height: context.bottomNavPadding + 80)),
+              SliverToBoxAdapter(
+                child: SizedBox(height: context.bottomNavPadding + 80),
+              ),
             ],
           ),
 
@@ -582,7 +669,11 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
               bottom: cartItemCount > 0 ? 150 : 90,
               left: 16,
               right: 16,
-              child: _buildPromoBanner(isDark, achieved: false, remaining: _freeDeliveryThreshold! - cartState.subtotal),
+              child: _buildPromoBanner(
+                isDark,
+                achieved: false,
+                remaining: _freeDeliveryThreshold! - cartState.subtotal,
+              ),
             ),
 
           // Floating Cart Button
@@ -593,7 +684,6 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
               right: 16,
               child: _buildCartButton(isDark, cartState),
             ),
-
         ],
       ),
     );
@@ -612,17 +702,25 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                     fit: BoxFit.cover,
                     memCacheWidth: 800,
                     memCacheHeight: 400,
-                    placeholder: (_, __) => Container(
+                    placeholder: (_, _) => Container(
                       color: isDark ? Colors.grey[800] : Colors.grey[300],
                     ),
-                    errorWidget: (_, __, ___) => Container(
+                    errorWidget: (_, _, _) => Container(
                       color: isDark ? Colors.grey[800] : Colors.grey[300],
-                      child: Icon(Icons.restaurant, size: 48, color: Colors.grey[400]),
+                      child: Icon(
+                        Icons.restaurant,
+                        size: 48,
+                        color: Colors.grey[400],
+                      ),
                     ),
                   )
                 : Container(
                     color: isDark ? Colors.grey[800] : Colors.grey[300],
-                    child: Icon(Icons.restaurant, size: 48, color: Colors.grey[400]),
+                    child: Icon(
+                      Icons.restaurant,
+                      size: 48,
+                      color: Colors.grey[400],
+                    ),
                   ),
           ),
 
@@ -728,7 +826,12 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
 
   Widget _buildRestaurantInfo(bool isDark) {
     return Padding(
-      padding: EdgeInsets.fromLTRB(context.pagePaddingH, 12, context.pagePaddingH, 6),
+      padding: EdgeInsets.fromLTRB(
+        context.pagePaddingH,
+        12,
+        context.pagePaddingH,
+        6,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -749,7 +852,10 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
               GestureDetector(
                 onTap: _scrollToReviews,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: isDark
                         ? const Color(0xFF166534).withValues(alpha: 0.3)
@@ -759,14 +865,20 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.star, size: context.captionSize, color: FoodColors.primary),
+                      Icon(
+                        Icons.star,
+                        size: context.captionSize,
+                        color: FoodColors.primary,
+                      ),
                       const SizedBox(width: 2),
                       Text(
                         widget.rating.toString(),
                         style: TextStyle(
                           fontSize: context.bodySmallSize,
                           fontWeight: FontWeight.bold,
-                          color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF15803D),
+                          color: isDark
+                              ? const Color(0xFF4ADE80)
+                              : const Color(0xFF15803D),
                         ),
                       ),
                     ],
@@ -793,101 +905,119 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
     final deliveryFeeText = _deliveryFee != null && _deliveryFee! > 0
         ? '${_deliveryFee!.toStringAsFixed(0)} TL'
         : 'Ücretsiz';
-    final thresholdText = _freeDeliveryThreshold != null && _freeDeliveryThreshold! > 0
+    final thresholdText =
+        _freeDeliveryThreshold != null && _freeDeliveryThreshold! > 0
         ? '${_freeDeliveryThreshold!.toStringAsFixed(0)} TL'
-        : (_minOrderAmount != null ? '${_minOrderAmount!.toStringAsFixed(0)} TL' : '-');
-    final thresholdLabel = _freeDeliveryThreshold != null && _freeDeliveryThreshold! > 0
+        : (_minOrderAmount != null
+              ? '${_minOrderAmount!.toStringAsFixed(0)} TL'
+              : '-');
+    final thresholdLabel =
+        _freeDeliveryThreshold != null && _freeDeliveryThreshold! > 0
         ? 'Ücretsiz Teslimat'
         : 'Min. Sipariş';
 
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: context.pagePaddingH, vertical: 8),
-      child: GestureDetector(
-        onTap: _showStoreInfo,
-        child: Container(
-          padding: EdgeInsets.all(context.cardPadding),
-          decoration: BoxDecoration(
-            color: isDark ? FoodColors.surfaceDark : const Color(0xFFFCFAF8),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: isDark ? Colors.grey[800]! : Colors.grey[100]!,
-            ),
+      padding: EdgeInsets.symmetric(
+        horizontal: context.pagePaddingH,
+        vertical: 8,
+      ),
+      child: Container(
+        padding: EdgeInsets.all(context.cardPadding),
+        decoration: BoxDecoration(
+          color: isDark ? FoodColors.surfaceDark : const Color(0xFFFCFAF8),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isDark ? Colors.grey[800]! : Colors.grey[100]!,
           ),
-          child: IntrinsicHeight(
-            child: Row(
-              children: [
-                // Teslimat suresi
-                Expanded(
-                  child: Column(
-                    children: [
-                      Icon(Icons.schedule, size: 20, color: FoodColors.primary),
-                      const SizedBox(height: 4),
-                      Text(
-                        widget.deliveryTime,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : const Color(0xFF111827),
-                        ),
-                        textAlign: TextAlign.center,
+        ),
+        child: IntrinsicHeight(
+          child: Row(
+            children: [
+              // Teslimat suresi
+              Expanded(
+                child: Column(
+                  children: [
+                    Icon(Icons.schedule, size: 20, color: FoodColors.primary),
+                    const SizedBox(height: 4),
+                    Text(
+                      widget.deliveryTime,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : const Color(0xFF111827),
                       ),
-                      Text(
-                        'Teslimat',
-                        style: TextStyle(fontSize: 10, color: Colors.grey[500]),
-                      ),
-                    ],
-                  ),
+                      textAlign: TextAlign.center,
+                    ),
+                    Text(
+                      'Teslimat',
+                      style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+                    ),
+                  ],
                 ),
-                Container(width: 1, color: isDark ? Colors.grey[700] : Colors.grey[200]),
-                // Teslimat ucreti
-                Expanded(
-                  child: Column(
-                    children: [
-                      Icon(Icons.delivery_dining, size: 20, color: FoodColors.primary),
-                      const SizedBox(height: 4),
-                      Text(
-                        deliveryFeeText,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: deliveryFeeText == 'Ücretsiz'
-                              ? const Color(0xFF22C55E)
-                              : (isDark ? Colors.white : const Color(0xFF111827)),
-                        ),
-                        textAlign: TextAlign.center,
+              ),
+              Container(
+                width: 1,
+                color: isDark ? Colors.grey[700] : Colors.grey[200],
+              ),
+              // Teslimat ucreti
+              Expanded(
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.delivery_dining,
+                      size: 20,
+                      color: FoodColors.primary,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      deliveryFeeText,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: deliveryFeeText == 'Ücretsiz'
+                            ? const Color(0xFF22C55E)
+                            : (isDark ? Colors.white : const Color(0xFF111827)),
                       ),
-                      Text(
-                        'Teslimat Ücreti',
-                        style: TextStyle(fontSize: 10, color: Colors.grey[500]),
-                      ),
-                    ],
-                  ),
+                      textAlign: TextAlign.center,
+                    ),
+                    Text(
+                      'Teslimat Ücreti',
+                      style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+                    ),
+                  ],
                 ),
-                Container(width: 1, color: isDark ? Colors.grey[700] : Colors.grey[200]),
-                // Min siparis / ucretsiz teslimat esigi
-                Expanded(
-                  child: Column(
-                    children: [
-                      Icon(Icons.shopping_bag_outlined, size: 20, color: FoodColors.primary),
-                      const SizedBox(height: 4),
-                      Text(
-                        thresholdText,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : const Color(0xFF111827),
-                        ),
-                        textAlign: TextAlign.center,
+              ),
+              Container(
+                width: 1,
+                color: isDark ? Colors.grey[700] : Colors.grey[200],
+              ),
+              // Min siparis / ucretsiz teslimat esigi
+              Expanded(
+                child: Column(
+                  children: [
+                    Icon(
+                      Icons.shopping_bag_outlined,
+                      size: 20,
+                      color: FoodColors.primary,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      thresholdText,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : const Color(0xFF111827),
                       ),
-                      Text(
-                        thresholdLabel,
-                        style: TextStyle(fontSize: 10, color: Colors.grey[500]),
-                      ),
-                    ],
-                  ),
+                      textAlign: TextAlign.center,
+                    ),
+                    Text(
+                      thresholdLabel,
+                      style: TextStyle(fontSize: 10, color: Colors.grey[500]),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -896,7 +1026,10 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
 
   Widget _buildSearchBar(bool isDark) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: context.pagePaddingH, vertical: 4),
+      padding: EdgeInsets.symmetric(
+        horizontal: context.pagePaddingH,
+        vertical: 4,
+      ),
       child: GestureDetector(
         onTap: _showSearchDialog,
         child: Container(
@@ -904,7 +1037,9 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
           decoration: BoxDecoration(
             color: isDark ? FoodColors.surfaceDark : Colors.grey[100],
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: isDark ? Colors.grey[700]! : Colors.grey[200]!),
+            border: Border.all(
+              color: isDark ? Colors.grey[700]! : Colors.grey[200]!,
+            ),
           ),
           child: Row(
             children: [
@@ -940,7 +1075,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           itemCount: _categories.length,
-          separatorBuilder: (_, __) => const SizedBox(width: 20),
+          separatorBuilder: (_, _) => const SizedBox(width: 20),
           itemBuilder: (context, index) {
             final isSelected = index == _selectedCategoryIndex;
             return GestureDetector(
@@ -950,7 +1085,9 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                 decoration: BoxDecoration(
                   border: Border(
                     bottom: BorderSide(
-                      color: isSelected ? FoodColors.primary : Colors.transparent,
+                      color: isSelected
+                          ? FoodColors.primary
+                          : Colors.transparent,
                       width: 3,
                     ),
                   ),
@@ -991,7 +1128,9 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
     }
 
     // Filter menu items by category
-    final filteredItems = _menuItems.where((item) => item.category == selectedCategory).toList();
+    final filteredItems = _menuItems
+        .where((item) => item.category == selectedCategory)
+        .toList();
 
     if (filteredItems.isEmpty) {
       return Padding(
@@ -1016,20 +1155,26 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: isDark
-                  ? [FoodColors.primary.withValues(alpha: 0.2), FoodColors.primary.withValues(alpha: 0.05)]
-                  : [FoodColors.primary.withValues(alpha: 0.15), FoodColors.primary.withValues(alpha: 0.03)],
+                  ? [
+                      FoodColors.primary.withValues(alpha: 0.2),
+                      FoodColors.primary.withValues(alpha: 0.05),
+                    ]
+                  : [
+                      FoodColors.primary.withValues(alpha: 0.15),
+                      FoodColors.primary.withValues(alpha: 0.03),
+                    ],
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
             ),
             border: Border(
-              left: BorderSide(
-                color: FoodColors.primary,
-                width: 4,
-              ),
+              left: BorderSide(color: FoodColors.primary, width: 4),
             ),
           ),
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: context.pagePaddingH, vertical: 14),
+            padding: EdgeInsets.symmetric(
+              horizontal: context.pagePaddingH,
+              vertical: 14,
+            ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -1043,9 +1188,14 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                   ),
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
-                    color: FoodColors.primary.withValues(alpha: isDark ? 0.3 : 0.15),
+                    color: FoodColors.primary.withValues(
+                      alpha: isDark ? 0.3 : 0.15,
+                    ),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
@@ -1063,32 +1213,39 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
         ),
 
         // Menu Items from Supabase
-        ...filteredItems.map((item) => Column(
-          children: [
-            MenuItemCard(
-              itemId: item.id,
-              name: item.name,
-              description: item.description ?? '',
-              price: item.discountedPrice ?? item.price,
-              imageUrl: item.imageUrl ?? '',
-              badge: item.isPopular ? 'Popüler' : null,
-              isDark: isDark,
-              onAdd: () => _addToCart(item),
-              restaurantName: widget.name,
-              deliveryTime: widget.deliveryTime,
-              rating: widget.rating,
-              cartIconKey: _cartIconKey,
-              hasOptionGroups: item.hasOptionGroups,
-              imageSize: 110,
-            ),
-            Divider(height: 0.5, color: isDark ? Colors.grey[800] : Colors.grey[100]),
-          ],
-        )),
+        ...filteredItems.map(
+          (item) => Column(
+            children: [
+              MenuItemCard(
+                itemId: item.id,
+                name: item.name,
+                description: item.description ?? '',
+                price: item.discountedPrice ?? item.price,
+                imageUrl: item.imageUrl ?? '',
+                badge: item.isPopular ? 'Popüler' : null,
+                isDark: isDark,
+                onAdd: () => _addToCart(item),
+                restaurantName: widget.name,
+                deliveryTime: widget.deliveryTime,
+                rating: widget.rating,
+                cartIconKey: _cartIconKey,
+                hasOptionGroups: item.hasOptionGroups,
+                imageSize: 110,
+              ),
+              Divider(
+                height: 0.5,
+                color: isDark ? Colors.grey[800] : Colors.grey[100],
+              ),
+            ],
+          ),
+        ),
 
         // Spacer
         Container(
           height: 8,
-          color: isDark ? Colors.black.withValues(alpha: 0.2) : const Color(0xFFF9FAFB),
+          color: isDark
+              ? Colors.black.withValues(alpha: 0.2)
+              : const Color(0xFFF9FAFB),
         ),
       ],
     );
@@ -1096,10 +1253,14 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
 
   Widget _buildGroupedMenuSection(bool isDark) {
     // Get popular items (max 6)
-    final popularItems = _menuItems.where((item) => item.isPopular).take(6).toList();
+    final popularItems = _menuItems
+        .where((item) => item.isPopular)
+        .take(6)
+        .toList();
 
     // Group remaining items by category with sort order
-    final Map<String, ({List<MenuItem> items, int sortOrder})> groupedItems = {};
+    final Map<String, ({List<MenuItem> items, int sortOrder})> groupedItems =
+        {};
 
     for (final item in _menuItems) {
       final category = item.category ?? 'Diğer';
@@ -1141,10 +1302,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
         ],
 
         // Reviews carousel between popular and categories
-        Container(
-          key: _reviewsKey,
-          child: _buildReviewsCarousel(isDark),
-        ),
+        Container(key: _reviewsKey, child: _buildReviewsCarousel(isDark)),
 
         // Then categories sorted by sort_order
         ...sortedCategories.map((entry) {
@@ -1161,7 +1319,9 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
         // Bottom spacer
         Container(
           height: 8,
-          color: isDark ? Colors.black.withValues(alpha: 0.2) : const Color(0xFFF9FAFB),
+          color: isDark
+              ? Colors.black.withValues(alpha: 0.2)
+              : const Color(0xFFF9FAFB),
         ),
       ],
     );
@@ -1178,7 +1338,12 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
       children: [
         // Category Header
         Container(
-          margin: EdgeInsets.fromLTRB(context.pagePaddingH, 20, context.pagePaddingH, 10),
+          margin: EdgeInsets.fromLTRB(
+            context.pagePaddingH,
+            20,
+            context.pagePaddingH,
+            10,
+          ),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
             color: isDark
@@ -1195,7 +1360,11 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
           child: Row(
             children: [
               if (isPopularSection) ...[
-                Icon(Icons.local_fire_department, color: Colors.orange, size: context.iconMedium),
+                Icon(
+                  Icons.local_fire_department,
+                  color: Colors.orange,
+                  size: context.iconMedium,
+                ),
                 const SizedBox(width: 6),
               ],
               Expanded(
@@ -1211,9 +1380,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: isDark
-                      ? Colors.grey[800]
-                      : Colors.grey[200],
+                  color: isDark ? Colors.grey[800] : Colors.grey[200],
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -1233,7 +1400,10 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
         if (isPopularSection)
           // Grid layout for popular items
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: context.pagePaddingH, vertical: 8),
+            padding: EdgeInsets.symmetric(
+              horizontal: context.pagePaddingH,
+              vertical: 8,
+            ),
             child: GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -1244,36 +1414,44 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                 mainAxisSpacing: 8,
               ),
               itemCount: items.length,
-              itemBuilder: (context, index) => _buildPopularGridCard(items[index], isDark),
+              itemBuilder: (context, index) =>
+                  _buildPopularGridCard(items[index], isDark),
             ),
           )
         else
-          ...items.map((item) => Column(
-            children: [
-              MenuItemCard(
-                itemId: item.id,
-                name: item.name,
-                description: item.description ?? '',
-                price: item.discountedPrice ?? item.price,
-                imageUrl: item.imageUrl ?? '',
-                badge: item.isPopular ? 'Popüler' : null,
-                isDark: isDark,
-                onAdd: () => _addToCart(item),
-                restaurantName: widget.name,
-                deliveryTime: widget.deliveryTime,
-                rating: widget.rating,
-                cartIconKey: _cartIconKey,
-                hasOptionGroups: item.hasOptionGroups,
-                imageSize: 110,
-              ),
-              Divider(height: 0.5, color: isDark ? Colors.grey[800] : Colors.grey[100]),
-            ],
-          )),
+          ...items.map(
+            (item) => Column(
+              children: [
+                MenuItemCard(
+                  itemId: item.id,
+                  name: item.name,
+                  description: item.description ?? '',
+                  price: item.discountedPrice ?? item.price,
+                  imageUrl: item.imageUrl ?? '',
+                  badge: item.isPopular ? 'Popüler' : null,
+                  isDark: isDark,
+                  onAdd: () => _addToCart(item),
+                  restaurantName: widget.name,
+                  deliveryTime: widget.deliveryTime,
+                  rating: widget.rating,
+                  cartIconKey: _cartIconKey,
+                  hasOptionGroups: item.hasOptionGroups,
+                  imageSize: 110,
+                ),
+                Divider(
+                  height: 0.5,
+                  color: isDark ? Colors.grey[800] : Colors.grey[100],
+                ),
+              ],
+            ),
+          ),
 
         // Category separator
         Container(
           height: 6,
-          color: isDark ? Colors.black.withValues(alpha: 0.2) : const Color(0xFFF3F4F6),
+          color: isDark
+              ? Colors.black.withValues(alpha: 0.2)
+              : const Color(0xFFF3F4F6),
         ),
       ],
     );
@@ -1318,21 +1496,31 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                 children: [
                   Positioned.fill(
                     child: ClipRRect(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(10),
+                      ),
                       child: CachedNetworkImage(
-                        imageUrl: ImageUtils.getProductThumbnail(item.imageUrl ?? ''),
+                        imageUrl: ImageUtils.getProductThumbnail(
+                          item.imageUrl ?? '',
+                        ),
                         width: double.infinity,
                         height: double.infinity,
                         fit: BoxFit.cover,
                         memCacheWidth: 400,
                         memCacheHeight: 400,
-                        placeholder: (_, __) => Container(
+                        placeholder: (_, _) => Container(
                           color: isDark ? Colors.grey[800] : Colors.grey[200],
-                          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                          child: const Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
                         ),
-                        errorWidget: (_, __, ___) => Container(
+                        errorWidget: (_, _, _) => Container(
                           color: isDark ? Colors.grey[800] : Colors.grey[100],
-                          child: Icon(Icons.fastfood, size: 32, color: Colors.grey[400]),
+                          child: Icon(
+                            Icons.fastfood,
+                            size: 32,
+                            color: Colors.grey[400],
+                          ),
                         ),
                       ),
                     ),
@@ -1380,7 +1568,11 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                             ),
                           ],
                         ),
-                        child: const Icon(Icons.add, size: 16, color: Colors.white),
+                        child: const Icon(
+                          Icons.add,
+                          size: 16,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),
@@ -1422,7 +1614,9 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
   }
 
   Widget _buildReviewsCarousel(bool isDark) {
-    final reviewsAsync = ref.watch(merchantReviewsProvider(widget.restaurantId));
+    final reviewsAsync = ref.watch(
+      merchantReviewsProvider(widget.restaurantId),
+    );
 
     return reviewsAsync.when(
       data: (reviews) {
@@ -1431,7 +1625,12 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: EdgeInsets.fromLTRB(context.pagePaddingH, 12, context.pagePaddingH, 8),
+              padding: EdgeInsets.fromLTRB(
+                context.pagePaddingH,
+                12,
+                context.pagePaddingH,
+                8,
+              ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -1463,8 +1662,9 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                 scrollDirection: Axis.horizontal,
                 padding: EdgeInsets.symmetric(horizontal: context.pagePaddingH),
                 itemCount: reviews.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 10),
-                itemBuilder: (context, index) => _buildCompactReviewCard(reviews[index], isDark),
+                separatorBuilder: (_, _) => const SizedBox(width: 10),
+                itemBuilder: (context, index) =>
+                    _buildCompactReviewCard(reviews[index], isDark),
               ),
             ),
             const SizedBox(height: 8),
@@ -1472,7 +1672,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
         );
       },
       loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
     );
   }
 
@@ -1483,7 +1683,9 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
     final avgRating = (courierRating + serviceRating + tasteRating) / 3;
     final comment = review['comment'] as String? ?? '';
     final customerName = review['customer_name'] as String? ?? 'Anonim';
-    final createdAt = DateTime.tryParse(review['created_at'] as String? ?? '') ?? DateTime.now();
+    final createdAt =
+        DateTime.tryParse(review['created_at'] as String? ?? '') ??
+        DateTime.now();
 
     return Container(
       width: 220,
@@ -1491,7 +1693,9 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
       decoration: BoxDecoration(
         color: isDark ? FoodColors.surfaceDark : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isDark ? Colors.grey[800]! : Colors.grey[200]!),
+        border: Border.all(
+          color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1544,7 +1748,6 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
     );
   }
 
-
   Widget _buildReviewCard(Map<String, dynamic> review, bool isDark) {
     final courierRating = review['courier_rating'] as int? ?? 0;
     final serviceRating = review['service_rating'] as int? ?? 0;
@@ -1553,7 +1756,9 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
     final comment = review['comment'] as String?;
     final merchantReply = review['merchant_reply'] as String?;
     final customerName = review['customer_name'] as String? ?? 'Anonim';
-    final createdAt = DateTime.tryParse(review['created_at'] as String? ?? '') ?? DateTime.now();
+    final createdAt =
+        DateTime.tryParse(review['created_at'] as String? ?? '') ??
+        DateTime.now();
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1561,7 +1766,9 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
       decoration: BoxDecoration(
         color: isDark ? FoodColors.surfaceDark : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isDark ? Colors.grey[800]! : Colors.grey[200]!),
+        border: Border.all(
+          color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1609,7 +1816,11 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.star, size: 14, color: _getRatingColor(avgRating)),
+                    Icon(
+                      Icons.star,
+                      size: 14,
+                      color: _getRatingColor(avgRating),
+                    ),
                     const SizedBox(width: 2),
                     Text(
                       avgRating.toStringAsFixed(1),
@@ -1659,7 +1870,9 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
               decoration: BoxDecoration(
                 color: FoodColors.primary.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: FoodColors.primary.withValues(alpha: 0.2)),
+                border: Border.all(
+                  color: FoodColors.primary.withValues(alpha: 0.2),
+                ),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1708,10 +1921,7 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            label,
-            style: TextStyle(fontSize: 10, color: Colors.grey[500]),
-          ),
+          Text(label, style: TextStyle(fontSize: 10, color: Colors.grey[500])),
           const SizedBox(width: 4),
           Icon(Icons.star, size: 10, color: Colors.amber),
           Text(
@@ -1796,10 +2006,13 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                           controller: scrollController,
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           itemCount: reviews.length,
-                          itemBuilder: (context, index) => _buildReviewCard(reviews[index], isDark),
+                          itemBuilder: (context, index) =>
+                              _buildReviewCard(reviews[index], isDark),
                         ),
-                  loading: () => const Center(child: CircularProgressIndicator()),
-                  error: (_, __) => const Center(child: Text('Yorumlar yüklenemedi')),
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (_, _) =>
+                      const Center(child: Text('Yorumlar yüklenemedi')),
                 ),
               ),
             ],
@@ -1809,23 +2022,30 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
     );
   }
 
-
   void _addToCart(MenuItem item) {
-    ref.read(cartProvider.notifier).addItem(CartItem(
-      id: item.id,
-      name: item.name,
-      description: item.description,
-      price: item.discountedPrice ?? item.price,
-      quantity: 1,
-      imageUrl: item.imageUrl ?? '',
-      merchantId: widget.restaurantId,
-      merchantName: widget.name,
-    ));
+    ref
+        .read(cartProvider.notifier)
+        .addItem(
+          CartItem(
+            id: item.id,
+            name: item.name,
+            description: item.description,
+            price: item.discountedPrice ?? item.price,
+            quantity: 1,
+            imageUrl: item.imageUrl ?? '',
+            merchantId: widget.restaurantId,
+            merchantName: widget.name,
+          ),
+        );
     // Trigger cart bounce animation
     _cartBounceKey.currentState?.bounce();
   }
 
-  Widget _buildPromoBanner(bool isDark, {required bool achieved, double remaining = 0}) {
+  Widget _buildPromoBanner(
+    bool isDark, {
+    required bool achieved,
+    double remaining = 0,
+  }) {
     if (achieved) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -1932,51 +2152,47 @@ class _RestaurantDetailScreenState extends ConsumerState<RestaurantDetailScreen>
                       ),
                     ),
                   ),
-                const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Total',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.white.withValues(alpha: 0.8),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Total',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white.withValues(alpha: 0.8),
+                        ),
                       ),
-                    ),
-                    Text(
-                      '${cartState.subtotal.toStringAsFixed(2)} TL',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                      Text(
+                        '${cartState.subtotal.toStringAsFixed(2)} TL',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const Row(
-              children: [
-                Text(
-                  'View Cart',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    ],
                   ),
-                ),
-                SizedBox(width: 8),
-                Icon(
-                  Icons.arrow_forward,
-                  size: 18,
-                  color: Colors.white,
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+              const Row(
+                children: [
+                  Text(
+                    'View Cart',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  Icon(Icons.arrow_forward, size: 18, color: Colors.white),
+                ],
+              ),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -1993,7 +2209,11 @@ class _CategoryTabDelegate extends SliverPersistentHeaderDelegate {
   double get maxExtent => 44;
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
     return child;
   }
 

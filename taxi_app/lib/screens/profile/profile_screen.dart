@@ -35,9 +35,10 @@ class ProfileScreen extends ConsumerWidget {
           children: [
             // Profile Header
             profileAsync.when(
-              data: (profile) => _buildProfileHeader(context, authState, profile),
+              data: (profile) =>
+                  _buildProfileHeader(context, authState, profile),
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (_, __) => _buildProfileHeader(context, authState, null),
+              error: (_, _) => _buildProfileHeader(context, authState, null),
             ),
 
             const SizedBox(height: 24),
@@ -46,7 +47,7 @@ class ProfileScreen extends ConsumerWidget {
             profileAsync.when(
               data: (profile) => _buildVehicleSection(context, profile),
               loading: () => const SizedBox.shrink(),
-              error: (_, __) => const SizedBox.shrink(),
+              error: (_, _) => const SizedBox.shrink(),
             ),
 
             const SizedBox(height: 24),
@@ -55,7 +56,7 @@ class ProfileScreen extends ConsumerWidget {
             profileAsync.when(
               data: (profile) => _buildStatsSection(context, profile),
               loading: () => const SizedBox.shrink(),
-              error: (_, __) => const SizedBox.shrink(),
+              error: (_, _) => const SizedBox.shrink(),
             ),
 
             const SizedBox(height: 24),
@@ -70,7 +71,11 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildProfileHeader(BuildContext context, AuthState authState, Map<String, dynamic>? profile) {
+  Widget _buildProfileHeader(
+    BuildContext context,
+    AuthState authState,
+    Map<String, dynamic>? profile,
+  ) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -125,7 +130,11 @@ class ProfileScreen extends ConsumerWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.fiber_new_rounded, color: Colors.green.shade700, size: 20),
+                  Icon(
+                    Icons.fiber_new_rounded,
+                    color: Colors.green.shade700,
+                    size: 20,
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     'Yeni Sürücü',
@@ -140,10 +149,7 @@ class ProfileScreen extends ConsumerWidget {
             const SizedBox(height: 4),
             Text(
               '${5 - (profile?['total_ratings'] as int? ?? 0)} değerlendirme sonra puanınız görünür olacak',
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.textHint,
-              ),
+              style: TextStyle(fontSize: 12, color: AppColors.textHint),
             ),
           ] else if (profile?['rating'] != null) ...[
             Row(
@@ -166,7 +172,10 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildVehicleSection(BuildContext context, Map<String, dynamic>? profile) {
+  Widget _buildVehicleSection(
+    BuildContext context,
+    Map<String, dynamic>? profile,
+  ) {
     if (profile == null) return const SizedBox.shrink();
 
     return Container(
@@ -198,36 +207,57 @@ class ProfileScreen extends ConsumerWidget {
             ],
           ),
           const Divider(height: 24),
-          _buildVehicleInfoRow(context, 'Marka', profile['vehicle_brand'] ?? '-'),
-          _buildVehicleInfoRow(context, 'Model', profile['vehicle_model'] ?? '-'),
-          _buildVehicleInfoRow(context, 'Yıl', profile['vehicle_year']?.toString() ?? '-'),
-          _buildVehicleInfoRow(context, 'Renk', profile['vehicle_color'] ?? '-'),
-          _buildVehicleInfoRow(context, 'Plaka', profile['vehicle_plate'] ?? '-'),
+          _buildVehicleInfoRow(
+            context,
+            'Marka',
+            profile['vehicle_brand'] ?? '-',
+          ),
+          _buildVehicleInfoRow(
+            context,
+            'Model',
+            profile['vehicle_model'] ?? '-',
+          ),
+          _buildVehicleInfoRow(
+            context,
+            'Yıl',
+            profile['vehicle_year']?.toString() ?? '-',
+          ),
+          _buildVehicleInfoRow(
+            context,
+            'Renk',
+            profile['vehicle_color'] ?? '-',
+          ),
+          _buildVehicleInfoRow(
+            context,
+            'Plaka',
+            profile['vehicle_plate'] ?? '-',
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildVehicleInfoRow(BuildContext context, String label, String value) {
+  Widget _buildVehicleInfoRow(
+    BuildContext context,
+    String label,
+    String value,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          Text(
-            value,
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
+          Text(label, style: Theme.of(context).textTheme.bodyMedium),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
         ],
       ),
     );
   }
 
-  Widget _buildStatsSection(BuildContext context, Map<String, dynamic>? profile) {
+  Widget _buildStatsSection(
+    BuildContext context,
+    Map<String, dynamic>? profile,
+  ) {
     if (profile == null) return const SizedBox.shrink();
 
     final totalRides = profile['total_rides'] as int? ?? 0;
@@ -253,11 +283,7 @@ class ProfileScreen extends ConsumerWidget {
               AppColors.secondary,
             ),
           ),
-          Container(
-            width: 1,
-            height: 50,
-            color: AppColors.border,
-          ),
+          Container(width: 1, height: 50, color: AppColors.border),
           Expanded(
             child: totalRatings < 5
                 ? _buildStatItem(
@@ -275,11 +301,7 @@ class ProfileScreen extends ConsumerWidget {
                     AppColors.warning,
                   ),
           ),
-          Container(
-            width: 1,
-            height: 50,
-            color: AppColors.border,
-          ),
+          Container(width: 1, height: 50, color: AppColors.border),
           Expanded(
             child: _buildStatItem(
               context,
@@ -294,22 +316,22 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatItem(BuildContext context, IconData icon, String value, String label, Color color) {
+  Widget _buildStatItem(
+    BuildContext context,
+    IconData icon,
+    String value,
+    String label,
+    Color color,
+  ) {
     return Column(
       children: [
         Icon(icon, color: color, size: 24),
         const SizedBox(height: 8),
         Text(
           value,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
-        Text(
-          label,
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
+        Text(label, style: Theme.of(context).textTheme.bodySmall),
       ],
     );
   }
@@ -411,10 +433,7 @@ class ProfileScreen extends ConsumerWidget {
           color: textColor ?? AppColors.textPrimary,
         ),
       ),
-      trailing: Icon(
-        Icons.chevron_right,
-        color: AppColors.textHint,
-      ),
+      trailing: Icon(Icons.chevron_right, color: AppColors.textHint),
       onTap: onTap,
     );
   }
@@ -424,7 +443,9 @@ class ProfileScreen extends ConsumerWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Çıkış Yap'),
-        content: const Text('Hesabınızdan çıkış yapmak istediğinize emin misiniz?'),
+        content: const Text(
+          'Hesabınızdan çıkış yapmak istediğinize emin misiniz?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -438,10 +459,11 @@ class ProfileScreen extends ConsumerWidget {
                 context.go('/login');
               }
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            child: const Text(
+              'Çıkış Yap',
+              style: TextStyle(color: Colors.white),
             ),
-            child: const Text('Çıkış Yap', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -461,7 +483,11 @@ class ProfileScreen extends ConsumerWidget {
                 color: AppColors.primary,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(Icons.local_taxi, color: AppColors.secondary, size: 24),
+              child: Icon(
+                Icons.local_taxi,
+                color: AppColors.secondary,
+                size: 24,
+              ),
             ),
             const SizedBox(width: 12),
             const Text('Taxi App'),
@@ -473,7 +499,9 @@ class ProfileScreen extends ConsumerWidget {
           children: [
             Text('Versiyon: 1.0.0'),
             SizedBox(height: 8),
-            Text('Taksi sürücü uygulaması ile yolculuklarınızı kolayca yönetin ve kazancınızı takip edin.'),
+            Text(
+              'Taksi sürücü uygulaması ile yolculuklarınızı kolayca yönetin ve kazancınızı takip edin.',
+            ),
           ],
         ),
         actions: [

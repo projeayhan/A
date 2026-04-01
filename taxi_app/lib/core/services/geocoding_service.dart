@@ -1,7 +1,7 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
+import 'log_service.dart';
 
 class GeocodingService {
   static String get _apiKey => dotenv.env['GOOGLE_MAPS_API_KEY'] ?? '';
@@ -27,8 +27,8 @@ class GeocodingService {
         }
       }
       return null;
-    } catch (e) {
-      debugPrint('Geocoding error: $e');
+    } catch (e, st) {
+      LogService.error('Geocoding error', error: e, stackTrace: st, source: 'GeocodingService:getAddressFromCoordinates');
       return null;
     }
   }
@@ -79,8 +79,8 @@ class GeocodingService {
         }
       }
       return null;
-    } catch (e) {
-      debugPrint('Short geocoding error: $e');
+    } catch (e, st) {
+      LogService.error('Short geocoding error', error: e, stackTrace: st, source: 'GeocodingService:getShortAddressFromCoordinates');
       return null;
     }
   }
@@ -109,8 +109,8 @@ class GeocodingService {
         }
       }
       return null;
-    } catch (e) {
-      debugPrint('Geocoding error: $e');
+    } catch (e, st) {
+      LogService.error('Geocoding error', error: e, stackTrace: st, source: 'GeocodingService:getCoordinatesFromAddress');
       return null;
     }
   }

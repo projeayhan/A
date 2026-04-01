@@ -5,33 +5,40 @@ import 'package:intl/intl.dart';
 
 import '../../core/theme.dart';
 import '../../core/supabase_config.dart';
+import 'package:rent_a_car_panel/core/services/log_service.dart';
 
 // Car detail provider
-final carDetailProvider = FutureProvider.autoDispose.family<Map<String, dynamic>?, String>((ref, carId) async {
-  final client = ref.watch(supabaseClientProvider);
+final carDetailProvider = FutureProvider.autoDispose
+    .family<Map<String, dynamic>?, String>((ref, carId) async {
+      final client = ref.watch(supabaseClientProvider);
+      final companyId = await ref.watch(companyIdProvider.future);
 
-  final response = await client
-      .from('rental_cars')
-      .select('*, rental_locations(id, name, city, address)')
-      .eq('id', carId)
-      .maybeSingle();
+      final response = await client
+          .from('rental_cars')
+          .select('*, rental_locations(id, name, city, address)')
+          .eq('id', carId)
+          .eq('company_id', companyId ?? '')
+          .maybeSingle();
 
-  return response;
-});
+      return response;
+    });
 
 // Car bookings provider
-final carBookingsProvider = FutureProvider.autoDispose.family<List<Map<String, dynamic>>, String>((ref, carId) async {
-  final client = ref.watch(supabaseClientProvider);
+final carBookingsProvider = FutureProvider.autoDispose
+    .family<List<Map<String, dynamic>>, String>((ref, carId) async {
+      final client = ref.watch(supabaseClientProvider);
+      final companyId = await ref.watch(companyIdProvider.future);
 
-  final response = await client
-      .from('rental_bookings')
-      .select('*')
-      .eq('car_id', carId)
-      .order('pickup_date', ascending: false)
-      .limit(10);
+      final response = await client
+          .from('rental_bookings')
+          .select('*')
+          .eq('car_id', carId)
+          .eq('company_id', companyId ?? '')
+          .order('pickup_date', ascending: false)
+          .limit(10);
 
-  return List<Map<String, dynamic>>.from(response);
-});
+      return List<Map<String, dynamic>>.from(response);
+    });
 
 class CarDetailScreen extends ConsumerWidget {
   final String carId;
@@ -81,9 +88,18 @@ class CarDetailScreen extends ConsumerWidget {
                     PopupMenuButton<String>(
                       onSelected: (status) => _updateStatus(ref, status),
                       itemBuilder: (context) => [
-                        const PopupMenuItem(value: 'available', child: Text('Müsait')),
-                        const PopupMenuItem(value: 'maintenance', child: Text('Bakımda')),
-                        const PopupMenuItem(value: 'inactive', child: Text('Pasif')),
+                        const PopupMenuItem(
+                          value: 'available',
+                          child: Text('Müsait'),
+                        ),
+                        const PopupMenuItem(
+                          value: 'maintenance',
+                          child: Text('Bakımda'),
+                        ),
+                        const PopupMenuItem(
+                          value: 'inactive',
+                          child: Text('Pasif'),
+                        ),
                       ],
                       child: ElevatedButton.icon(
                         onPressed: null,
@@ -126,15 +142,42 @@ class CarDetailScreen extends ConsumerWidget {
                                   GridView.count(
                                     crossAxisCount: 3,
                                     shrinkWrap: true,
-                                    physics: const NeverScrollableScrollPhysics(),
+                                    physics:
+                                        const NeverScrollableScrollPhysics(),
                                     childAspectRatio: 2.5,
                                     children: [
-                                      _buildSpecItem(Icons.calendar_today, 'Yıl', '${car['year']}'),
-                                      _buildSpecItem(Icons.category, 'Kategori', _getCategoryLabel(car['category'])),
-                                      _buildSpecItem(Icons.settings, 'Vites', _getTransmissionLabel(car['transmission'])),
-                                      _buildSpecItem(Icons.local_gas_station, 'Yakıt', _getFuelLabel(car['fuel_type'])),
-                                      _buildSpecItem(Icons.airline_seat_recline_normal, 'Koltuk', '${car['seats']}'),
-                                      _buildSpecItem(Icons.door_front_door, 'Kapı', '${car['doors']}'),
+                                      _buildSpecItem(
+                                        Icons.calendar_today,
+                                        'Yıl',
+                                        '${car['year']}',
+                                      ),
+                                      _buildSpecItem(
+                                        Icons.category,
+                                        'Kategori',
+                                        _getCategoryLabel(car['category']),
+                                      ),
+                                      _buildSpecItem(
+                                        Icons.settings,
+                                        'Vites',
+                                        _getTransmissionLabel(
+                                          car['transmission'],
+                                        ),
+                                      ),
+                                      _buildSpecItem(
+                                        Icons.local_gas_station,
+                                        'Yakıt',
+                                        _getFuelLabel(car['fuel_type']),
+                                      ),
+                                      _buildSpecItem(
+                                        Icons.airline_seat_recline_normal,
+                                        'Koltuk',
+                                        '${car['seats']}',
+                                      ),
+                                      _buildSpecItem(
+                                        Icons.door_front_door,
+                                        'Kapı',
+                                        '${car['doors']}',
+                                      ),
                                     ],
                                   ),
                                 ],
@@ -158,7 +201,8 @@ class CarDetailScreen extends ConsumerWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
                                       const Text(
                                         'Günlük Fiyat',
@@ -167,7 +211,9 @@ class CarDetailScreen extends ConsumerWidget {
                                         ),
                                       ),
                                       Text(
-                                        formatter.format(car['daily_price'] ?? 0),
+                                        formatter.format(
+                                          car['daily_price'] ?? 0,
+                                        ),
                                         style: const TextStyle(
                                           fontSize: 24,
                                           fontWeight: FontWeight.bold,
@@ -177,14 +223,27 @@ class CarDetailScreen extends ConsumerWidget {
                                     ],
                                   ),
                                   const Divider(height: 32),
-                                  _buildInfoRow('Plaka', car['plate_number'] ?? '-'),
+                                  _buildInfoRow(
+                                    'Plaka',
+                                    car['plate_number'] ?? '-',
+                                  ),
                                   const SizedBox(height: 12),
-                                  _buildInfoRow('Lokasyon', location?['name'] ?? '-'),
+                                  _buildInfoRow(
+                                    'Lokasyon',
+                                    location?['name'] ?? '-',
+                                  ),
                                   const SizedBox(height: 12),
-                                  _buildInfoRow('Şehir', location?['city'] ?? '-'),
-                                  if (car['deposit_amount'] != null && car['deposit_amount'] > 0) ...[
+                                  _buildInfoRow(
+                                    'Şehir',
+                                    location?['city'] ?? '-',
+                                  ),
+                                  if (car['deposit_amount'] != null &&
+                                      car['deposit_amount'] > 0) ...[
                                     const SizedBox(height: 12),
-                                    _buildInfoRow('Depozito', formatter.format(car['deposit_amount'])),
+                                    _buildInfoRow(
+                                      'Depozito',
+                                      formatter.format(car['deposit_amount']),
+                                    ),
                                   ],
                                 ],
                               ),
@@ -215,7 +274,9 @@ class CarDetailScreen extends ConsumerWidget {
                                           child: Center(
                                             child: Text(
                                               'Henüz rezervasyon yok',
-                                              style: TextStyle(color: AppColors.textMuted),
+                                              style: TextStyle(
+                                                color: AppColors.textMuted,
+                                              ),
                                             ),
                                           ),
                                         );
@@ -223,35 +284,50 @@ class CarDetailScreen extends ConsumerWidget {
 
                                       return ListView.separated(
                                         shrinkWrap: true,
-                                        physics: const NeverScrollableScrollPhysics(),
+                                        physics:
+                                            const NeverScrollableScrollPhysics(),
                                         itemCount: bookings.length,
-                                        separatorBuilder: (_, __) => const Divider(),
+                                        separatorBuilder: (_, _) =>
+                                            const Divider(),
                                         itemBuilder: (context, index) {
                                           final booking = bookings[index];
-                                          final pickupDate = DateTime.tryParse(booking['pickup_date'] ?? '');
+                                          final pickupDate = DateTime.tryParse(
+                                            booking['pickup_date'] ?? '',
+                                          );
 
                                           return ListTile(
                                             contentPadding: EdgeInsets.zero,
                                             title: Text(
                                               booking['customer_name'] ?? '',
-                                              style: const TextStyle(fontWeight: FontWeight.w600),
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                              ),
                                             ),
                                             subtitle: pickupDate != null
                                                 ? Text(
-                                                    DateFormat('dd MMM yyyy').format(pickupDate),
+                                                    DateFormat(
+                                                      'dd MMM yyyy',
+                                                    ).format(pickupDate),
                                                     style: const TextStyle(
-                                                      color: AppColors.textMuted,
+                                                      color:
+                                                          AppColors.textMuted,
                                                       fontSize: 12,
                                                     ),
                                                   )
                                                 : null,
-                                            trailing: _buildBookingStatusBadge(booking['status'] ?? ''),
-                                            onTap: () => context.go('/bookings/${booking['id']}'),
+                                            trailing: _buildBookingStatusBadge(
+                                              booking['status'] ?? '',
+                                            ),
+                                            onTap: () => context.go(
+                                              '/bookings/${booking['id']}',
+                                            ),
                                           );
                                         },
                                       );
                                     },
-                                    loading: () => const Center(child: CircularProgressIndicator()),
+                                    loading: () => const Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
                                     error: (e, _) => Text('Hata: $e'),
                                   ),
                                 ],
@@ -310,7 +386,7 @@ class CarDetailScreen extends ConsumerWidget {
           child: Image.network(
             imageUrls.first,
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => Container(
+            errorBuilder: (_, _, _) => Container(
               color: AppColors.surfaceLight,
               child: const Icon(
                 Icons.directions_car,
@@ -336,14 +412,16 @@ class CarDetailScreen extends ConsumerWidget {
   Future<void> _updateStatus(WidgetRef ref, String status) async {
     try {
       final client = ref.read(supabaseClientProvider);
+      final companyId = await ref.read(companyIdProvider.future);
       await client
           .from('rental_cars')
           .update({'status': status})
-          .eq('id', carId);
+          .eq('id', carId)
+          .eq('company_id', companyId ?? '');
 
       ref.invalidate(carDetailProvider(carId));
-    } catch (e) {
-      debugPrint('Error updating status: $e');
+    } catch (e, st) {
+      LogService.error('Error updating status', error: e, stackTrace: st, source: 'CarDetailScreen:_updateStatus');
     }
   }
 
@@ -382,10 +460,7 @@ class CarDetailScreen extends ConsumerWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.w600,
-        ),
+        style: TextStyle(color: color, fontWeight: FontWeight.w600),
       ),
     );
   }
@@ -448,17 +523,11 @@ class CarDetailScreen extends ConsumerWidget {
           children: [
             Text(
               label,
-              style: const TextStyle(
-                color: AppColors.textMuted,
-                fontSize: 11,
-              ),
+              style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
             ),
             Text(
               value,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
             ),
           ],
         ),
@@ -470,47 +539,58 @@ class CarDetailScreen extends ConsumerWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: const TextStyle(color: AppColors.textSecondary),
-        ),
-        Text(
-          value,
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
+        Text(label, style: const TextStyle(color: AppColors.textSecondary)),
+        Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
       ],
     );
   }
 
   String _getCategoryLabel(String? category) {
     switch (category) {
-      case 'economy': return 'Ekonomi';
-      case 'compact': return 'Kompakt';
-      case 'midsize': return 'Orta';
-      case 'fullsize': return 'Büyük';
-      case 'suv': return 'SUV';
-      case 'luxury': return 'Lüks';
-      case 'van': return 'Van';
-      default: return category ?? '-';
+      case 'economy':
+        return 'Ekonomi';
+      case 'compact':
+        return 'Kompakt';
+      case 'midsize':
+        return 'Orta';
+      case 'fullsize':
+        return 'Büyük';
+      case 'suv':
+        return 'SUV';
+      case 'luxury':
+        return 'Lüks';
+      case 'van':
+        return 'Van';
+      default:
+        return category ?? '-';
     }
   }
 
   String _getTransmissionLabel(String? transmission) {
     switch (transmission) {
-      case 'manual': return 'Manuel';
-      case 'automatic': return 'Otomatik';
-      default: return transmission ?? '-';
+      case 'manual':
+        return 'Manuel';
+      case 'automatic':
+        return 'Otomatik';
+      default:
+        return transmission ?? '-';
     }
   }
 
   String _getFuelLabel(String? fuel) {
     switch (fuel) {
-      case 'gasoline': return 'Benzin';
-      case 'diesel': return 'Dizel';
-      case 'hybrid': return 'Hibrit';
-      case 'electric': return 'Elektrik';
-      case 'lpg': return 'LPG';
-      default: return fuel ?? '-';
+      case 'gasoline':
+        return 'Benzin';
+      case 'diesel':
+        return 'Dizel';
+      case 'hybrid':
+        return 'Hibrit';
+      case 'electric':
+        return 'Elektrik';
+      case 'lpg':
+        return 'LPG';
+      default:
+        return fuel ?? '-';
     }
   }
 }
@@ -546,7 +626,7 @@ class _ImageCarouselState extends State<_ImageCarousel> {
             return Image.network(
               widget.imageUrls[index],
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
+              errorBuilder: (_, _, _) => Container(
                 color: AppColors.surfaceLight,
                 child: const Icon(
                   Icons.broken_image,

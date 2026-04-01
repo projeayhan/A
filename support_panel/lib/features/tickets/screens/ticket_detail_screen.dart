@@ -8,6 +8,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/services/ticket_service.dart';
 import '../../../core/services/supabase_service.dart';
 import '../../../core/services/audit_service.dart';
+import 'package:support_panel/core/services/log_service.dart';
 import '../../../core/providers/auth_provider.dart';
 import '../../../core/router/app_router.dart';
 import '../../../shared/widgets/status_badge.dart';
@@ -108,7 +109,8 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
       });
 
       _scrollToBottom();
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to load ticket detail', error: e, stackTrace: st, source: 'TicketDetailScreen:_loadTicket');
       setState(() { _isLoading = false; _error = e.toString(); });
     }
   }
@@ -125,7 +127,9 @@ class _TicketDetailScreenState extends ConsumerState<TicketDetailScreen> {
         setState(() => _messages = List<Map<String, dynamic>>.from(messages));
         _scrollToBottom();
       }
-    } catch (_) {}
+    } catch (e, st) {
+      LogService.error('Error refreshing messages', error: e, stackTrace: st, source: 'TicketDetailScreen:_refreshMessages');
+    }
   }
 
   void _scrollToBottom() {

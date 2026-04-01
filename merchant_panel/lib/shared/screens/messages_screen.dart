@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/services/log_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/providers/merchant_provider.dart';
 import '../../core/services/notification_sound_service.dart';
@@ -117,13 +118,30 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
       // Siparis bilgilerini al - merchant_id filtresi ekle (RLS uyumu icin)
       final orders = await Supabase.instance.client
           .from('orders')
-          .select('id, order_number, status, customer_name, total_amount, created_at')
+          .select('id, order_number, status, customer_name, total_amount, created_at, user_id')
           .eq('merchant_id', _merchantId!)
           .inFilter('id', orderIds);
 
       final orderMap = <String, Map<String, dynamic>>{};
+      final userIds = <String>{};
       for (final order in orders) {
         orderMap[order['id'] as String] = Map<String, dynamic>.from(order);
+        final uid = order['user_id'] as String?;
+        if (uid != null) userIds.add(uid);
+      }
+
+      // Musteri bilgilerini users tablosundan al
+      Map<String, Map<String, dynamic>> userMap = {};
+      if (userIds.isNotEmpty) {
+        try {
+          final users = await Supabase.instance.client
+              .from('users')
+              .select('id, full_name, phone, email, total_orders')
+              .inFilter('id', userIds.toList());
+          for (final u in users) {
+            userMap[u['id'] as String] = Map<String, dynamic>.from(u);
+          }
+        } catch (e, st) { LogService.error('User lookup failed', error: e, stackTrace: st, source: 'MessagesScreen:_loadConversations'); }
       }
 
       // Build conversation list
@@ -141,12 +159,21 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
 
         final lastMessage = msgs.first;
 
+        // Gercek musteri bilgisini users tablosundan al
+        final userId = order['user_id'] as String?;
+        final userInfo = userId != null ? userMap[userId] : null;
+        final customerName = userInfo?['full_name'] as String? ??
+            order['customer_name'] as String? ?? 'Musteri';
+        final customerPhone = userInfo?['phone'] as String?;
+
         conversations.add({
           'order_id': orderId,
           'merchant_id': _merchantId!,
           'order_number': order['order_number'] ?? '',
           'order_status': order['status'] ?? '',
-          'customer_name': order['customer_name'] ?? 'Musteri',
+          'customer_name': customerName,
+          'customer_phone': customerPhone,
+          'user_id': userId,
           'last_message': lastMessage['message'] ?? '',
           'last_message_sender': lastMessage['sender_type'] ?? '',
           'last_message_time': lastMessage['created_at'] ?? '',
@@ -166,8 +193,8 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
           _isLoading = false;
         });
       }
-    } catch (e) {
-      debugPrint('loadConversations error: $e');
+    } catch (e, st) {
+      LogService.error('loadConversations failed', error: e, stackTrace: st, source: 'MessagesScreen:_loadConversations');
       if (mounted) {
         setState(() => _isLoading = false);
       }
@@ -218,6 +245,20 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
         grouped[customerId]!.add(Map<String, dynamic>.from(msg));
       }
 
+      // Musteri bilgilerini users tablosundan al
+      Map<String, Map<String, dynamic>> storeUserMap = {};
+      if (grouped.keys.isNotEmpty) {
+        try {
+          final users = await Supabase.instance.client
+              .from('users')
+              .select('id, full_name, phone, email, total_orders')
+              .inFilter('id', grouped.keys.toList());
+          for (final u in users) {
+            storeUserMap[u['id'] as String] = Map<String, dynamic>.from(u);
+          }
+        } catch (e, st) { LogService.error('Store user lookup failed', error: e, stackTrace: st, source: 'MessagesScreen:_loadStoreConversations'); }
+      }
+
       List<Map<String, dynamic>> conversations = [];
       for (final entry in grouped.entries) {
         final customerId = entry.key;
@@ -228,16 +269,20 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
         ).length;
 
         final lastMessage = msgs.first;
-        // Musteri adini ilk customer mesajindan al
-        final customerName = msgs
-            .where((m) => m['sender_type'] == 'customer' && m['sender_name'] != null)
-            .map((m) => m['sender_name'] as String)
-            .firstOrNull ?? 'Musteri';
+        // Gercek musteri bilgisini users tablosundan al
+        final userInfo = storeUserMap[customerId];
+        final customerName = userInfo?['full_name'] as String? ??
+            msgs
+                .where((m) => m['sender_type'] == 'customer' && m['sender_name'] != null)
+                .map((m) => m['sender_name'] as String)
+                .firstOrNull ?? 'Musteri';
+        final customerPhone = userInfo?['phone'] as String?;
 
         conversations.add({
           'customer_id': customerId,
           'merchant_id': _merchantId!,
           'customer_name': customerName,
+          'customer_phone': customerPhone,
           'last_message': lastMessage['message'] ?? '',
           'last_message_sender': lastMessage['sender_type'] ?? '',
           'last_message_time': lastMessage['created_at'] ?? '',
@@ -256,8 +301,8 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
           _isStoreLoading = false;
         });
       }
-    } catch (e) {
-      debugPrint('loadStoreConversations error: $e');
+    } catch (e, st) {
+      LogService.error('loadStoreConversations failed', error: e, stackTrace: st, source: 'MessagesScreen:_loadStoreConversations');
       if (mounted) setState(() => _isStoreLoading = false);
     }
   }
@@ -547,6 +592,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
     final isSelected = _selectedOrderId == orderId;
     final unreadCount = conv['unread_count'] as int;
     final status = conv['order_status'] as String;
+    final customerPhone = conv['customer_phone'] as String?;
     final lastMessageTime = DateTime.tryParse(conv['last_message_time'] as String);
     final isFromCustomer = conv['last_message_sender'] == 'customer';
 
@@ -622,14 +668,27 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: Text(
-                            conv['customer_name'] as String,
-                            style: TextStyle(
-                              fontWeight: unreadCount > 0 ? FontWeight.bold : FontWeight.w500,
-                              color: AppColors.textPrimary,
-                              fontSize: 14,
-                            ),
-                            overflow: TextOverflow.ellipsis,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                conv['customer_name'] as String,
+                                style: TextStyle(
+                                  fontWeight: unreadCount > 0 ? FontWeight.bold : FontWeight.w500,
+                                  color: AppColors.textPrimary,
+                                  fontSize: 14,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              if (customerPhone != null && customerPhone.isNotEmpty)
+                                Text(
+                                  customerPhone,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.textMuted,
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
                         Text(
@@ -743,6 +802,7 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
     final customerId = conv['customer_id'] as String;
     final isSelected = _selectedStoreCustomerId == customerId;
     final unreadCount = conv['unread_count'] as int;
+    final customerPhone = conv['customer_phone'] as String?;
     final lastMessageTime = DateTime.tryParse(conv['last_message_time'] as String);
     final isFromCustomer = conv['last_message_sender'] == 'customer';
 
@@ -810,14 +870,27 @@ class _MessagesScreenState extends ConsumerState<MessagesScreen> {
                     Row(
                       children: [
                         Expanded(
-                          child: Text(
-                            conv['customer_name'] as String,
-                            style: TextStyle(
-                              fontWeight: unreadCount > 0 ? FontWeight.bold : FontWeight.w500,
-                              color: AppColors.textPrimary,
-                              fontSize: 14,
-                            ),
-                            overflow: TextOverflow.ellipsis,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                conv['customer_name'] as String,
+                                style: TextStyle(
+                                  fontWeight: unreadCount > 0 ? FontWeight.bold : FontWeight.w500,
+                                  color: AppColors.textPrimary,
+                                  fontSize: 14,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              if (customerPhone != null && customerPhone.isNotEmpty)
+                                Text(
+                                  customerPhone,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.textMuted,
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
                         Text(
@@ -977,23 +1050,43 @@ class _ChatDetailPanelState extends State<_ChatDetailPanel> {
             .order('created_at', ascending: true),
         Supabase.instance.client
             .from('orders')
-            .select('id, order_number, status, customer_name, total_amount, created_at')
+            .select('id, order_number, status, customer_name, total_amount, created_at, user_id')
             .eq('id', widget.orderId)
             .eq('merchant_id', widget.merchantId)
             .single(),
       ]);
 
+      final orderData = results[1] as Map<String, dynamic>;
+
+      // Musteri bilgilerini users tablosundan al
+      final userId = orderData['user_id'] as String?;
+      if (userId != null) {
+        try {
+          final userInfo = await Supabase.instance.client
+              .from('users')
+              .select('full_name, phone, email, total_orders')
+              .eq('id', userId)
+              .maybeSingle();
+          if (userInfo != null) {
+            orderData['customer_name'] = userInfo['full_name'] ?? orderData['customer_name'];
+            orderData['customer_phone'] = userInfo['phone'];
+            orderData['customer_email'] = userInfo['email'];
+            orderData['customer_total_orders'] = userInfo['total_orders'];
+          }
+        } catch (e, st) { LogService.error('Customer info lookup failed', error: e, stackTrace: st, source: 'ChatDetailPanel:_loadData'); }
+      }
+
       if (mounted) {
         setState(() {
           _messages = List<Map<String, dynamic>>.from(results[0] as List);
-          _orderInfo = results[1] as Map<String, dynamic>;
+          _orderInfo = orderData;
           _isLoading = false;
         });
         _scrollToBottom();
         _markMessagesAsRead();
       }
-    } catch (e) {
-      debugPrint('ChatDetailPanel loadData error: $e');
+    } catch (e, st) {
+      LogService.error('ChatDetailPanel loadData failed', error: e, stackTrace: st, source: 'ChatDetailPanel:_loadData');
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -1047,8 +1140,8 @@ class _ChatDetailPanelState extends State<_ChatDetailPanel> {
           .eq('is_read', false);
 
       widget.onMessagesRead();
-    } catch (e) {
-      debugPrint('Mark read error: $e');
+    } catch (e, st) {
+      LogService.error('Mark read failed', error: e, stackTrace: st, source: 'ChatDetailPanel:_markMessagesAsRead');
     }
   }
 
@@ -1129,12 +1222,46 @@ class _ChatDetailPanelState extends State<_ChatDetailPanel> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      (_orderInfo?['customer_name'] as String?) ?? 'Musteri',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
+                    Row(
+                      children: [
+                        Text(
+                          (_orderInfo?['customer_name'] as String?) ?? 'Musteri',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        if (_orderInfo?['customer_phone'] != null) ...[
+                          const SizedBox(width: 8),
+                          Icon(Icons.phone, size: 12, color: AppColors.textMuted),
+                          const SizedBox(width: 3),
+                          Text(
+                            _orderInfo!['customer_phone'] as String,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ],
+                        if (_orderInfo?['customer_total_orders'] != null) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              '${_orderInfo!['customer_total_orders']} siparis',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     Row(
                       children: [
@@ -1469,8 +1596,8 @@ class _StoreChatDetailPanelState extends State<_StoreChatDetailPanel> {
         _scrollToBottom();
         _markMessagesAsRead();
       }
-    } catch (e) {
-      debugPrint('StoreChatDetail loadData error: $e');
+    } catch (e, st) {
+      LogService.error('StoreChatDetail loadData failed', error: e, stackTrace: st, source: 'StoreChatDetailPanel:_loadData');
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -1519,8 +1646,8 @@ class _StoreChatDetailPanelState extends State<_StoreChatDetailPanel> {
           .eq('is_read', false);
 
       widget.onMessagesRead();
-    } catch (e) {
-      debugPrint('Mark store read error: $e');
+    } catch (e, st) {
+      LogService.error('Mark store read failed', error: e, stackTrace: st, source: 'StoreChatDetailPanel:_markMessagesAsRead');
     }
   }
 

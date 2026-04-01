@@ -69,7 +69,8 @@ class SupabaseService {
     if (data == null || data['success'] != true) {
       throw Exception(data?['error'] ?? 'Doğrulama başarısız');
     }
-    final refreshToken = data['refresh_token'] as String;
+    final refreshToken = data['refresh_token'] as String?;
+    if (refreshToken == null) throw Exception('Oturum tokeni alınamadı');
     await client.auth.setSession(refreshToken);
     return {
       'is_new_user': data['is_new_user'] ?? false,

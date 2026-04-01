@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart'
+    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
@@ -23,17 +24,23 @@ class _StoreCategory {
   _StoreCategory({required this.id, required this.name, this.iconName});
 }
 
-final _storeCategoriesProvider = FutureProvider<List<_StoreCategory>>((ref) async {
+final _storeCategoriesProvider = FutureProvider<List<_StoreCategory>>((
+  ref,
+) async {
   final response = await Supabase.instance.client
       .from('store_categories')
       .select('id, name, icon_name')
       .eq('is_active', true)
       .order('sort_order');
-  return (response as List).map((e) => _StoreCategory(
-    id: e['id'] as String,
-    name: e['name'] as String,
-    iconName: e['icon_name'] as String?,
-  )).toList();
+  return (response as List)
+      .map(
+        (e) => _StoreCategory(
+          id: e['id'] as String,
+          name: e['name'] as String,
+          iconName: e['icon_name'] as String?,
+        ),
+      )
+      .toList();
 });
 
 // Merchant settings model
@@ -80,7 +87,8 @@ class MerchantSettings {
       pickupEnabled: json['pickup_enabled'] ?? true,
       minOrderAmount: (json['min_order_amount'] ?? 50).toDouble(),
       deliveryFee: (json['delivery_fee'] ?? 15).toDouble(),
-      freeDeliveryThreshold: (json['free_delivery_threshold'] ?? 150).toDouble(),
+      freeDeliveryThreshold:
+          (json['free_delivery_threshold'] ?? 150).toDouble(),
       minPreparationTime: json['min_preparation_time'] ?? 20,
       maxPreparationTime: json['max_preparation_time'] ?? 45,
       notifyNewOrder: json['notify_new_order'] ?? true,
@@ -213,11 +221,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     try {
       final supabase = ref.read(supabaseProvider);
 
-      final response = await supabase
-          .from('merchant_settings')
-          .select()
-          .eq('merchant_id', merchant.id)
-          .maybeSingle();
+      final response =
+          await supabase
+              .from('merchant_settings')
+              .select()
+              .eq('merchant_id', merchant.id)
+              .maybeSingle();
 
       if (response == null) {
         // Initialize default settings
@@ -227,11 +236,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         );
 
         // Fetch again
-        final newResponse = await supabase
-            .from('merchant_settings')
-            .select()
-            .eq('merchant_id', merchant.id)
-            .single();
+        final newResponse =
+            await supabase
+                .from('merchant_settings')
+                .select()
+                .eq('merchant_id', merchant.id)
+                .single();
 
         if (mounted) {
           final settings = MerchantSettings.fromJson(newResponse);
@@ -262,7 +272,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   void _updateSettingsControllers(MerchantSettings settings) {
     _minOrderController.text = settings.minOrderAmount.toStringAsFixed(0);
     _deliveryFeeController.text = settings.deliveryFee.toStringAsFixed(0);
-    _freeDeliveryController.text = settings.freeDeliveryThreshold.toStringAsFixed(0);
+    _freeDeliveryController.text = settings.freeDeliveryThreshold
+        .toStringAsFixed(0);
     _minPrepTimeController.text = settings.minPreparationTime.toString();
     _maxPrepTimeController.text = settings.maxPreparationTime.toString();
   }
@@ -302,7 +313,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           .uploadBinary(
             fileName,
             bytes,
-            fileOptions: const FileOptions(cacheControl: '31536000', upsert: true),
+            fileOptions: const FileOptions(
+              cacheControl: '31536000',
+              upsert: true,
+            ),
           );
 
       final imageUrl = supabase.storage.from('images').getPublicUrl(fileName);
@@ -341,7 +355,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     }
   }
 
-  void _formatCoordinate(TextEditingController controller, String value, {required bool isLatitude}) {
+  void _formatCoordinate(
+    TextEditingController controller,
+    String value, {
+    required bool isLatitude,
+  }) {
     // Zaten nokta varsa dokunma
     if (value.contains('.')) return;
 
@@ -391,12 +409,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     // Koordinat aralığı kontrolü
     if (lat < -90 || lat > 90) {
-      AppDialogs.showError(context, 'Enlem -90 ile 90 arasi olmali. Girilen: $lat');
+      AppDialogs.showError(
+        context,
+        'Enlem -90 ile 90 arasi olmali. Girilen: $lat',
+      );
       return;
     }
 
     if (lng < -180 || lng > 180) {
-      AppDialogs.showError(context, 'Boylam -180 ile 180 arasi olmali. Girilen: $lng');
+      AppDialogs.showError(
+        context,
+        'Boylam -180 ile 180 arasi olmali. Girilen: $lng',
+      );
       return;
     }
 
@@ -406,13 +430,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       final supabase = ref.read(supabaseProvider);
 
       // Koordinattan adres al
-      final address = await GeocodingService.getAddressFromCoordinates(lat, lng);
+      final address = await GeocodingService.getAddressFromCoordinates(
+        lat,
+        lng,
+      );
 
       // Koordinatları ve adresi kaydet
-      final updateData = <String, dynamic>{
-        'latitude': lat,
-        'longitude': lng,
-      };
+      final updateData = <String, dynamic>{'latitude': lat, 'longitude': lng};
 
       // Adres bulunduysa onu da güncelle
       if (address != null) {
@@ -420,10 +444,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         _addressController.text = address;
       }
 
-      await supabase
-          .from('merchants')
-          .update(updateData)
-          .eq('id', merchant.id);
+      await supabase.from('merchants').update(updateData).eq('id', merchant.id);
 
       // Reload merchant data
       await ref
@@ -435,9 +456,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(address != null
-              ? 'Konum ve adres kaydedildi!'
-              : 'Konum kaydedildi! (${lat.toStringAsFixed(6)}, ${lng.toStringAsFixed(6)})'),
+            content: Text(
+              address != null
+                  ? 'Konum ve adres kaydedildi!'
+                  : 'Konum kaydedildi! (${lat.toStringAsFixed(6)}, ${lng.toStringAsFixed(6)})',
+            ),
             backgroundColor: AppColors.success,
           ),
         );
@@ -489,7 +512,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         decoration: BoxDecoration(
           color: AppColors.surfaceLight,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.primary.withValues(alpha:0.3)),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -511,7 +534,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             const SizedBox(height: 12),
             TextButton.icon(
               onPressed: () async {
-                final url = Uri.parse('https://www.google.com/maps?q=$lat,$lng');
+                final url = Uri.parse(
+                  'https://www.google.com/maps?q=$lat,$lng',
+                );
                 if (await canLaunchUrl(url)) {
                   await launchUrl(url, mode: LaunchMode.externalApplication);
                 } else {
@@ -537,10 +562,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       child: SizedBox(
         height: 250,
         child: GoogleMap(
-          initialCameraPosition: CameraPosition(
-            target: position,
-            zoom: 16,
-          ),
+          initialCameraPosition: CameraPosition(target: position, zoom: 16),
           markers: {
             Marker(
               markerId: const MarkerId('merchant_location'),
@@ -572,7 +594,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           .update({
             'min_order_amount': double.tryParse(_minOrderController.text) ?? 50,
             'delivery_fee': double.tryParse(_deliveryFeeController.text) ?? 15,
-            'free_delivery_threshold': double.tryParse(_freeDeliveryController.text) ?? 150,
+            'free_delivery_threshold':
+                double.tryParse(_freeDeliveryController.text) ?? 150,
             'min_preparation_time': minPrep,
             'max_preparation_time': maxPrep,
             'updated_at': DateTime.now().toIso8601String(),
@@ -624,8 +647,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           _settings = MerchantSettings(
             id: _settings!.id,
             merchantId: _settings!.merchantId,
-            deliveryEnabled: field == 'delivery_enabled' ? value : _settings!.deliveryEnabled,
-            pickupEnabled: field == 'pickup_enabled' ? value : _settings!.pickupEnabled,
+            deliveryEnabled:
+                field == 'delivery_enabled'
+                    ? value
+                    : _settings!.deliveryEnabled,
+            pickupEnabled:
+                field == 'pickup_enabled' ? value : _settings!.pickupEnabled,
             minOrderAmount: _settings!.minOrderAmount,
             deliveryFee: _settings!.deliveryFee,
             freeDeliveryThreshold: _settings!.freeDeliveryThreshold,
@@ -673,12 +700,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             freeDeliveryThreshold: _settings!.freeDeliveryThreshold,
             minPreparationTime: _settings!.minPreparationTime,
             maxPreparationTime: _settings!.maxPreparationTime,
-            notifyNewOrder: field == 'notify_new_order' ? value : _settings!.notifyNewOrder,
-            notifyOrderCancel: field == 'notify_order_cancel' ? value : _settings!.notifyOrderCancel,
-            notifySoundEnabled: field == 'notify_sound_enabled' ? value : _settings!.notifySoundEnabled,
-            notifyNewReview: field == 'notify_new_review' ? value : _settings!.notifyNewReview,
-            notifyLowStock: field == 'notify_low_stock' ? value : _settings!.notifyLowStock,
-            notifyWeeklyReport: field == 'notify_weekly_report' ? value : _settings!.notifyWeeklyReport,
+            notifyNewOrder:
+                field == 'notify_new_order' ? value : _settings!.notifyNewOrder,
+            notifyOrderCancel:
+                field == 'notify_order_cancel'
+                    ? value
+                    : _settings!.notifyOrderCancel,
+            notifySoundEnabled:
+                field == 'notify_sound_enabled'
+                    ? value
+                    : _settings!.notifySoundEnabled,
+            notifyNewReview:
+                field == 'notify_new_review'
+                    ? value
+                    : _settings!.notifyNewReview,
+            notifyLowStock:
+                field == 'notify_low_stock' ? value : _settings!.notifyLowStock,
+            notifyWeeklyReport:
+                field == 'notify_weekly_report'
+                    ? value
+                    : _settings!.notifyWeeklyReport,
           );
         }
       });
@@ -710,81 +751,90 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
     final result = await showDialog<Map<String, String>?>(
       context: context,
-      builder: (context) => AlertDialog(
-          title: const Text('Sifre Degistir'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: currentPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Mevcut Sifre',
-                  hintText: 'Guvenlik icin mevcut sifrenizi girin',
-                  prefixIcon: Icon(Icons.lock_outline),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Sifre Degistir'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: currentPasswordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Mevcut Sifre',
+                    hintText: 'Guvenlik icin mevcut sifrenizi girin',
+                    prefixIcon: Icon(Icons.lock_outline),
+                  ),
                 ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: newPasswordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Yeni Sifre',
+                    hintText: 'En az 6 karakter',
+                    prefixIcon: Icon(Icons.lock),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: confirmPasswordController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Yeni Sifre (Tekrar)',
+                    prefixIcon: Icon(Icons.lock),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, null),
+                child: const Text('Iptal'),
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: newPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Yeni Sifre',
-                  hintText: 'En az 6 karakter',
-                  prefixIcon: Icon(Icons.lock),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: confirmPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(
-                  labelText: 'Yeni Sifre (Tekrar)',
-                  prefixIcon: Icon(Icons.lock),
-                ),
+              ElevatedButton(
+                onPressed: () {
+                  if (currentPasswordController.text.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Mevcut sifrenizi girin')),
+                    );
+                    return;
+                  }
+                  if (newPasswordController.text.length < 6) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Yeni sifre en az 6 karakter olmali'),
+                      ),
+                    );
+                    return;
+                  }
+                  if (newPasswordController.text !=
+                      confirmPasswordController.text) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Yeni sifreler eslesmiyor')),
+                    );
+                    return;
+                  }
+                  if (currentPasswordController.text ==
+                      newPasswordController.text) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Yeni sifre mevcut sifreden farkli olmali',
+                        ),
+                      ),
+                    );
+                    return;
+                  }
+                  Navigator.pop(context, {
+                    'current': currentPasswordController.text,
+                    'new': newPasswordController.text,
+                  });
+                },
+                child: const Text('Degistir'),
               ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, null),
-              child: const Text('Iptal'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                if (currentPasswordController.text.isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Mevcut sifrenizi girin')),
-                  );
-                  return;
-                }
-                if (newPasswordController.text.length < 6) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Yeni sifre en az 6 karakter olmali')),
-                  );
-                  return;
-                }
-                if (newPasswordController.text != confirmPasswordController.text) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Yeni sifreler eslesmiyor')),
-                  );
-                  return;
-                }
-                if (currentPasswordController.text == newPasswordController.text) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Yeni sifre mevcut sifreden farkli olmali')),
-                  );
-                  return;
-                }
-                Navigator.pop(context, {
-                  'current': currentPasswordController.text,
-                  'new': newPasswordController.text,
-                });
-              },
-              child: const Text('Degistir'),
-            ),
-          ],
-        ),
     );
 
     if (result != null) {
@@ -1062,10 +1112,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   Expanded(
                     child: Text(
                       'Bu bilgiler kayit sirasinda belirlenmistir ve degistirilemez.',
-                      style: TextStyle(
-                        color: AppColors.info,
-                        fontSize: 13,
-                      ),
+                      style: TextStyle(color: AppColors.info, fontSize: 13),
                     ),
                   ),
                 ],
@@ -1078,7 +1125,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             const SizedBox(height: 16),
             // Store category dropdown (only for store type)
-            if (ref.watch(currentMerchantProvider).valueOrNull?.type == MerchantType.store)
+            if (ref.watch(currentMerchantProvider).valueOrNull?.type ==
+                MerchantType.store)
               _buildStoreCategoryDropdown(),
             TextFormField(
               controller: _descriptionController,
@@ -1126,31 +1174,40 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Magaza Kategorileri', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 14)),
+            const Text(
+              'Magaza Kategorileri',
+              style: TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+            ),
             const SizedBox(height: 4),
-            const Text('Magazanizin bulundugu kategorileri secin (birden fazla secilebilir)', style: TextStyle(fontSize: 12, color: Colors.grey)),
+            const Text(
+              'Magazanizin bulundugu kategorileri secin (birden fazla secilebilir)',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: categories.map((c) {
-                final isSelected = _storeCategoryIds.contains(c.id);
-                return FilterChip(
-                  label: Text(c.name),
-                  selected: isSelected,
-                  onSelected: (selected) => _toggleStoreCategory(c.id, selected),
-                );
-              }).toList(),
+              children:
+                  categories.map((c) {
+                    final isSelected = _storeCategoryIds.contains(c.id);
+                    return FilterChip(
+                      label: Text(c.name),
+                      selected: isSelected,
+                      onSelected:
+                          (selected) => _toggleStoreCategory(c.id, selected),
+                    );
+                  }).toList(),
             ),
             const SizedBox(height: 16),
           ],
         );
       },
-      loading: () => const Padding(
-        padding: EdgeInsets.only(bottom: 16),
-        child: LinearProgressIndicator(),
-      ),
-      error: (_, __) => const SizedBox.shrink(),
+      loading:
+          () => const Padding(
+            padding: EdgeInsets.only(bottom: 16),
+            child: LinearProgressIndicator(),
+          ),
+      error: (_, _) => const SizedBox.shrink(),
     );
   }
 
@@ -1174,7 +1231,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       ref.invalidate(currentMerchantProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Kategoriler guncellendi'), backgroundColor: Colors.green),
+          const SnackBar(
+            content: Text('Kategoriler guncellendi'),
+            backgroundColor: Colors.green,
+          ),
         );
       }
     } catch (e) {
@@ -1192,10 +1252,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final isStore = merchantType == MerchantType.store;
     final isRestaurant = merchantType == MerchantType.restaurant;
     final isMarket = merchantType == MerchantType.market;
-    final hasLocalDelivery = isRestaurant || isMarket || isStore; // Tüm tipler yerel teslimat
+    final hasLocalDelivery =
+        isRestaurant || isMarket || isStore; // Tüm tipler yerel teslimat
 
-    final businessTypeLabel = isRestaurant ? 'restoran' : (isMarket ? 'market' : 'magaza');
-    final businessTypeLabelCapital = isRestaurant ? 'Restoran' : (isMarket ? 'Market' : 'Magaza');
+    final businessTypeLabel =
+        isRestaurant ? 'restoran' : (isMarket ? 'market' : 'magaza');
+    final businessTypeLabelCapital =
+        isRestaurant ? 'Restoran' : (isMarket ? 'Market' : 'Magaza');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1238,7 +1301,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           prefixIcon: Icon(Icons.north),
                           helperText: 'Ornek: 35165554 -> 35.165554',
                         ),
-                        onChanged: (value) => _formatCoordinate(_latitudeController, value, isLatitude: true),
+                        onChanged:
+                            (value) => _formatCoordinate(
+                              _latitudeController,
+                              value,
+                              isLatitude: true,
+                            ),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -1252,7 +1320,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           prefixIcon: Icon(Icons.east),
                           helperText: 'Ornek: 33909293 -> 33.909293',
                         ),
-                        onChanged: (value) => _formatCoordinate(_longitudeController, value, isLatitude: false),
+                        onChanged:
+                            (value) => _formatCoordinate(
+                              _longitudeController,
+                              value,
+                              isLatitude: false,
+                            ),
                       ),
                     ),
                   ],
@@ -1267,7 +1340,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   ),
                 ),
                 // Harita gösterimi
-                if (_latitudeController.text.isNotEmpty && _longitudeController.text.isNotEmpty) ...[
+                if (_latitudeController.text.isNotEmpty &&
+                    _longitudeController.text.isNotEmpty) ...[
                   const SizedBox(height: 20),
                   const Divider(),
                   const SizedBox(height: 16),
@@ -1292,14 +1366,17 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   title: 'Teslimat Aktif',
                   subtitle: 'Teslimat siparisleri kabul edin',
                   value: _settings?.deliveryEnabled ?? true,
-                  onChanged: (value) => _updateDeliveryOption('delivery_enabled', value),
+                  onChanged:
+                      (value) =>
+                          _updateDeliveryOption('delivery_enabled', value),
                 ),
                 const Divider(height: 32),
                 _SettingsSwitch(
                   title: 'Gel-Al Aktif',
                   subtitle: 'Musteri isletmeden alsin',
                   value: _settings?.pickupEnabled ?? true,
-                  onChanged: (value) => _updateDeliveryOption('pickup_enabled', value),
+                  onChanged:
+                      (value) => _updateDeliveryOption('pickup_enabled', value),
                 ),
               ],
             ),
@@ -1359,7 +1436,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             // Delivery Zones Map - Sadece restoran ve market için
             const DeliveryZonesMap(),
           ],
-
         ],
       ],
     );
@@ -1392,21 +1468,31 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 title: 'Yeni Siparis',
                 subtitle: 'Yeni siparis geldiginde bildirim al',
                 value: _settings?.notifyNewOrder ?? true,
-                onChanged: (value) => _updateNotificationSetting('notify_new_order', value),
+                onChanged:
+                    (value) =>
+                        _updateNotificationSetting('notify_new_order', value),
               ),
               const Divider(height: 32),
               _SettingsSwitch(
                 title: 'Siparis Iptali',
                 subtitle: 'Siparis iptal edildiginde bildirim al',
                 value: _settings?.notifyOrderCancel ?? true,
-                onChanged: (value) => _updateNotificationSetting('notify_order_cancel', value),
+                onChanged:
+                    (value) => _updateNotificationSetting(
+                      'notify_order_cancel',
+                      value,
+                    ),
               ),
               const Divider(height: 32),
               _SettingsSwitch(
                 title: 'Sesli Bildirim',
                 subtitle: 'Yeni siparislerde ses cal',
                 value: _settings?.notifySoundEnabled ?? true,
-                onChanged: (value) => _updateNotificationSetting('notify_sound_enabled', value),
+                onChanged:
+                    (value) => _updateNotificationSetting(
+                      'notify_sound_enabled',
+                      value,
+                    ),
               ),
             ],
           ),
@@ -1419,21 +1505,29 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 title: 'Yeni Yorum',
                 subtitle: 'Musteri yorum biraktiginda bildirim al',
                 value: _settings?.notifyNewReview ?? true,
-                onChanged: (value) => _updateNotificationSetting('notify_new_review', value),
+                onChanged:
+                    (value) =>
+                        _updateNotificationSetting('notify_new_review', value),
               ),
               const Divider(height: 32),
               _SettingsSwitch(
                 title: 'Dusuk Stok Uyarisi',
                 subtitle: 'Urun stoku azaldiginda bildirim al',
                 value: _settings?.notifyLowStock ?? true,
-                onChanged: (value) => _updateNotificationSetting('notify_low_stock', value),
+                onChanged:
+                    (value) =>
+                        _updateNotificationSetting('notify_low_stock', value),
               ),
               const Divider(height: 32),
               _SettingsSwitch(
                 title: 'Haftalik Rapor',
                 subtitle: 'Her hafta performans raporu al',
                 value: _settings?.notifyWeeklyReport ?? false,
-                onChanged: (value) => _updateNotificationSetting('notify_weekly_report', value),
+                onChanged:
+                    (value) => _updateNotificationSetting(
+                      'notify_weekly_report',
+                      value,
+                    ),
               ),
             ],
           ),
@@ -1493,7 +1587,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     ),
                   ],
                 ),
-                child: const Icon(Icons.smart_toy, color: Colors.white, size: 28),
+                child: const Icon(
+                  Icons.smart_toy,
+                  color: Colors.white,
+                  size: 28,
+                ),
               ),
               const SizedBox(width: 20),
               Expanded(
@@ -1511,7 +1609,10 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.success,
                             borderRadius: BorderRadius.circular(10),
@@ -1538,7 +1639,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        Icon(Icons.arrow_downward, size: 16, color: AppColors.primary),
+                        Icon(
+                          Icons.arrow_downward,
+                          size: 16,
+                          color: AppColors.primary,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           'Sag alttaki robota tiklayin',
@@ -1644,10 +1749,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          question,
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
+        Text(question, style: const TextStyle(fontWeight: FontWeight.w600)),
         const SizedBox(height: 4),
         Text(
           answer,
@@ -1686,14 +1788,16 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 CircleAvatar(
                   radius: 40,
                   backgroundColor: AppColors.primary.withAlpha(30),
-                  backgroundImage: _logoUrl != null ? NetworkImage(_logoUrl!) : null,
-                  child: _logoUrl == null
-                      ? const Icon(
-                          Icons.person,
-                          size: 40,
-                          color: AppColors.primary,
-                        )
-                      : null,
+                  backgroundImage:
+                      _logoUrl != null ? NetworkImage(_logoUrl!) : null,
+                  child:
+                      _logoUrl == null
+                          ? const Icon(
+                            Icons.person,
+                            size: 40,
+                            color: AppColors.primary,
+                          )
+                          : null,
                 ),
                 const SizedBox(width: 20),
                 Expanded(
@@ -1770,21 +1874,26 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               onTap: () async {
                 final confirm = await showDialog<bool>(
                   context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('Cikis Yap'),
-                    content: const Text('Hesabinizdan cikis yapmak istediginize emin misiniz?'),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, false),
-                        child: const Text('Iptal'),
+                  builder:
+                      (context) => AlertDialog(
+                        title: const Text('Cikis Yap'),
+                        content: const Text(
+                          'Hesabinizdan cikis yapmak istediginize emin misiniz?',
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: const Text('Iptal'),
+                          ),
+                          ElevatedButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.error,
+                            ),
+                            child: const Text('Cikis Yap'),
+                          ),
+                        ],
                       ),
-                      ElevatedButton(
-                        onPressed: () => Navigator.pop(context, true),
-                        style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-                        child: const Text('Cikis Yap'),
-                      ),
-                    ],
-                  ),
                 );
                 if (confirm == true) {
                   _logout();
@@ -1874,14 +1983,23 @@ class _VerificationSettingsState extends ConsumerState<_VerificationSettings> {
           return;
         }
 
-        final safeFileName = file.name.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
-        final path = 'documents/${merchant.id}/${type}_${DateTime.now().millisecondsSinceEpoch}_$safeFileName';
-
-        await supabase.storage.from('images').uploadBinary(
-          path,
-          bytes,
-          fileOptions: const FileOptions(cacheControl: '31536000', upsert: true),
+        final safeFileName = file.name.replaceAll(
+          RegExp(r'[^a-zA-Z0-9._-]'),
+          '_',
         );
+        final path =
+            'documents/${merchant.id}/${type}_${DateTime.now().millisecondsSinceEpoch}_$safeFileName';
+
+        await supabase.storage
+            .from('images')
+            .uploadBinary(
+              path,
+              bytes,
+              fileOptions: const FileOptions(
+                cacheControl: '31536000',
+                upsert: true,
+              ),
+            );
 
         final url = supabase.storage.from('images').getPublicUrl(path);
 
@@ -2107,5 +2225,3 @@ class _SettingsSwitch extends StatelessWidget {
     );
   }
 }
-
-

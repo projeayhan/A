@@ -110,31 +110,10 @@ class _BrandColumn extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.primary, AppColors.cyan],
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child:
-                  const Icon(Icons.apps_rounded, color: Colors.white, size: 22),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              'SuperCyp',
-              style: GoogleFonts.inter(
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textOnDark,
-              ),
-            ),
-          ],
+        Image.asset(
+          'assets/images/supercyp_logo_horizontal.png',
+          height: 36,
+          fit: BoxFit.contain,
         ),
         const SizedBox(height: 12),
         Text(
@@ -158,7 +137,63 @@ class _BrandColumn extends StatelessWidget {
             ),
           ],
         ),
+        const SizedBox(height: 16),
+        // Social media icons
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _SocialIcon(icon: Icons.facebook, onTap: () {}),
+            const SizedBox(width: 12),
+            _SocialIcon(icon: Icons.camera_alt_outlined, onTap: () {}),
+            const SizedBox(width: 12),
+            _SocialIcon(icon: Icons.alternate_email, onTap: () {}),
+          ],
+        ),
       ],
+    );
+  }
+}
+
+class _SocialIcon extends StatefulWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  const _SocialIcon({required this.icon, required this.onTap});
+
+  @override
+  State<_SocialIcon> createState() => _SocialIconState();
+}
+
+class _SocialIconState extends State<_SocialIcon> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: _hovered
+                ? AppColors.primary.withValues(alpha: 0.2)
+                : AppColors.glassFill,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: _hovered ? AppColors.primaryLight : AppColors.glassBorder,
+            ),
+          ),
+          child: Icon(
+            widget.icon,
+            size: 18,
+            color: _hovered ? AppColors.primaryLight : AppColors.textOnDarkMuted,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -218,6 +253,22 @@ class _PagesColumn extends StatelessWidget {
             label: 'İşletmeler İçin',
             onTap: () => context.go(AppRoutes.business)),
         _FooterLink(label: 'İndir', onTap: () => context.go(AppRoutes.download)),
+        const SizedBox(height: 16),
+        Text(
+          'Yasal',
+          style: GoogleFonts.inter(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textOnDark,
+          ),
+        ),
+        const SizedBox(height: 12),
+        _FooterLink(
+            label: 'Gizlilik Politikası',
+            onTap: () => context.go(AppRoutes.privacy)),
+        _FooterLink(
+            label: 'Kullanım Koşulları',
+            onTap: () => context.go(AppRoutes.terms)),
       ],
     );
   }

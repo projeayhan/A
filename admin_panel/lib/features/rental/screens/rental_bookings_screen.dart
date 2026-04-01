@@ -58,7 +58,11 @@ class _RentalBookingsScreenState extends ConsumerState<RentalBookingsScreen> {
                     ),
                     const SizedBox(width: 12),
                     ElevatedButton.icon(
-                      onPressed: () {},
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Rapor indirme özelliği yakında eklenecek')),
+                        );
+                      },
                       icon: const Icon(Icons.download, size: 18),
                       label: const Text('Rapor İndir'),
                     ),
@@ -198,6 +202,8 @@ class _RentalBookingsScreenState extends ConsumerState<RentalBookingsScreen> {
         _buildStatCard('Onaylı', confirmed.toString(), Icons.check_circle_outline, AppColors.info),
         const SizedBox(width: 16),
         _buildStatCard('Aktif', active.toString(), Icons.directions_car, AppColors.success),
+        const SizedBox(width: 16),
+        _buildStatCard('Tamamlanan', completed.toString(), Icons.check, AppColors.textMuted),
         const SizedBox(width: 16),
         _buildStatCard('Toplam Gelir', '₺${totalRevenue.toStringAsFixed(0)}', Icons.payments, AppColors.success),
       ],

@@ -84,15 +84,23 @@ class MenuCategoriesNotifier
   }
 
   /// Kategori ekle ve oluşturulan kategoriyi döndür (toplu yükleme için)
-  Future<MenuCategory?> addCategoryAndReturn(String merchantId, String name) async {
+  Future<MenuCategory?> addCategoryAndReturn(
+    String merchantId,
+    String name,
+  ) async {
     try {
       final supabase = ref.read(supabaseClientProvider);
-      final response = await supabase.from('menu_categories').insert({
-        'merchant_id': merchantId,
-        'name': name,
-        'sort_order': 0,
-        'is_active': true,
-      }).select().single();
+      final response =
+          await supabase
+              .from('menu_categories')
+              .insert({
+                'merchant_id': merchantId,
+                'name': name,
+                'sort_order': 0,
+                'is_active': true,
+              })
+              .select()
+              .single();
 
       await loadCategories(merchantId);
       return MenuCategory.fromJson({
@@ -311,7 +319,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
                       ),
                     ),
                 loading: () => const SizedBox(),
-                error: (_, __) => const SizedBox(),
+                error: (_, _) => const SizedBox(),
               ),
               const SizedBox(width: 16),
 
@@ -446,11 +454,18 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(Icons.drag_indicator, size: 16, color: AppColors.textMuted),
+                      Icon(
+                        Icons.drag_indicator,
+                        size: 16,
+                        color: AppColors.textMuted,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         'Siralama icin surukleyip birakin',
-                        style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                        style: TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 13,
+                        ),
                       ),
                     ],
                   ),
@@ -514,7 +529,8 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
                   reorderedCats.insert(newIndex, item);
 
                   // Update database and state
-                  ref.read(menuCategoriesProvider.notifier)
+                  ref
+                      .read(menuCategoriesProvider.notifier)
                       .updateCategoryOrder(reorderedCats);
 
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -527,7 +543,11 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
                 },
                 itemBuilder: (context, index) {
                   final category = cats[index];
-                  return _buildReorderableCategoryCard(category, index, key: ValueKey(category.id));
+                  return _buildReorderableCategoryCard(
+                    category,
+                    index,
+                    key: ValueKey(category.id),
+                  );
                 },
               );
             },
@@ -537,7 +557,11 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
     );
   }
 
-  Widget _buildReorderableCategoryCard(MenuCategory category, int index, {required Key key}) {
+  Widget _buildReorderableCategoryCard(
+    MenuCategory category,
+    int index, {
+    required Key key,
+  }) {
     return Card(
       key: key,
       margin: const EdgeInsets.only(bottom: 12),
@@ -549,10 +573,7 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
               index: index,
               child: Container(
                 padding: const EdgeInsets.all(8),
-                child: Icon(
-                  Icons.drag_indicator,
-                  color: AppColors.textMuted,
-                ),
+                child: Icon(Icons.drag_indicator, color: AppColors.textMuted),
               ),
             ),
             const SizedBox(width: 8),
@@ -639,15 +660,16 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => _MenuImportDialog(
-        merchantId: merchant.id,
-        onImport: (items) async {
-          final count = await ref
-              .read(menuItemsProvider.notifier)
-              .bulkAddMenuItems(items, merchant.id);
-          return count;
-        },
-      ),
+      builder:
+          (context) => _MenuImportDialog(
+            merchantId: merchant.id,
+            onImport: (items) async {
+              final count = await ref
+                  .read(menuItemsProvider.notifier)
+                  .bulkAddMenuItems(items, merchant.id);
+              return count;
+            },
+          ),
     );
   }
 
@@ -683,7 +705,10 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
                     if (kDebugMode) print('Uploading image: $imageName');
                     final supabase = ref.read(supabaseClientProvider);
                     // Use flat path without subfolders to avoid invalid key error
-                    final safeFileName = imageName.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+                    final safeFileName = imageName.replaceAll(
+                      RegExp(r'[^a-zA-Z0-9._-]'),
+                      '_',
+                    );
                     final fileName =
                         'menu_${merchant.id}_${DateTime.now().millisecondsSinceEpoch}_$safeFileName';
 
@@ -698,10 +723,16 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
                           ),
                         );
 
-                    imageUrl = supabase.storage.from('images').getPublicUrl(fileName);
+                    imageUrl = supabase.storage
+                        .from('images')
+                        .getPublicUrl(fileName);
                     if (kDebugMode) print('Image uploaded: $imageUrl');
                   } catch (e) {
-                    if (kDebugMode) print('Image upload failed (continuing without image): $e');
+                    if (kDebugMode) {
+                      print(
+                        'Image upload failed (continuing without image): $e',
+                      );
+                    }
                     // Continue without image
                   }
                 }
@@ -709,11 +740,19 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
                 // Resim yoksa havuzdan otomatik bul
                 if (imageUrl == null && item.name.isNotEmpty) {
                   try {
-                    final poolResult = await ref.read(supabaseClientProvider).rpc(
-                      'match_product_image',
-                      params: {'p_barcode': null, 'p_name': item.name, 'p_brand': null},
-                    );
-                    if (poolResult != null && poolResult is List && poolResult.isNotEmpty) {
+                    final poolResult = await ref
+                        .read(supabaseClientProvider)
+                        .rpc(
+                          'match_product_image',
+                          params: {
+                            'p_barcode': null,
+                            'p_name': item.name,
+                            'p_brand': null,
+                          },
+                        );
+                    if (poolResult != null &&
+                        poolResult is List &&
+                        poolResult.isNotEmpty) {
                       final poolUrl = poolResult[0]['image_url'] as String?;
                       if (poolUrl != null && poolUrl.isNotEmpty) {
                         imageUrl = poolUrl;
@@ -746,7 +785,9 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
                         })
                         .select()
                         .single();
-                if (kDebugMode) print('Menu item saved: ${menuItemResponse['id']}');
+                if (kDebugMode) {
+                  print('Menu item saved: ${menuItemResponse['id']}');
+                }
 
                 // Save option groups if any
                 if (optionGroups.isNotEmpty) {
@@ -831,7 +872,10 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
                 if (imageBytes != null && imageName != null) {
                   try {
                     final supabase = ref.read(supabaseClientProvider);
-                    final safeFileName = imageName.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+                    final safeFileName = imageName.replaceAll(
+                      RegExp(r'[^a-zA-Z0-9._-]'),
+                      '_',
+                    );
                     final fileName =
                         'menu_${merchant.id}_${DateTime.now().millisecondsSinceEpoch}_$safeFileName';
 
@@ -846,7 +890,9 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
                           ),
                         );
 
-                    imageUrl = supabase.storage.from('images').getPublicUrl(fileName);
+                    imageUrl = supabase.storage
+                        .from('images')
+                        .getPublicUrl(fileName);
                   } catch (e) {
                     if (kDebugMode) print('Image upload failed: $e');
                   }
@@ -873,14 +919,16 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
                     .select('option_group_id')
                     .eq('menu_item_id', item.id);
 
-                final existingGroupIds = (existingLinks as List)
-                    .map((e) => e['option_group_id'] as String)
-                    .toSet();
+                final existingGroupIds =
+                    (existingLinks as List)
+                        .map((e) => e['option_group_id'] as String)
+                        .toSet();
 
-                final newGroupIds = optionGroups
-                    .where((g) => g['id'] != null)
-                    .map((g) => g['id'] as String)
-                    .toSet();
+                final newGroupIds =
+                    optionGroups
+                        .where((g) => g['id'] != null)
+                        .map((g) => g['id'] as String)
+                        .toSet();
 
                 // Delete removed option groups
                 for (final groupId in existingGroupIds) {
@@ -906,14 +954,16 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
 
                 // Add or update option groups
                 for (final group in optionGroups) {
-                  if (group['id'] != null && existingGroupIds.contains(group['id'])) {
+                  if (group['id'] != null &&
+                      existingGroupIds.contains(group['id'])) {
                     // Update existing group
                     await supabase
                         .from('product_option_groups')
                         .update({
                           'name': group['name'],
                           'is_required': group['isRequired'],
-                          'max_selections': group['allowMultiple'] == true ? 10 : 1,
+                          'max_selections':
+                              group['allowMultiple'] == true ? 10 : 1,
                         })
                         .eq('id', group['id']);
 
@@ -932,16 +982,18 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
                     }
                   } else {
                     // Add new group
-                    final groupResponse = await supabase
-                        .from('product_option_groups')
-                        .insert({
-                          'merchant_id': merchant.id,
-                          'name': group['name'],
-                          'is_required': group['isRequired'],
-                          'max_selections': group['allowMultiple'] == true ? 10 : 1,
-                        })
-                        .select()
-                        .single();
+                    final groupResponse =
+                        await supabase
+                            .from('product_option_groups')
+                            .insert({
+                              'merchant_id': merchant.id,
+                              'name': group['name'],
+                              'is_required': group['isRequired'],
+                              'max_selections':
+                                  group['allowMultiple'] == true ? 10 : 1,
+                            })
+                            .select()
+                            .single();
 
                     // Add options
                     for (final option in (group['options'] as List)) {
@@ -1091,7 +1143,10 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
                               ? null
                               : () async {
                                 if (nameController.text.trim().isEmpty) {
-                                  AppDialogs.showError(context, 'Kategori adi zorunlu');
+                                  AppDialogs.showError(
+                                    context,
+                                    'Kategori adi zorunlu',
+                                  );
                                   return;
                                 }
 
@@ -1099,9 +1154,14 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
                                     ref
                                         .read(currentMerchantProvider)
                                         .valueOrNull;
-                                if (kDebugMode) print('Merchant value: $merchant');
+                                if (kDebugMode) {
+                                  print('Merchant value: $merchant');
+                                }
                                 if (merchant == null) {
-                                  AppDialogs.showError(context, 'Magaza bilgisi bulunamadi');
+                                  AppDialogs.showError(
+                                    context,
+                                    'Magaza bilgisi bulunamadi',
+                                  );
                                   Navigator.pop(context);
                                   return;
                                 }
@@ -1124,18 +1184,25 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
                                   if (context.mounted) {
                                     Navigator.pop(context);
                                     if (success) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
                                         const SnackBar(
                                           content: Text('Kategori eklendi!'),
                                           backgroundColor: AppColors.success,
                                         ),
                                       );
                                     } else {
-                                      AppDialogs.showError(context, 'Hata olustu');
+                                      AppDialogs.showError(
+                                        context,
+                                        'Hata olustu',
+                                      );
                                     }
                                   }
                                 } catch (e) {
-                                  if (kDebugMode) print('Category save error: $e');
+                                  if (kDebugMode) {
+                                    print('Category save error: $e');
+                                  }
                                   if (context.mounted) {
                                     setDialogState(() => isLoading = false);
                                     AppDialogs.showError(context, 'Hata: $e');
@@ -1220,7 +1287,10 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
                               ? null
                               : () async {
                                 if (nameController.text.trim().isEmpty) {
-                                  AppDialogs.showError(context, 'Kategori adi zorunlu');
+                                  AppDialogs.showError(
+                                    context,
+                                    'Kategori adi zorunlu',
+                                  );
                                   return;
                                 }
 
@@ -1257,7 +1327,10 @@ class _MenuScreenState extends ConsumerState<MenuScreen>
                                       ),
                                     );
                                   } else {
-                                    AppDialogs.showError(context, 'Hata olustu');
+                                    AppDialogs.showError(
+                                      context,
+                                      'Hata olustu',
+                                    );
                                   }
                                 }
                               },
@@ -1608,11 +1681,16 @@ class _MenuItemDialogState extends ConsumerState<_MenuItemDialog> {
           'name': group['name'],
           'isRequired': group['is_required'] ?? false,
           'allowMultiple': (group['max_selections'] ?? 1) > 1,
-          'options': (optionsResponse as List).map((o) => {
-            'id': o['id'],
-            'name': o['name'],
-            'price': (o['price'] as num?)?.toDouble() ?? 0.0,
-          }).toList(),
+          'options':
+              (optionsResponse as List)
+                  .map(
+                    (o) => {
+                      'id': o['id'],
+                      'name': o['name'],
+                      'price': (o['price'] as num?)?.toDouble() ?? 0.0,
+                    },
+                  )
+                  .toList(),
         });
       }
 
@@ -1939,7 +2017,7 @@ class _MenuItemDialogState extends ConsumerState<_MenuItemDialog> {
                           );
                         },
                         loading: () => const LinearProgressIndicator(),
-                        error: (_, __) => const Text('Kategoriler yuklenemedi'),
+                        error: (_, _) => const Text('Kategoriler yuklenemedi'),
                       ),
                       const SizedBox(height: 16),
 
@@ -2314,7 +2392,8 @@ class _MenuImportDialogState extends ConsumerState<_MenuImportDialog> {
         exc.TextCellValue('Adana Kebap'),
         exc.DoubleCellValue(120.00),
         exc.TextCellValue(
-            _categories.isNotEmpty ? _categories.first.name : 'Ana Yemekler'),
+          _categories.isNotEmpty ? _categories.first.name : 'Ana Yemekler',
+        ),
         exc.TextCellValue('Aci sis kebap, lavash ile servis'),
         exc.DoubleCellValue(99.90),
         exc.TextCellValue('evet'),
@@ -2334,8 +2413,7 @@ class _MenuImportDialogState extends ConsumerState<_MenuImportDialog> {
       sheet.appendRow(headers);
       for (int col = 0; col < headers.length; col++) {
         sheet
-            .cell(exc.CellIndex.indexByColumnRow(
-                columnIndex: col, rowIndex: 0))
+            .cell(exc.CellIndex.indexByColumnRow(columnIndex: col, rowIndex: 0))
             .cellStyle = headerStyle;
       }
 
@@ -2343,19 +2421,19 @@ class _MenuImportDialogState extends ConsumerState<_MenuImportDialog> {
       sheet.appendRow(exampleRow);
       for (int col = 0; col < exampleRow.length; col++) {
         sheet
-            .cell(exc.CellIndex.indexByColumnRow(
-                columnIndex: col, rowIndex: 1))
+            .cell(exc.CellIndex.indexByColumnRow(columnIndex: col, rowIndex: 1))
             .cellStyle = exampleStyle;
       }
 
       // Kategori ipucu
       final hintRow = List<exc.CellValue>.generate(
-          headers.length, (_) => exc.TextCellValue(''));
+        headers.length,
+        (_) => exc.TextCellValue(''),
+      );
       hintRow[2] = exc.TextCellValue('Kategoriler: $categoryNames');
       sheet.appendRow(hintRow);
       sheet
-          .cell(
-              exc.CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: 2))
+          .cell(exc.CellIndex.indexByColumnRow(columnIndex: 2, rowIndex: 2))
           .cellStyle = categoryHintStyle;
 
       excel.delete('Sheet1');
@@ -2445,7 +2523,8 @@ class _MenuImportDialogState extends ConsumerState<_MenuImportDialog> {
           if (sheet == null || sheet.rows.length < 2) continue;
           for (final row in sheet.rows) {
             dataRows.add(
-                row.map((c) => c?.value?.toString().trim() ?? '').toList());
+              row.map((c) => c?.value?.toString().trim() ?? '').toList(),
+            );
           }
           break;
         }
@@ -2492,9 +2571,10 @@ class _MenuImportDialogState extends ConsumerState<_MenuImportDialog> {
       } else {
         // Akilli kolon tespiti
         for (int c = 0; c < headerRow.length; c++) {
-          final h = headerRow[c]
-              .toLowerCase()
-              .replaceAll(RegExp('[^a-z0-9]'), '');
+          final h = headerRow[c].toLowerCase().replaceAll(
+            RegExp('[^a-z0-9]'),
+            '',
+          );
           if (h.contains('yemek') ||
               h.contains('urun') ||
               h.contains('isim') ||
@@ -2523,9 +2603,8 @@ class _MenuImportDialogState extends ConsumerState<_MenuImportDialog> {
           }
         }
         if (dataRows.length > 1) {
-          final firstVal = dataRows[1].isNotEmpty
-              ? dataRows[1][0].toLowerCase().trim()
-              : '';
+          final firstVal =
+              dataRows[1].isNotEmpty ? dataRows[1][0].toLowerCase().trim() : '';
           if (firstVal.contains('ornek') ||
               firstVal.contains('adana') ||
               firstVal.isEmpty) {
@@ -2543,9 +2622,10 @@ class _MenuImportDialogState extends ConsumerState<_MenuImportDialog> {
 
         final name = col(colName);
         final priceStr = col(colPrice);
-        final price = priceStr.isNotEmpty
-            ? (double.tryParse(priceStr.replaceAll(',', '.')) ?? 0.0)
-            : 0.0;
+        final price =
+            priceStr.isNotEmpty
+                ? (double.tryParse(priceStr.replaceAll(',', '.')) ?? 0.0)
+                : 0.0;
 
         if (name.toLowerCase().contains('ornek')) continue;
         if (name.isEmpty) continue;
@@ -2555,9 +2635,10 @@ class _MenuImportDialogState extends ConsumerState<_MenuImportDialog> {
         final description =
             col(colDescription).isNotEmpty ? col(colDescription) : null;
         final discountStr = col(colDiscountedPrice);
-        final discountedPrice = discountStr.isNotEmpty
-            ? double.tryParse(discountStr.replaceAll(',', '.'))
-            : null;
+        final discountedPrice =
+            discountStr.isNotEmpty
+                ? double.tryParse(discountStr.replaceAll(',', '.'))
+                : null;
         final popularStr = col(colPopular).toLowerCase();
         final isPopular =
             popularStr == 'evet' || popularStr == 'yes' || popularStr == '1';
@@ -2608,8 +2689,10 @@ class _MenuImportDialogState extends ConsumerState<_MenuImportDialog> {
       if (newCategoryNames.isNotEmpty) {
         final catNotifier = ref.read(menuCategoriesProvider.notifier);
         for (final catName in newCategoryNames) {
-          final created =
-              await catNotifier.addCategoryAndReturn(widget.merchantId, catName);
+          final created = await catNotifier.addCategoryAndReturn(
+            widget.merchantId,
+            catName,
+          );
           if (created != null) {
             categoryMap[catName.toLowerCase()] = created.id;
             // Urunlere ID ata
@@ -2642,11 +2725,12 @@ class _MenuImportDialogState extends ConsumerState<_MenuImportDialog> {
     setState(() => _isUploading = true);
 
     // _category_label'i cikar (DB'ye gitmemeli)
-    final cleanItems = _parsedItems.map((item) {
-      final clean = Map<String, dynamic>.from(item);
-      clean.remove('_category_label');
-      return clean;
-    }).toList();
+    final cleanItems =
+        _parsedItems.map((item) {
+          final clean = Map<String, dynamic>.from(item);
+          clean.remove('_category_label');
+          return clean;
+        }).toList();
 
     final count = await widget.onImport(cleanItems);
     if (mounted) {
@@ -2676,8 +2760,10 @@ class _MenuImportDialogState extends ConsumerState<_MenuImportDialog> {
               children: [
                 const Icon(Icons.upload_file, size: 28),
                 const SizedBox(width: 12),
-                Text('Toplu Menu Yukleme',
-                    style: Theme.of(context).textTheme.titleLarge),
+                Text(
+                  'Toplu Menu Yukleme',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
                 const Spacer(),
                 _buildStepIndicator(),
                 const SizedBox(width: 12),
@@ -2702,13 +2788,13 @@ class _MenuImportDialogState extends ConsumerState<_MenuImportDialog> {
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.error_outline,
-                        color: AppColors.error, size: 18),
+                    Icon(Icons.error_outline, color: AppColors.error, size: 18),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: Text(_errorMessage!,
-                          style: TextStyle(
-                              color: AppColors.error, fontSize: 13)),
+                      child: Text(
+                        _errorMessage!,
+                        style: TextStyle(color: AppColors.error, fontSize: 13),
+                      ),
                     ),
                   ],
                 ),
@@ -2735,35 +2821,33 @@ class _MenuImportDialogState extends ConsumerState<_MenuImportDialog> {
         for (int i = 0; i < 4; i++) ...[
           if (i > 0)
             Container(
-                width: 20,
-                height: 2,
-                color:
-                    i <= _step ? AppColors.primary : AppColors.border),
+              width: 20,
+              height: 2,
+              color: i <= _step ? AppColors.primary : AppColors.border,
+            ),
           Container(
             width: 24,
             height: 24,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color:
-                  i <= _step ? AppColors.primary : AppColors.background,
+              color: i <= _step ? AppColors.primary : AppColors.background,
               border: Border.all(
-                  color: i <= _step
-                      ? AppColors.primary
-                      : AppColors.border),
+                color: i <= _step ? AppColors.primary : AppColors.border,
+              ),
             ),
             child: Center(
-              child: i < _step
-                  ? const Icon(Icons.check, size: 14, color: Colors.white)
-                  : Text(
-                      '${i + 1}',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: i <= _step
-                            ? Colors.white
-                            : AppColors.textMuted,
+              child:
+                  i < _step
+                      ? const Icon(Icons.check, size: 14, color: Colors.white)
+                      : Text(
+                        '${i + 1}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color:
+                              i <= _step ? Colors.white : AppColors.textMuted,
+                        ),
                       ),
-                    ),
             ),
           ),
         ],
@@ -2801,15 +2885,15 @@ class _MenuImportDialogState extends ConsumerState<_MenuImportDialog> {
           ),
           child: Column(
             children: [
-              Icon(Icons.restaurant_menu,
-                  size: 48, color: AppColors.primary),
+              Icon(Icons.restaurant_menu, size: 48, color: AppColors.primary),
               const SizedBox(height: 12),
               Text(
                 'Menu Sablonunu Indirin',
                 style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
@@ -2817,37 +2901,47 @@ class _MenuImportDialogState extends ConsumerState<_MenuImportDialog> {
                 'Yemek Adi, Fiyat, Kategori, Aciklama, Indirimli Fiyat, Populer, Hazirlama Suresi',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 13,
-                    height: 1.5),
+                  color: AppColors.textSecondary,
+                  fontSize: 13,
+                  height: 1.5,
+                ),
               ),
               const SizedBox(height: 16),
               ElevatedButton.icon(
                 onPressed: _isLoading ? null : _downloadTemplate,
-                icon: _isLoading
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.download, size: 20),
-                label: Text(_isLoading
-                    ? 'Hazirlaniyor...'
-                    : 'Sablon Indir (.xlsx)'),
+                icon:
+                    _isLoading
+                        ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                        : const Icon(Icons.download, size: 20),
+                label: Text(
+                  _isLoading ? 'Hazirlaniyor...' : 'Sablon Indir (.xlsx)',
+                ),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 24, vertical: 14),
+                    horizontal: 24,
+                    vertical: 14,
+                  ),
                 ),
               ),
             ],
           ),
         ),
         const SizedBox(height: 16),
-        Text('Mevcut Kategoriler:',
-            style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-                fontSize: 13)),
+        Text(
+          'Mevcut Kategoriler:',
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: AppColors.textPrimary,
+            fontSize: 13,
+          ),
+        ),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
@@ -2861,8 +2955,7 @@ class _MenuImportDialogState extends ConsumerState<_MenuImportDialog> {
                 visualDensity: VisualDensity.compact,
               ),
             Chip(
-              label: const Text('Kategorisiz',
-                  style: TextStyle(fontSize: 12)),
+              label: const Text('Kategorisiz', style: TextStyle(fontSize: 12)),
               backgroundColor: AppColors.background,
               side: BorderSide(color: AppColors.border),
               visualDensity: VisualDensity.compact,
@@ -2898,21 +2991,27 @@ class _MenuImportDialogState extends ConsumerState<_MenuImportDialog> {
                 if (_isLoading)
                   const CircularProgressIndicator()
                 else ...[
-                  Icon(Icons.cloud_upload_outlined,
-                      size: 56, color: AppColors.primary.withAlpha(180)),
+                  Icon(
+                    Icons.cloud_upload_outlined,
+                    size: 56,
+                    color: AppColors.primary.withAlpha(180),
+                  ),
                   const SizedBox(height: 12),
                   Text(
                     'Excel Dosyasi Sec',
                     style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     'Doldurdugunuz .xlsx dosyasini secin',
                     style: TextStyle(
-                        color: AppColors.textSecondary, fontSize: 13),
+                      color: AppColors.textSecondary,
+                      fontSize: 13,
+                    ),
                   ),
                 ],
               ],
@@ -2923,12 +3022,12 @@ class _MenuImportDialogState extends ConsumerState<_MenuImportDialog> {
           const SizedBox(height: 12),
           Row(
             children: [
-              Icon(Icons.insert_drive_file,
-                  size: 18, color: AppColors.primary),
+              Icon(Icons.insert_drive_file, size: 18, color: AppColors.primary),
               const SizedBox(width: 8),
-              Text(_fileName!,
-                  style: TextStyle(
-                      color: AppColors.textSecondary, fontSize: 13)),
+              Text(
+                _fileName!,
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+              ),
             ],
           ),
         ],
@@ -2944,14 +3043,20 @@ class _MenuImportDialogState extends ConsumerState<_MenuImportDialog> {
             children: [
               Row(
                 children: [
-                  Icon(Icons.lightbulb_outline,
-                      size: 18, color: AppColors.warning),
+                  Icon(
+                    Icons.lightbulb_outline,
+                    size: 18,
+                    color: AppColors.warning,
+                  ),
                   const SizedBox(width: 8),
-                  Text('Ipuclari',
-                      style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                          fontSize: 13)),
+                  Text(
+                    'Ipuclari',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 8),
@@ -2973,12 +3078,16 @@ class _MenuImportDialogState extends ConsumerState<_MenuImportDialog> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('  •  ',
-              style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+          Text(
+            '  •  ',
+            style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+          ),
           Expanded(
-              child: Text(text,
-                  style: TextStyle(
-                      color: AppColors.textSecondary, fontSize: 12))),
+            child: Text(
+              text,
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+            ),
+          ),
         ],
       ),
     );
@@ -2992,8 +3101,7 @@ class _MenuImportDialogState extends ConsumerState<_MenuImportDialog> {
         Row(
           children: [
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: AppColors.success.withAlpha(25),
                 borderRadius: BorderRadius.circular(20),
@@ -3001,9 +3109,10 @@ class _MenuImportDialogState extends ConsumerState<_MenuImportDialog> {
               child: Text(
                 '${_parsedItems.length} yemek hazir',
                 style: TextStyle(
-                    color: AppColors.success,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13),
+                  color: AppColors.success,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
               ),
             ),
             const SizedBox(width: 8),
@@ -3013,12 +3122,16 @@ class _MenuImportDialogState extends ConsumerState<_MenuImportDialog> {
             ),
             if (_fileName != null) ...[
               const Spacer(),
-              Icon(Icons.insert_drive_file,
-                  size: 16, color: AppColors.textMuted),
+              Icon(
+                Icons.insert_drive_file,
+                size: 16,
+                color: AppColors.textMuted,
+              ),
               const SizedBox(width: 4),
-              Text(_fileName!,
-                  style: TextStyle(
-                      color: AppColors.textMuted, fontSize: 12)),
+              Text(
+                _fileName!,
+                style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+              ),
             ],
           ],
         ),
@@ -3027,8 +3140,7 @@ class _MenuImportDialogState extends ConsumerState<_MenuImportDialog> {
           child: ListView.builder(
             itemCount: _groupedItems.keys.length,
             itemBuilder: (context, catIndex) {
-              final categoryName =
-                  _groupedItems.keys.elementAt(catIndex);
+              final categoryName = _groupedItems.keys.elementAt(catIndex);
               final items = _groupedItems[categoryName]!;
               return Container(
                 margin: const EdgeInsets.only(bottom: 12),
@@ -3042,7 +3154,9 @@ class _MenuImportDialogState extends ConsumerState<_MenuImportDialog> {
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 10),
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
                       decoration: BoxDecoration(
                         color: AppColors.primary.withAlpha(15),
                         borderRadius: const BorderRadius.only(
@@ -3052,20 +3166,26 @@ class _MenuImportDialogState extends ConsumerState<_MenuImportDialog> {
                       ),
                       child: Row(
                         children: [
-                          Icon(Icons.restaurant,
-                              size: 18, color: AppColors.primary),
+                          Icon(
+                            Icons.restaurant,
+                            size: 18,
+                            color: AppColors.primary,
+                          ),
                           const SizedBox(width: 8),
                           Text(
                             categoryName,
                             style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textPrimary,
-                                fontSize: 13),
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                              fontSize: 13,
+                            ),
                           ),
                           const Spacer(),
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 2),
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: AppColors.primary.withAlpha(25),
                               borderRadius: BorderRadius.circular(12),
@@ -3073,9 +3193,10 @@ class _MenuImportDialogState extends ConsumerState<_MenuImportDialog> {
                             child: Text(
                               '${items.length} yemek',
                               style: TextStyle(
-                                  color: AppColors.primary,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500),
+                                color: AppColors.primary,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
                         ],
@@ -3084,31 +3205,38 @@ class _MenuImportDialogState extends ConsumerState<_MenuImportDialog> {
                     for (int i = 0; i < items.length; i++)
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
                         decoration: BoxDecoration(
-                          border: i < items.length - 1
-                              ? Border(
-                                  bottom: BorderSide(
-                                      color:
-                                          AppColors.border.withAlpha(80)))
-                              : null,
+                          border:
+                              i < items.length - 1
+                                  ? Border(
+                                    bottom: BorderSide(
+                                      color: AppColors.border.withAlpha(80),
+                                    ),
+                                  )
+                                  : null,
                         ),
                         child: Row(
                           children: [
                             if (items[i]['is_popular'] == true)
                               Padding(
-                                padding:
-                                    const EdgeInsets.only(right: 6),
-                                child: Icon(Icons.star,
-                                    size: 14, color: AppColors.warning),
+                                padding: const EdgeInsets.only(right: 6),
+                                child: Icon(
+                                  Icons.star,
+                                  size: 14,
+                                  color: AppColors.warning,
+                                ),
                               ),
                             Expanded(
                               flex: 3,
                               child: Text(
                                 items[i]['name'] as String,
                                 style: TextStyle(
-                                    color: AppColors.textPrimary,
-                                    fontSize: 13),
+                                  color: AppColors.textPrimary,
+                                  fontSize: 13,
+                                ),
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
@@ -3125,16 +3253,18 @@ class _MenuImportDialogState extends ConsumerState<_MenuImportDialog> {
                               Text(
                                 '${(items[i]['discounted_price'] as num).toStringAsFixed(2)} TL',
                                 style: TextStyle(
-                                    color: AppColors.success,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600),
+                                  color: AppColors.success,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ] else
                               Text(
                                 '${(items[i]['price'] as num).toStringAsFixed(2)} TL',
                                 style: TextStyle(
-                                    color: AppColors.textSecondary,
-                                    fontSize: 12),
+                                  color: AppColors.textSecondary,
+                                  fontSize: 12,
+                                ),
                                 textAlign: TextAlign.right,
                               ),
                           ],
@@ -3165,23 +3295,21 @@ class _MenuImportDialogState extends ConsumerState<_MenuImportDialog> {
           ),
           child: Column(
             children: [
-              Icon(Icons.check_circle,
-                  size: 48, color: AppColors.success),
+              Icon(Icons.check_circle, size: 48, color: AppColors.success),
               const SizedBox(height: 12),
               Text(
                 '$_uploadedCount yemek basariyla yuklendi!',
                 style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
                 'Havuzda eslesme bulunan yemeklere otomatik resim atandi.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 13),
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
               ),
             ],
           ),
@@ -3197,13 +3325,14 @@ class _MenuImportDialogState extends ConsumerState<_MenuImportDialog> {
         // Sol: Geri
         if (_step > 0 && _step < 3)
           TextButton.icon(
-            onPressed: () => setState(() {
-              _step = _step - 1;
-              if (_step < 2) {
-                _parsedItems = [];
-                _groupedItems = {};
-              }
-            }),
+            onPressed:
+                () => setState(() {
+                  _step = _step - 1;
+                  if (_step < 2) {
+                    _parsedItems = [];
+                    _groupedItems = {};
+                  }
+                }),
             icon: const Icon(Icons.arrow_back, size: 18),
             label: const Text('Geri'),
           )
@@ -3234,16 +3363,22 @@ class _MenuImportDialogState extends ConsumerState<_MenuImportDialog> {
             if (_step == 2)
               ElevatedButton.icon(
                 onPressed: _isUploading ? null : _doImport,
-                icon: _isUploading
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 2, color: Colors.white))
-                    : const Icon(Icons.check, size: 18),
-                label: Text(_isUploading
-                    ? 'Yukleniyor...'
-                    : '${_parsedItems.length} Yemek Yukle'),
+                icon:
+                    _isUploading
+                        ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                        : const Icon(Icons.check, size: 18),
+                label: Text(
+                  _isUploading
+                      ? 'Yukleniyor...'
+                      : '${_parsedItems.length} Yemek Yukle',
+                ),
               ),
             if (_step == 3)
               ElevatedButton.icon(

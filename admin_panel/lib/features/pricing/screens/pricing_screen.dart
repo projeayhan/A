@@ -99,15 +99,25 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Fiyatlandirma Yonetimi',
+                      'Fiyatlandırma Yönetimi',
                       style: Theme.of(context).textTheme.headlineMedium,
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Taksi, kurye fiyatlarini ve platform komisyonlarini yonetin',
+                      'Taksi, kurye fiyatlarını ve platform komisyonlarını yönetin',
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
                   ],
+                ),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    ref.invalidate(vehicleTypesProvider);
+                    ref.invalidate(taxiPricingProvider);
+                    ref.invalidate(deliveryPricingProvider);
+                    ref.invalidate(platformCommissionsProvider);
+                  },
+                  icon: const Icon(Icons.refresh, size: 18),
+                  label: const Text('Yenile'),
                 ),
               ],
             ),
@@ -129,9 +139,9 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
               labelColor: Colors.white,
               unselectedLabelColor: AppColors.textSecondary,
               tabs: const [
-                Tab(text: 'Arac Tipleri'),
-                Tab(text: 'Taksi Ucretleri'),
-                Tab(text: 'Kurye Ucretleri'),
+                Tab(text: 'Araç Tipleri'),
+                Tab(text: 'Taksi Ücretleri'),
+                Tab(text: 'Kurye Ücretleri'),
                 Tab(text: 'Komisyonlar'),
               ],
             ),
@@ -156,7 +166,7 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
     );
   }
 
-  // ==================== ARAC TIPLERI TAB ====================
+  // ==================== ARAÇ TİPLERİ TAB ====================
   Widget _buildVehicleTypesTab() {
     final vehicleTypesAsync = ref.watch(vehicleTypesProvider);
 
@@ -173,7 +183,7 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                 ElevatedButton.icon(
                   onPressed: () => _showVehicleTypeDialog(),
                   icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Yeni Arac Tipi'),
+                  label: const Text('Yeni Araç Tipi'),
                 ),
               ],
             ),
@@ -187,19 +197,21 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                     horizontalMargin: 12,
                     columns: const [
                       DataColumn2(label: Text('Tip'), size: ColumnSize.S),
-                      DataColumn2(label: Text('Gorunen Ad'), size: ColumnSize.M),
-                      DataColumn2(label: Text('Acilis'), size: ColumnSize.S),
+                      DataColumn2(label: Text('Görünen Ad'), size: ColumnSize.M),
+                      DataColumn2(label: Text('Açılış'), size: ColumnSize.S),
                       DataColumn2(label: Text('KM'), size: ColumnSize.S),
                       DataColumn2(label: Text('Dakika'), size: ColumnSize.S),
                       DataColumn2(label: Text('Min.'), size: ColumnSize.S),
                       DataColumn2(label: Text('Kapasite'), size: ColumnSize.S),
                       DataColumn2(label: Text('Durum'), size: ColumnSize.S),
-                      DataColumn2(label: Text('Islem'), size: ColumnSize.S),
+                      DataColumn2(label: Text('İşlem'), size: ColumnSize.M),
                     ],
                     rows: vehicleTypes.map((vt) {
                       // taxi_pricing tablosundan fiyatları al
                       final pricing = vt['taxi_pricing'];
-                      final pricingData = pricing is List && pricing.isNotEmpty ? pricing.first : (pricing is Map ? pricing : null);
+                      final pricingData = pricing is List && pricing.isNotEmpty
+                          ? pricing.first
+                          : (pricing is Map ? pricing : null);
 
                       final baseFare = pricingData?['base_fare'] ?? vt['default_base_fare'] ?? 0;
                       final perKm = pricingData?['per_km_fare'] ?? vt['default_per_km'] ?? 0;
@@ -214,7 +226,7 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                           DataCell(Text('$perKm TL')),
                           DataCell(Text('$perMinute TL')),
                           DataCell(Text('$minFare TL')),
-                          DataCell(Text('${vt['capacity']} kisi')),
+                          DataCell(Text('${vt['capacity']} kişi')),
                           DataCell(_buildStatusBadge(vt['is_active'] == true)),
                           DataCell(
                             Row(
@@ -223,7 +235,8 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                                 IconButton(
                                   icon: const Icon(Icons.edit, size: 18),
                                   onPressed: () => _showVehicleTypeDialog(vehicleType: vt),
-                                  tooltip: 'Duzenle',
+                                  color: AppColors.info,
+                                  tooltip: 'Düzenle',
                                 ),
                                 IconButton(
                                   icon: Icon(
@@ -231,7 +244,13 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                                     size: 18,
                                   ),
                                   onPressed: () => _toggleVehicleTypeStatus(vt),
-                                  tooltip: vt['is_active'] == true ? 'Devre Disi Birak' : 'Etkinlestir',
+                                  tooltip: vt['is_active'] == true ? 'Devre Dışı Bırak' : 'Etkinleştir',
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline, size: 18),
+                                  onPressed: () => _confirmDeleteVehicleType(vt),
+                                  color: AppColors.error,
+                                  tooltip: 'Sil',
                                 ),
                               ],
                             ),
@@ -249,7 +268,7 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
     );
   }
 
-  // ==================== TAKSI UCRETLERI TAB ====================
+  // ==================== TAKSİ ÜCRETLERİ TAB ====================
   Widget _buildTaxiPricingTab() {
     final taxiPricingAsync = ref.watch(taxiPricingProvider);
 
@@ -277,8 +296,8 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          'Taksi ucretleri arac tipine gore belirlenir. Her arac tipi icin farkli fiyatlandirma ayarlayabilirsiniz.\n'
-                          'Hesaplama: Acilis Ucreti + (Mesafe x KM Ucreti) + (Sure x Dakika Ucreti)',
+                          'Taksi ücretleri araç tipine göre belirlenir. Her araç tipi için farklı fiyatlandırma ayarlayabilirsiniz.\n'
+                          'Hesaplama: Açılış Ücreti + (Mesafe x KM Ücreti) + (Süre x Dakika Ücreti)',
                           style: TextStyle(color: AppColors.info, fontSize: 13),
                         ),
                       ),
@@ -299,7 +318,7 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                           Icon(Icons.local_taxi, size: 64, color: AppColors.textMuted),
                           const SizedBox(height: 16),
                           Text(
-                            'Taksi fiyatlandirmasi bulunamadi.\nOnce arac tipleri ekleyin.',
+                            'Taksi fiyatlandırması bulunamadı.\nÖnce araç tipleri ekleyin.',
                             textAlign: TextAlign.center,
                             style: TextStyle(color: AppColors.textMuted),
                           ),
@@ -339,21 +358,25 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        '${_taxiPricingChanges.length} arac tipinde degisiklik var',
+                        '${_taxiPricingChanges.length} araç tipinde değişiklik var',
                         style: TextStyle(color: AppColors.textSecondary),
                       ),
                     ),
                     TextButton(
                       onPressed: _discardTaxiPricingChanges,
-                      child: const Text('Vazgec'),
+                      child: const Text('Vazgeç'),
                     ),
                     const SizedBox(width: 8),
                     ElevatedButton.icon(
                       onPressed: _isSavingTaxiPricing ? null : _saveAllTaxiPricingChanges,
                       icon: _isSavingTaxiPricing
-                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
                           : const Icon(Icons.save),
-                      label: Text(_isSavingTaxiPricing ? 'Kaydediliyor...' : 'Tum Degisiklikleri Kaydet'),
+                      label: Text(_isSavingTaxiPricing ? 'Kaydediliyor...' : 'Tüm Değişiklikleri Kaydet'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.success,
                         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -375,7 +398,8 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
 
     // Değişiklik varsa onu kullan, yoksa orijinal değeri kullan
     Map<String, dynamic> getCurrentValue(String field) {
-      if (_taxiPricingChanges.containsKey(pricingId) && _taxiPricingChanges[pricingId]!.containsKey(field)) {
+      if (_taxiPricingChanges.containsKey(pricingId) &&
+          _taxiPricingChanges[pricingId]!.containsKey(field)) {
         return {'value': _taxiPricingChanges[pricingId]![field], 'changed': true};
       }
       return {'value': pricing[field], 'changed': false};
@@ -404,7 +428,10 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(vehicleName, style: Theme.of(context).textTheme.titleLarge),
-                    Text('Kapasite: ${vt?['capacity'] ?? 4} kisi', style: TextStyle(color: AppColors.textMuted)),
+                    Text(
+                      'Kapasite: ${vt?['capacity'] ?? 4} kişi',
+                      style: TextStyle(color: AppColors.textMuted),
+                    ),
                   ],
                 ),
                 const Spacer(),
@@ -416,9 +443,24 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                       color: AppColors.warning.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: Text('Degistirildi', style: TextStyle(color: AppColors.warning, fontSize: 11, fontWeight: FontWeight.w500)),
+                    child: Text(
+                      'Değiştirildi',
+                      style: TextStyle(
+                        color: AppColors.warning,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
                 _buildStatusBadge(pricing['is_active'] == true),
+                const SizedBox(width: 8),
+                // Delete button for taxi pricing record
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, size: 18),
+                  onPressed: () => _confirmDeleteTaxiPricing(pricing),
+                  color: AppColors.error,
+                  tooltip: 'Bu Fiyat Kaydını Sil',
+                ),
               ],
             ),
             const SizedBox(height: 24),
@@ -426,13 +468,45 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
             // Pricing fields
             Row(
               children: [
-                Expanded(child: _buildTaxiPriceFieldNew('Acilis Ucreti', getCurrentValue('base_fare'), 'TL', 'base_fare', pricingId)),
+                Expanded(
+                  child: _buildTaxiPriceFieldNew(
+                    'Açılış Ücreti',
+                    getCurrentValue('base_fare'),
+                    'TL',
+                    'base_fare',
+                    pricingId,
+                  ),
+                ),
                 const SizedBox(width: 16),
-                Expanded(child: _buildTaxiPriceFieldNew('KM Basina', getCurrentValue('per_km_fare'), 'TL', 'per_km_fare', pricingId)),
+                Expanded(
+                  child: _buildTaxiPriceFieldNew(
+                    'KM Başına',
+                    getCurrentValue('per_km_fare'),
+                    'TL',
+                    'per_km_fare',
+                    pricingId,
+                  ),
+                ),
                 const SizedBox(width: 16),
-                Expanded(child: _buildTaxiPriceFieldNew('Dakika Basina', getCurrentValue('per_minute_fare'), 'TL', 'per_minute_fare', pricingId)),
+                Expanded(
+                  child: _buildTaxiPriceFieldNew(
+                    'Dakika Başına',
+                    getCurrentValue('per_minute_fare'),
+                    'TL',
+                    'per_minute_fare',
+                    pricingId,
+                  ),
+                ),
                 const SizedBox(width: 16),
-                Expanded(child: _buildTaxiPriceFieldNew('Minimum Ucret', getCurrentValue('minimum_fare'), 'TL', 'minimum_fare', pricingId)),
+                Expanded(
+                  child: _buildTaxiPriceFieldNew(
+                    'Minimum Ücret',
+                    getCurrentValue('minimum_fare'),
+                    'TL',
+                    'minimum_fare',
+                    pricingId,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 24),
@@ -463,22 +537,50 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                               child: Icon(Icons.trending_up, color: AppColors.warning, size: 20),
                             ),
                             const SizedBox(width: 12),
-                            const Text('Yogun Saat Tarifesi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                            const Text(
+                              'Yoğun Saat Tarifesi',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 16),
-                        _buildTaxiPriceFieldNew('Surge Carpani', getCurrentValue('surge_multiplier'), 'x', 'surge_multiplier', pricingId),
+                        _buildTaxiPriceFieldNew(
+                          'Surge Çarpanı',
+                          getCurrentValue('surge_multiplier'),
+                          'x',
+                          'surge_multiplier',
+                          pricingId,
+                        ),
                         const SizedBox(height: 12),
                         Row(
                           children: [
-                            Expanded(child: _buildTaxiTimeFieldNew('Sabah', getCurrentValue('surge_start_hour_1'), getCurrentValue('surge_end_hour_1'), pricingId, 'surge_start_hour_1', 'surge_end_hour_1')),
+                            Expanded(
+                              child: _buildTaxiTimeFieldNew(
+                                'Sabah',
+                                getCurrentValue('surge_start_hour_1'),
+                                getCurrentValue('surge_end_hour_1'),
+                                pricingId,
+                                'surge_start_hour_1',
+                                'surge_end_hour_1',
+                              ),
+                            ),
                             const SizedBox(width: 12),
-                            Expanded(child: _buildTaxiTimeFieldNew('Aksam', getCurrentValue('surge_start_hour_2'), getCurrentValue('surge_end_hour_2'), pricingId, 'surge_start_hour_2', 'surge_end_hour_2')),
+                            Expanded(
+                              child: _buildTaxiTimeFieldNew(
+                                'Akşam',
+                                getCurrentValue('surge_start_hour_2'),
+                                getCurrentValue('surge_end_hour_2'),
+                                pricingId,
+                                'surge_start_hour_2',
+                                'surge_end_hour_2',
+                              ),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Yogun saatlerde fiyatlar otomatik ${((getCurrentValue('surge_multiplier')['value'] as num?)?.toDouble() ?? 1.0).toStringAsFixed(1)}x ile carpilir',
+                          'Yoğun saatlerde fiyatlar otomatik '
+                          '${((getCurrentValue('surge_multiplier')['value'] as num?)?.toDouble() ?? 1.0).toStringAsFixed(1)}x ile çarpılır',
                           style: TextStyle(color: AppColors.warning, fontSize: 11),
                         ),
                       ],
@@ -509,16 +611,34 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                               child: Icon(Icons.nightlight_round, color: AppColors.info, size: 20),
                             ),
                             const SizedBox(width: 12),
-                            const Text('Gece Tarifesi', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                            const Text(
+                              'Gece Tarifesi',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 16),
-                        _buildTaxiPriceFieldNew('Gece Carpani', getCurrentValue('night_multiplier'), 'x', 'night_multiplier', pricingId),
+                        _buildTaxiPriceFieldNew(
+                          'Gece Çarpanı',
+                          getCurrentValue('night_multiplier'),
+                          'x',
+                          'night_multiplier',
+                          pricingId,
+                        ),
                         const SizedBox(height: 12),
-                        _buildTaxiTimeFieldNew('Gece Saatleri', getCurrentValue('night_start_hour'), getCurrentValue('night_end_hour'), pricingId, 'night_start_hour', 'night_end_hour'),
+                        _buildTaxiTimeFieldNew(
+                          'Gece Saatleri',
+                          getCurrentValue('night_start_hour'),
+                          getCurrentValue('night_end_hour'),
+                          pricingId,
+                          'night_start_hour',
+                          'night_end_hour',
+                        ),
                         const SizedBox(height: 8),
                         Text(
-                          'Gece ${getCurrentValue('night_start_hour')['value'] ?? 0}:00 - ${getCurrentValue('night_end_hour')['value'] ?? 6}:00 arasi ${((getCurrentValue('night_multiplier')['value'] as num?)?.toDouble() ?? 1.5).toStringAsFixed(1)}x tarife uygulanir',
+                          'Gece ${getCurrentValue('night_start_hour')['value'] ?? 0}:00 - '
+                          '${getCurrentValue('night_end_hour')['value'] ?? 6}:00 arası '
+                          '${((getCurrentValue('night_multiplier')['value'] as num?)?.toDouble() ?? 1.5).toStringAsFixed(1)}x tarife uygulanır',
                           style: TextStyle(color: AppColors.info, fontSize: 11),
                         ),
                       ],
@@ -537,7 +657,13 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
     );
   }
 
-  Widget _buildTaxiPriceFieldNew(String label, Map<String, dynamic> valueData, String unit, String field, String pricingId) {
+  Widget _buildTaxiPriceFieldNew(
+    String label,
+    Map<String, dynamic> valueData,
+    String unit,
+    String field,
+    String pricingId,
+  ) {
     final value = valueData['value'];
     final isChanged = valueData['changed'] == true;
 
@@ -557,11 +683,15 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
             fillColor: isChanged ? AppColors.warning.withValues(alpha: 0.1) : null,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: isChanged ? AppColors.warning : AppColors.textMuted.withValues(alpha: 0.3)),
+              borderSide: BorderSide(
+                color: isChanged ? AppColors.warning : AppColors.textMuted.withValues(alpha: 0.3),
+              ),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: isChanged ? AppColors.warning : AppColors.textMuted.withValues(alpha: 0.3)),
+              borderSide: BorderSide(
+                color: isChanged ? AppColors.warning : AppColors.textMuted.withValues(alpha: 0.3),
+              ),
             ),
           ),
           onChanged: (newValue) => _onTaxiPricingFieldChanged(pricingId, field, newValue),
@@ -570,7 +700,14 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
     );
   }
 
-  Widget _buildTaxiTimeFieldNew(String label, Map<String, dynamic> startData, Map<String, dynamic> endData, String pricingId, String startField, String endField) {
+  Widget _buildTaxiTimeFieldNew(
+    String label,
+    Map<String, dynamic> startData,
+    Map<String, dynamic> endData,
+    String pricingId,
+    String startField,
+    String endField,
+  ) {
     final startValue = startData['value'];
     final endValue = endData['value'];
     final isStartChanged = startData['changed'] == true;
@@ -588,7 +725,7 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                 initialValue: startValue?.toString() ?? '0',
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
-                  hintText: 'Baslangic',
+                  hintText: 'Başlangıç',
                   suffixText: ':00',
                   contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                   isDense: true,
@@ -607,7 +744,7 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                 initialValue: endValue?.toString() ?? '0',
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
-                  hintText: 'Bitis',
+                  hintText: 'Bitiş',
                   suffixText: ':00',
                   contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                   isDense: true,
@@ -638,7 +775,6 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
       _taxiPricingChanges.clear();
       _hasTaxiPricingChanges = false;
     });
-    // Her iki provider'ı da yenile - senkronizasyon için
     ref.invalidate(taxiPricingProvider);
     ref.invalidate(vehicleTypesProvider);
   }
@@ -650,8 +786,6 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
 
     try {
       final supabase = ref.read(supabaseProvider);
-
-      // Önce taxi_pricing verisini al - vehicle_type_id'yi bulmak için
       final taxiPricingData = ref.read(taxiPricingProvider).valueOrNull ?? [];
 
       for (final entry in _taxiPricingChanges.entries) {
@@ -660,11 +794,8 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
 
         if (changes.isNotEmpty) {
           changes['updated_at'] = DateTime.now().toIso8601String();
-
-          // taxi_pricing tablosunu güncelle
           await supabase.from('taxi_pricing').update(changes).eq('id', pricingId);
 
-          // vehicle_types tablosunu da güncelle - senkronizasyon için
           final pricingRecord = taxiPricingData.firstWhere(
             (p) => p['id']?.toString() == pricingId,
             orElse: () => {},
@@ -687,7 +818,10 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
             }
 
             if (vehicleTypeChanges.isNotEmpty) {
-              await supabase.from('vehicle_types').update(vehicleTypeChanges).eq('id', vehicleTypeId);
+              await supabase
+                  .from('vehicle_types')
+                  .update(vehicleTypeChanges)
+                  .eq('id', vehicleTypeId);
             }
           }
         }
@@ -699,30 +833,35 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
         _isSavingTaxiPricing = false;
       });
 
-      // Her iki provider'ı da yenile - senkronizasyon için
       ref.invalidate(taxiPricingProvider);
       ref.invalidate(vehicleTypesProvider);
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Tum taksi fiyatlandirmalari basariyla kaydedildi'),
-          backgroundColor: Colors.green,
+          content: Text('Tüm taksi fiyatlandırmaları başarıyla kaydedildi'),
+          backgroundColor: AppColors.success,
         ),
       );
     } catch (e) {
       setState(() => _isSavingTaxiPricing = false);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Hata: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('Hata: $e'),
+          backgroundColor: AppColors.error,
+        ),
       );
     }
   }
 
-  Widget _buildTaxiCalculationExampleNew(String pricingId, Map<String, dynamic> originalPricing) {
-    // Değişiklik varsa onu kullan, yoksa orijinal değeri kullan
+  Widget _buildTaxiCalculationExampleNew(
+    String pricingId,
+    Map<String, dynamic> originalPricing,
+  ) {
     dynamic getValue(String field) {
-      if (_taxiPricingChanges.containsKey(pricingId) && _taxiPricingChanges[pricingId]!.containsKey(field)) {
+      if (_taxiPricingChanges.containsKey(pricingId) &&
+          _taxiPricingChanges[pricingId]!.containsKey(field)) {
         return _taxiPricingChanges[pricingId]![field];
       }
       return originalPricing[field];
@@ -735,10 +874,8 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
     final nightMultiplier = (getValue('night_multiplier') as num?)?.toDouble() ?? 1.5;
     final surgeMultiplier = (getValue('surge_multiplier') as num?)?.toDouble() ?? 1.0;
 
-    // Example: 5 km, 15 min
     double normalTotal = baseFare + (5 * perKm) + (15 * perMin);
     normalTotal = normalTotal < minFare ? minFare : normalTotal;
-
     double nightTotal = normalTotal * nightMultiplier;
     double surgeTotal = normalTotal * surgeMultiplier;
 
@@ -755,13 +892,15 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
             children: [
               Icon(Icons.calculate, color: AppColors.primary, size: 20),
               const SizedBox(width: 12),
-              Text('Hesaplama Ornekleri (5 km, 15 dk)', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+              Text(
+                'Hesaplama Örnekleri (5 km, 15 dk)',
+                style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+              ),
             ],
           ),
           const SizedBox(height: 12),
           Row(
             children: [
-              // Normal tarife
               Expanded(
                 child: Container(
                   padding: const EdgeInsets.all(12),
@@ -776,17 +915,26 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                         children: [
                           Icon(Icons.access_time, size: 16, color: AppColors.success),
                           const SizedBox(width: 6),
-                          const Text('Normal', style: TextStyle(fontWeight: FontWeight.w500, fontSize: 12)),
+                          const Text(
+                            'Normal',
+                            style: TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 8),
-                      Text('${normalTotal.toStringAsFixed(2)} TL', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.success)),
+                      Text(
+                        '${normalTotal.toStringAsFixed(2)} TL',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.success,
+                        ),
+                      ),
                     ],
                   ),
                 ),
               ),
               const SizedBox(width: 12),
-              // Surge tarife
               Expanded(
                 child: Container(
                   padding: const EdgeInsets.all(12),
@@ -801,17 +949,26 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                         children: [
                           Icon(Icons.trending_up, size: 16, color: AppColors.warning),
                           const SizedBox(width: 6),
-                          Text('Yogun Saat (x$surgeMultiplier)', style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12)),
+                          Text(
+                            'Yoğun Saat (x$surgeMultiplier)',
+                            style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 8),
-                      Text('${surgeTotal.toStringAsFixed(2)} TL', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.warning)),
+                      Text(
+                        '${surgeTotal.toStringAsFixed(2)} TL',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.warning,
+                        ),
+                      ),
                     ],
                   ),
                 ),
               ),
               const SizedBox(width: 12),
-              // Gece tarife
               Expanded(
                 child: Container(
                   padding: const EdgeInsets.all(12),
@@ -826,11 +983,21 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                         children: [
                           Icon(Icons.nightlight_round, size: 16, color: AppColors.info),
                           const SizedBox(width: 6),
-                          Text('Gece (x$nightMultiplier)', style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12)),
+                          Text(
+                            'Gece (x$nightMultiplier)',
+                            style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 8),
-                      Text('${nightTotal.toStringAsFixed(2)} TL', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.info)),
+                      Text(
+                        '${nightTotal.toStringAsFixed(2)} TL',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.info,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -839,7 +1006,7 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
           ),
           const SizedBox(height: 8),
           Text(
-            'Formul: $baseFare TL (acilis) + (5 km x $perKm TL) + (15 dk x $perMin TL) = ${normalTotal.toStringAsFixed(2)} TL',
+            'Formül: $baseFare TL (açılış) + (5 km x $perKm TL) + (15 dk x $perMin TL) = ${normalTotal.toStringAsFixed(2)} TL',
             style: TextStyle(color: AppColors.textMuted, fontSize: 11),
           ),
         ],
@@ -847,7 +1014,7 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
     );
   }
 
-  // ==================== KURYE UCRETLERI TAB ====================
+  // ==================== KURYE ÜCRETLERİ TAB ====================
   Widget _buildCourierPricingTab() {
     final pricingAsync = ref.watch(deliveryPricingProvider);
 
@@ -855,7 +1022,6 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (err, stack) => Center(child: Text('Hata: $err')),
       data: (pricing) {
-        // ID'yi kaydet
         if (pricing != null && _currentDeliveryPricingId == null) {
           _currentDeliveryPricingId = pricing['id']?.toString();
         }
@@ -881,8 +1047,8 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            'Platform kuryelerinin teslimat ucretleri mesafeye gore hesaplanir.\n'
-                            'Musteriye yansiyacak ucret = Baz Ucret + (Mesafe x KM Ucreti) x Carpanlar',
+                            'Platform kuryelerinin teslimat ücretleri mesafeye göre hesaplanır.\n'
+                            'Müşteriye yansıyacak ücret = Baz Ücret + (Mesafe x KM Ücreti) x Çarpanlar',
                             style: TextStyle(color: AppColors.info, fontSize: 13),
                           ),
                         ),
@@ -892,17 +1058,53 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                   const SizedBox(height: 24),
 
                   // Basic pricing
-                  Text('Temel Ucretler', style: Theme.of(context).textTheme.titleMedium),
+                  Text('Temel Ücretler', style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 16),
                   Row(
                     children: [
-                      Expanded(child: _buildDeliveryPricingCardNew('Baz Ucret', pricing, 'base_fee', 'TL', Icons.delivery_dining, AppColors.primary)),
+                      Expanded(
+                        child: _buildDeliveryPricingCardNew(
+                          'Baz Ücret',
+                          pricing,
+                          'base_fee',
+                          'TL',
+                          Icons.delivery_dining,
+                          AppColors.primary,
+                        ),
+                      ),
                       const SizedBox(width: 16),
-                      Expanded(child: _buildDeliveryPricingCardNew('KM Basina', pricing, 'per_km_fee', 'TL', Icons.straighten, AppColors.success)),
+                      Expanded(
+                        child: _buildDeliveryPricingCardNew(
+                          'KM Başına',
+                          pricing,
+                          'per_km_fee',
+                          'TL',
+                          Icons.straighten,
+                          AppColors.success,
+                        ),
+                      ),
                       const SizedBox(width: 16),
-                      Expanded(child: _buildDeliveryPricingCardNew('Min. Ucret', pricing, 'min_fee', 'TL', Icons.arrow_downward, AppColors.warning)),
+                      Expanded(
+                        child: _buildDeliveryPricingCardNew(
+                          'Min. Ücret',
+                          pricing,
+                          'min_fee',
+                          'TL',
+                          Icons.arrow_downward,
+                          AppColors.warning,
+                        ),
+                      ),
                       const SizedBox(width: 16),
-                      Expanded(child: _buildDeliveryPricingCardNew('Maks. Ucret', pricing, 'max_fee', 'TL', Icons.arrow_upward, AppColors.error)),
+                      Expanded(
+                        child: _buildDeliveryPricingCardNew(
+                          'Maks. Ücret',
+                          pricing,
+                          'max_fee',
+                          'TL',
+                          Icons.arrow_upward,
+                          AppColors.error,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 32),
@@ -910,23 +1112,58 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                   // Distance tiers
                   Text('Mesafe Kademeleri', style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 8),
-                  Text('Farkli mesafe araliklari icin sabit ucretler belirleyebilirsiniz', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+                  Text(
+                    'Farklı mesafe aralıkları için sabit ücretler belirleyebilirsiniz',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                  ),
                   const SizedBox(height: 16),
                   Row(
                     children: [
-                      Expanded(child: _buildTierCardNew('Kademe 1', '0 - ${_getDeliveryValue(pricing, 'tier_1_km') ?? 3} km', pricing, 'tier_1_fee', AppColors.success)),
+                      Expanded(
+                        child: _buildTierCardNew(
+                          'Kademe 1',
+                          '0 - ${_getDeliveryValue(pricing, 'tier_1_km') ?? 3} km',
+                          pricing,
+                          'tier_1_fee',
+                          AppColors.success,
+                        ),
+                      ),
                       const SizedBox(width: 16),
-                      Expanded(child: _buildTierCardNew('Kademe 2', '${_getDeliveryValue(pricing, 'tier_1_km') ?? 3} - ${_getDeliveryValue(pricing, 'tier_2_km') ?? 7} km', pricing, 'tier_2_fee', AppColors.info)),
+                      Expanded(
+                        child: _buildTierCardNew(
+                          'Kademe 2',
+                          '${_getDeliveryValue(pricing, 'tier_1_km') ?? 3} - ${_getDeliveryValue(pricing, 'tier_2_km') ?? 7} km',
+                          pricing,
+                          'tier_2_fee',
+                          AppColors.info,
+                        ),
+                      ),
                       const SizedBox(width: 16),
-                      Expanded(child: _buildTierCardNew('Kademe 3', '${_getDeliveryValue(pricing, 'tier_2_km') ?? 7} - ${_getDeliveryValue(pricing, 'tier_3_km') ?? 15} km', pricing, 'tier_3_fee', AppColors.warning)),
+                      Expanded(
+                        child: _buildTierCardNew(
+                          'Kademe 3',
+                          '${_getDeliveryValue(pricing, 'tier_2_km') ?? 7} - ${_getDeliveryValue(pricing, 'tier_3_km') ?? 15} km',
+                          pricing,
+                          'tier_3_fee',
+                          AppColors.warning,
+                        ),
+                      ),
                       const SizedBox(width: 16),
-                      Expanded(child: _buildTierCardNew('15+ km', 'Her ek km icin', pricing, 'extra_km_fee', AppColors.error)),
+                      Expanded(
+                        child: _buildTierCardNew(
+                          '15+ km',
+                          'Her ek km için',
+                          pricing,
+                          'extra_km_fee',
+                          AppColors.error,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 32),
 
                   // Multipliers
-                  Text('Carpanlar', style: Theme.of(context).textTheme.titleMedium),
+                  Text('Çarpanlar', style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 16),
                   Row(
                     children: [
@@ -941,17 +1178,35 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                                   children: [
                                     Icon(Icons.trending_up, color: AppColors.warning),
                                     const SizedBox(width: 8),
-                                    const Text('Surge (Yogun Saat)'),
+                                    const Text('Surge (Yoğun Saat)'),
                                   ],
                                 ),
                                 const SizedBox(height: 16),
-                                _buildDeliveryMultiplierFieldNew('Surge Carpani', pricing, 'surge_multiplier'),
+                                _buildDeliveryMultiplierFieldNew(
+                                  'Surge Çarpanı',
+                                  pricing,
+                                  'surge_multiplier',
+                                ),
                                 const SizedBox(height: 12),
                                 Row(
                                   children: [
-                                    Expanded(child: _buildDeliveryTimeFieldNew('Ogle', pricing, 'surge_start_hour', 'surge_end_hour')),
+                                    Expanded(
+                                      child: _buildDeliveryTimeFieldNew(
+                                        'Öğle',
+                                        pricing,
+                                        'surge_start_hour',
+                                        'surge_end_hour',
+                                      ),
+                                    ),
                                     const SizedBox(width: 16),
-                                    Expanded(child: _buildDeliveryTimeFieldNew('Aksam', pricing, 'evening_surge_start', 'evening_surge_end')),
+                                    Expanded(
+                                      child: _buildDeliveryTimeFieldNew(
+                                        'Akşam',
+                                        pricing,
+                                        'evening_surge_start',
+                                        'evening_surge_end',
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ],
@@ -975,9 +1230,18 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                                   ],
                                 ),
                                 const SizedBox(height: 16),
-                                _buildDeliveryMultiplierFieldNew('Gece Carpani', pricing, 'night_multiplier'),
+                                _buildDeliveryMultiplierFieldNew(
+                                  'Gece Çarpanı',
+                                  pricing,
+                                  'night_multiplier',
+                                ),
                                 const SizedBox(height: 12),
-                                _buildDeliveryTimeFieldNew('Gece Saatleri', pricing, 'night_start_hour', 'night_end_hour'),
+                                _buildDeliveryTimeFieldNew(
+                                  'Gece Saatleri',
+                                  pricing,
+                                  'night_start_hour',
+                                  'night_end_hour',
+                                ),
                               ],
                             ),
                           ),
@@ -995,11 +1259,15 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                                   children: [
                                     Icon(Icons.cloud, color: AppColors.textMuted),
                                     const SizedBox(width: 8),
-                                    const Text('Kotu Hava'),
+                                    const Text('Kötü Hava'),
                                   ],
                                 ),
                                 const SizedBox(height: 16),
-                                _buildDeliveryMultiplierFieldNew('Hava Carpani', pricing, 'bad_weather_multiplier'),
+                                _buildDeliveryMultiplierFieldNew(
+                                  'Hava Çarpanı',
+                                  pricing,
+                                  'bad_weather_multiplier',
+                                ),
                                 const SizedBox(height: 12),
                                 Container(
                                   padding: const EdgeInsets.all(12),
@@ -1008,7 +1276,7 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
-                                    'Yagmur, kar gibi kotu hava kosullarinda otomatik uygulanir',
+                                    'Yağmur, kar gibi kötü hava koşullarında otomatik uygulanır',
                                     style: TextStyle(color: AppColors.textMuted, fontSize: 12),
                                   ),
                                 ),
@@ -1021,10 +1289,7 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                   ),
                   const SizedBox(height: 32),
 
-                  // Calculation example
                   _buildCourierCalculationExampleNew(pricing),
-
-                  // Kaydet butonu için boşluk
                   const SizedBox(height: 80),
                 ],
               ),
@@ -1055,21 +1320,33 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          '${_deliveryPricingChanges.length} alanda degisiklik var',
+                          '${_deliveryPricingChanges.length} alanda değişiklik var',
                           style: TextStyle(color: AppColors.textSecondary),
                         ),
                       ),
                       TextButton(
                         onPressed: _discardDeliveryPricingChanges,
-                        child: const Text('Vazgec'),
+                        child: const Text('Vazgeç'),
                       ),
                       const SizedBox(width: 8),
                       ElevatedButton.icon(
-                        onPressed: _isSavingDeliveryPricing ? null : _saveAllDeliveryPricingChanges,
+                        onPressed:
+                            _isSavingDeliveryPricing ? null : _saveAllDeliveryPricingChanges,
                         icon: _isSavingDeliveryPricing
-                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
                             : const Icon(Icons.save),
-                        label: Text(_isSavingDeliveryPricing ? 'Kaydediliyor...' : 'Tum Degisiklikleri Kaydet'),
+                        label: Text(
+                          _isSavingDeliveryPricing
+                              ? 'Kaydediliyor...'
+                              : 'Tüm Değişiklikleri Kaydet',
+                        ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.success,
                           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -1092,7 +1369,14 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
     return pricing?[field];
   }
 
-  Widget _buildDeliveryPricingCardNew(String title, Map<String, dynamic>? pricing, String field, String unit, IconData icon, Color color) {
+  Widget _buildDeliveryPricingCardNew(
+    String title,
+    Map<String, dynamic>? pricing,
+    String field,
+    String unit,
+    IconData icon,
+    Color color,
+  ) {
     final value = _getDeliveryValue(pricing, field);
     final isChanged = _deliveryPricingChanges.containsKey(field);
 
@@ -1113,7 +1397,9 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                   child: Icon(icon, color: color, size: 20),
                 ),
                 const SizedBox(width: 12),
-                Expanded(child: Text(title, style: Theme.of(context).textTheme.titleSmall)),
+                Expanded(
+                  child: Text(title, style: Theme.of(context).textTheme.titleSmall),
+                ),
                 if (isChanged)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -1121,7 +1407,10 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                       color: AppColors.warning.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: Text('*', style: TextStyle(color: AppColors.warning, fontWeight: FontWeight.bold)),
+                    child: Text(
+                      '*',
+                      style: TextStyle(color: AppColors.warning, fontWeight: FontWeight.bold),
+                    ),
                   ),
               ],
             ),
@@ -1144,7 +1433,13 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
     );
   }
 
-  Widget _buildTierCardNew(String title, String range, Map<String, dynamic>? pricing, String field, Color color) {
+  Widget _buildTierCardNew(
+    String title,
+    String range,
+    Map<String, dynamic>? pricing,
+    String field,
+    Color color,
+  ) {
     final value = _getDeliveryValue(pricing, field);
     final isChanged = _deliveryPricingChanges.containsKey(field);
 
@@ -1162,7 +1457,10 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                     color: color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: Text(title, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold)),
+                  child: Text(
+                    title,
+                    style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold),
+                  ),
                 ),
                 const Spacer(),
                 if (isChanged)
@@ -1172,7 +1470,10 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                       color: AppColors.warning.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: Text('*', style: TextStyle(color: AppColors.warning, fontWeight: FontWeight.bold)),
+                    child: Text(
+                      '*',
+                      style: TextStyle(color: AppColors.warning, fontWeight: FontWeight.bold),
+                    ),
                   ),
               ],
             ),
@@ -1197,7 +1498,11 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
     );
   }
 
-  Widget _buildDeliveryMultiplierFieldNew(String label, Map<String, dynamic>? pricing, String field) {
+  Widget _buildDeliveryMultiplierFieldNew(
+    String label,
+    Map<String, dynamic>? pricing,
+    String field,
+  ) {
     final value = _getDeliveryValue(pricing, field);
     final isChanged = _deliveryPricingChanges.containsKey(field);
 
@@ -1225,7 +1530,12 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
     );
   }
 
-  Widget _buildDeliveryTimeFieldNew(String label, Map<String, dynamic>? pricing, String startField, String endField) {
+  Widget _buildDeliveryTimeFieldNew(
+    String label,
+    Map<String, dynamic>? pricing,
+    String startField,
+    String endField,
+  ) {
     final startValue = _getDeliveryValue(pricing, startField);
     final endValue = _getDeliveryValue(pricing, endField);
     final isStartChanged = _deliveryPricingChanges.containsKey(startField);
@@ -1252,7 +1562,10 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                 onChanged: (val) => _onDeliveryPricingFieldChanged(startField, val),
               ),
             ),
-            const Padding(padding: EdgeInsets.symmetric(horizontal: 4), child: Text('-')),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 4),
+              child: Text('-'),
+            ),
             Expanded(
               child: TextFormField(
                 initialValue: endValue?.toString() ?? '0',
@@ -1298,7 +1611,10 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
       final changes = Map<String, dynamic>.from(_deliveryPricingChanges);
       changes['updated_at'] = DateTime.now().toIso8601String();
 
-      await supabase.from('delivery_pricing').update(changes).eq('id', _currentDeliveryPricingId!);
+      await supabase
+          .from('delivery_pricing')
+          .update(changes)
+          .eq('id', _currentDeliveryPricingId!);
 
       setState(() {
         _deliveryPricingChanges.clear();
@@ -1311,25 +1627,33 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Kurye fiyatlandirmalari basariyla kaydedildi'),
-          backgroundColor: Colors.green,
+          content: Text('Kurye fiyatlandırmaları başarıyla kaydedildi'),
+          backgroundColor: AppColors.success,
         ),
       );
     } catch (e) {
       setState(() => _isSavingDeliveryPricing = false);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Hata: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('Hata: $e'),
+          backgroundColor: AppColors.error,
+        ),
       );
     }
   }
 
   Widget _buildCourierCalculationExampleNew(Map<String, dynamic>? pricing) {
-    final baseFee = (_getDeliveryValue(pricing, 'base_fee') as num?)?.toDouble() ?? 15.0;
-    final perKm = (_getDeliveryValue(pricing, 'per_km_fee') as num?)?.toDouble() ?? 2.0;
-    final surgeMultiplier = (_getDeliveryValue(pricing, 'surge_multiplier') as num?)?.toDouble() ?? 1.5;
-    final minFee = (_getDeliveryValue(pricing, 'min_fee') as num?)?.toDouble() ?? 10.0;
-    final maxFee = (_getDeliveryValue(pricing, 'max_fee') as num?)?.toDouble() ?? 100.0;
+    final baseFee =
+        (_getDeliveryValue(pricing, 'base_fee') as num?)?.toDouble() ?? 15.0;
+    final perKm =
+        (_getDeliveryValue(pricing, 'per_km_fee') as num?)?.toDouble() ?? 2.0;
+    final surgeMultiplier =
+        (_getDeliveryValue(pricing, 'surge_multiplier') as num?)?.toDouble() ?? 1.5;
+    final minFee =
+        (_getDeliveryValue(pricing, 'min_fee') as num?)?.toDouble() ?? 10.0;
+    final maxFee =
+        (_getDeliveryValue(pricing, 'max_fee') as num?)?.toDouble() ?? 100.0;
 
     double normalFee = baseFee + (5 * perKm);
     double surgeFee = normalFee * surgeMultiplier;
@@ -1347,7 +1671,7 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
               children: [
                 Icon(Icons.calculate, color: AppColors.primary),
                 const SizedBox(width: 8),
-                Text('Hesaplama Ornekleri', style: Theme.of(context).textTheme.titleMedium),
+                Text('Hesaplama Örnekleri', style: Theme.of(context).textTheme.titleMedium),
               ],
             ),
             const SizedBox(height: 16),
@@ -1363,7 +1687,10 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('5 km Normal', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const Text(
+                          '5 km Normal',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                         const SizedBox(height: 8),
                         Text('$baseFee + (5 x $perKm) = ${normalFee.toStringAsFixed(2)} TL'),
                       ],
@@ -1383,20 +1710,31 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                       children: [
                         Row(
                           children: [
-                            const Text('5 km Surge', style: TextStyle(fontWeight: FontWeight.bold)),
+                            const Text(
+                              '5 km Surge',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
                             const SizedBox(width: 8),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
                                 color: AppColors.warning,
                                 borderRadius: BorderRadius.circular(4),
                               ),
-                              child: Text('x$surgeMultiplier', style: const TextStyle(color: Colors.white, fontSize: 10)),
+                              child: Text(
+                                'x$surgeMultiplier',
+                                style: const TextStyle(color: Colors.white, fontSize: 10),
+                              ),
                             ),
                           ],
                         ),
                         const SizedBox(height: 8),
-                        Text('${normalFee.toStringAsFixed(2)} x $surgeMultiplier = ${surgeFee.toStringAsFixed(2)} TL'),
+                        Text(
+                          '${normalFee.toStringAsFixed(2)} x $surgeMultiplier = ${surgeFee.toStringAsFixed(2)} TL',
+                        ),
                       ],
                     ),
                   ),
@@ -1409,7 +1747,7 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
     );
   }
 
-  // ==================== KOMISYONLAR TAB ====================
+  // ==================== KOMİSYONLAR TAB ====================
   Widget _buildCommissionsTab() {
     final commissionsAsync = ref.watch(platformCommissionsProvider);
 
@@ -1423,6 +1761,20 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Header row with Add button
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const SizedBox(),
+                    ElevatedButton.icon(
+                      onPressed: () => _showCommissionDialog(),
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('Yeni Komisyon Kuralı'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
                 // Info banner
                 Container(
                   padding: const EdgeInsets.all(16),
@@ -1437,8 +1789,8 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          'Platform komisyonlari, her islemden platformun alacagi payi belirler.\n'
-                          'Ornek: %20 komisyon = 100 TL islemden platform 20 TL, surucu/kurye 80 TL alir.',
+                          'Platform komisyonları, her işlemden platformun alacağı payı belirler.\n'
+                          'Örnek: %20 komisyon = 100 TL işlemden platform 20 TL, sürücü/kurye 80 TL alır.',
                           style: TextStyle(color: AppColors.warning, fontSize: 13),
                         ),
                       ),
@@ -1448,7 +1800,9 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                 const SizedBox(height: 24),
 
                 // Commission cards
-                ...commissions.map((commission) => _buildCommissionCardNew(commission)),
+                ...commissions.map(
+                  (commission) => _buildCommissionCardNew(commission),
+                ),
 
                 if (commissions.isEmpty)
                   Center(
@@ -1458,13 +1812,21 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                         children: [
                           Icon(Icons.percent, size: 64, color: AppColors.textMuted),
                           const SizedBox(height: 16),
-                          Text('Komisyon ayari bulunamadi', style: TextStyle(color: AppColors.textMuted)),
+                          Text(
+                            'Komisyon ayarı bulunamadı',
+                            style: TextStyle(color: AppColors.textMuted),
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            onPressed: () => _showCommissionDialog(),
+                            icon: const Icon(Icons.add, size: 18),
+                            label: const Text('İlk Komisyon Kuralını Ekle'),
+                          ),
                         ],
                       ),
                     ),
                   ),
 
-                // Kaydet butonu için boşluk
                 const SizedBox(height: 80),
               ],
             ),
@@ -1495,21 +1857,32 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        '${_commissionChanges.length} serviste degisiklik var',
+                        '${_commissionChanges.length} serviste değişiklik var',
                         style: TextStyle(color: AppColors.textSecondary),
                       ),
                     ),
                     TextButton(
                       onPressed: _discardCommissionChanges,
-                      child: const Text('Vazgec'),
+                      child: const Text('Vazgeç'),
                     ),
                     const SizedBox(width: 8),
                     ElevatedButton.icon(
                       onPressed: _isSavingCommissions ? null : _saveAllCommissionChanges,
                       icon: _isSavingCommissions
-                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
                           : const Icon(Icons.save),
-                      label: Text(_isSavingCommissions ? 'Kaydediliyor...' : 'Tum Degisiklikleri Kaydet'),
+                      label: Text(
+                        _isSavingCommissions
+                            ? 'Kaydediliyor...'
+                            : 'Tüm Değişiklikleri Kaydet',
+                      ),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.success,
                         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -1550,7 +1923,7 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
         break;
       case 'rent_a_car':
         icon = Icons.directions_car;
-        color = const Color(0xFF9C27B0); // Purple
+        color = const Color(0xFF9C27B0);
         break;
       default:
         icon = Icons.business;
@@ -1582,7 +1955,10 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(displayName, style: Theme.of(context).textTheme.titleLarge),
-                    Text('Servis Tipi: $serviceType', style: TextStyle(color: AppColors.textMuted)),
+                    Text(
+                      'Servis Tipi: $serviceType',
+                      style: TextStyle(color: AppColors.textMuted),
+                    ),
                   ],
                 ),
                 const Spacer(),
@@ -1594,14 +1970,34 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                       color: AppColors.warning.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: Text('Degistirildi', style: TextStyle(color: AppColors.warning, fontSize: 11, fontWeight: FontWeight.w500)),
+                    child: Text(
+                      'Değiştirildi',
+                      style: TextStyle(
+                        color: AppColors.warning,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
                 _buildStatusBadge(commission['is_active'] == true),
+                const SizedBox(width: 8),
+                IconButton(
+                  icon: const Icon(Icons.edit, size: 18),
+                  onPressed: () => _showCommissionDialog(commission: commission),
+                  color: AppColors.info,
+                  tooltip: 'Düzenle',
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline, size: 18),
+                  onPressed: () => _confirmDeleteCommission(commission),
+                  color: AppColors.error,
+                  tooltip: 'Sil',
+                ),
               ],
             ),
             const SizedBox(height: 24),
 
-            // Commission fields
+            // Commission fields (inline editing)
             Row(
               children: [
                 Expanded(
@@ -1617,7 +2013,7 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                 const SizedBox(width: 16),
                 Expanded(
                   child: _buildCommissionFieldNew(
-                    'Surucu/Kurye Payi',
+                    'Sürücü/Kurye Payı',
                     commission,
                     'driver_earning_rate',
                     '%',
@@ -1639,7 +2035,7 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                 const SizedBox(width: 16),
                 Expanded(
                   child: _buildCommissionFieldNew(
-                    'Sigorta Ucreti',
+                    'Sigorta Ücreti',
                     commission,
                     'insurance_fee',
                     'TL',
@@ -1651,7 +2047,6 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
             ),
             const SizedBox(height: 16),
 
-            // Example
             _buildCommissionExampleNew(commission, commissionId),
           ],
         ),
@@ -1659,16 +2054,29 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
     );
   }
 
-  dynamic _getCommissionValue(Map<String, dynamic> commission, String commissionId, String field) {
-    if (_commissionChanges.containsKey(commissionId) && _commissionChanges[commissionId]!.containsKey(field)) {
+  dynamic _getCommissionValue(
+    Map<String, dynamic> commission,
+    String commissionId,
+    String field,
+  ) {
+    if (_commissionChanges.containsKey(commissionId) &&
+        _commissionChanges[commissionId]!.containsKey(field)) {
       return _commissionChanges[commissionId]![field];
     }
     return commission[field];
   }
 
-  Widget _buildCommissionFieldNew(String label, Map<String, dynamic> commission, String field, String unit, String commissionId, Color color) {
+  Widget _buildCommissionFieldNew(
+    String label,
+    Map<String, dynamic> commission,
+    String field,
+    String unit,
+    String commissionId,
+    Color color,
+  ) {
     final value = _getCommissionValue(commission, commissionId, field);
-    final isChanged = _commissionChanges.containsKey(commissionId) && _commissionChanges[commissionId]!.containsKey(field);
+    final isChanged = _commissionChanges.containsKey(commissionId) &&
+        _commissionChanges[commissionId]!.containsKey(field);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1701,10 +2109,23 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
     );
   }
 
-  Widget _buildCommissionExampleNew(Map<String, dynamic> commission, String commissionId) {
-    final platformRate = (_getCommissionValue(commission, commissionId, 'platform_commission_rate') as num?)?.toDouble() ?? 20.0;
-    final driverRate = (_getCommissionValue(commission, commissionId, 'driver_earning_rate') as num?)?.toDouble() ?? 80.0;
-    final serviceFee = (_getCommissionValue(commission, commissionId, 'service_fee') as num?)?.toDouble() ?? 0;
+  Widget _buildCommissionExampleNew(
+    Map<String, dynamic> commission,
+    String commissionId,
+  ) {
+    final platformRate =
+        (_getCommissionValue(commission, commissionId, 'platform_commission_rate')
+                    as num?)
+                ?.toDouble() ??
+            20.0;
+    final driverRate =
+        (_getCommissionValue(commission, commissionId, 'driver_earning_rate') as num?)
+                ?.toDouble() ??
+            80.0;
+    final serviceFee =
+        (_getCommissionValue(commission, commissionId, 'service_fee') as num?)
+                ?.toDouble() ??
+            0;
 
     const exampleAmount = 100.0;
     final platformEarning = exampleAmount * platformRate / 100;
@@ -1722,7 +2143,10 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Ornek: ${exampleAmount.toStringAsFixed(0)} TL islem = Platform ${platformEarning.toStringAsFixed(2)} TL, Surucu/Kurye ${driverEarning.toStringAsFixed(2)} TL${serviceFee > 0 ? ' + $serviceFee TL hizmet bedeli' : ''}',
+              'Örnek: ${exampleAmount.toStringAsFixed(0)} TL işlem = '
+              'Platform ${platformEarning.toStringAsFixed(2)} TL, '
+              'Sürücü/Kurye ${driverEarning.toStringAsFixed(2)} TL'
+              '${serviceFee > 0 ? ' + $serviceFee TL hizmet bedeli' : ''}',
               style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
             ),
           ),
@@ -1763,7 +2187,10 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
 
         if (changes.isNotEmpty) {
           changes['updated_at'] = DateTime.now().toIso8601String();
-          await supabase.from('platform_commissions').update(changes).eq('id', commissionId);
+          await supabase
+              .from('platform_commissions')
+              .update(changes)
+              .eq('id', commissionId);
         }
       }
 
@@ -1778,25 +2205,30 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Komisyon ayarlari basariyla kaydedildi'),
-          backgroundColor: Colors.green,
+          content: Text('Komisyon ayarları başarıyla kaydedildi'),
+          backgroundColor: AppColors.success,
         ),
       );
     } catch (e) {
       setState(() => _isSavingCommissions = false);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Hata: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('Hata: $e'),
+          backgroundColor: AppColors.error,
+        ),
       );
     }
   }
 
-  // ==================== HELPER METHODS ====================
+  // ==================== YARDIMCI METODLAR ====================
   Widget _buildStatusBadge(bool isActive) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: isActive ? AppColors.success.withValues(alpha: 0.1) : AppColors.error.withValues(alpha: 0.1),
+        color: isActive
+            ? AppColors.success.withValues(alpha: 0.1)
+            : AppColors.error.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Text(
@@ -1810,20 +2242,34 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
     );
   }
 
+  // ==================== ARAÇ TİPİ DİYALOG ====================
   void _showVehicleTypeDialog({Map<String, dynamic>? vehicleType}) {
     final isEditing = vehicleType != null;
 
-    // taxi_pricing verisi varsa oradan al, yoksa default değerleri kullan
     final pricing = vehicleType?['taxi_pricing'];
-    final pricingData = pricing is List && pricing.isNotEmpty ? pricing.first : (pricing is Map ? pricing : null);
+    final pricingData = pricing is List && pricing.isNotEmpty
+        ? pricing.first
+        : (pricing is Map ? pricing : null);
 
     final nameController = TextEditingController(text: vehicleType?['name'] ?? '');
-    final displayNameController = TextEditingController(text: vehicleType?['display_name'] ?? '');
-    final baseFareController = TextEditingController(text: (pricingData?['base_fare'] ?? vehicleType?['default_base_fare'] ?? '').toString());
-    final perKmController = TextEditingController(text: (pricingData?['per_km_fare'] ?? vehicleType?['default_per_km'] ?? '').toString());
-    final perMinuteController = TextEditingController(text: (pricingData?['per_minute_fare'] ?? vehicleType?['default_per_minute'] ?? '').toString());
-    final minFareController = TextEditingController(text: (pricingData?['minimum_fare'] ?? vehicleType?['default_minimum_fare'] ?? '').toString());
-    final capacityController = TextEditingController(text: vehicleType?['capacity']?.toString() ?? '4');
+    final displayNameController =
+        TextEditingController(text: vehicleType?['display_name'] ?? '');
+    final baseFareController = TextEditingController(
+      text: (pricingData?['base_fare'] ?? vehicleType?['default_base_fare'] ?? '').toString(),
+    );
+    final perKmController = TextEditingController(
+      text: (pricingData?['per_km_fare'] ?? vehicleType?['default_per_km'] ?? '').toString(),
+    );
+    final perMinuteController = TextEditingController(
+      text: (pricingData?['per_minute_fare'] ?? vehicleType?['default_per_minute'] ?? '')
+          .toString(),
+    );
+    final minFareController = TextEditingController(
+      text:
+          (pricingData?['minimum_fare'] ?? vehicleType?['default_minimum_fare'] ?? '').toString(),
+    );
+    final capacityController =
+        TextEditingController(text: vehicleType?['capacity']?.toString() ?? '4');
 
     bool isLoading = false;
 
@@ -1833,7 +2279,7 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) {
           return AlertDialog(
-            title: Text(isEditing ? 'Arac Tipini Duzenle' : 'Yeni Arac Tipi'),
+            title: Text(isEditing ? 'Araç Tipini Düzenle' : 'Yeni Araç Tipi'),
             content: SizedBox(
               width: 500,
               child: SingleChildScrollView(
@@ -1842,13 +2288,19 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                   children: [
                     TextField(
                       controller: nameController,
-                      decoration: const InputDecoration(labelText: 'Tip Adi (orn: standard)'),
+                      decoration: const InputDecoration(
+                        labelText: 'Tip Adı (örn: standard)',
+                        border: OutlineInputBorder(),
+                      ),
                       enabled: !isLoading,
                     ),
                     const SizedBox(height: 16),
                     TextField(
                       controller: displayNameController,
-                      decoration: const InputDecoration(labelText: 'Gorunen Ad (orn: Standart)'),
+                      decoration: const InputDecoration(
+                        labelText: 'Görünen Ad (örn: Standart)',
+                        border: OutlineInputBorder(),
+                      ),
                       enabled: !isLoading,
                     ),
                     const SizedBox(height: 16),
@@ -1858,7 +2310,10 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                           child: TextField(
                             controller: baseFareController,
                             keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(labelText: 'Acilis Ucreti (TL)'),
+                            decoration: const InputDecoration(
+                              labelText: 'Açılış Ücreti (TL)',
+                              border: OutlineInputBorder(),
+                            ),
                             enabled: !isLoading,
                           ),
                         ),
@@ -1867,7 +2322,10 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                           child: TextField(
                             controller: perKmController,
                             keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(labelText: 'KM Basina (TL)'),
+                            decoration: const InputDecoration(
+                              labelText: 'KM Başına (TL)',
+                              border: OutlineInputBorder(),
+                            ),
                             enabled: !isLoading,
                           ),
                         ),
@@ -1880,7 +2338,10 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                           child: TextField(
                             controller: perMinuteController,
                             keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(labelText: 'Dakika Basina (TL)'),
+                            decoration: const InputDecoration(
+                              labelText: 'Dakika Başına (TL)',
+                              border: OutlineInputBorder(),
+                            ),
                             enabled: !isLoading,
                           ),
                         ),
@@ -1889,7 +2350,10 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                           child: TextField(
                             controller: minFareController,
                             keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(labelText: 'Minimum Ucret (TL)'),
+                            decoration: const InputDecoration(
+                              labelText: 'Minimum Ücret (TL)',
+                              border: OutlineInputBorder(),
+                            ),
                             enabled: !isLoading,
                           ),
                         ),
@@ -1899,7 +2363,10 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
                     TextField(
                       controller: capacityController,
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: 'Kapasite (Kisi)'),
+                      decoration: const InputDecoration(
+                        labelText: 'Kapasite (Kişi)',
+                        border: OutlineInputBorder(),
+                      ),
                       enabled: !isLoading,
                     ),
                   ],
@@ -1909,113 +2376,138 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
             actions: [
               TextButton(
                 onPressed: isLoading ? null : () => Navigator.pop(dialogContext),
-                child: const Text('Iptal'),
+                child: const Text('İptal'),
               ),
               ElevatedButton(
-                onPressed: isLoading ? null : () async {
-                  // Validasyon
-                  if (nameController.text.trim().isEmpty) {
-                    ScaffoldMessenger.of(dialogContext).showSnackBar(
-                      const SnackBar(content: Text('Tip adi bos olamaz'), backgroundColor: Colors.red),
-                    );
-                    return;
-                  }
-                  if (displayNameController.text.trim().isEmpty) {
-                    ScaffoldMessenger.of(dialogContext).showSnackBar(
-                      const SnackBar(content: Text('Gorunen ad bos olamaz'), backgroundColor: Colors.red),
-                    );
-                    return;
-                  }
+                onPressed: isLoading
+                    ? null
+                    : () async {
+                        if (nameController.text.trim().isEmpty) {
+                          ScaffoldMessenger.of(dialogContext).showSnackBar(
+                            const SnackBar(
+                              content: Text('Tip adı boş olamaz'),
+                              backgroundColor: AppColors.error,
+                            ),
+                          );
+                          return;
+                        }
+                        if (displayNameController.text.trim().isEmpty) {
+                          ScaffoldMessenger.of(dialogContext).showSnackBar(
+                            const SnackBar(
+                              content: Text('Görünen ad boş olamaz'),
+                              backgroundColor: AppColors.error,
+                            ),
+                          );
+                          return;
+                        }
 
-                  setDialogState(() => isLoading = true);
+                        setDialogState(() => isLoading = true);
 
-                  final baseFare = double.tryParse(baseFareController.text) ?? 0;
-                  final perKm = double.tryParse(perKmController.text) ?? 0;
-                  final perMinute = double.tryParse(perMinuteController.text) ?? 0;
-                  final minFare = double.tryParse(minFareController.text) ?? 0;
+                        final baseFare =
+                            double.tryParse(baseFareController.text) ?? 0;
+                        final perKm = double.tryParse(perKmController.text) ?? 0;
+                        final perMinute =
+                            double.tryParse(perMinuteController.text) ?? 0;
+                        final minFare =
+                            double.tryParse(minFareController.text) ?? 0;
 
-                  final vehicleData = {
-                    'name': nameController.text.trim(),
-                    'display_name': displayNameController.text.trim(),
-                    'default_base_fare': baseFare,
-                    'default_per_km': perKm,
-                    'default_per_minute': perMinute,
-                    'default_minimum_fare': minFare,
-                    'capacity': int.tryParse(capacityController.text) ?? 4,
-                    'is_active': true,
-                  };
-
-                  final pricingUpdateData = {
-                    'base_fare': baseFare,
-                    'per_km_fare': perKm,
-                    'per_minute_fare': perMinute,
-                    'minimum_fare': minFare,
-                    'updated_at': DateTime.now().toIso8601String(),
-                  };
-
-                  try {
-                    final supabase = ref.read(supabaseProvider);
-                    if (isEditing) {
-                      // vehicle_types güncelle
-                      await supabase.from('vehicle_types').update(vehicleData).eq('id', vehicleType['id']);
-                      // taxi_pricing güncelle
-                      if (pricingData != null && pricingData['id'] != null) {
-                        await supabase.from('taxi_pricing').update(pricingUpdateData).eq('id', pricingData['id']);
-                      } else {
-                        // taxi_pricing yoksa oluştur
-                        await supabase.from('taxi_pricing').insert({
-                          ...pricingUpdateData,
-                          'vehicle_type_id': vehicleType['id'],
+                        final vehicleData = {
+                          'name': nameController.text.trim(),
+                          'display_name': displayNameController.text.trim(),
+                          'default_base_fare': baseFare,
+                          'default_per_km': perKm,
+                          'default_per_minute': perMinute,
+                          'default_minimum_fare': minFare,
+                          'capacity': int.tryParse(capacityController.text) ?? 4,
                           'is_active': true,
-                        });
-                      }
-                    } else {
-                      // Yeni araç tipi ve taxi_pricing oluştur
-                      final result = await supabase.from('vehicle_types').insert(vehicleData).select().single();
-                      await supabase.from('taxi_pricing').insert({
-                        'vehicle_type_id': result['id'],
-                        'base_fare': baseFare,
-                        'per_km_fare': perKm,
-                        'per_minute_fare': perMinute,
-                        'minimum_fare': minFare,
-                        'is_active': true,
-                      });
-                    }
+                        };
 
-                    ref.invalidate(vehicleTypesProvider);
-                    ref.invalidate(taxiPricingProvider);
-                    if (dialogContext.mounted) {
-                      Navigator.pop(dialogContext);
-                    }
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(isEditing ? 'Arac tipi guncellendi' : 'Yeni arac tipi eklendi'),
-                          backgroundColor: Colors.green,
-                        ),
-                      );
-                    }
-                  } catch (e) {
-                    setDialogState(() => isLoading = false);
-                    if (dialogContext.mounted) {
-                      String errorMessage = 'Hata: $e';
-                      // Duplicate key hatası için özel mesaj
-                      if (e.toString().contains('duplicate key') || e.toString().contains('unique constraint')) {
-                        errorMessage = 'Bu tip adi zaten mevcut! Lutfen farkli bir tip adi girin.';
-                      }
-                      ScaffoldMessenger.of(dialogContext).showSnackBar(
-                        SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
-                      );
-                    }
-                  }
-                },
+                        final pricingUpdateData = {
+                          'base_fare': baseFare,
+                          'per_km_fare': perKm,
+                          'per_minute_fare': perMinute,
+                          'minimum_fare': minFare,
+                          'updated_at': DateTime.now().toIso8601String(),
+                        };
+
+                        try {
+                          final supabase = ref.read(supabaseProvider);
+                          if (isEditing) {
+                            await supabase
+                                .from('vehicle_types')
+                                .update(vehicleData)
+                                .eq('id', vehicleType['id']);
+                            if (pricingData != null && pricingData['id'] != null) {
+                              await supabase
+                                  .from('taxi_pricing')
+                                  .update(pricingUpdateData)
+                                  .eq('id', pricingData['id']);
+                            } else {
+                              await supabase.from('taxi_pricing').insert({
+                                ...pricingUpdateData,
+                                'vehicle_type_id': vehicleType['id'],
+                                'is_active': true,
+                              });
+                            }
+                          } else {
+                            final result = await supabase
+                                .from('vehicle_types')
+                                .insert(vehicleData)
+                                .select()
+                                .single();
+                            await supabase.from('taxi_pricing').insert({
+                              'vehicle_type_id': result['id'],
+                              'base_fare': baseFare,
+                              'per_km_fare': perKm,
+                              'per_minute_fare': perMinute,
+                              'minimum_fare': minFare,
+                              'is_active': true,
+                            });
+                          }
+
+                          ref.invalidate(vehicleTypesProvider);
+                          ref.invalidate(taxiPricingProvider);
+                          if (dialogContext.mounted) Navigator.pop(dialogContext);
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  isEditing
+                                      ? 'Araç tipi güncellendi'
+                                      : 'Yeni araç tipi eklendi',
+                                ),
+                                backgroundColor: AppColors.success,
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          setDialogState(() => isLoading = false);
+                          if (dialogContext.mounted) {
+                            String errorMessage = 'Hata: $e';
+                            if (e.toString().contains('duplicate key') ||
+                                e.toString().contains('unique constraint')) {
+                              errorMessage =
+                                  'Bu tip adı zaten mevcut! Lütfen farklı bir tip adı girin.';
+                            }
+                            ScaffoldMessenger.of(dialogContext).showSnackBar(
+                              SnackBar(
+                                content: Text(errorMessage),
+                                backgroundColor: AppColors.error,
+                              ),
+                            );
+                          }
+                        }
+                      },
                 child: isLoading
                     ? const SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
-                    : Text(isEditing ? 'Guncelle' : 'Ekle'),
+                    : Text(isEditing ? 'Güncelle' : 'Ekle'),
               ),
             ],
           );
@@ -2026,10 +2518,402 @@ class _PricingScreenState extends ConsumerState<PricingScreen>
 
   Future<void> _toggleVehicleTypeStatus(Map<String, dynamic> vt) async {
     final supabase = ref.read(supabaseProvider);
-    await supabase
-        .from('vehicle_types')
-        .update({'is_active': !(vt['is_active'] == true)})
-        .eq('id', vt['id']);
-    ref.invalidate(vehicleTypesProvider);
+    try {
+      await supabase
+          .from('vehicle_types')
+          .update({'is_active': !(vt['is_active'] == true)})
+          .eq('id', vt['id']);
+      ref.invalidate(vehicleTypesProvider);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Hata: $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+
+  // ==================== SİLME ONAYLAMA DİYALOGLARI ====================
+  void _confirmDeleteVehicleType(Map<String, dynamic> vt) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Araç Tipini Sil'),
+        content: Text(
+          '"${vt['display_name'] ?? vt['name']}" araç tipini silmek istediğinize emin misiniz?\n\n'
+          'Bu işlem ilgili taksi fiyatlandırma kayıtlarını da etkileyebilir.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('İptal'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              await _deleteVehicleType(vt);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            child: const Text('Sil'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deleteVehicleType(Map<String, dynamic> vt) async {
+    try {
+      final supabase = ref.read(supabaseProvider);
+      // taxi_pricing kaydını da sil
+      await supabase.from('taxi_pricing').delete().eq('vehicle_type_id', vt['id']);
+      await supabase.from('vehicle_types').delete().eq('id', vt['id']);
+      ref.invalidate(vehicleTypesProvider);
+      ref.invalidate(taxiPricingProvider);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Araç tipi silindi'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Hata: $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+
+  void _confirmDeleteTaxiPricing(Map<String, dynamic> pricing) {
+    final vt = pricing['vehicle_types'];
+    final name = vt?['display_name'] ?? 'Bu kayıt';
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Fiyat Kaydını Sil'),
+        content: Text(
+          '"$name" için taksi fiyat kaydını silmek istediğinize emin misiniz?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('İptal'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              try {
+                final supabase = ref.read(supabaseProvider);
+                await supabase
+                    .from('taxi_pricing')
+                    .delete()
+                    .eq('id', pricing['id']);
+                ref.invalidate(taxiPricingProvider);
+                ref.invalidate(vehicleTypesProvider);
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Fiyat kaydı silindi'),
+                    backgroundColor: AppColors.success,
+                  ),
+                );
+              } catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Hata: $e'),
+                    backgroundColor: AppColors.error,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            child: const Text('Sil'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ==================== KOMİSYON DİYALOG ====================
+  void _showCommissionDialog({Map<String, dynamic>? commission}) {
+    final isEditing = commission != null;
+    final displayNameController =
+        TextEditingController(text: commission?['display_name'] ?? '');
+    final serviceTypeController =
+        TextEditingController(text: commission?['service_type'] ?? '');
+    final platformRateController = TextEditingController(
+      text: commission?['platform_commission_rate']?.toString() ?? '20',
+    );
+    final driverRateController = TextEditingController(
+      text: commission?['driver_earning_rate']?.toString() ?? '80',
+    );
+    final serviceFeeController =
+        TextEditingController(text: commission?['service_fee']?.toString() ?? '0');
+    final insuranceFeeController =
+        TextEditingController(text: commission?['insurance_fee']?.toString() ?? '0');
+    bool isActive = commission?['is_active'] ?? true;
+    bool isLoading = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: Text(isEditing ? 'Komisyon Kuralını Düzenle' : 'Yeni Komisyon Kuralı'),
+          content: SizedBox(
+            width: 520,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: displayNameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Görünen Ad (örn: Taksi Servisi)',
+                      border: OutlineInputBorder(),
+                    ),
+                    enabled: !isLoading,
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: serviceTypeController,
+                    decoration: const InputDecoration(
+                      labelText: 'Servis Tipi (taxi / courier / restaurant / store)',
+                      border: OutlineInputBorder(),
+                      helperText: 'Küçük harf, özel karakter kullanmayın',
+                    ),
+                    enabled: !isLoading && !isEditing,
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: platformRateController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Platform Komisyonu (%)',
+                            border: OutlineInputBorder(),
+                            suffixText: '%',
+                          ),
+                          enabled: !isLoading,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TextField(
+                          controller: driverRateController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Sürücü/Kurye Payı (%)',
+                            border: OutlineInputBorder(),
+                            suffixText: '%',
+                          ),
+                          enabled: !isLoading,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: serviceFeeController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Hizmet Bedeli (TL)',
+                            border: OutlineInputBorder(),
+                            suffixText: 'TL',
+                          ),
+                          enabled: !isLoading,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TextField(
+                          controller: insuranceFeeController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'Sigorta Ücreti (TL)',
+                            border: OutlineInputBorder(),
+                            suffixText: 'TL',
+                          ),
+                          enabled: !isLoading,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  SwitchListTile(
+                    title: const Text('Aktif'),
+                    subtitle: const Text('Bu komisyon kuralı uygulanıyor'),
+                    value: isActive,
+                    onChanged: isLoading
+                        ? null
+                        : (val) => setDialogState(() => isActive = val),
+                    activeThumbColor: AppColors.primary,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isLoading ? null : () => Navigator.pop(dialogContext),
+              child: const Text('İptal'),
+            ),
+            ElevatedButton(
+              onPressed: isLoading
+                  ? null
+                  : () async {
+                      if (displayNameController.text.trim().isEmpty) {
+                        ScaffoldMessenger.of(dialogContext).showSnackBar(
+                          const SnackBar(
+                            content: Text('Görünen ad boş olamaz'),
+                            backgroundColor: AppColors.error,
+                          ),
+                        );
+                        return;
+                      }
+                      if (!isEditing && serviceTypeController.text.trim().isEmpty) {
+                        ScaffoldMessenger.of(dialogContext).showSnackBar(
+                          const SnackBar(
+                            content: Text('Servis tipi boş olamaz'),
+                            backgroundColor: AppColors.error,
+                          ),
+                        );
+                        return;
+                      }
+
+                      setDialogState(() => isLoading = true);
+
+                      final data = {
+                        'display_name': displayNameController.text.trim(),
+                        'platform_commission_rate':
+                            double.tryParse(platformRateController.text) ?? 20,
+                        'driver_earning_rate':
+                            double.tryParse(driverRateController.text) ?? 80,
+                        'service_fee':
+                            double.tryParse(serviceFeeController.text) ?? 0,
+                        'insurance_fee':
+                            double.tryParse(insuranceFeeController.text) ?? 0,
+                        'is_active': isActive,
+                        'updated_at': DateTime.now().toIso8601String(),
+                      };
+
+                      if (!isEditing) {
+                        data['service_type'] = serviceTypeController.text.trim();
+                        data['created_at'] = DateTime.now().toIso8601String();
+                      }
+
+                      try {
+                        final supabase = ref.read(supabaseProvider);
+                        if (isEditing) {
+                          await supabase
+                              .from('platform_commissions')
+                              .update(data)
+                              .eq('id', commission['id']);
+                        } else {
+                          await supabase.from('platform_commissions').insert(data);
+                        }
+                        ref.invalidate(platformCommissionsProvider);
+                        if (dialogContext.mounted) Navigator.pop(dialogContext);
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                isEditing
+                                    ? 'Komisyon kuralı güncellendi'
+                                    : 'Yeni komisyon kuralı eklendi',
+                              ),
+                              backgroundColor: AppColors.success,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        setDialogState(() => isLoading = false);
+                        if (dialogContext.mounted) {
+                          ScaffoldMessenger.of(dialogContext).showSnackBar(
+                            SnackBar(
+                              content: Text('Hata: $e'),
+                              backgroundColor: AppColors.error,
+                            ),
+                          );
+                        }
+                      }
+                    },
+              child: isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(isEditing ? 'Güncelle' : 'Ekle'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _confirmDeleteCommission(Map<String, dynamic> commission) {
+    final name = commission['display_name'] ?? commission['service_type'] ?? 'Bu kayıt';
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Komisyon Kuralını Sil'),
+        content: Text('"$name" komisyon kuralını silmek istediğinize emin misiniz?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('İptal'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              try {
+                final supabase = ref.read(supabaseProvider);
+                await supabase
+                    .from('platform_commissions')
+                    .delete()
+                    .eq('id', commission['id']);
+                // Temizle değişiklik state'ini de
+                final id = commission['id']?.toString();
+                if (id != null) _commissionChanges.remove(id);
+                _hasCommissionChanges = _commissionChanges.isNotEmpty;
+                ref.invalidate(platformCommissionsProvider);
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Komisyon kuralı silindi'),
+                    backgroundColor: AppColors.success,
+                  ),
+                );
+              } catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Hata: $e'),
+                    backgroundColor: AppColors.error,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+            child: const Text('Sil'),
+          ),
+        ],
+      ),
+    );
   }
 }

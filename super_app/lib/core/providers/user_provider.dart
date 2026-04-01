@@ -1,10 +1,10 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/supabase_service.dart';
 import '../services/profile_service.dart';
 export '../services/profile_service.dart' show UserProfile;
+import 'package:super_app/core/services/log_service.dart';
 
 class UserProfileNotifier extends StateNotifier<UserProfile?> {
   StreamSubscription<AuthState>? _authSubscription;
@@ -48,7 +48,6 @@ class UserProfileNotifier extends StateNotifier<UserProfile?> {
   Future<bool> updateProfile({
     String? firstName,
     String? lastName,
-    String? email,
     String? phone,
     DateTime? dateOfBirth,
     String? gender,
@@ -72,25 +71,24 @@ class UserProfileNotifier extends StateNotifier<UserProfile?> {
 
       if (firstName != null) updates['first_name'] = firstName;
       if (lastName != null) updates['last_name'] = lastName;
-      // email update usually requires auth flow, but if we are updating public.users table email column:
-      if (email != null) updates['email'] = email;
       if (phone != null) updates['phone'] = phone;
       if (dateOfBirth != null) {
         updates['date_of_birth'] = dateOfBirth.toIso8601String().split('T')[0];
       }
       if (gender != null) updates['gender'] = gender;
 
+      updates['id'] = user.id;
       final response = await SupabaseService.client
           .from('users')
-          .update(updates)
+          .upsert(updates)
           .eq('id', user.id)
           .select()
           .single();
 
       state = UserProfile.fromJson(response);
       return true;
-    } catch (e) {
-      if (kDebugMode) print('Error updating profile: $e');
+    } catch (e, st) {
+      LogService.error('Error updating profile', error: e, stackTrace: st, source: 'UserProvider:updateProfile');
       return false;
     }
   }

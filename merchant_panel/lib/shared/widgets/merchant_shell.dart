@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:badges/badges.dart' as badges;
+import 'package:supabase_flutter/supabase_flutter.dart'
+    show RealtimeChannel, PostgresChangeEvent, PostgresChangeFilter, PostgresChangeFilterType;
 
 import '../../core/theme/app_theme.dart';
 import '../../core/models/merchant_models.dart';
@@ -22,6 +24,7 @@ class MerchantShell extends ConsumerStatefulWidget {
 
 class _MerchantShellState extends ConsumerState<MerchantShell> {
   bool _isExpanded = true;
+  RealtimeChannel? _approvalChannel;
 
   @override
   void initState() {
@@ -32,12 +35,61 @@ class _MerchantShellState extends ConsumerState<MerchantShell> {
     });
   }
 
+  @override
+  void dispose() {
+    _approvalChannel?.unsubscribe();
+    super.dispose();
+  }
+
+  void _subscribeToApprovalStatus(String merchantId) {
+    final supabase = ref.read(supabaseClientProvider);
+    _approvalChannel = supabase
+        .channel('merchant_approval_$merchantId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'merchants',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'id',
+            value: merchantId,
+          ),
+          callback: (payload) {
+            final record = payload.newRecord;
+            if (record['is_approved'] == false) {
+              _handleDeactivation();
+            }
+          },
+        )
+        .subscribe();
+  }
+
+  Future<void> _handleDeactivation() async {
+    final supabase = ref.read(supabaseClientProvider);
+    await supabase.auth.signOut();
+    ref.read(currentMerchantProvider.notifier).clear();
+    if (mounted) {
+      context.go('/auth/login');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Hesabınızın onayı kaldırıldı. Lütfen yöneticiyle iletişime geçin.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 5),
+        ),
+      );
+    }
+  }
+
   Future<void> _loadMerchantData() async {
     final user = ref.read(currentUserProvider);
     if (user != null) {
       await ref
           .read(currentMerchantProvider.notifier)
           .loadMerchantByUserId(user.id);
+      final merchant = ref.read(currentMerchantProvider).valueOrNull;
+      if (merchant != null) {
+        _subscribeToApprovalStatus(merchant.id);
+      }
     }
   }
 
@@ -365,6 +417,14 @@ final courierRequests = ref.watch(courierRequestsProvider);
                   currentRoute: currentRoute,
                   isExpanded: _isExpanded,
                   badge: notifications > 0 ? notifications : null,
+                ),
+                _NavItem(
+                  icon: Icons.campaign_outlined,
+                  activeIcon: Icons.campaign,
+                  label: 'Banner Reklamları',
+                  route: '/banner-ads',
+                  currentRoute: currentRoute,
+                  isExpanded: _isExpanded,
                 ),
                 _NavItem(
                   icon: Icons.settings_outlined,

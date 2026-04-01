@@ -24,8 +24,10 @@ class PropertyInterestTable extends ConsumerWidget {
         error: (e, _) => SizedBox(
           height: 100,
           child: Center(
-            child: Text('Veri yuklenemedi',
-                style: TextStyle(color: AppColors.textMuted(isDark))),
+            child: Text(
+              'Veri yuklenemedi',
+              style: TextStyle(color: AppColors.textMuted(isDark)),
+            ),
           ),
         ),
         data: (items) {
@@ -53,7 +55,10 @@ class PropertyInterestTable extends ConsumerWidget {
   }
 
   Widget _buildPropertyRow(
-      BuildContext context, PropertyClientInterest item, bool isDark) {
+    BuildContext context,
+    PropertyClientInterest item,
+    bool isDark,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
@@ -69,7 +74,7 @@ class PropertyInterestTable extends ConsumerWidget {
                   ? Image.network(
                       item.firstImage,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Icon(
+                      errorBuilder: (_, _, _) => Icon(
                         Icons.home_outlined,
                         color: AppColors.textMuted(isDark),
                         size: 20,
@@ -113,21 +118,32 @@ class PropertyInterestTable extends ConsumerWidget {
 
           // Stats
           const SizedBox(width: 8),
-          _statChip(Icons.visibility, item.clientViewCount.toString(),
-              AppColors.info, isDark),
+          _statChip(
+            Icons.visibility,
+            item.clientViewCount.toString(),
+            AppColors.info,
+            isDark,
+          ),
           const SizedBox(width: 6),
-          _statChip(Icons.favorite, item.clientFavoriteCount.toString(),
-              AppColors.error, isDark),
+          _statChip(
+            Icons.favorite,
+            item.clientFavoriteCount.toString(),
+            AppColors.error,
+            isDark,
+          ),
           const SizedBox(width: 6),
-          _statChip(Icons.people, item.uniqueClientViewers.toString(),
-              AppColors.primary, isDark),
+          _statChip(
+            Icons.people,
+            item.uniqueClientViewers.toString(),
+            AppColors.primary,
+            isDark,
+          ),
         ],
       ),
     );
   }
 
-  Widget _statChip(
-      IconData icon, String value, Color color, bool isDark) {
+  Widget _statChip(IconData icon, String value, Color color, bool isDark) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(

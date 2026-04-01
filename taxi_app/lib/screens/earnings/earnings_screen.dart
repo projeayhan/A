@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/services/taxi_service.dart';
+import '../../core/services/supabase_service.dart';
+import '../../core/services/payment_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../../models/ride_models.dart';
 
 // Earnings provider
-final earningsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+final earningsProvider = FutureProvider<EarningsSummary>((ref) async {
   return await TaxiService.getEarningsSummary();
 });
 
@@ -16,14 +21,49 @@ final earningsHistoryProvider = FutureProvider<List<Map<String, dynamic>>>((
   return await TaxiService.getEarningsHistory();
 });
 
-class EarningsScreen extends ConsumerWidget {
+// Driver invoices provider
+final driverInvoicesProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  final userId = SupabaseService.currentUser?.id;
+  if (userId == null) return [];
+  final supabase = SupabaseService.client;
+  // Sürücünün taxi_drivers kaydını bul
+  final driver = await supabase.from('taxi_drivers').select('id').eq('user_id', userId).maybeSingle();
+  if (driver == null) return [];
+  final driverId = driver['id'] as String;
+  // Faturalarını getir
+  final result = await supabase
+      .from('invoices')
+      .select('*, invoice_items(*)')
+      .or('source_id.eq.$driverId,merchant_id.eq.$driverId')
+      .order('created_at', ascending: false)
+      .limit(50);
+  return List<Map<String, dynamic>>.from(result);
+});
+
+class EarningsScreen extends ConsumerStatefulWidget {
   const EarningsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final earningsAsync = ref.watch(earningsProvider);
-    final historyAsync = ref.watch(earningsHistoryProvider);
+  ConsumerState<EarningsScreen> createState() => _EarningsScreenState();
+}
 
+class _EarningsScreenState extends ConsumerState<EarningsScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -33,54 +73,206 @@ class EarningsScreen extends ConsumerWidget {
             onPressed: () {
               ref.invalidate(earningsProvider);
               ref.invalidate(earningsHistoryProvider);
+              ref.invalidate(driverInvoicesProvider);
             },
             icon: const Icon(Icons.refresh),
           ),
         ],
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: 'Kazanç'),
+            Tab(text: 'Faturalarım'),
+          ],
+        ),
       ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          ref.invalidate(earningsProvider);
-          ref.invalidate(earningsHistoryProvider);
-        },
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildEarningsTab(),
+          _buildInvoicesTab(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInvoicesTab() {
+    final invoicesAsync = ref.watch(driverInvoicesProvider);
+    final currencyFmt = NumberFormat.currency(locale: 'tr_TR', symbol: '₺', decimalDigits: 2);
+    final dateFmt = DateFormat('dd.MM.yyyy', 'tr');
+
+    return invoicesAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(child: Text('Hata: $e')),
+      data: (invoices) {
+        if (invoices.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.receipt_long, size: 64, color: AppColors.textSecondary.withAlpha(80)),
+                const SizedBox(height: 16),
+                Text('Henüz fatura bulunmuyor', style: TextStyle(color: AppColors.textSecondary, fontSize: 16)),
+                const SizedBox(height: 8),
+                Text('Komisyon faturaları burada görünecektir', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+              ],
+            ),
+          );
+        }
+
+        return ListView.builder(
           padding: const EdgeInsets.all(16),
+          itemCount: invoices.length,
+          itemBuilder: (context, index) {
+            final inv = invoices[index];
+            final isPaid = inv['payment_status'] == 'paid';
+            final isOverdue = inv['payment_status'] == 'overdue';
+            final total = (inv['total'] as num?)?.toDouble() ?? 0;
+            final createdAt = DateTime.tryParse(inv['created_at'] as String? ?? '');
+            final dueDate = inv['payment_due_date'] != null ? DateTime.tryParse(inv['payment_due_date'].toString()) : null;
+
+            return Card(
+              margin: const EdgeInsets.only(bottom: 8),
+              child: ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: (isPaid ? AppColors.success : isOverdue ? AppColors.error : AppColors.warning).withAlpha(30),
+                  child: Icon(
+                    isPaid ? Icons.check_circle : isOverdue ? Icons.warning : Icons.schedule,
+                    color: isPaid ? AppColors.success : isOverdue ? AppColors.error : AppColors.warning,
+                  ),
+                ),
+                title: Text(inv['invoice_number'] as String? ?? '-', style: const TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(inv['invoice_period'] as String? ?? (createdAt != null ? dateFmt.format(createdAt) : '-')),
+                    if (dueDate != null && !isPaid)
+                      Text('Vade: ${dateFmt.format(dueDate)}', style: TextStyle(color: isOverdue ? AppColors.error : AppColors.textSecondary, fontSize: 12)),
+                  ],
+                ),
+                trailing: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(currencyFmt.format(total), style: TextStyle(fontWeight: FontWeight.bold, color: isPaid ? AppColors.success : AppColors.textPrimary)),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: (isPaid ? AppColors.success : isOverdue ? AppColors.error : AppColors.warning).withAlpha(30),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        isPaid ? 'Ödendi' : isOverdue ? 'Gecikmiş' : 'Bekliyor',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: isPaid ? AppColors.success : isOverdue ? AppColors.error : AppColors.warning),
+                      ),
+                    ),
+                    if (!isPaid) ...[
+                      const SizedBox(height: 4),
+                      GestureDetector(
+                        onTap: () => _payInvoice(inv),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(6)),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.credit_card, size: 12, color: Colors.white),
+                              SizedBox(width: 4),
+                              Text('Öde', style: TextStyle(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                onTap: () => _showInvoiceDetail(context, inv, currencyFmt, dateFmt),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showInvoiceDetail(BuildContext context, Map<String, dynamic> inv, NumberFormat currencyFmt, DateFormat dateFmt) {
+    final items = (inv['invoice_items'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    final subtotal = (inv['subtotal'] as num?)?.toDouble() ?? 0;
+    final kdvAmount = (inv['kdv_amount'] as num?)?.toDouble() ?? 0;
+    final total = (inv['total'] as num?)?.toDouble() ?? 0;
+    final kdvRate = (inv['kdv_rate'] as num?)?.toDouble() ?? 20;
+    final kdvPercent = kdvRate >= 1 ? kdvRate.round() : (kdvRate * 100).round();
+    final isPaid = inv['payment_status'] == 'paid';
+    final isOverdue = inv['payment_status'] == 'overdue';
+    final createdAt = DateTime.tryParse(inv['created_at'] as String? ?? '');
+    final pdfUrl = inv['pdf_url'] as String?;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        maxChildSize: 0.9,
+        minChildSize: 0.4,
+        expand: false,
+        builder: (ctx, scrollController) => SingleChildScrollView(
+          controller: scrollController,
+          padding: const EdgeInsets.all(24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Summary Cards
-              earningsAsync.when(
-                data: (data) => _buildSummaryCards(context, data),
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (_, __) => _buildErrorCard(context),
-              ),
-
+              Center(child: Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 20), decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2)))),
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(inv['invoice_number'] as String? ?? '-', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 4),
+                  Text(inv['invoice_period'] as String? ?? (createdAt != null ? dateFmt.format(createdAt) : '-'), style: TextStyle(color: Colors.grey[600])),
+                ]),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(color: (isPaid ? AppColors.success : isOverdue ? AppColors.error : AppColors.warning).withAlpha(30), borderRadius: BorderRadius.circular(8)),
+                  child: Text(isPaid ? 'Ödendi' : isOverdue ? 'Gecikmiş' : 'Bekliyor', style: TextStyle(fontWeight: FontWeight.w600, color: isPaid ? AppColors.success : isOverdue ? AppColors.error : AppColors.warning)),
+                ),
+              ]),
               const SizedBox(height: 24),
-
-              // Stats
-              earningsAsync.when(
-                data: (data) => _buildStatsSection(context, data),
-                loading: () => const SizedBox.shrink(),
-                error: (_, __) => const SizedBox.shrink(),
-              ),
-
+              if (items.isNotEmpty) ...[
+                const Text('Fatura Kalemleri', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 12),
+                ...items.map((item) {
+                  final unitPrice = (item['unit_price'] as num?)?.toDouble() ?? 0;
+                  final itemTotal = (item['total'] as num?)?.toDouble() ?? 0;
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Row(children: [
+                      Expanded(flex: 3, child: Text(item['description']?.toString() ?? '-', style: const TextStyle(fontSize: 13))),
+                      if (unitPrice > 0) Expanded(flex: 2, child: Text(currencyFmt.format(unitPrice), textAlign: TextAlign.right, style: TextStyle(fontSize: 13, color: Colors.grey[600]))),
+                      Expanded(flex: 2, child: Text(currencyFmt.format(itemTotal), textAlign: TextAlign.right, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500))),
+                    ]),
+                  );
+                }),
+                const Divider(),
+              ],
+              const SizedBox(height: 8),
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [const Text('Ara Toplam'), Text(currencyFmt.format(subtotal))]),
+              const SizedBox(height: 4),
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text('KDV (%$kdvPercent)'), Text(currencyFmt.format(kdvAmount))]),
+              const Divider(height: 20),
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                const Text('Genel Toplam', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(currencyFmt.format(total), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              ]),
               const SizedBox(height: 24),
-
-              // History
-              Text(
-                'Kazanç Geçmişi',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 12),
-
-              historyAsync.when(
-                data: (history) => _buildHistoryList(context, history),
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (_, __) => _buildErrorCard(context),
-              ),
-
-              const SizedBox(height: 32),
+              Row(children: [
+                if (pdfUrl != null && pdfUrl.isNotEmpty)
+                  Expanded(child: OutlinedButton.icon(onPressed: () => launchUrl(Uri.parse(pdfUrl)), icon: const Icon(Icons.download, size: 18), label: const Text('PDF İndir'))),
+                if (!isPaid) ...[
+                  if (pdfUrl != null) const SizedBox(width: 12),
+                  Expanded(child: ElevatedButton.icon(onPressed: () { Navigator.pop(ctx); _payInvoice(inv); }, icon: const Icon(Icons.credit_card, size: 18), label: const Text('Kartla Öde'))),
+                ],
+              ]),
+              const SizedBox(height: 16),
             ],
           ),
         ),
@@ -88,10 +280,117 @@ class EarningsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSummaryCards(BuildContext context, Map<String, dynamic> data) {
-    final todayEarnings = (data['today'] as num?)?.toDouble() ?? 0;
-    final weekEarnings = (data['week'] as num?)?.toDouble() ?? 0;
-    final monthEarnings = (data['month'] as num?)?.toDouble() ?? 0;
+  Future<void> _payInvoice(Map<String, dynamic> inv) async {
+    final total = (inv['total'] as num?)?.toDouble() ?? 0;
+    final invoiceNumber = inv['invoice_number'] as String? ?? '';
+    final invoiceId = inv['id'] as String;
+    final currentStatus = inv['payment_status'] as String?;
+    final currencyFmt = NumberFormat.currency(locale: 'tr_TR', symbol: '₺', decimalDigits: 2);
+
+    if (currentStatus == 'paid') {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Bu fatura zaten ödenmiş'), backgroundColor: Colors.orange),
+      );
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Fatura Ödemesi'),
+        content: Text('$invoiceNumber numaralı faturayı kartla ödemek istiyor musunuz?\n\nTutar: ${currencyFmt.format(total)}'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('İptal')),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Ödemeye Geç')),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    final result = await StripePaymentService.instance.processPayment(
+      amount: total,
+      description: 'Fatura ödemesi - $invoiceNumber',
+      metadata: {
+        'type': 'invoice',
+        'invoice_id': invoiceId,
+        'invoice_number': invoiceNumber,
+      },
+    );
+
+    if (!mounted) return;
+
+    if (result.success) {
+      try {
+        await Supabase.instance.client.rpc('mark_invoice_paid', params: {
+          'p_invoice_id': invoiceId,
+          'p_payment_method': 'card',
+          'p_payment_note': 'Stripe ile ödendi',
+          'p_payment_reference': result.paymentReference,
+        });
+      } catch (e) {
+        debugPrint('mark_invoice_paid RPC failed (webhook will retry): $e');
+      }
+
+      ref.invalidate(driverInvoicesProvider);
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Fatura başarıyla ödendi!'), backgroundColor: Colors.green),
+      );
+    } else if (!result.isCancelled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Ödeme hatası: ${result.errorMessage}'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  Widget _buildEarningsTab() {
+    final earningsAsync = ref.watch(earningsProvider);
+    final historyAsync = ref.watch(earningsHistoryProvider);
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        ref.invalidate(earningsProvider);
+        ref.invalidate(earningsHistoryProvider);
+      },
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            earningsAsync.when(
+              data: (data) => _buildSummaryCards(context, data),
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (_, _) => _buildErrorCard(context),
+            ),
+            const SizedBox(height: 24),
+            earningsAsync.when(
+              data: (data) => _buildStatsSection(context, data),
+              loading: () => const SizedBox.shrink(),
+              error: (_, _) => const SizedBox.shrink(),
+            ),
+            const SizedBox(height: 24),
+            Text('Kazanç Geçmişi', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 12),
+            historyAsync.when(
+              data: (history) => _buildHistoryList(context, history),
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (_, _) => _buildErrorCard(context),
+            ),
+            const SizedBox(height: 32),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSummaryCards(BuildContext context, EarningsSummary data) {
+    final todayEarnings = data.today;
+    final weekEarnings = data.week;
+    final monthEarnings = data.month;
 
     return Column(
       children: [
@@ -162,7 +461,7 @@ class EarningsScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                '₺${(todayEarnings * (1 - ((data['commission_rate'] as double? ?? 20) / 100))).toStringAsFixed(2)}',
+                '₺${(todayEarnings * (1 - (data.commissionRate / 100))).toStringAsFixed(2)}',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 40,
@@ -254,15 +553,13 @@ class EarningsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatsSection(BuildContext context, Map<String, dynamic> data) {
-    final totalRides = data['total_rides'] as int? ?? 0;
-    final avgRating = (data['avg_rating'] as num?)?.toDouble() ?? 0;
-    final totalEarnings = (data['total'] as num?)?.toDouble() ?? 0;
-    final commissionRate =
-        (data['commission_rate'] as num?)?.toDouble() ?? 20.0;
-    final commissionAmount =
-        (data['commission_amount'] as num?)?.toDouble() ?? 0;
-    final netEarnings = (data['net_earnings'] as num?)?.toDouble() ?? 0;
+  Widget _buildStatsSection(BuildContext context, EarningsSummary data) {
+    final totalRides = data.totalRides;
+    final avgRating = data.rating;
+    final totalEarnings = data.total;
+    final commissionRate = data.commissionRate;
+    final commissionAmount = data.commissionAmount;
+    final netEarnings = data.netEarnings;
 
     return Container(
       padding: const EdgeInsets.all(20),

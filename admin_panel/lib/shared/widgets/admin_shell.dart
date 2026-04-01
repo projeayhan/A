@@ -13,6 +13,7 @@ import '../../core/providers/theme_provider.dart';
 import '../../core/router/app_router.dart';
 import 'breadcrumbs.dart';
 import 'floating_ai_assistant.dart';
+import 'global_search_overlay.dart';
 
 class AdminShell extends ConsumerStatefulWidget {
   final Widget child;
@@ -38,6 +39,8 @@ class _AdminShellState extends ConsumerState<AdminShell> {
   // Session idle timeout
   Timer? _idleTimer;
   static const _idleTimeout = Duration(minutes: 30);
+  DateTime _lastActivity = DateTime.now();
+  static const _idleThrottle = Duration(seconds: 30);
 
   // Search focus
   final _searchFocusNode = FocusNode();
@@ -49,6 +52,10 @@ class _AdminShellState extends ConsumerState<AdminShell> {
   }
 
   void _resetIdleTimer() {
+    // Throttle: sadece 30 saniyede bir Timer yeniden oluştur
+    final now = DateTime.now();
+    if (now.difference(_lastActivity) < _idleThrottle) return;
+    _lastActivity = now;
     _idleTimer?.cancel();
     _idleTimer = Timer(_idleTimeout, _handleIdleTimeout);
   }
@@ -79,7 +86,8 @@ class _AdminShellState extends ConsumerState<AdminShell> {
   Widget build(BuildContext context) {
     final adminAsync = ref.watch(currentAdminProvider);
     final currentRoute = GoRouterState.of(context).matchedLocation;
-    final pendingCounts = ref.watch(notificationServiceProvider);
+    // Sadece total değiştiğinde rebuild — tüm PendingApplicationCounts objesini dinlemiyoruz
+    final pendingTotal = ref.watch(notificationServiceProvider.select((c) => c.total));
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -87,8 +95,17 @@ class _AdminShellState extends ConsumerState<AdminShell> {
       bindings: {
         const SingleActivator(LogicalKeyboardKey.keyD, control: true): () => context.go(AppRoutes.dashboard),
         const SingleActivator(LogicalKeyboardKey.keyU, control: true): () => context.go(AppRoutes.users),
-        const SingleActivator(LogicalKeyboardKey.keyO, control: true): () => context.go(AppRoutes.orders),
         const SingleActivator(LogicalKeyboardKey.keyK, control: true): () => _searchFocusNode.requestFocus(),
+        const SingleActivator(LogicalKeyboardKey.keyF, control: true): () => context.go(AppRoutes.finance),
+        // Ctrl+1-8: Sektör kısayolları
+        const SingleActivator(LogicalKeyboardKey.digit1, control: true): () => context.go(SectorType.food.baseRoute),
+        const SingleActivator(LogicalKeyboardKey.digit2, control: true): () => context.go(SectorType.market.baseRoute),
+        const SingleActivator(LogicalKeyboardKey.digit3, control: true): () => context.go(SectorType.store.baseRoute),
+        const SingleActivator(LogicalKeyboardKey.digit4, control: true): () => context.go(SectorType.realEstate.baseRoute),
+        const SingleActivator(LogicalKeyboardKey.digit5, control: true): () => context.go(SectorType.taxi.baseRoute),
+        const SingleActivator(LogicalKeyboardKey.digit6, control: true): () => context.go(SectorType.carSales.baseRoute),
+        const SingleActivator(LogicalKeyboardKey.digit7, control: true): () => context.go(SectorType.jobs.baseRoute),
+        const SingleActivator(LogicalKeyboardKey.digit8, control: true): () => context.go(SectorType.carRental.baseRoute),
         const SingleActivator(LogicalKeyboardKey.escape): () {
           if (_searchFocusNode.hasFocus) {
             _searchFocusNode.unfocus();
@@ -110,7 +127,7 @@ class _AdminShellState extends ConsumerState<AdminShell> {
                     AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
                       width: _isCollapsed ? 80 : 280,
-                      child: _buildSidebar(currentRoute, adminAsync, pendingCounts, isDark),
+                      child: _buildSidebar(currentRoute, adminAsync, pendingTotal, isDark),
                     ),
                     Expanded(
                       child: Column(
@@ -148,7 +165,7 @@ class _AdminShellState extends ConsumerState<AdminShell> {
     return admin.hasPermission(module, 'read');
   }
 
-  Widget _buildSidebar(String currentRoute, AsyncValue<AdminUser?> adminAsync, PendingApplicationCounts pendingCounts, bool isDark) {
+  Widget _buildSidebar(String currentRoute, AsyncValue<AdminUser?> adminAsync, int pendingTotal, bool isDark) {
     final admin = adminAsync.valueOrNull;
     final sidebarBg = isDark ? AppColors.surface : const Color(0xFFFFFFFF);
     final borderColor = isDark ? AppColors.surfaceLight : const Color(0xFFE2E8F0);
@@ -259,13 +276,9 @@ class _AdminShellState extends ConsumerState<AdminShell> {
                     children: [
                       _NavChild(Icons.dashboard_outlined, 'Dashboard', AppRoutes.finance),
                       _NavChild(Icons.receipt_long_outlined, 'Faturalar', AppRoutes.financeInvoices),
-                      _NavChild(Icons.playlist_add_check_outlined, 'Toplu Fatura', AppRoutes.financeBatchInvoice),
                       _NavChild(Icons.swap_horiz_outlined, 'Gelir/Gider', AppRoutes.financeIncomeExpense),
-                      _NavChild(Icons.calculate_outlined, 'Vergi Raporu', AppRoutes.financeTax),
-                      _NavChild(Icons.account_balance_outlined, 'Bilanço', AppRoutes.financeBalanceSheet),
-                      _NavChild(Icons.show_chart_outlined, 'Kar/Zarar', AppRoutes.financeProfitLoss),
                       _NavChild(Icons.percent_outlined, 'Komisyon', AppRoutes.financeCommission),
-                      _NavChild(Icons.payment_outlined, 'Ödeme Takip', AppRoutes.financePaymentTracking),
+                      _NavChild(Icons.assessment_outlined, 'Raporlar', AppRoutes.reports),
                     ],
                   ),
 
@@ -275,12 +288,13 @@ class _AdminShellState extends ConsumerState<AdminShell> {
                     icon: Icons.admin_panel_settings_rounded,
                     label: 'Yönetim',
                     currentRoute: currentRoute,
-                    badgeCount: pendingCounts.total,
+                    badgeCount: pendingTotal,
                     isDark: isDark,
                     children: [
-                      _NavChild(Icons.assignment_outlined, 'Başvurular', AppRoutes.applications, badgeCount: pendingCounts.total),
+                      _NavChild(Icons.assignment_outlined, 'Başvurular', AppRoutes.applications, badgeCount: pendingTotal),
                       _NavChild(Icons.people_outline, 'Kullanıcılar', AppRoutes.users),
-                      _NavChild(Icons.delivery_dining_outlined, 'Partnerler', AppRoutes.partners),
+                      _NavChild(Icons.delivery_dining_outlined, 'Sürücü Yönetimi', AppRoutes.partners),
+                      _NavChild(Icons.star_outline_rounded, 'Öne Çıkarma Talepleri', AppRoutes.promotionRequests),
                     ],
                   ),
 
@@ -304,6 +318,7 @@ class _AdminShellState extends ConsumerState<AdminShell> {
                       _NavChild(Icons.analytics_outlined, 'Raporlar', AppRoutes.supportReports),
                       _NavChild(Icons.support_agent_outlined, 'AI Destek', AppRoutes.aiSupport),
                       _NavChild(Icons.people_outline, 'Destek Agentları', AppRoutes.supportAgents),
+                      _NavChild(Icons.receipt_long, 'Sipariş Geçmişi', AppRoutes.orderHistory),
                     ],
                   ),
 
@@ -329,6 +344,7 @@ class _AdminShellState extends ConsumerState<AdminShell> {
                       _NavChild(Icons.gavel_outlined, 'Yaptırımlar', AppRoutes.sanctions),
                       _NavChild(Icons.two_wheeler_outlined, 'Kurye Araç Tipleri', AppRoutes.courierVehicleTypes),
                       _NavChild(Icons.image_outlined, 'Bannerlar', AppRoutes.banners),
+                      _NavChild(Icons.inventory_2_outlined, 'Banner Paketleri', AppRoutes.bannerPackages),
                     ],
                   ),
               ],
@@ -484,20 +500,7 @@ class _AdminShellState extends ConsumerState<AdminShell> {
         children: [
           // Search
           Expanded(
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: 400),
-              child: TextField(
-                focusNode: _searchFocusNode,
-                decoration: InputDecoration(
-                  hintText: 'Ara... (Ctrl+K)',
-                  prefixIcon: Icon(Icons.search, color: textMuted),
-                  filled: true,
-                  fillColor: searchBg,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                ),
-              ),
-            ),
+            child: GlobalSearchOverlay(focusNode: _searchFocusNode),
           ),
 
           const SizedBox(width: 24),
@@ -561,7 +564,7 @@ class _AdminShellState extends ConsumerState<AdminShell> {
                       radius: 16,
                       backgroundColor: AppColors.primary,
                       child: Text(
-                        admin?.fullName.substring(0, 1).toUpperCase() ?? 'A',
+                        admin?.fullName.isNotEmpty == true ? admin!.fullName.substring(0, 1).toUpperCase() : 'A',
                         style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                       ),
                     ),
@@ -606,6 +609,8 @@ class _AdminShellState extends ConsumerState<AdminShell> {
                   await authService.signOut();
                   ref.read(currentAdminProvider.notifier).clear();
                   if (mounted) context.go(AppRoutes.login);
+                } else if (value == 'profile') {
+                  context.go(AppRoutes.settings);
                 } else if (value == 'settings') {
                   context.go(AppRoutes.settings);
                 }

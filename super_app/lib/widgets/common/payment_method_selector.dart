@@ -36,7 +36,15 @@ class PaymentOptions {
     paymentMethodKey: 'cash',
   );
 
-  static List<PaymentOption> get defaultOptions => [creditCard, cashOnDelivery];
+  static const onlinePayment = PaymentOption(
+    index: 2,
+    icon: Icons.payment_rounded,
+    title: 'Online Ödeme',
+    subtitle: 'Stripe ile Güvenli Ödeme',
+    paymentMethodKey: 'online',
+  );
+
+  static List<PaymentOption> get defaultOptions => [creditCard, cashOnDelivery, onlinePayment];
 
   // Store options with sequential indexes for proper selection
   static List<PaymentOption> get storeOptions => [
@@ -53,6 +61,13 @@ class PaymentOptions {
       title: 'Kapıda Ödeme',
       subtitle: 'Nakit Ödeme',
       paymentMethodKey: 'cash',
+    ),
+    const PaymentOption(
+      index: 2,
+      icon: Icons.payment_rounded,
+      title: 'Online Ödeme',
+      subtitle: 'Stripe ile Güvenli Ödeme',
+      paymentMethodKey: 'online',
     ),
   ];
 

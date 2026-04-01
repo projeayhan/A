@@ -125,15 +125,15 @@ class _FinanceDashboardScreenState extends ConsumerState<FinanceDashboardScreen>
   Widget _buildSummaryCards(FinanceStats stats) {
     return Row(
       children: [
-        _buildCard('Toplam Gelir', stats.totalRevenue, stats.totalRevenueTrend, Icons.trending_up, AppColors.success),
+        _buildCard('Komisyon Geliri', stats.totalCommission, stats.commissionTrend, Icons.trending_up, AppColors.success),
         const SizedBox(width: 16),
-        _buildCard('Komisyon', stats.commissionRevenue, stats.commissionTrend, Icons.account_balance, AppColors.primary),
+        _buildCard('Öne Çıkarma Geliri', stats.promotionRevenue, 0, Icons.star, const Color(0xFFAB47BC)),
         const SizedBox(width: 16),
-        _buildCard('Net Kar', stats.netRevenue, 0, Icons.savings, AppColors.info),
+        _buildCard('Platform KDV', stats.totalKdv, stats.kdvTrend, Icons.receipt_long, AppColors.primary),
         const SizedBox(width: 16),
-        _buildCard('Bekleyen', stats.pendingPayments, 0, Icons.pending_actions, AppColors.warning),
+        _buildCard('Tahsil Edilecek', stats.pendingCommission, 0, Icons.pending_actions, AppColors.warning),
         const SizedBox(width: 16),
-        _buildCard('KDV', stats.totalRevenue * 0.18, 0, Icons.receipt_long, AppColors.error),
+        _buildCard('Sipariş Cirosu', stats.totalOrderVolume, 0, Icons.shopping_bag, AppColors.error),
       ],
     );
   }
@@ -218,16 +218,16 @@ class _FinanceDashboardScreenState extends ConsumerState<FinanceDashboardScreen>
                   borderData: FlBorderData(show: false),
                   barGroups: stats.monthlyRevenue.asMap().entries.map((e) => BarChartGroupData(x: e.key, barRods: [
                     BarChartRodData(toY: e.value.revenue, color: AppColors.primary, width: 14, borderRadius: const BorderRadius.only(topLeft: Radius.circular(4), topRight: Radius.circular(4))),
-                    BarChartRodData(toY: e.value.commission, color: AppColors.success, width: 14, borderRadius: const BorderRadius.only(topLeft: Radius.circular(4), topRight: Radius.circular(4))),
+                    BarChartRodData(toY: e.value.kdv, color: AppColors.success, width: 14, borderRadius: const BorderRadius.only(topLeft: Radius.circular(4), topRight: Radius.circular(4))),
                   ])).toList(),
                 ),
               ),
             ),
           const SizedBox(height: 12),
           Row(children: [
-            _legendDot(AppColors.primary, 'Gelir'),
+            _legendDot(AppColors.primary, 'Komisyon Geliri'),
             const SizedBox(width: 16),
-            _legendDot(AppColors.success, 'Komisyon'),
+            _legendDot(AppColors.success, 'KDV'),
           ]),
         ],
       ),
@@ -235,7 +235,7 @@ class _FinanceDashboardScreenState extends ConsumerState<FinanceDashboardScreen>
   }
 
   Widget _buildPieChartCard(FinanceStats stats) {
-    final total = stats.foodRevenue + stats.storeRevenue + stats.taxiRevenue + stats.rentalRevenue;
+    final total = stats.foodRevenue + stats.storeRevenue + stats.taxiRevenue + stats.rentalRevenue + stats.promotionRevenue;
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppColors.surfaceLight)),
@@ -259,6 +259,7 @@ class _FinanceDashboardScreenState extends ConsumerState<FinanceDashboardScreen>
                   if (stats.storeRevenue > 0) PieChartSectionData(value: stats.storeRevenue, title: '${(stats.storeRevenue / total * 100).round()}%', color: AppColors.success, radius: 45, titleStyle: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                   if (stats.taxiRevenue > 0) PieChartSectionData(value: stats.taxiRevenue, title: '${(stats.taxiRevenue / total * 100).round()}%', color: AppColors.warning, radius: 45, titleStyle: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                   if (stats.rentalRevenue > 0) PieChartSectionData(value: stats.rentalRevenue, title: '${(stats.rentalRevenue / total * 100).round()}%', color: AppColors.info, radius: 45, titleStyle: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                  if (stats.promotionRevenue > 0) PieChartSectionData(value: stats.promotionRevenue, title: '${(stats.promotionRevenue / total * 100).round()}%', color: const Color(0xFFAB47BC), radius: 45, titleStyle: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
                 ],
               )),
             ),
@@ -268,6 +269,7 @@ class _FinanceDashboardScreenState extends ConsumerState<FinanceDashboardScreen>
             _legendDot(AppColors.success, 'Market'),
             _legendDot(AppColors.warning, 'Taksi'),
             _legendDot(AppColors.info, 'Kiralama'),
+            _legendDot(const Color(0xFFAB47BC), 'Öne Çıkarma'),
           ]),
         ],
       ),
@@ -277,13 +279,8 @@ class _FinanceDashboardScreenState extends ConsumerState<FinanceDashboardScreen>
   Widget _buildQuickActions() {
     final actions = [
       _QuickAction('Faturalar', Icons.receipt_long, AppRoutes.financeInvoices),
-      _QuickAction('Toplu Fatura', Icons.playlist_add_check, AppRoutes.financeBatchInvoice),
       _QuickAction('Gelir/Gider', Icons.swap_horiz, AppRoutes.financeIncomeExpense),
-      _QuickAction('Vergi Raporu', Icons.calculate, AppRoutes.financeTax),
-      _QuickAction('Bilanço', Icons.account_balance, AppRoutes.financeBalanceSheet),
-      _QuickAction('Kar/Zarar', Icons.show_chart, AppRoutes.financeProfitLoss),
       _QuickAction('Komisyon', Icons.percent, AppRoutes.financeCommission),
-      _QuickAction('Ödeme Takip', Icons.payment, AppRoutes.financePaymentTracking),
     ];
 
     return Container(

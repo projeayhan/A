@@ -4,6 +4,7 @@ import '../../models/store/store_model.dart';
 import '../../models/store/store_product_model.dart';
 import 'supabase_service.dart';
 import '../utils/cache_helper.dart';
+import 'package:super_app/core/services/log_service.dart';
 
 /// Market service - Grocery stores like Migros, A101
 /// Uses delivery zone filtering (unlike store_service which has no zone check)
@@ -60,8 +61,8 @@ class MarketService {
           return (response as List)
               .map((json) => Store.fromMerchant(json))
               .toList();
-        } catch (e) {
-          if (kDebugMode) print('Error fetching markets: $e');
+        } catch (e, st) {
+          LogService.error('Error fetching markets', error: e, stackTrace: st, source: 'MarketService:getMarkets');
           return [];
         }
       },
@@ -117,8 +118,8 @@ class MarketService {
           return (response as List)
               .map((json) => Store.fromMerchant(json))
               .toList();
-        } catch (e) {
-          if (kDebugMode) print('Error fetching featured markets: $e');
+        } catch (e, st) {
+          LogService.error('Error fetching featured markets', error: e, stackTrace: st, source: 'MarketService:getFeaturedMarkets');
           return [];
         }
       },
@@ -161,8 +162,8 @@ class MarketService {
           .eq('is_approved', true);
 
       return (response as List).map((json) => json['id'] as String).toList();
-    } catch (e) {
-      if (kDebugMode) print('Error fetching market ids: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching market ids', error: e, stackTrace: st, source: 'MarketService:_getMarketIds');
       return [];
     }
   }
@@ -192,8 +193,8 @@ class MarketService {
               categorySortOrder: categorySortOrder,
             );
           }).toList();
-        } catch (e) {
-          if (kDebugMode) print('Error fetching products by market: $e');
+        } catch (e, st) {
+          LogService.error('Error fetching products by market', error: e, stackTrace: st, source: 'MarketService:getProductsByMarket');
           return [];
         }
       },
@@ -247,8 +248,8 @@ class MarketService {
       return (response as List)
           .map((json) => Store.fromMerchant(json))
           .toList();
-    } catch (e) {
-      if (kDebugMode) print('Error searching markets: $e');
+    } catch (e, st) {
+      LogService.error('Error searching markets', error: e, stackTrace: st, source: 'MarketService:searchMarkets');
       return [];
     }
   }
@@ -281,8 +282,8 @@ class MarketService {
           return (response as List).map((json) {
             return StoreProduct.fromJson(json, storeName: '');
           }).toList();
-        } catch (e) {
-          if (kDebugMode) print('Error fetching market deals: $e');
+        } catch (e, st) {
+          LogService.error('Error fetching market deals', error: e, stackTrace: st, source: 'MarketService:getMarketDeals');
           return [];
         }
       },
@@ -336,8 +337,8 @@ class MarketService {
 
       if (kDebugMode) print('MarketService.createOrder: Order created successfully - $orderNumber');
       return response;
-    } catch (e) {
-      if (kDebugMode) print('MarketService.createOrder Error: $e');
+    } catch (e, st) {
+      LogService.error('MarketService.createOrder Error', error: e, stackTrace: st, source: 'MarketService:createOrder');
       rethrow;
     }
   }

@@ -3,12 +3,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/app_responsive.dart';
 import '../../core/utils/app_dialogs.dart';
 import '../../core/utils/image_utils.dart';
 import '../../core/utils/name_masking.dart';
 import '../../core/providers/cart_provider.dart';
+import '../../core/services/favorites_service.dart';
 import 'food_home_screen.dart';
 import '../../widgets/food/add_to_cart_animation.dart';
 
@@ -35,16 +37,19 @@ class FoodItemDetailScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<FoodItemDetailScreen> createState() => _FoodItemDetailScreenState();
+  ConsumerState<FoodItemDetailScreen> createState() =>
+      _FoodItemDetailScreenState();
 }
 
 class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
   int _quantity = 1;
+  bool _isFavorite = false;
   final _noteController = TextEditingController();
 
   final GlobalKey _addButtonKey = GlobalKey();
   final GlobalKey _cartTargetKey = GlobalKey();
-  final GlobalKey<CartIconBounceState> _cartBounceKey = GlobalKey<CartIconBounceState>();
+  final GlobalKey<CartIconBounceState> _cartBounceKey =
+      GlobalKey<CartIconBounceState>();
   bool _isAnimating = false;
   bool _isLoading = true;
 
@@ -75,6 +80,51 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
     super.initState();
     _loadOptionGroups();
     _loadReviews();
+    _checkFavoriteStatus();
+  }
+
+  Future<void> _checkFavoriteStatus() async {
+    final isFav = await FavoritesService.isFavorite(widget.itemId);
+    if (mounted) setState(() => _isFavorite = isFav);
+  }
+
+  Future<void> _toggleFavorite() async {
+    final newState = !_isFavorite;
+    setState(() => _isFavorite = newState);
+
+    bool success;
+    if (newState) {
+      success = await FavoritesService.addFavorite(widget.itemId);
+    } else {
+      success = await FavoritesService.removeFavorite(widget.itemId);
+    }
+
+    if (!success && mounted) {
+      setState(() => _isFavorite = !newState);
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            newState ? 'Favorilere eklendi' : 'Favorilerden çıkarıldı',
+          ),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  void _shareItem() {
+    SharePlus.instance.share(
+      ShareParams(
+        text: '${widget.name} - ${widget.restaurantName}\n${widget.price.toStringAsFixed(2)} ₺',
+      ),
+    );
   }
 
   Future<void> _loadOptionGroups() async {
@@ -97,7 +147,9 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
         return;
       }
 
-      final groupIds = (linkResponse as List).map((e) => e['option_group_id']).toList();
+      final groupIds = (linkResponse as List)
+          .map((e) => e['option_group_id'])
+          .toList();
 
       // Get option groups with their options
       final groupsResponse = await supabase
@@ -118,11 +170,15 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
           'name': group['name'],
           'isRequired': group['is_required'] ?? false,
           'maxSelections': group['max_selections'] ?? 1,
-          'options': (optionsResponse as List).map((o) => {
-            'id': o['id'],
-            'name': o['name'],
-            'price': (o['price'] as num?)?.toDouble() ?? 0.0,
-          }).toList(),
+          'options': (optionsResponse as List)
+              .map(
+                (o) => {
+                  'id': o['id'],
+                  'name': o['name'],
+                  'price': (o['price'] as num?)?.toDouble() ?? 0.0,
+                },
+              )
+              .toList(),
           'selectedIndices': <int>{},
         });
       }
@@ -189,7 +245,9 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? FoodColors.backgroundDark : FoodColors.backgroundLight,
+      backgroundColor: isDark
+          ? FoodColors.backgroundDark
+          : FoodColors.backgroundLight,
       body: Stack(
         children: [
           // Main Content
@@ -231,16 +289,26 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
                   ? CachedNetworkImage(
                       imageUrl: ImageUtils.getProductDetail(widget.imageUrl),
                       fit: BoxFit.cover,
-                      placeholder: (_, __) => Container(
+                      placeholder: (_, _) => Container(
                         color: Colors.grey[200],
-                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                        child: const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
                       ),
-                      errorWidget: (_, __, ___) => Center(
-                        child: Icon(Icons.fastfood, size: 48, color: Colors.grey[400]),
+                      errorWidget: (_, _, _) => Center(
+                        child: Icon(
+                          Icons.fastfood,
+                          size: 48,
+                          color: Colors.grey[400],
+                        ),
                       ),
                     )
                   : Center(
-                      child: Icon(Icons.fastfood, size: 48, color: Colors.grey[400]),
+                      child: Icon(
+                        Icons.fastfood,
+                        size: 48,
+                        color: Colors.grey[400],
+                      ),
                     ),
             ),
           ),
@@ -276,9 +344,12 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
                 _buildCircleButton(Icons.arrow_back, () => context.pop()),
                 Row(
                   children: [
-                    _buildCircleButton(Icons.share, () {}),
+                    _buildCircleButton(Icons.share, _shareItem),
                     const SizedBox(width: 8),
-                    _buildCircleButton(Icons.favorite_border, () {}),
+                    _buildCircleButton(
+                      _isFavorite ? Icons.favorite : Icons.favorite_border,
+                      _toggleFavorite,
+                    ),
                   ],
                 ),
               ],
@@ -357,7 +428,12 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
         ],
       ),
       child: Padding(
-        padding: EdgeInsets.fromLTRB(context.pagePaddingH, 16, context.pagePaddingH, 150),
+        padding: EdgeInsets.fromLTRB(
+          context.pagePaddingH,
+          16,
+          context.pagePaddingH,
+          150,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -449,7 +525,9 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
               Icon(
                 Icons.star,
                 size: 16,
-                color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF15803D),
+                color: isDark
+                    ? const Color(0xFF4ADE80)
+                    : const Color(0xFF15803D),
               ),
               const SizedBox(width: 4),
               Text(
@@ -457,7 +535,9 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
                 style: TextStyle(
                   fontSize: context.bodySize,
                   fontWeight: FontWeight.bold,
-                  color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF15803D),
+                  color: isDark
+                      ? const Color(0xFF4ADE80)
+                      : const Color(0xFF15803D),
                 ),
               ),
             ],
@@ -494,7 +574,13 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
     );
   }
 
-  Widget _buildStatCard(String value, String label, {bool isPrimary = false, IconData? icon, required bool isDark}) {
+  Widget _buildStatCard(
+    String value,
+    String label, {
+    bool isPrimary = false,
+    IconData? icon,
+    required bool isDark,
+  }) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(12),
@@ -554,7 +640,11 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        for (int groupIndex = 0; groupIndex < _optionGroups.length; groupIndex++) ...[
+        for (
+          int groupIndex = 0;
+          groupIndex < _optionGroups.length;
+          groupIndex++
+        ) ...[
           if (groupIndex > 0) const SizedBox(height: 24),
           _buildOptionGroup(groupIndex, isDark),
         ],
@@ -635,8 +725,12 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
                     width: 20,
                     height: 20,
                     decoration: BoxDecoration(
-                      color: isSelected ? FoodColors.primary : Colors.transparent,
-                      borderRadius: BorderRadius.circular(isMultiSelect ? 4 : 10),
+                      color: isSelected
+                          ? FoodColors.primary
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(
+                        isMultiSelect ? 4 : 10,
+                      ),
                       border: Border.all(
                         color: isSelected
                             ? FoodColors.primary
@@ -725,10 +819,7 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: const BorderSide(
-                color: FoodColors.primary,
-                width: 2,
-              ),
+              borderSide: const BorderSide(color: FoodColors.primary, width: 2),
             ),
             contentPadding: const EdgeInsets.all(16),
           ),
@@ -808,7 +899,9 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
             ),
           )
         else
-          ...(_reviews.take(3).map((review) => _buildReviewCard(review, isDark))),
+          ...(_reviews
+              .take(3)
+              .map((review) => _buildReviewCard(review, isDark))),
       ],
     );
   }
@@ -831,10 +924,7 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
           color: isDark ? Colors.grey[800]! : Colors.grey[100]!,
         ),
         boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 8,
-          ),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8),
         ],
       ),
       child: Column(
@@ -943,7 +1033,9 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
                         icon: Icon(
                           Icons.remove,
                           size: 20,
-                          color: _quantity > 1 ? Colors.grey[500] : Colors.grey[300],
+                          color: _quantity > 1
+                              ? Colors.grey[500]
+                              : Colors.grey[300],
                         ),
                         onPressed: _quantity > 1
                             ? () => setState(() => _quantity--)
@@ -958,7 +1050,11 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
                         ),
                       ),
                       IconButton(
-                        icon: Icon(Icons.add, size: 20, color: Colors.grey[500]),
+                        icon: Icon(
+                          Icons.add,
+                          size: 20,
+                          color: Colors.grey[500],
+                        ),
                         onPressed: () => setState(() => _quantity++),
                       ),
                     ],
@@ -976,15 +1072,22 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
                       // Check if all required options are selected
                       final missingRequired = <String>[];
                       for (final group in _optionGroups) {
-                        final isRequired = group['isRequired'] as bool? ?? false;
-                        final selectedIndices = group['selectedIndices'] as Set<int>? ?? {};
+                        final isRequired =
+                            group['isRequired'] as bool? ?? false;
+                        final selectedIndices =
+                            group['selectedIndices'] as Set<int>? ?? {};
                         if (isRequired && selectedIndices.isEmpty) {
-                          missingRequired.add(group['name'] as String? ?? 'Seçenek');
+                          missingRequired.add(
+                            group['name'] as String? ?? 'Seçenek',
+                          );
                         }
                       }
 
                       if (missingRequired.isNotEmpty) {
-                        await AppDialogs.showError(context, 'Lütfen zorunlu seçenekleri belirleyin: ${missingRequired.join(", ")}');
+                        await AppDialogs.showError(
+                          context,
+                          'Lütfen zorunlu seçenekleri belirleyin: ${missingRequired.join(", ")}',
+                        );
                         return;
                       }
 
@@ -994,11 +1097,16 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
                       String? extraInfo;
                       final selectedOptions = <String>[];
                       for (final group in _optionGroups) {
-                        final selectedIndices = group['selectedIndices'] as Set<int>? ?? {};
-                        final options = group['options'] as List<Map<String, dynamic>>? ?? [];
+                        final selectedIndices =
+                            group['selectedIndices'] as Set<int>? ?? {};
+                        final options =
+                            group['options'] as List<Map<String, dynamic>>? ??
+                            [];
                         for (final index in selectedIndices) {
                           if (index < options.length) {
-                            selectedOptions.add(options[index]['name'] as String? ?? '');
+                            selectedOptions.add(
+                              options[index]['name'] as String? ?? '',
+                            );
                           }
                         }
                       }
@@ -1014,7 +1122,8 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
                             .select('merchant_id')
                             .eq('id', widget.itemId)
                             .maybeSingle();
-                        merchantId = menuItemResponse?['merchant_id'] as String?;
+                        merchantId =
+                            menuItemResponse?['merchant_id'] as String?;
                       } catch (e) {
                         if (kDebugMode) print('Error fetching merchant_id: $e');
                       }
@@ -1133,9 +1242,27 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _buildNavItem(Icons.home, 'Ana Sayfa', false, isDark, '/'),
-                _buildNavItem(Icons.favorite, 'Favoriler', false, isDark, '/favorites'),
-                _buildNavItem(Icons.receipt_long, 'Siparişlerim', false, isDark, '/orders'),
-                _buildNavItem(Icons.person, 'Profil', false, isDark, '/profile'),
+                _buildNavItem(
+                  Icons.favorite,
+                  'Favoriler',
+                  false,
+                  isDark,
+                  '/favorites',
+                ),
+                _buildNavItem(
+                  Icons.receipt_long,
+                  'Siparişlerim',
+                  false,
+                  isDark,
+                  '/orders',
+                ),
+                _buildNavItem(
+                  Icons.person,
+                  'Profil',
+                  false,
+                  isDark,
+                  '/profile',
+                ),
               ],
             ),
           ),
@@ -1144,7 +1271,13 @@ class _FoodItemDetailScreenState extends ConsumerState<FoodItemDetailScreen> {
     );
   }
 
-  Widget _buildNavItem(IconData icon, String label, bool isSelected, bool isDark, String route) {
+  Widget _buildNavItem(
+    IconData icon,
+    String label,
+    bool isSelected,
+    bool isDark,
+    String route,
+  ) {
     return Expanded(
       child: GestureDetector(
         onTap: () => context.go(route),

@@ -6,6 +6,7 @@ import 'package:table_calendar/table_calendar.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../providers/realtor_provider.dart';
 import '../../../shared/widgets/empty_state.dart';
+import 'package:emlakci_panel/core/services/log_service.dart';
 import '../widgets/appointment_card.dart';
 
 class AppointmentsScreen extends ConsumerStatefulWidget {
@@ -95,8 +96,10 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -112,35 +115,35 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
           child: appointmentsState.isLoading
               ? const Center(child: CircularProgressIndicator())
               : appointmentsState.error != null
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.error_outline,
-                              size: 48,
-                              color: AppColors.error.withValues(alpha: 0.5)),
-                          const SizedBox(height: 12),
-                          Text(
-                            'Randevular yuklenemedi',
-                            style: TextStyle(
-                              color: AppColors.textSecondary(isDark),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          TextButton(
-                            onPressed: () => ref
-                                .read(realtorAppointmentsProvider.notifier)
-                                .loadAppointments(),
-                            child: const Text('Tekrar Dene'),
-                          ),
-                        ],
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        size: 48,
+                        color: AppColors.error.withValues(alpha: 0.5),
                       ),
-                    )
-                  : _isCalendarView
-                      ? _buildCalendarView(
-                          appointmentsState.appointments, isDark)
-                      : _buildListView(
-                          appointmentsState.appointments, isDark),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Randevular yuklenemedi',
+                        style: TextStyle(
+                          color: AppColors.textSecondary(isDark),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextButton(
+                        onPressed: () => ref
+                            .read(realtorAppointmentsProvider.notifier)
+                            .loadAppointments(),
+                        child: const Text('Tekrar Dene'),
+                      ),
+                    ],
+                  ),
+                )
+              : _isCalendarView
+              ? _buildCalendarView(appointmentsState.appointments, isDark)
+              : _buildListView(appointmentsState.appointments, isDark),
         ),
       ],
     );
@@ -200,7 +203,9 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
   // ============================================
 
   Widget _buildCalendarView(
-      List<Map<String, dynamic>> appointments, bool isDark) {
+    List<Map<String, dynamic>> appointments,
+    bool isDark,
+  ) {
     final selectedDayAppts = _getAppointmentsForDay(_selectedDay, appointments);
 
     return SingleChildScrollView(
@@ -343,8 +348,7 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
   // LIST VIEW
   // ============================================
 
-  Widget _buildListView(
-      List<Map<String, dynamic>> appointments, bool isDark) {
+  Widget _buildListView(List<Map<String, dynamic>> appointments, bool isDark) {
     // Filter chips
     final statusFilters = <(String?, String)>[
       (null, 'Tumu'),
@@ -357,9 +361,7 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
 
     final filteredAppointments = _listFilterStatus == null
         ? appointments
-        : appointments
-            .where((a) => a['status'] == _listFilterStatus)
-            .toList();
+        : appointments.where((a) => a['status'] == _listFilterStatus).toList();
 
     return Column(
       children: [
@@ -388,8 +390,9 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                       color: isSelected
                           ? AppColors.primary
                           : AppColors.textSecondary(isDark),
-                      fontWeight:
-                          isSelected ? FontWeight.w600 : FontWeight.w400,
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.w400,
                       fontSize: 13,
                     ),
                     backgroundColor: AppColors.card(isDark),
@@ -420,7 +423,7 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
               : ListView.separated(
                   padding: const EdgeInsets.all(16),
                   itemCount: filteredAppointments.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  separatorBuilder: (_, _) => const SizedBox(height: 8),
                   itemBuilder: (context, index) {
                     final apt = filteredAppointments[index];
                     return AppointmentCard(
@@ -440,7 +443,9 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
   // ============================================
 
   List<Map<String, dynamic>> _getAppointmentsForDay(
-      DateTime day, List<Map<String, dynamic>> appointments) {
+    DateTime day,
+    List<Map<String, dynamic>> appointments,
+  ) {
     return appointments.where((apt) {
       DateTime? aptDate;
       if (apt['scheduled_at'] != null) {
@@ -458,8 +463,11 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
   String _formatSelectedDayTitle() {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final selected =
-        DateTime(_selectedDay.year, _selectedDay.month, _selectedDay.day);
+    final selected = DateTime(
+      _selectedDay.year,
+      _selectedDay.month,
+      _selectedDay.day,
+    );
 
     if (selected == today) {
       return 'Bugunun Randevulari';
@@ -472,7 +480,9 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
   }
 
   Future<void> _handleAppointmentAction(
-      Map<String, dynamic> appointment, String action) async {
+    Map<String, dynamic> appointment,
+    String action,
+  ) async {
     final id = appointment['id'] as String;
     final source = appointment['source'] as String? ?? 'customer';
     final notifier = ref.read(realtorAppointmentsProvider.notifier);
@@ -495,7 +505,8 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
       case 'complete':
         final confirmed = await _showConfirmDialog(
           title: 'Randevuyu Tamamla',
-          message: 'Bu randevuyu tamamlandi olarak isaretlemek istiyor musunuz?',
+          message:
+              'Bu randevuyu tamamlandi olarak isaretlemek istiyor musunuz?',
           confirmText: 'Tamamla',
           confirmColor: AppColors.success,
         );
@@ -591,12 +602,12 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
       {
         'value': 'phone_call',
         'label': 'Telefon Gorusmesi',
-        'icon': Icons.phone_rounded
+        'icon': Icons.phone_rounded,
       },
       {
         'value': 'video_call',
         'label': 'Video Gorusme',
-        'icon': Icons.videocam_rounded
+        'icon': Icons.videocam_rounded,
       },
       {'value': 'signing', 'label': 'Imza', 'icon': Icons.draw_rounded},
     ];
@@ -680,16 +691,20 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                             value: selectedType,
                             isExpanded: true,
                             dropdownColor: AppColors.card(isDark),
-                            icon: Icon(Icons.keyboard_arrow_down,
-                                color: AppColors.textMuted(isDark)),
+                            icon: Icon(
+                              Icons.keyboard_arrow_down,
+                              color: AppColors.textMuted(isDark),
+                            ),
                             items: typeOptions.map((opt) {
                               return DropdownMenuItem<String>(
                                 value: opt['value'] as String,
                                 child: Row(
                                   children: [
-                                    Icon(opt['icon'] as IconData,
-                                        size: 18,
-                                        color: AppColors.textSecondary(isDark)),
+                                    Icon(
+                                      opt['icon'] as IconData,
+                                      size: 18,
+                                      color: AppColors.textSecondary(isDark),
+                                    ),
                                     const SizedBox(width: 8),
                                     Text(
                                       opt['label'] as String,
@@ -727,39 +742,45 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                                       context: context,
                                       initialDate: selectedDate,
                                       firstDate: DateTime.now(),
-                                      lastDate: DateTime.now()
-                                          .add(const Duration(days: 365)),
+                                      lastDate: DateTime.now().add(
+                                        const Duration(days: 365),
+                                      ),
                                     );
                                     if (date != null) {
-                                      setDialogState(
-                                          () => selectedDate = date);
+                                      setDialogState(() => selectedDate = date);
                                     }
                                   },
                                   borderRadius: BorderRadius.circular(8),
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 12, vertical: 14),
+                                      horizontal: 12,
+                                      vertical: 14,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: isDark
                                           ? AppColors.backgroundDark
                                           : const Color(0xFFF1F5F9),
                                       borderRadius: BorderRadius.circular(8),
                                       border: Border.all(
-                                          color: AppColors.border(isDark)),
+                                        color: AppColors.border(isDark),
+                                      ),
                                     ),
                                     child: Row(
                                       children: [
-                                        Icon(Icons.calendar_today_rounded,
-                                            size: 16,
-                                            color:
-                                                AppColors.textMuted(isDark)),
+                                        Icon(
+                                          Icons.calendar_today_rounded,
+                                          size: 16,
+                                          color: AppColors.textMuted(isDark),
+                                        ),
                                         const SizedBox(width: 8),
                                         Text(
-                                          DateFormat('dd/MM/yyyy')
-                                              .format(selectedDate),
+                                          DateFormat(
+                                            'dd/MM/yyyy',
+                                          ).format(selectedDate),
                                           style: TextStyle(
                                             color: AppColors.textPrimary(
-                                                isDark),
+                                              isDark,
+                                            ),
                                             fontSize: 14,
                                           ),
                                         ),
@@ -784,34 +805,38 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                                       initialTime: selectedTime,
                                     );
                                     if (time != null) {
-                                      setDialogState(
-                                          () => selectedTime = time);
+                                      setDialogState(() => selectedTime = time);
                                     }
                                   },
                                   borderRadius: BorderRadius.circular(8),
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 12, vertical: 14),
+                                      horizontal: 12,
+                                      vertical: 14,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: isDark
                                           ? AppColors.backgroundDark
                                           : const Color(0xFFF1F5F9),
                                       borderRadius: BorderRadius.circular(8),
                                       border: Border.all(
-                                          color: AppColors.border(isDark)),
+                                        color: AppColors.border(isDark),
+                                      ),
                                     ),
                                     child: Row(
                                       children: [
-                                        Icon(Icons.access_time_rounded,
-                                            size: 16,
-                                            color:
-                                                AppColors.textMuted(isDark)),
+                                        Icon(
+                                          Icons.access_time_rounded,
+                                          size: 16,
+                                          color: AppColors.textMuted(isDark),
+                                        ),
                                         const SizedBox(width: 8),
                                         Text(
                                           '${selectedTime.hour.toString().padLeft(2, '0')}:${selectedTime.minute.toString().padLeft(2, '0')}',
                                           style: TextStyle(
                                             color: AppColors.textPrimary(
-                                                isDark),
+                                              isDark,
+                                            ),
                                             fontSize: 14,
                                           ),
                                         ),
@@ -843,8 +868,10 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                             value: durationMinutes,
                             isExpanded: true,
                             dropdownColor: AppColors.card(isDark),
-                            icon: Icon(Icons.keyboard_arrow_down,
-                                color: AppColors.textMuted(isDark)),
+                            icon: Icon(
+                              Icons.keyboard_arrow_down,
+                              color: AppColors.textMuted(isDark),
+                            ),
                             items: durationOptions.map((opt) {
                               return DropdownMenuItem<int>(
                                 value: opt['value'] as int,
@@ -859,8 +886,7 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                             }).toList(),
                             onChanged: (val) {
                               if (val != null) {
-                                setDialogState(
-                                    () => durationMinutes = val);
+                                setDialogState(() => durationMinutes = val);
                               }
                             },
                           ),
@@ -936,8 +962,8 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                                 : null,
                             description:
                                 descriptionController.text.trim().isNotEmpty
-                                    ? descriptionController.text.trim()
-                                    : null,
+                                ? descriptionController.text.trim()
+                                : null,
                           );
 
                       if (mounted) {
@@ -948,7 +974,8 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                           ),
                         );
                       }
-                    } catch (e) {
+                    } catch (e, st) {
+                      LogService.error('Failed to create appointment', error: e, stackTrace: st, source: 'AppointmentsScreen:createAppointment');
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
@@ -966,7 +993,9 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 12),
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
                   ),
                   child: const Text(
                     'Olustur',
@@ -1006,16 +1035,10 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
     return TextField(
       controller: controller,
       maxLines: maxLines,
-      style: TextStyle(
-        color: AppColors.textPrimary(isDark),
-        fontSize: 14,
-      ),
+      style: TextStyle(color: AppColors.textPrimary(isDark), fontSize: 14),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(
-          color: AppColors.textMuted(isDark),
-          fontSize: 14,
-        ),
+        hintStyle: TextStyle(color: AppColors.textMuted(isDark), fontSize: 14),
         filled: true,
         fillColor: isDark ? AppColors.backgroundDark : const Color(0xFFF1F5F9),
         prefixIcon: prefixIcon != null
@@ -1033,8 +1056,10 @@ class _AppointmentsScreenState extends ConsumerState<AppointmentsScreen> {
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
         ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 12,
+        ),
       ),
     );
   }

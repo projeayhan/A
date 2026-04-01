@@ -45,33 +45,30 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
       body: conversationsState.isLoading
           ? const Center(child: CircularProgressIndicator())
           : conversationsState.error != null
-              ? _buildErrorState(conversationsState.error!, isDark)
-              : conversationsState.conversations.isEmpty
-                  ? _buildEmptyState(isDark)
-                  : RefreshIndicator(
-                      onRefresh: () =>
-                          ref.read(conversationsProvider.notifier).refresh(),
-                      child: ListView.separated(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: conversationsState.conversations.length,
-                        separatorBuilder: (_, __) => Divider(
-                          color: EmlakColors.divider(isDark),
-                          height: 1,
-                        ),
-                        itemBuilder: (context, index) {
-                          final conversation =
-                              conversationsState.conversations[index];
-                          return _ConversationTile(
-                            conversation: conversation,
-                            currentUserId: currentUserId ?? '',
-                            isDark: isDark,
-                            onTap: () {
-                              context.push('/emlak/chat/${conversation.id}');
-                            },
-                          );
-                        },
-                      ),
-                    ),
+          ? _buildErrorState(conversationsState.error!, isDark)
+          : conversationsState.conversations.isEmpty
+          ? _buildEmptyState(isDark)
+          : RefreshIndicator(
+              onRefresh: () =>
+                  ref.read(conversationsProvider.notifier).refresh(),
+              child: ListView.separated(
+                padding: const EdgeInsets.all(16),
+                itemCount: conversationsState.conversations.length,
+                separatorBuilder: (_, _) =>
+                    Divider(color: EmlakColors.divider(isDark), height: 1),
+                itemBuilder: (context, index) {
+                  final conversation = conversationsState.conversations[index];
+                  return _ConversationTile(
+                    conversation: conversation,
+                    currentUserId: currentUserId ?? '',
+                    isDark: isDark,
+                    onTap: () {
+                      context.push('/emlak/chat/${conversation.id}');
+                    },
+                  );
+                },
+              ),
+            ),
     );
   }
 
@@ -134,11 +131,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.error_outline_rounded,
-            size: 64,
-            color: EmlakColors.error,
-          ),
+          Icon(Icons.error_outline_rounded, size: 64, color: EmlakColors.error),
           const SizedBox(height: 16),
           Text(
             'Bir hata oluştu',
@@ -159,8 +152,7 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
           ),
           const SizedBox(height: 24),
           ElevatedButton(
-            onPressed: () =>
-                ref.read(conversationsProvider.notifier).refresh(),
+            onPressed: () => ref.read(conversationsProvider.notifier).refresh(),
             child: const Text('Tekrar Dene'),
           ),
         ],
@@ -186,7 +178,8 @@ class _ConversationTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final unreadCount = conversation.getUnreadCount(currentUserId);
     final otherUserProfile = conversation.getOtherUserProfile(currentUserId);
-    final otherUserName = otherUserProfile?['full_name'] as String? ?? 'Kullanıcı';
+    final otherUserName =
+        otherUserProfile?['full_name'] as String? ?? 'Kullanıcı';
     final otherUserAvatar = otherUserProfile?['avatar_url'] as String?;
 
     return InkWell(
@@ -202,8 +195,9 @@ class _ConversationTile extends StatelessWidget {
                 CircleAvatar(
                   radius: 28,
                   backgroundColor: EmlakColors.primary.withValues(alpha: 0.1),
-                  backgroundImage:
-                      otherUserAvatar != null ? NetworkImage(otherUserAvatar) : null,
+                  backgroundImage: otherUserAvatar != null
+                      ? NetworkImage(otherUserAvatar)
+                      : null,
                   child: otherUserAvatar == null
                       ? Text(
                           otherUserName.isNotEmpty

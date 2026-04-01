@@ -24,7 +24,16 @@ class _BrandSearchSheetState extends State<BrandSearchSheet> {
   String _searchQuery = '';
   String _selectedCountry = 'Tümü';
 
-  final List<String> _countries = ['Tümü', 'Almanya', 'Japonya', 'ABD', 'G. Kore', 'Fransa', 'İtalya', 'İngiltere'];
+  final List<String> _countries = [
+    'Tümü',
+    'Almanya',
+    'Japonya',
+    'ABD',
+    'G. Kore',
+    'Fransa',
+    'İtalya',
+    'İngiltere',
+  ];
 
   List<CarBrand> get _filteredBrands {
     var brands = CarBrand.allBrands;
@@ -37,7 +46,9 @@ class _BrandSearchSheetState extends State<BrandSearchSheet> {
     // Arama filtresi
     if (_searchQuery.isNotEmpty) {
       brands = brands
-          .where((b) => b.name.toLowerCase().contains(_searchQuery.toLowerCase()))
+          .where(
+            (b) => b.name.toLowerCase().contains(_searchQuery.toLowerCase()),
+          )
           .toList();
     }
 
@@ -124,7 +135,10 @@ class _BrandSearchSheetState extends State<BrandSearchSheet> {
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
               ),
             ),
           ),
@@ -145,7 +159,10 @@ class _BrandSearchSheetState extends State<BrandSearchSheet> {
                   onTap: () => setState(() => _selectedCountry = country),
                   child: Container(
                     margin: const EdgeInsets.symmetric(horizontal: 4),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: isSelected
                           ? CarSalesColors.primary
@@ -158,7 +175,9 @@ class _BrandSearchSheetState extends State<BrandSearchSheet> {
                         color: isSelected
                             ? Colors.white
                             : CarSalesColors.textSecondary(widget.isDark),
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.w500,
                         fontSize: 13,
                       ),
                     ),
@@ -220,7 +239,7 @@ class _BrandSearchSheetState extends State<BrandSearchSheet> {
                             child: CachedNetworkImage(
                               imageUrl: brand.logoUrl,
                               fit: BoxFit.contain,
-                              placeholder: (_, __) => Center(
+                              placeholder: (_, _) => Center(
                                 child: Text(
                                   brand.name.substring(0, 1),
                                   style: const TextStyle(
@@ -229,7 +248,7 @@ class _BrandSearchSheetState extends State<BrandSearchSheet> {
                                   ),
                                 ),
                               ),
-                              errorWidget: (_, __, ___) => Center(
+                              errorWidget: (_, _, _) => Center(
                                 child: Text(
                                   brand.name.substring(0, 1),
                                   style: const TextStyle(
@@ -251,7 +270,9 @@ class _BrandSearchSheetState extends State<BrandSearchSheet> {
                                 ? CarSalesColors.primary
                                 : CarSalesColors.textPrimary(widget.isDark),
                             fontSize: 10,
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.w500,
                           ),
                           textAlign: TextAlign.center,
                           maxLines: 1,

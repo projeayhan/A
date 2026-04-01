@@ -1,6 +1,6 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:support_panel/core/services/log_service.dart';
 import 'supabase_service.dart';
 import 'support_auth_service.dart';
 
@@ -45,8 +45,8 @@ class AuditService {
         'old_data': oldData,
         'new_data': newData,
       });
-    } catch (e) {
-      if (kDebugMode) print('Failed to log agent action: $e');
+    } catch (e, st) {
+      LogService.error('Failed to log agent action', error: e, stackTrace: st, source: 'AuditService:logAction');
     }
   }
 
@@ -62,8 +62,8 @@ class AuditService {
             ? '${agentName ?? email} başarıyla giriş yaptı'
             : '$email giriş denemesi başarısız',
       });
-    } catch (e) {
-      if (kDebugMode) print('Failed to log login: $e');
+    } catch (e, st) {
+      LogService.error('Failed to log login', error: e, stackTrace: st, source: 'AuditService:logLogin');
     }
   }
 

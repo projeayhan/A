@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rent_a_car_panel/core/services/log_service.dart';
 
 import '../../core/theme.dart';
 import '../../core/supabase_config.dart';
@@ -111,17 +112,28 @@ class _PackagesScreenState extends ConsumerState<PackagesScreen> {
     try {
       final client = ref.read(supabaseClientProvider);
       final price = double.tryParse(_priceControllers[packageId]!.text) ?? 0;
+      if (price <= 0) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Fiyat 0\'dan büyük olmalıdır')),
+          );
+        }
+        return;
+      }
       final desc = _descControllers[packageId]!.text;
       final isActive = _activeStates[packageId] ?? true;
       final services = _includedServices[packageId] ?? [];
 
-      await client.from('rental_packages').update({
-        'daily_price': price,
-        'description': desc,
-        'is_active': isActive,
-        'included_services': services,
-        'updated_at': DateTime.now().toIso8601String(),
-      }).eq('id', packageId);
+      await client
+          .from('rental_packages')
+          .update({
+            'daily_price': price,
+            'description': desc,
+            'is_active': isActive,
+            'included_services': services,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', packageId);
 
       ref.invalidate(companyPackagesProvider);
 
@@ -133,13 +145,11 @@ class _PackagesScreenState extends ConsumerState<PackagesScreen> {
           ),
         );
       }
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to save package', error: e, stackTrace: st, source: 'PackagesScreen:_savePackage');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Hata: $e'),
-            backgroundColor: AppColors.error,
-          ),
+          SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
         );
       }
     } finally {
@@ -170,7 +180,7 @@ class _PackagesScreenState extends ConsumerState<PackagesScreen> {
               ],
             ),
             const SizedBox(height: 8),
-            Text(
+            const Text(
               'Kiralama paketlerinizin fiyatlarini ve iceriklerini yonetin',
               style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
             ),
@@ -198,8 +208,10 @@ class _PackagesScreenState extends ConsumerState<PackagesScreen> {
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Center(
-                  child: Text('Hata: $e',
-                      style: const TextStyle(color: AppColors.error)),
+                  child: Text(
+                    'Hata: $e',
+                    style: const TextStyle(color: AppColors.error),
+                  ),
                 ),
               ),
             ),
@@ -224,7 +236,9 @@ class _PackagesScreenState extends ConsumerState<PackagesScreen> {
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isActive ? color.withValues(alpha: 0.3) : AppColors.surfaceLight,
+          color: isActive
+              ? color.withValues(alpha: 0.3)
+              : AppColors.surfaceLight,
           width: isActive ? 2 : 1,
         ),
       ),
@@ -264,9 +278,13 @@ class _PackagesScreenState extends ConsumerState<PackagesScreen> {
                               const SizedBox(width: 8),
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 2),
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: AppColors.warning.withValues(alpha: 0.2),
+                                  color: AppColors.warning.withValues(
+                                    alpha: 0.2,
+                                  ),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: const Text(
@@ -300,12 +318,14 @@ class _PackagesScreenState extends ConsumerState<PackagesScreen> {
                         onChanged: (val) {
                           setState(() => _activeStates[id] = val);
                         },
-                        activeColor: AppColors.success,
+                        activeThumbColor: AppColors.success,
                       ),
                       Text(
                         isActive ? 'Aktif' : 'Pasif',
                         style: TextStyle(
-                          color: isActive ? AppColors.success : AppColors.textMuted,
+                          color: isActive
+                              ? AppColors.success
+                              : AppColors.textMuted,
                           fontSize: 11,
                         ),
                       ),
@@ -326,7 +346,9 @@ class _PackagesScreenState extends ConsumerState<PackagesScreen> {
                       controller: _priceControllers[id],
                       keyboardType: TextInputType.number,
                       style: const TextStyle(
-                          fontSize: 24, fontWeight: FontWeight.bold),
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
                       decoration: InputDecoration(
                         labelText: 'Gunluk Fiyat (TL)',
                         prefixText: '\u20BA ',
@@ -373,18 +395,22 @@ class _PackagesScreenState extends ConsumerState<PackagesScreen> {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  ...services.map((service) => Chip(
-                        label: Text(service, style: const TextStyle(fontSize: 12)),
-                        deleteIcon:
-                            const Icon(Icons.close, size: 16),
-                        onDeleted: () {
-                          setState(() {
-                            _includedServices[id]?.remove(service);
-                          });
-                        },
-                        backgroundColor: color.withValues(alpha: 0.1),
-                        side: BorderSide(color: color.withValues(alpha: 0.3)),
-                      )),
+                  ...services.map(
+                    (service) => Chip(
+                      label: Text(
+                        service,
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      deleteIcon: const Icon(Icons.close, size: 16),
+                      onDeleted: () {
+                        setState(() {
+                          _includedServices[id]?.remove(service);
+                        });
+                      },
+                      backgroundColor: color.withValues(alpha: 0.1),
+                      side: BorderSide(color: color.withValues(alpha: 0.3)),
+                    ),
+                  ),
                   // Add new service
                   Row(
                     mainAxisSize: MainAxisSize.min,
@@ -399,7 +425,9 @@ class _PackagesScreenState extends ConsumerState<PackagesScreen> {
                             hintText: 'Yeni hizmet ekle...',
                             hintStyle: const TextStyle(fontSize: 12),
                             contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 8),
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
                             isDense: true,
                             filled: true,
                             fillColor: AppColors.background,
@@ -420,8 +448,7 @@ class _PackagesScreenState extends ConsumerState<PackagesScreen> {
                       const SizedBox(width: 4),
                       InkWell(
                         onTap: () {
-                          final text =
-                              _newServiceControllers[id]!.text.trim();
+                          final text = _newServiceControllers[id]!.text.trim();
                           if (text.isNotEmpty) {
                             setState(() {
                               _includedServices[id]?.add(text);
@@ -432,8 +459,11 @@ class _PackagesScreenState extends ConsumerState<PackagesScreen> {
                         borderRadius: BorderRadius.circular(20),
                         child: const Padding(
                           padding: EdgeInsets.all(4),
-                          child: Icon(Icons.add_circle,
-                              size: 28, color: AppColors.primary),
+                          child: Icon(
+                            Icons.add_circle,
+                            size: 28,
+                            color: AppColors.primary,
+                          ),
                         ),
                       ),
                     ],
@@ -459,7 +489,9 @@ class _PackagesScreenState extends ConsumerState<PackagesScreen> {
                     backgroundColor: color,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 12),
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
                   ),
                 ),
               ),

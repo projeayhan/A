@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:emlakci_panel/core/services/log_service.dart';
 
 /// Randevu durumu
 enum AppointmentStatus {
@@ -126,13 +127,28 @@ class AppointmentService {
       throw Exception('Kullanıcı oturumu bulunamadı');
     }
 
+    // Check for an existing appointment on the same property at the same date/time
+    final dateStr = date.toIso8601String().split('T').first;
+    final conflict = await _client
+        .from('appointments')
+        .select('id')
+        .eq('property_id', propertyId)
+        .eq('appointment_date', dateStr)
+        .eq('appointment_time', time)
+        .inFilter('status', ['pending', 'confirmed'])
+        .maybeSingle();
+
+    if (conflict != null) {
+      throw Exception('Bu tarih ve saatte zaten bir randevu mevcut. Lütfen başka bir saat seçin.');
+    }
+
     final response = await _client
         .from('appointments')
         .insert({
           'property_id': propertyId,
           'requester_id': _userId,
           'owner_id': ownerId,
-          'appointment_date': date.toIso8601String().split('T').first,
+          'appointment_date': dateStr,
           'appointment_time': time,
           'note': note,
           'status': 'pending',
@@ -234,7 +250,8 @@ class AppointmentService {
           .eq('id', appointmentId)
           .eq('owner_id', _userId!);
       return true;
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to confirm appointment', error: e, stackTrace: st, source: 'AppointmentService:confirmAppointment');
       return false;
     }
   }
@@ -253,7 +270,8 @@ class AppointmentService {
           .eq('id', appointmentId)
           .or('requester_id.eq.$_userId,owner_id.eq.$_userId');
       return true;
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to cancel appointment', error: e, stackTrace: st, source: 'AppointmentService:cancelAppointment');
       return false;
     }
   }
@@ -269,12 +287,15 @@ class AppointmentService {
           .eq('id', appointmentId)
           .eq('owner_id', _userId!);
       return true;
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to complete appointment', error: e, stackTrace: st, source: 'AppointmentService:completeAppointment');
       return false;
     }
   }
 
   /// Randevuyu sil
+  /// İzin verilen kullanıcılar: randevuyu talep eden (requester) VEYA
+  /// ilanın sahibi/emlakçısı (owner).
   Future<bool> deleteAppointment(String appointmentId) async {
     if (_userId == null) return false;
 
@@ -283,9 +304,10 @@ class AppointmentService {
           .from('appointments')
           .delete()
           .eq('id', appointmentId)
-          .eq('requester_id', _userId!);
+          .or('requester_id.eq.$_userId,owner_id.eq.$_userId');
       return true;
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to delete appointment', error: e, stackTrace: st, source: 'AppointmentService:deleteAppointment');
       return false;
     }
   }

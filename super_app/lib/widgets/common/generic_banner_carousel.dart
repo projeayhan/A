@@ -30,16 +30,18 @@ String _getOptimizedImageUrl(String? url) {
     if (path.contains('/object/public/')) {
       path = path.replaceFirst('/object/public/', '/render/image/public/');
     }
-    return uri.replace(
-      path: path,
-      queryParameters: {
-        ...uri.queryParameters,
-        'width': _bannerWidth.toString(),
-        'height': _bannerHeight.toString(),
-        'resize': 'cover',
-        'quality': '80',
-      },
-    ).toString();
+    return uri
+        .replace(
+          path: path,
+          queryParameters: {
+            ...uri.queryParameters,
+            'width': _bannerWidth.toString(),
+            'height': _bannerHeight.toString(),
+            'resize': 'cover',
+            'quality': '80',
+          },
+        )
+        .toString();
   }
 
   return url;
@@ -171,8 +173,10 @@ class _GenericBannerCarouselState extends ConsumerState<GenericBannerCarousel> {
                     description: menuItem['description'] ?? '',
                     price: (menuItem['price'] as num?)?.toDouble() ?? 0,
                     imageUrl: menuItem['image_url'] ?? '',
-                    rating: (menuItem['average_rating'] as num?)?.toDouble() ?? 4.5,
-                    restaurantName: menuItem['merchants']?['business_name'] ?? '',
+                    rating:
+                        (menuItem['average_rating'] as num?)?.toDouble() ?? 4.5,
+                    restaurantName:
+                        menuItem['merchants']?['business_name'] ?? '',
                     deliveryTime: '30-45 dk',
                   ),
                 ),
@@ -249,7 +253,7 @@ class _GenericBannerCarouselState extends ConsumerState<GenericBannerCarousel> {
 
     return bannersAsync.when(
       loading: () => _buildPlaceholder(),
-      error: (_, __) => _buildDefaultBanner(),
+      error: (_, _) => _buildDefaultBanner(),
       data: (banners) {
         if (banners.isEmpty) {
           return _buildDefaultBanner();
@@ -270,9 +274,7 @@ class _GenericBannerCarouselState extends ConsumerState<GenericBannerCarousel> {
         borderRadius: BorderRadius.circular(16),
         color: Colors.grey[300],
       ),
-      child: const Center(
-        child: CircularProgressIndicator(),
-      ),
+      child: const Center(child: CircularProgressIndicator()),
     );
   }
 
@@ -350,7 +352,9 @@ class _GenericBannerCarouselState extends ConsumerState<GenericBannerCarousel> {
                 height: 8,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(4),
-                  color: _currentPage == index ? primaryColor : Colors.grey[300],
+                  color: _currentPage == index
+                      ? primaryColor
+                      : Colors.grey[300],
                 ),
               ),
             ),
@@ -395,14 +399,16 @@ class _GenericBannerCarouselState extends ConsumerState<GenericBannerCarousel> {
                 fit: BoxFit.cover,
                 memCacheWidth: _bannerWidth,
                 memCacheHeight: _bannerHeight,
-                placeholder: (_, __) => Container(
+                placeholder: (_, _) => Container(
                   decoration: BoxDecoration(
                     color: primaryColor.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                  child: const Center(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
                 ),
-                errorWidget: (_, __, ___) => Container(
+                errorWidget: (_, _, _) => Container(
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [

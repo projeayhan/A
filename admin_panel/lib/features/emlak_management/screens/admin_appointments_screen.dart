@@ -10,19 +10,23 @@ class AdminAppointmentsScreen extends ConsumerStatefulWidget {
   const AdminAppointmentsScreen({super.key, required this.realtorId});
 
   @override
-  ConsumerState<AdminAppointmentsScreen> createState() => _AdminAppointmentsScreenState();
+  ConsumerState<AdminAppointmentsScreen> createState() =>
+      _AdminAppointmentsScreenState();
 }
 
-class _AdminAppointmentsScreenState extends ConsumerState<AdminAppointmentsScreen> {
+class _AdminAppointmentsScreenState
+    extends ConsumerState<AdminAppointmentsScreen> {
   final _dateFormat = DateFormat('dd MMM yyyy', 'tr');
 
   String _statusFilter = 'all';
   bool _showCalendar = false;
-  DateTime _calendarMonth = DateTime(DateTime.now().year, DateTime.now().month);
+  DateTime _calendarMonth =
+      DateTime(DateTime.now().year, DateTime.now().month);
 
   @override
   Widget build(BuildContext context) {
-    final appointmentsAsync = ref.watch(realtorAppointmentsProvider(widget.realtorId));
+    final appointmentsAsync =
+        ref.watch(realtorAppointmentsProvider(widget.realtorId));
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -48,21 +52,47 @@ class _AdminAppointmentsScreenState extends ConsumerState<AdminAppointmentsScree
                     ),
                     SizedBox(height: 4),
                     Text(
-                      'Emlakci randevularini yonetin',
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                      'Emlakci randevularini yonetin ve takip edin',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 14,
+                      ),
                     ),
                   ],
                 ),
                 Row(
                   children: [
-                    OutlinedButton.icon(
-                      onPressed: () => setState(() => _showCalendar = !_showCalendar),
-                      icon: Icon(_showCalendar ? Icons.list : Icons.calendar_month, size: 18),
-                      label: Text(_showCalendar ? 'Liste Gorunumu' : 'Takvim Gorunumu'),
+                    // View toggle
+                    Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.surfaceLight),
+                      ),
+                      child: Row(
+                        children: [
+                          _buildViewToggle(
+                            icon: Icons.list,
+                            label: 'Liste',
+                            isSelected: !_showCalendar,
+                            onTap: () =>
+                                setState(() => _showCalendar = false),
+                          ),
+                          _buildViewToggle(
+                            icon: Icons.calendar_month,
+                            label: 'Takvim',
+                            isSelected: _showCalendar,
+                            onTap: () =>
+                                setState(() => _showCalendar = true),
+                          ),
+                        ],
+                      ),
                     ),
                     const SizedBox(width: 12),
                     OutlinedButton.icon(
-                      onPressed: () => ref.invalidate(realtorAppointmentsProvider(widget.realtorId)),
+                      onPressed: () => ref.invalidate(
+                        realtorAppointmentsProvider(widget.realtorId),
+                      ),
                       icon: const Icon(Icons.refresh, size: 18),
                       label: const Text('Yenile'),
                     ),
@@ -76,44 +106,90 @@ class _AdminAppointmentsScreenState extends ConsumerState<AdminAppointmentsScree
             // Stats Cards
             appointmentsAsync.when(
               data: (appointments) {
-                final pendingCount = appointments.where((a) => a['status'] == 'pending').length;
-                final confirmedCount = appointments.where((a) => a['status'] == 'confirmed').length;
-                final completedCount = appointments.where((a) => a['status'] == 'completed').length;
-                final cancelledCount = appointments.where((a) => a['status'] == 'cancelled').length;
+                final pendingCount = appointments
+                    .where((a) => a['status'] == 'pending')
+                    .length;
+                final confirmedCount = appointments
+                    .where((a) => a['status'] == 'confirmed')
+                    .length;
+                final completedCount = appointments
+                    .where((a) => a['status'] == 'completed')
+                    .length;
+                final cancelledCount = appointments
+                    .where((a) => a['status'] == 'cancelled')
+                    .length;
+                final todayCount = _countTodayAppointments(appointments);
 
                 return Row(
                   children: [
-                    _buildStatCard('Toplam', appointments.length.toString(), Icons.event, AppColors.primary),
+                    _buildStatCard(
+                      'Toplam',
+                      appointments.length.toString(),
+                      Icons.event,
+                      AppColors.primary,
+                    ),
                     const SizedBox(width: 16),
-                    _buildStatCard('Beklemede', pendingCount.toString(), Icons.pending, AppColors.warning),
+                    _buildStatCard(
+                      'Bugün',
+                      todayCount.toString(),
+                      Icons.today,
+                      todayCount > 0 ? AppColors.info : AppColors.textMuted,
+                    ),
                     const SizedBox(width: 16),
-                    _buildStatCard('Onaylandi', confirmedCount.toString(), Icons.event_available, AppColors.success),
+                    _buildStatCard(
+                      'Beklemede',
+                      pendingCount.toString(),
+                      Icons.pending,
+                      AppColors.warning,
+                    ),
                     const SizedBox(width: 16),
-                    _buildStatCard('Tamamlandi', completedCount.toString(), Icons.check_circle, AppColors.info),
+                    _buildStatCard(
+                      'Onaylandı',
+                      confirmedCount.toString(),
+                      Icons.event_available,
+                      AppColors.success,
+                    ),
                     const SizedBox(width: 16),
-                    _buildStatCard('Iptal', cancelledCount.toString(), Icons.event_busy, AppColors.error),
+                    _buildStatCard(
+                      'Tamamlandı',
+                      completedCount.toString(),
+                      Icons.check_circle,
+                      AppColors.info,
+                    ),
+                    const SizedBox(width: 16),
+                    _buildStatCard(
+                      'İptal',
+                      cancelledCount.toString(),
+                      Icons.event_busy,
+                      AppColors.error,
+                    ),
                   ],
                 );
               },
               loading: () => Row(
-                children: List.generate(5, (_) => Expanded(
-                  child: Container(
-                    height: 80,
-                    margin: const EdgeInsets.only(right: 16),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(12),
+                children: List.generate(
+                  6,
+                  (_) => Expanded(
+                    child: Container(
+                      height: 80,
+                      margin: const EdgeInsets.only(right: 16),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
                     ),
-                    child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
                   ),
-                )),
+                ),
               ),
-              error: (e, _) => const SizedBox.shrink(),
+              error: (_, _) => const SizedBox.shrink(),
             ),
 
             const SizedBox(height: 24),
 
-            // Status filter
+            // Status filter chips
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -123,7 +199,13 @@ class _AdminAppointmentsScreenState extends ConsumerState<AdminAppointmentsScree
               ),
               child: Row(
                 children: [
-                  const Text('Durum:', style: TextStyle(color: AppColors.textSecondary, fontSize: 14)),
+                  const Text(
+                    'Durum:',
+                    style: TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 14,
+                    ),
+                  ),
                   const SizedBox(width: 12),
                   ..._buildFilterChips(),
                 ],
@@ -138,7 +220,9 @@ class _AdminAppointmentsScreenState extends ConsumerState<AdminAppointmentsScree
                 data: (appointments) {
                   final filtered = _statusFilter == 'all'
                       ? appointments
-                      : appointments.where((a) => a['status'] == _statusFilter).toList();
+                      : appointments
+                          .where((a) => a['status'] == _statusFilter)
+                          .toList();
 
                   if (_showCalendar) {
                     return _buildCalendarView(filtered);
@@ -149,15 +233,23 @@ class _AdminAppointmentsScreenState extends ConsumerState<AdminAppointmentsScree
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          const Icon(Icons.event, size: 64, color: AppColors.textMuted),
+                          const Icon(
+                            Icons.event,
+                            size: 64,
+                            color: AppColors.textMuted,
+                          ),
                           const SizedBox(height: 16),
                           const Text(
-                            'Randevu bulunamadi',
-                            style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
+                            'Randevu bulunamadı',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 16,
+                            ),
                           ),
                           if (_statusFilter != 'all')
                             TextButton(
-                              onPressed: () => setState(() => _statusFilter = 'all'),
+                              onPressed: () =>
+                                  setState(() => _statusFilter = 'all'),
                               child: const Text('Filtreleri Temizle'),
                             ),
                         ],
@@ -168,11 +260,18 @@ class _AdminAppointmentsScreenState extends ConsumerState<AdminAppointmentsScree
                   return ListView.separated(
                     itemCount: filtered.length,
                     separatorBuilder: (_, _) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) => _buildAppointmentCard(filtered[index]),
+                    itemBuilder: (context, index) =>
+                        _buildAppointmentCard(filtered[index]),
                   );
                 },
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => Center(child: Text('Hata: $e', style: const TextStyle(color: AppColors.error))),
+                loading: () =>
+                    const Center(child: CircularProgressIndicator()),
+                error: (e, _) => Center(
+                  child: Text(
+                    'Hata: $e',
+                    style: const TextStyle(color: AppColors.error),
+                  ),
+                ),
               ),
             ),
           ],
@@ -181,13 +280,72 @@ class _AdminAppointmentsScreenState extends ConsumerState<AdminAppointmentsScree
     );
   }
 
+  Widget _buildViewToggle({
+    required IconData icon,
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.primary.withValues(alpha: 0.15)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: isSelected ? AppColors.primary : AppColors.textMuted,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? AppColors.primary : AppColors.textMuted,
+                fontSize: 13,
+                fontWeight:
+                    isSelected ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  int _countTodayAppointments(List<Map<String, dynamic>> appointments) {
+    final now = DateTime.now();
+    final todayStr =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    return appointments.where((a) {
+      final dateStr = a['appointment_date'] as String?;
+      if (dateStr == null) return false;
+      return dateStr.startsWith(todayStr);
+    }).length;
+  }
+
+  bool _isToday(String? dateStr) {
+    if (dateStr == null) return false;
+    final now = DateTime.now();
+    final todayStr =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+    return dateStr.startsWith(todayStr);
+  }
+
   List<Widget> _buildFilterChips() {
     final filters = [
-      ('all', 'Tumu'),
+      ('all', 'Tümü'),
       ('pending', 'Beklemede'),
-      ('confirmed', 'Onaylandi'),
-      ('cancelled', 'Iptal'),
-      ('completed', 'Tamamlandi'),
+      ('confirmed', 'Onaylandı'),
+      ('completed', 'Tamamlandı'),
+      ('cancelled', 'İptal'),
     ];
 
     return filters.map((f) {
@@ -212,34 +370,76 @@ class _AdminAppointmentsScreenState extends ConsumerState<AdminAppointmentsScree
   Widget _buildAppointmentCard(Map<String, dynamic> appointment) {
     final status = appointment['status'] as String? ?? 'pending';
     final property = appointment['properties'] as Map<String, dynamic>?;
-    final requester = appointment['user_profiles'] as Map<String, dynamic>?;
+    final clientName =
+        appointment['client_name'] as String? ?? 'Bilinmeyen';
+    final clientPhone = appointment['client_phone'] as String?;
     final propertyImages = property?['images'] as List?;
-    final imageUrl = propertyImages != null && propertyImages.isNotEmpty ? propertyImages[0] as String? : null;
+    final imageUrl = propertyImages != null && propertyImages.isNotEmpty
+        ? propertyImages[0] as String?
+        : null;
+    final appointmentDate = appointment['appointment_date'] as String?;
+    final appointmentTime = appointment['appointment_time'] as String? ?? '';
+    final isAppointmentToday = _isToday(appointmentDate);
+
+    // Calculate time slot display
+    String timeDisplay = '';
+    if (appointmentTime.isNotEmpty) {
+      final timePart = appointmentTime.length >= 5
+          ? appointmentTime.substring(0, 5)
+          : appointmentTime;
+      // Show 1-hour slot
+      final parts = timePart.split(':');
+      if (parts.length == 2) {
+        final hour = int.tryParse(parts[0]);
+        if (hour != null) {
+          final endHour = (hour + 1).toString().padLeft(2, '0');
+          timeDisplay = '$timePart - $endHour:${parts[1]}';
+        } else {
+          timeDisplay = timePart;
+        }
+      } else {
+        timeDisplay = timePart;
+      }
+    }
 
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.surfaceLight),
+        border: Border.all(
+          color: isAppointmentToday
+              ? AppColors.info.withValues(alpha: 0.4)
+              : AppColors.surfaceLight,
+          width: isAppointmentToday ? 1.5 : 1,
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Property image
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              width: 90,
+              height: 90,
               color: AppColors.surfaceLight,
-              image: imageUrl != null
-                  ? DecorationImage(image: NetworkImage(imageUrl), fit: BoxFit.cover)
-                  : null,
+              child: imageUrl != null
+                  ? Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => const Icon(
+                        Icons.home,
+                        color: AppColors.textMuted,
+                        size: 28,
+                      ),
+                    )
+                  : const Icon(
+                      Icons.home,
+                      color: AppColors.textMuted,
+                      size: 28,
+                    ),
             ),
-            child: imageUrl == null
-                ? const Icon(Icons.home, color: AppColors.textMuted, size: 28)
-                : null,
           ),
           const SizedBox(width: 20),
           // Details
@@ -251,7 +451,7 @@ class _AdminAppointmentsScreenState extends ConsumerState<AdminAppointmentsScree
                   children: [
                     Expanded(
                       child: Text(
-                        property?['title'] ?? 'Bilinmeyen Ilan',
+                        property?['title'] ?? 'Bilinmeyen İlan',
                         style: const TextStyle(
                           color: AppColors.textPrimary,
                           fontWeight: FontWeight.w600,
@@ -260,65 +460,178 @@ class _AdminAppointmentsScreenState extends ConsumerState<AdminAppointmentsScree
                       ),
                     ),
                     _buildStatusBadge(status),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                // Requester info
-                Row(
-                  children: [
-                    const Icon(Icons.person, size: 16, color: AppColors.textMuted),
-                    const SizedBox(width: 6),
-                    Text(
-                      requester?['full_name'] ?? 'Bilinmeyen',
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
-                    ),
-                    if (requester?['phone'] != null) ...[
-                      const SizedBox(width: 16),
-                      const Icon(Icons.phone, size: 14, color: AppColors.textMuted),
-                      const SizedBox(width: 4),
-                      Text(
-                        requester!['phone'],
-                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                    if (isAppointmentToday) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.info.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.today,
+                              size: 12,
+                              color: AppColors.info,
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              'Bugün',
+                              style: TextStyle(
+                                color: AppColors.info,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ],
                 ),
-                const SizedBox(height: 6),
-                // Date & time
+                const SizedBox(height: 10),
+                // Client info
                 Row(
                   children: [
-                    const Icon(Icons.calendar_today, size: 14, color: AppColors.textMuted),
-                    const SizedBox(width: 6),
-                    Text(
-                      appointment['appointment_date'] != null
-                          ? _dateFormat.format(DateTime.parse(appointment['appointment_date']))
-                          : '-',
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                    Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.person,
+                        size: 14,
+                        color: AppColors.primary,
+                      ),
                     ),
-                    const SizedBox(width: 16),
-                    const Icon(Icons.access_time, size: 14, color: AppColors.textMuted),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 8),
                     Text(
-                      appointment['appointment_time'] ?? '-',
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                      clientName,
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
+                    if (clientPhone != null) ...[
+                      const SizedBox(width: 16),
+                      const Icon(
+                        Icons.phone,
+                        size: 14,
+                        color: AppColors.textMuted,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        clientPhone,
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 8),
+                // Date & time slot
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.background,
+                        borderRadius: BorderRadius.circular(8),
+                        border:
+                            Border.all(color: AppColors.surfaceLight),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.calendar_today,
+                            size: 13,
+                            color: AppColors.textMuted,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            appointmentDate != null
+                                ? _dateFormat.format(
+                                    DateTime.parse(appointmentDate))
+                                : '-',
+                            style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    if (timeDisplay.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.background,
+                          borderRadius: BorderRadius.circular(8),
+                          border:
+                              Border.all(color: AppColors.surfaceLight),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.access_time,
+                              size: 13,
+                              color: AppColors.textMuted,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              timeDisplay,
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                   ],
                 ),
                 // Notes
-                if (appointment['note'] != null && (appointment['note'] as String).isNotEmpty) ...[
-                  const SizedBox(height: 6),
+                if (appointment['note'] != null &&
+                    (appointment['note'] as String).isNotEmpty) ...[
+                  const SizedBox(height: 8),
                   Text(
                     'Not: ${appointment['note']}',
-                    style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                    style: const TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 12,
+                    ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
-                if (appointment['response_note'] != null && (appointment['response_note'] as String).isNotEmpty) ...[
+                if (appointment['response_note'] != null &&
+                    (appointment['response_note'] as String).isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Text(
                     'Yanit: ${appointment['response_note']}',
-                    style: const TextStyle(color: AppColors.info, fontSize: 13),
+                    style: const TextStyle(
+                      color: AppColors.info,
+                      fontSize: 12,
+                    ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -327,16 +640,39 @@ class _AdminAppointmentsScreenState extends ConsumerState<AdminAppointmentsScree
             ),
           ),
           const SizedBox(width: 16),
-          // Actions
+          // Actions - status workflow
           Column(
             children: [
               if (status == 'pending') ...[
-                _buildActionButton('Onayla', Icons.check, AppColors.success, () => _updateStatus(appointment['id'], 'confirmed')),
+                _buildActionButton(
+                  'Onayla',
+                  Icons.check,
+                  AppColors.success,
+                  () => _updateStatus(appointment['id'], 'confirmed'),
+                ),
                 const SizedBox(height: 8),
-                _buildActionButton('Iptal Et', Icons.close, AppColors.error, () => _updateStatus(appointment['id'], 'cancelled')),
+                _buildActionButton(
+                  'İptal Et',
+                  Icons.close,
+                  AppColors.error,
+                  () => _updateStatus(appointment['id'], 'cancelled'),
+                ),
               ],
-              if (status == 'confirmed')
-                _buildActionButton('Tamamla', Icons.done_all, AppColors.info, () => _updateStatus(appointment['id'], 'completed')),
+              if (status == 'confirmed') ...[
+                _buildActionButton(
+                  'Tamamla',
+                  Icons.done_all,
+                  AppColors.info,
+                  () => _updateStatus(appointment['id'], 'completed'),
+                ),
+                const SizedBox(height: 8),
+                _buildActionButton(
+                  'İptal Et',
+                  Icons.close,
+                  AppColors.error,
+                  () => _updateStatus(appointment['id'], 'cancelled'),
+                ),
+              ],
             ],
           ),
         ],
@@ -344,13 +680,21 @@ class _AdminAppointmentsScreenState extends ConsumerState<AdminAppointmentsScree
     );
   }
 
-  Widget _buildActionButton(String label, IconData icon, Color color, VoidCallback onPressed) {
+  Widget _buildActionButton(
+    String label,
+    IconData icon,
+    Color color,
+    VoidCallback onPressed,
+  ) {
     return SizedBox(
       width: 120,
       child: OutlinedButton.icon(
         onPressed: onPressed,
         icon: Icon(icon, size: 16, color: color),
-        label: Text(label, style: TextStyle(color: color, fontSize: 12)),
+        label: Text(
+          label,
+          style: TextStyle(color: color, fontSize: 12),
+        ),
         style: OutlinedButton.styleFrom(
           side: BorderSide(color: color.withValues(alpha: 0.5)),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -370,7 +714,9 @@ class _AdminAppointmentsScreenState extends ConsumerState<AdminAppointmentsScree
     final Map<int, List<Map<String, dynamic>>> appointmentsByDay = {};
     for (final a in appointments) {
       final dateStr = a['appointment_date'] as String?;
-      if (dateStr == null) continue;
+      if (dateStr == null) {
+        continue;
+      }
       final date = DateTime.tryParse(dateStr);
       if (date != null && date.year == year && date.month == month) {
         appointmentsByDay.putIfAbsent(date.day, () => []).add(a);
@@ -394,7 +740,10 @@ class _AdminAppointmentsScreenState extends ConsumerState<AdminAppointmentsScree
                 onPressed: () => setState(() {
                   _calendarMonth = DateTime(year, month - 1);
                 }),
-                icon: const Icon(Icons.chevron_left, color: AppColors.textPrimary),
+                icon: const Icon(
+                  Icons.chevron_left,
+                  color: AppColors.textPrimary,
+                ),
               ),
               Text(
                 monthName,
@@ -408,17 +757,28 @@ class _AdminAppointmentsScreenState extends ConsumerState<AdminAppointmentsScree
                 onPressed: () => setState(() {
                   _calendarMonth = DateTime(year, month + 1);
                 }),
-                icon: const Icon(Icons.chevron_right, color: AppColors.textPrimary),
+                icon: const Icon(
+                  Icons.chevron_right,
+                  color: AppColors.textPrimary,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 16),
           // Weekday headers
           Row(
-            children: ['Pzt', 'Sal', 'Car', 'Per', 'Cum', 'Cmt', 'Paz'].map((day) {
+            children: ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz']
+                .map((day) {
               return Expanded(
                 child: Center(
-                  child: Text(day, style: const TextStyle(color: AppColors.textMuted, fontSize: 12, fontWeight: FontWeight.w600)),
+                  child: Text(
+                    day,
+                    style: const TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               );
             }).toList(),
@@ -427,9 +787,10 @@ class _AdminAppointmentsScreenState extends ConsumerState<AdminAppointmentsScree
           // Calendar grid
           Expanded(
             child: GridView.builder(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              gridDelegate:
+                  const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 7,
-                childAspectRatio: 1.2,
+                childAspectRatio: 1.0,
                 crossAxisSpacing: 4,
                 mainAxisSpacing: 4,
               ),
@@ -441,43 +802,85 @@ class _AdminAppointmentsScreenState extends ConsumerState<AdminAppointmentsScree
                 }
                 final day = dayOffset + 1;
                 final dayAppointments = appointmentsByDay[day] ?? [];
-                final isToday = DateTime.now().year == year && DateTime.now().month == month && DateTime.now().day == day;
+                final isToday = DateTime.now().year == year &&
+                    DateTime.now().month == month &&
+                    DateTime.now().day == day;
 
-                return Container(
-                  decoration: BoxDecoration(
-                    color: isToday ? AppColors.primary.withValues(alpha: 0.1) : null,
-                    borderRadius: BorderRadius.circular(8),
-                    border: isToday ? Border.all(color: AppColors.primary.withValues(alpha: 0.3)) : null,
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        '$day',
-                        style: TextStyle(
-                          color: isToday ? AppColors.primary : AppColors.textPrimary,
-                          fontSize: 14,
-                          fontWeight: isToday ? FontWeight.bold : FontWeight.normal,
+                return InkWell(
+                  onTap: dayAppointments.isNotEmpty
+                      ? () => _showDayAppointmentsDialog(
+                            day,
+                            month,
+                            year,
+                            dayAppointments,
+                          )
+                      : null,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: isToday
+                          ? AppColors.primary.withValues(alpha: 0.1)
+                          : dayAppointments.isNotEmpty
+                              ? AppColors.surfaceLight
+                                  .withValues(alpha: 0.3)
+                              : null,
+                      borderRadius: BorderRadius.circular(8),
+                      border: isToday
+                          ? Border.all(
+                              color: AppColors.primary
+                                  .withValues(alpha: 0.3),
+                            )
+                          : null,
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '$day',
+                          style: TextStyle(
+                            color: isToday
+                                ? AppColors.primary
+                                : AppColors.textPrimary,
+                            fontSize: 14,
+                            fontWeight: isToday
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                          ),
                         ),
-                      ),
-                      if (dayAppointments.isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: dayAppointments.take(3).map((a) {
-                            return Container(
-                              width: 6,
-                              height: 6,
-                              margin: const EdgeInsets.symmetric(horizontal: 1),
-                              decoration: BoxDecoration(
-                                color: _getStatusColor(a['status'] as String? ?? 'pending'),
-                                shape: BoxShape.circle,
+                        if (dayAppointments.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children:
+                                dayAppointments.take(4).map((a) {
+                              return Container(
+                                width: 7,
+                                height: 7,
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: 1,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _getStatusColor(
+                                    a['status'] as String? ?? 'pending',
+                                  ),
+                                  shape: BoxShape.circle,
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                          if (dayAppointments.length > 4) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              '+${dayAppointments.length - 4}',
+                              style: const TextStyle(
+                                color: AppColors.textMuted,
+                                fontSize: 9,
                               ),
-                            );
-                          }).toList(),
-                        ),
+                            ),
+                          ],
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 );
               },
@@ -490,14 +893,159 @@ class _AdminAppointmentsScreenState extends ConsumerState<AdminAppointmentsScree
             children: [
               _buildLegendItem('Beklemede', AppColors.warning),
               const SizedBox(width: 16),
-              _buildLegendItem('Onaylandi', AppColors.success),
+              _buildLegendItem('Onaylandı', AppColors.success),
               const SizedBox(width: 16),
-              _buildLegendItem('Tamamlandi', AppColors.info),
+              _buildLegendItem('Tamamlandı', AppColors.info),
               const SizedBox(width: 16),
-              _buildLegendItem('Iptal', AppColors.error),
+              _buildLegendItem('İptal', AppColors.error),
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  void _showDayAppointmentsDialog(
+    int day,
+    int month,
+    int year,
+    List<Map<String, dynamic>> appointments,
+  ) {
+    final dateStr = _dateFormat.format(DateTime(year, month, day));
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: AppColors.surface,
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 500, maxHeight: 500),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.calendar_today,
+                      size: 20,
+                      color: AppColors.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      dateStr,
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '${appointments.length} randevu',
+                      style: const TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      icon: const Icon(
+                        Icons.close,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1, color: AppColors.surfaceLight),
+              Expanded(
+                child: ListView.separated(
+                  padding: const EdgeInsets.all(12),
+                  itemCount: appointments.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 8),
+                  itemBuilder: (_, index) {
+                    final a = appointments[index];
+                    final status =
+                        a['status'] as String? ?? 'pending';
+                    final property =
+                        a['properties'] as Map<String, dynamic>?;
+                    final time =
+                        a['appointment_time'] as String? ?? '-';
+                    final clientName =
+                        a['client_name'] as String? ?? '-';
+
+                    return Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.background,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        children: [
+                          // Time
+                          Container(
+                            width: 60,
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _getStatusColor(status)
+                                  .withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Center(
+                              child: Text(
+                                time.length >= 5
+                                    ? time.substring(0, 5)
+                                    : time,
+                                style: TextStyle(
+                                  color: _getStatusColor(status),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  property?['title'] ??
+                                      'Bilinmeyen İlan',
+                                  style: const TextStyle(
+                                    color: AppColors.textPrimary,
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 14,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Text(
+                                  clientName,
+                                  style: const TextStyle(
+                                    color: AppColors.textMuted,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          _buildStatusBadge(status),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -512,12 +1060,23 @@ class _AdminAppointmentsScreenState extends ConsumerState<AdminAppointmentsScree
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 4),
-        Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 11)),
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.textSecondary,
+            fontSize: 11,
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildStatCard(String title, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(20),
@@ -550,7 +1109,10 @@ class _AdminAppointmentsScreenState extends ConsumerState<AdminAppointmentsScree
                 ),
                 Text(
                   title,
-                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                  ),
                 ),
               ],
             ),
@@ -572,7 +1134,11 @@ class _AdminAppointmentsScreenState extends ConsumerState<AdminAppointmentsScree
       ),
       child: Text(
         text,
-        style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w500),
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
       ),
     );
   }
@@ -597,17 +1163,20 @@ class _AdminAppointmentsScreenState extends ConsumerState<AdminAppointmentsScree
       case 'pending':
         return 'Beklemede';
       case 'confirmed':
-        return 'Onaylandi';
+        return 'Onaylandı';
       case 'completed':
-        return 'Tamamlandi';
+        return 'Tamamlandı';
       case 'cancelled':
-        return 'Iptal';
+        return 'İptal';
       default:
         return status;
     }
   }
 
-  Future<void> _updateStatus(String appointmentId, String newStatus) async {
+  Future<void> _updateStatus(
+    String appointmentId,
+    String newStatus,
+  ) async {
     try {
       final supabase = ref.read(supabaseProvider);
       await supabase.from('appointments').update({
@@ -619,14 +1188,18 @@ class _AdminAppointmentsScreenState extends ConsumerState<AdminAppointmentsScree
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Randevu ${_getStatusText(newStatus).toLowerCase()}'),
+          content:
+              Text('Randevu ${_getStatusText(newStatus).toLowerCase()}'),
           backgroundColor: _getStatusColor(newStatus),
         ),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error),
+        SnackBar(
+          content: Text('Hata: $e'),
+          backgroundColor: AppColors.error,
+        ),
       );
     }
   }

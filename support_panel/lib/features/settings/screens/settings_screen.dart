@@ -8,7 +8,8 @@ class SupportSettingsScreen extends ConsumerStatefulWidget {
   const SupportSettingsScreen({super.key});
 
   @override
-  ConsumerState<SupportSettingsScreen> createState() => _SupportSettingsScreenState();
+  ConsumerState<SupportSettingsScreen> createState() =>
+      _SupportSettingsScreenState();
 }
 
 class _SupportSettingsScreenState extends ConsumerState<SupportSettingsScreen> {
@@ -19,7 +20,9 @@ class _SupportSettingsScreenState extends ConsumerState<SupportSettingsScreen> {
     final agent = ref.watch(currentAgentProvider).value;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardColor = isDark ? AppColors.surface : AppColors.lightSurface;
-    final borderColor = isDark ? AppColors.surfaceLight : const Color(0xFFE2E8F0);
+    final borderColor = isDark
+        ? AppColors.surfaceLight
+        : const Color(0xFFE2E8F0);
     final textMuted = isDark ? AppColors.textMuted : AppColors.lightTextMuted;
 
     if (agent == null) {
@@ -31,7 +34,12 @@ class _SupportSettingsScreenState extends ConsumerState<SupportSettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Ayarlar', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
+          Text(
+            'Ayarlar',
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700),
+          ),
           const SizedBox(height: 24),
 
           // Profil Kartı
@@ -46,7 +54,16 @@ class _SupportSettingsScreenState extends ConsumerState<SupportSettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Profil Bilgileri', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary)),
+                Text(
+                  'Profil Bilgileri',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: isDark
+                        ? AppColors.textPrimary
+                        : AppColors.lightTextPrimary,
+                  ),
+                ),
                 const SizedBox(height: 16),
                 Row(
                   children: [
@@ -54,8 +71,14 @@ class _SupportSettingsScreenState extends ConsumerState<SupportSettingsScreen> {
                       radius: 32,
                       backgroundColor: AppColors.primary.withValues(alpha: 0.2),
                       child: Text(
-                        agent.fullName.isNotEmpty ? agent.fullName[0].toUpperCase() : '?',
-                        style: const TextStyle(color: AppColors.primary, fontSize: 24, fontWeight: FontWeight.w700),
+                        agent.fullName.isNotEmpty
+                            ? agent.fullName[0].toUpperCase()
+                            : '?',
+                        style: const TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 20),
@@ -63,15 +86,30 @@ class _SupportSettingsScreenState extends ConsumerState<SupportSettingsScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(agent.fullName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                          Text(
+                            agent.fullName,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                           const SizedBox(height: 4),
-                          Text(agent.email, style: TextStyle(color: textMuted, fontSize: 14)),
+                          Text(
+                            agent.email,
+                            style: TextStyle(color: textMuted, fontSize: 14),
+                          ),
                           const SizedBox(height: 4),
                           Row(
                             children: [
-                              _buildInfoChip(agent.permissionLevelDisplay, AppColors.primary),
+                              _buildInfoChip(
+                                agent.permissionLevelDisplay,
+                                AppColors.primary,
+                              ),
                               const SizedBox(width: 8),
-                              _buildInfoChip(agent.statusDisplay, _statusColor(agent.status)),
+                              _buildInfoChip(
+                                agent.statusDisplay,
+                                _statusColor(agent.status),
+                              ),
                             ],
                           ),
                         ],
@@ -106,31 +144,57 @@ class _SupportSettingsScreenState extends ConsumerState<SupportSettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Vardiya Bilgileri', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary)),
+                Text(
+                  'Vardiya Bilgileri',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: isDark
+                        ? AppColors.textPrimary
+                        : AppColors.lightTextPrimary,
+                  ),
+                ),
                 const SizedBox(height: 16),
-                _buildInfoRow('Maks Eşzamanlı Chat', '${agent.maxConcurrentChats}', textMuted),
+                _buildInfoRow(
+                  'Maks Eşzamanlı Chat',
+                  '${agent.maxConcurrentChats}',
+                  textMuted,
+                ),
                 const SizedBox(height: 12),
-                _buildInfoRow('Aktif Chat Sayısı', '${agent.activeChatCount}', textMuted),
+                _buildInfoRow(
+                  'Aktif Chat Sayısı',
+                  '${agent.activeChatCount}',
+                  textMuted,
+                ),
                 const SizedBox(height: 12),
                 _buildInfoRow(
                   'Vardiya Başlangıç',
-                  agent.shiftStart != null ? _formatTime(agent.shiftStart!) : 'Belirlenmedi',
+                  agent.shiftStart != null
+                      ? _formatTime(agent.shiftStart!)
+                      : 'Belirlenmedi',
                   textMuted,
                 ),
                 const SizedBox(height: 12),
                 _buildInfoRow(
                   'Vardiya Bitiş',
-                  agent.shiftEnd != null ? _formatTime(agent.shiftEnd!) : 'Belirlenmedi',
+                  agent.shiftEnd != null
+                      ? _formatTime(agent.shiftEnd!)
+                      : 'Belirlenmedi',
                   textMuted,
                 ),
                 if (agent.specializations.isNotEmpty) ...[
                   const SizedBox(height: 12),
-                  Text('Uzmanlık Alanları', style: TextStyle(color: textMuted, fontSize: 13)),
+                  Text(
+                    'Uzmanlık Alanları',
+                    style: TextStyle(color: textMuted, fontSize: 13),
+                  ),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: agent.specializations.map((s) => _buildInfoChip(s, AppColors.info)).toList(),
+                    children: agent.specializations
+                        .map((s) => _buildInfoChip(s, AppColors.info))
+                        .toList(),
                   ),
                 ],
               ],
@@ -150,15 +214,28 @@ class _SupportSettingsScreenState extends ConsumerState<SupportSettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Görünüm', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary)),
+                Text(
+                  'Görünüm',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: isDark
+                        ? AppColors.textPrimary
+                        : AppColors.lightTextPrimary,
+                  ),
+                ),
                 const SizedBox(height: 16),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text('Koyu Tema'),
-                  subtitle: Text('Koyu tema kullanarak göz yorgunluğunu azaltın', style: TextStyle(color: textMuted, fontSize: 13)),
+                  subtitle: Text(
+                    'Koyu tema kullanarak göz yorgunluğunu azaltın',
+                    style: TextStyle(color: textMuted, fontSize: 13),
+                  ),
                   value: isDark,
-                  activeColor: AppColors.primary,
-                  onChanged: (_) => ref.read(themeModeProvider.notifier).toggle(),
+                  activeThumbColor: AppColors.primary,
+                  onChanged: (_) =>
+                      ref.read(themeModeProvider.notifier).toggle(),
                 ),
               ],
             ),
@@ -177,15 +254,39 @@ class _SupportSettingsScreenState extends ConsumerState<SupportSettingsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Durum', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isDark ? AppColors.textPrimary : AppColors.lightTextPrimary)),
+                Text(
+                  'Durum',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: isDark
+                        ? AppColors.textPrimary
+                        : AppColors.lightTextPrimary,
+                  ),
+                ),
                 const SizedBox(height: 16),
                 Wrap(
                   spacing: 12,
                   runSpacing: 12,
                   children: [
-                    _buildStatusButton('online', 'Çevrimiçi', AppColors.success, agent.status),
-                    _buildStatusButton('busy', 'Meşgul', AppColors.warning, agent.status),
-                    _buildStatusButton('break', 'Mola', AppColors.info, agent.status),
+                    _buildStatusButton(
+                      'online',
+                      'Çevrimiçi',
+                      AppColors.success,
+                      agent.status,
+                    ),
+                    _buildStatusButton(
+                      'busy',
+                      'Meşgul',
+                      AppColors.warning,
+                      agent.status,
+                    ),
+                    _buildStatusButton(
+                      'break',
+                      'Mola',
+                      AppColors.info,
+                      agent.status,
+                    ),
                   ],
                 ),
               ],
@@ -203,7 +304,14 @@ class _SupportSettingsScreenState extends ConsumerState<SupportSettingsScreen> {
         color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(6),
       ),
-      child: Text(text, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w600)),
+      child: Text(
+        text,
+        style: TextStyle(
+          color: color,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 
@@ -217,14 +325,21 @@ class _SupportSettingsScreenState extends ConsumerState<SupportSettingsScreen> {
     );
   }
 
-  Widget _buildStatusButton(String status, String label, Color color, String currentStatus) {
+  Widget _buildStatusButton(
+    String status,
+    String label,
+    Color color,
+    String currentStatus,
+  ) {
     final isActive = status == currentStatus;
     return OutlinedButton.icon(
       onPressed: _saving
           ? null
           : () async {
               setState(() => _saving = true);
-              await ref.read(currentAgentProvider.notifier).updateStatus(status);
+              await ref
+                  .read(currentAgentProvider.notifier)
+                  .updateStatus(status);
               if (mounted) setState(() => _saving = false);
             },
       icon: Container(
@@ -235,7 +350,10 @@ class _SupportSettingsScreenState extends ConsumerState<SupportSettingsScreen> {
       label: Text(label),
       style: OutlinedButton.styleFrom(
         foregroundColor: isActive ? color : null,
-        side: BorderSide(color: isActive ? color : Colors.grey.withValues(alpha: 0.3), width: isActive ? 2 : 1),
+        side: BorderSide(
+          color: isActive ? color : Colors.grey.withValues(alpha: 0.3),
+          width: isActive ? 2 : 1,
+        ),
         backgroundColor: isActive ? color.withValues(alpha: 0.1) : null,
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       ),
@@ -248,10 +366,14 @@ class _SupportSettingsScreenState extends ConsumerState<SupportSettingsScreen> {
 
   Color _statusColor(String status) {
     switch (status) {
-      case 'online': return AppColors.success;
-      case 'busy': return AppColors.warning;
-      case 'break': return AppColors.info;
-      default: return AppColors.textMuted;
+      case 'online':
+        return AppColors.success;
+      case 'busy':
+        return AppColors.warning;
+      case 'break':
+        return AppColors.info;
+      default:
+        return AppColors.textMuted;
     }
   }
 }

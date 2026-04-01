@@ -1,4 +1,3 @@
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -80,14 +79,19 @@ class FoodAdminService {
         .from('restaurant_categories')
         .select()
         .order('sort_order');
-    return (response as List).map((e) => RestaurantCategory.fromJson(e)).toList();
+    return (response as List)
+        .map((e) => RestaurantCategory.fromJson(e))
+        .toList();
   }
 
   Future<void> createRestaurantCategory(Map<String, dynamic> data) async {
     await _client.from('restaurant_categories').insert(data);
   }
 
-  Future<void> updateRestaurantCategory(String id, Map<String, dynamic> data) async {
+  Future<void> updateRestaurantCategory(
+    String id,
+    Map<String, dynamic> data,
+  ) async {
     await _client.from('restaurant_categories').update(data).eq('id', id);
   }
 
@@ -96,9 +100,16 @@ class FoodAdminService {
   }
 
   // Image Upload with Auto-Resize
-  Future<String> uploadCategoryImage(Uint8List imageBytes, String fileName) async {
+  Future<String> uploadCategoryImage(
+    Uint8List imageBytes,
+    String fileName,
+  ) async {
     // Resize image to max 400x400 for category thumbnails
-    final resizedBytes = _resizeImage(imageBytes, maxWidth: 400, maxHeight: 400);
+    final resizedBytes = _resizeImage(
+      imageBytes,
+      maxWidth: 400,
+      maxHeight: 400,
+    );
 
     // Generate unique filename (remove special characters from filename)
     final timestamp = DateTime.now().millisecondsSinceEpoch;
@@ -108,21 +119,29 @@ class FoodAdminService {
     final uniqueFileName = 'restaurant_categories/${timestamp}_$safeName.jpg';
 
     // Upload to Supabase Storage - always JPEG after resize
-    await _client.storage.from('images').uploadBinary(
-      uniqueFileName,
-      resizedBytes,
-      fileOptions: const FileOptions(
-        contentType: 'image/jpeg',
-        upsert: true,
-      ),
-    );
+    await _client.storage
+        .from('images')
+        .uploadBinary(
+          uniqueFileName,
+          resizedBytes,
+          fileOptions: const FileOptions(
+            contentType: 'image/jpeg',
+            upsert: true,
+          ),
+        );
 
     // Get public URL
-    final publicUrl = _client.storage.from('images').getPublicUrl(uniqueFileName);
+    final publicUrl = _client.storage
+        .from('images')
+        .getPublicUrl(uniqueFileName);
     return publicUrl;
   }
 
-  Uint8List _resizeImage(Uint8List imageBytes, {required int maxWidth, required int maxHeight}) {
+  Uint8List _resizeImage(
+    Uint8List imageBytes, {
+    required int maxWidth,
+    required int maxHeight,
+  }) {
     // Decode image
     final image = img.decodeImage(imageBytes);
     if (image == null) return imageBytes;
@@ -151,7 +170,10 @@ class FoodAdminService {
   }
 
   // Store Category Image Upload (square crop + resize for icon)
-  Future<String> uploadStoreCategoryImage(Uint8List imageBytes, String fileName) async {
+  Future<String> uploadStoreCategoryImage(
+    Uint8List imageBytes,
+    String fileName,
+  ) async {
     final resizedBytes = await compute(_resizeSquareImage, imageBytes);
 
     final timestamp = DateTime.now().millisecondsSinceEpoch;
@@ -160,14 +182,16 @@ class FoodAdminService {
         .replaceAll(RegExp(r'_+'), '_');
     final uniqueFileName = 'store_categories/${timestamp}_$safeName.jpg';
 
-    await _client.storage.from('images').uploadBinary(
-      uniqueFileName,
-      resizedBytes,
-      fileOptions: const FileOptions(
-        contentType: 'image/jpeg',
-        upsert: true,
-      ),
-    );
+    await _client.storage
+        .from('images')
+        .uploadBinary(
+          uniqueFileName,
+          resizedBytes,
+          fileOptions: const FileOptions(
+            contentType: 'image/jpeg',
+            upsert: true,
+          ),
+        );
 
     return _client.storage.from('images').getPublicUrl(uniqueFileName);
   }
@@ -211,7 +235,13 @@ Uint8List _resizeSquareImage(Uint8List imageBytes) {
   final minDim = image.width < image.height ? image.width : image.height;
   final x = (image.width - minDim) ~/ 2;
   final y = (image.height - minDim) ~/ 2;
-  final cropped = img.copyCrop(image, x: x, y: y, width: minDim, height: minDim);
+  final cropped = img.copyCrop(
+    image,
+    x: x,
+    y: y,
+    width: minDim,
+    height: minDim,
+  );
   final resized = img.copyResize(cropped, width: 200, height: 200);
   return Uint8List.fromList(img.encodeJpg(resized, quality: 90));
 }
@@ -219,12 +249,16 @@ Uint8List _resizeSquareImage(Uint8List imageBytes) {
 // Providers
 final foodAdminServiceProvider = Provider((ref) => FoodAdminService());
 
-final restaurantCategoriesProvider = FutureProvider<List<RestaurantCategory>>((ref) async {
+final restaurantCategoriesProvider = FutureProvider<List<RestaurantCategory>>((
+  ref,
+) async {
   final service = ref.watch(foodAdminServiceProvider);
   return service.getRestaurantCategories();
 });
 
-final storeCategoriesProvider = FutureProvider<List<StoreCategory>>((ref) async {
+final storeCategoriesProvider = FutureProvider<List<StoreCategory>>((
+  ref,
+) async {
   final service = ref.watch(foodAdminServiceProvider);
   return service.getStoreCategories();
 });

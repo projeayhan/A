@@ -712,7 +712,11 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   OutlinedButton.icon(
-                    onPressed: () {},
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Excel dışa aktarma yakında eklenecek')),
+                      );
+                    },
                     icon: const Icon(Icons.download, size: 18),
                     label: const Text('Excel\'e Aktar'),
                   ),
@@ -1076,7 +1080,11 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   OutlinedButton.icon(
-                    onPressed: () {},
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Excel dışa aktarma yakında eklenecek')),
+                      );
+                    },
                     icon: const Icon(Icons.download, size: 18),
                     label: const Text('Excel\'e Aktar'),
                   ),
@@ -1205,7 +1213,9 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
                       Icon(Icons.location_on, size: 14, color: AppColors.textMuted),
                       const SizedBox(width: 4),
                       Text(
-                        realtor['city'] ?? '-',
+                        (realtor['working_cities'] is List && (realtor['working_cities'] as List).isNotEmpty)
+                            ? (realtor['working_cities'] as List).join(', ')
+                            : '-',
                         style: TextStyle(color: AppColors.textMuted, fontSize: 13),
                       ),
                       if (realtor['experience_years'] != null) ...[
@@ -1295,8 +1305,8 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
     }
 
     List<String> serviceCities = [];
-    if (realtor['service_cities'] != null && realtor['service_cities'] is List) {
-      serviceCities = List<String>.from(realtor['service_cities']);
+    if (realtor['working_cities'] != null && realtor['working_cities'] is List) {
+      serviceCities = List<String>.from(realtor['working_cities']);
     }
 
     showDialog(
@@ -1370,7 +1380,7 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
                       _buildDetailCard('Profesyonel Bilgiler', Icons.work, [
                         _buildDetailItem('Sirket Adi', realtor['company_name']),
                         _buildDetailItem('Deneyim', '${realtor['experience_years'] ?? 0} yil'),
-                        _buildDetailItem('Sehir', realtor['city']),
+                        _buildDetailItem('Şehirler', realtor['working_cities'] is List ? (realtor['working_cities'] as List).join(', ') : '-'),
                         _buildDetailItem('Lisans No', realtor['license_number']),
                       ]),
                       const SizedBox(height: 16),
@@ -1392,7 +1402,7 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
                       const SizedBox(height: 16),
 
                       if (serviceCities.isNotEmpty)
-                        _buildDetailCard('Hizmet Verdigi Sehirler', Icons.location_city, [
+                        _buildDetailCard('Hizmet Verdiği Şehirler', Icons.location_city, [
                           Padding(
                             padding: const EdgeInsets.symmetric(vertical: 4),
                             child: Wrap(
@@ -1609,7 +1619,11 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   OutlinedButton.icon(
-                    onPressed: () {},
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Excel dışa aktarma yakında eklenecek')),
+                      );
+                    },
                     icon: const Icon(Icons.download, size: 18),
                     label: const Text('Excel\'e Aktar'),
                   ),
@@ -2221,23 +2235,14 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
                           children: [
                             _buildDetailCard('Kisisel Bilgiler', Icons.person, [
                               if (type == 'taxi') ...[
-                                _buildDetailItem('Ad', app['first_name']),
-                                _buildDetailItem('Soyad', app['last_name']),
+                                _buildDetailItem('Ad Soyad', app['full_name']),
                                 _buildDetailItem(
                                   'TC Kimlik No',
-                                  app['tc_no'] ?? app['national_id'],
-                                ),
-                                _buildDetailItem(
-                                  'Dogum Tarihi',
-                                  _formatDate(app['date_of_birth']),
+                                  app['tc_no'],
                                 ),
                               ] else if (type == 'courier') ...[
                                 _buildDetailItem('Ad Soyad', app['full_name']),
                                 _buildDetailItem('TC Kimlik No', app['tc_no']),
-                                _buildDetailItem(
-                                  'Dogum Tarihi',
-                                  _formatDate(app['birth_date']),
-                                ),
                               ] else ...[
                                 _buildDetailItem(
                                   'Isletme Adi',
@@ -2251,7 +2256,7 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
                               _buildDetailItem('Adres', app['address']),
                               if (app['city'] != null)
                                 _buildDetailItem(
-                                  'Sehir',
+                                  'Şehir',
                                   '${app['district'] ?? ''}, ${app['city']}',
                                 ),
                             ]),
@@ -3172,7 +3177,7 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
   }
 
   String? _getAvatarUrl(Map<String, dynamic> app, String type) {
-    if (type == 'taxi') return app['avatar_url'];
+    if (type == 'taxi') return app['profile_photo_url'];
     if (type == 'courier') return app['profile_photo_url'];
     return app['logo_url'];
   }
@@ -3201,7 +3206,7 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
 
   String _getDisplayName(Map<String, dynamic> app, String type) {
     if (type == 'taxi') {
-      return '${app['first_name'] ?? ''} ${app['last_name'] ?? ''}'.trim();
+      return app['full_name'] ?? '';
     }
     if (type == 'courier') return app['full_name'] ?? '';
     return app['business_name'] ?? '';
@@ -3344,7 +3349,11 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   OutlinedButton.icon(
-                    onPressed: () {},
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Excel dışa aktarma yakında eklenecek')),
+                      );
+                    },
                     icon: const Icon(Icons.download, size: 18),
                     label: const Text('Excel\'e Aktar'),
                   ),
@@ -3735,7 +3744,7 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
                     _buildDetailRow('Telefon', dealer['phone'] ?? '-'),
                     _buildDetailRow('E-posta', dealer['email'] ?? '-'),
                     _buildDetailRow('Vergi No', dealer['tax_number'] ?? '-'),
-                    _buildDetailRow('Sehir', dealer['city'] ?? '-'),
+                    _buildDetailRow('Şehir', dealer['city'] ?? '-'),
                     _buildDetailRow('Ilce', dealer['district'] ?? '-'),
                     _buildDetailRow('Adres', dealer['address'] ?? '-'),
                     if (dealer['rejection_reason'] != null)
@@ -3868,7 +3877,11 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   OutlinedButton.icon(
-                    onPressed: () {},
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Excel dışa aktarma yakında eklenecek')),
+                      );
+                    },
                     icon: const Icon(Icons.download, size: 18),
                     label: const Text('Excel\'e Aktar'),
                   ),
@@ -4195,7 +4208,7 @@ class _ApplicationsScreenState extends ConsumerState<ApplicationsScreen>
                     _buildDetailRow('E-posta', company['email'] ?? '-'),
                     _buildDetailRow('Vergi No', company['tax_number'] ?? '-'),
                     _buildDetailRow('Vergi Dairesi', company['tax_office'] ?? '-'),
-                    _buildDetailRow('Sehir', company['city'] ?? '-'),
+                    _buildDetailRow('Şehir', company['city'] ?? '-'),
                     _buildDetailRow('Adres', company['address'] ?? '-'),
                     _buildDetailRow('Basvuru Tarihi', _formatDateTime(company['created_at'])),
                   ],

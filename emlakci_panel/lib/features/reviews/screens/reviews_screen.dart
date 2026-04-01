@@ -5,6 +5,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../widgets/review_card.dart';
 import '../widgets/rating_breakdown.dart';
+import 'package:emlakci_panel/core/services/log_service.dart';
 
 /// Reviews Screen - Displays realtor reviews with rating overview and list.
 class ReviewsScreen extends ConsumerWidget {
@@ -99,7 +100,8 @@ class ReviewsScreen extends ConsumerWidget {
                                   ),
                                 );
                               }
-                            } catch (e) {
+                            } catch (e, st) {
+                              LogService.error('Failed to send review reply', error: e, stackTrace: st, source: 'ReviewsScreen:replyToReview');
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(

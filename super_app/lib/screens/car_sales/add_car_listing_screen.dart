@@ -75,10 +75,10 @@ class _AddCarListingScreenState extends State<AddCarListingScreen>
 
   // Images
   final List<String> _selectedImages = [];
-  final List<XFile> _localImages = [];  // XFile works for both web and mobile
-  final Map<String, Uint8List> _imageBytes = {};  // Cache for web image bytes
+  final List<XFile> _localImages = []; // XFile works for both web and mobile
+  final Map<String, Uint8List> _imageBytes = {}; // Cache for web image bytes
   final ImagePicker _imagePicker = ImagePicker();
-  bool _isUploadingImage = false;
+  final bool _isUploadingImage = false;
 
   bool _isLoadingFilters = true;
 
@@ -224,7 +224,11 @@ class _AddCarListingScreenState extends State<AddCarListingScreen>
         'has_warranty': _hasWarranty,
         'warranty_details': _warrantyDetailsController.text.trim(),
         'damage_report': _damageReportController.text.trim(),
-        'price': double.tryParse(_priceController.text.replaceAll('.', '').replaceAll(',', '.')) ?? 0,
+        'price':
+            double.tryParse(
+              _priceController.text.replaceAll('.', '').replaceAll(',', '.'),
+            ) ??
+            0,
         'currency': 'TRY',
         'is_price_negotiable': _isPriceNegotiable,
         'is_exchange_accepted': _isExchangeAccepted,
@@ -401,8 +405,8 @@ class _AddCarListingScreenState extends State<AddCarListingScreen>
                       color: isCompleted
                           ? CarSalesColors.success
                           : isActive
-                              ? CarSalesColors.primary
-                              : CarSalesColors.surface(isDark),
+                          ? CarSalesColors.primary
+                          : CarSalesColors.surface(isDark),
                       shape: BoxShape.circle,
                       border: Border.all(
                         color: isCompleted || isActive
@@ -443,13 +447,13 @@ class _AddCarListingScreenState extends State<AddCarListingScreen>
     return FadeTransition(
       opacity: _stepAnimationController,
       child: SlideTransition(
-        position: Tween<Offset>(
-          begin: const Offset(0.1, 0),
-          end: Offset.zero,
-        ).animate(CurvedAnimation(
-          parent: _stepAnimationController,
-          curve: Curves.easeOutCubic,
-        )),
+        position: Tween<Offset>(begin: const Offset(0.1, 0), end: Offset.zero)
+            .animate(
+              CurvedAnimation(
+                parent: _stepAnimationController,
+                curve: Curves.easeOutCubic,
+              ),
+            ),
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -716,7 +720,9 @@ class _AddCarListingScreenState extends State<AddCarListingScreen>
                       spacing: 8,
                       runSpacing: 8,
                       children: entry.value.map((feature) {
-                        final isSelected = _selectedFeatures.contains(feature.id);
+                        final isSelected = _selectedFeatures.contains(
+                          feature.id,
+                        );
                         return GestureDetector(
                           onTap: () {
                             setState(() {
@@ -980,7 +986,9 @@ class _AddCarListingScreenState extends State<AddCarListingScreen>
                       ? []
                       : [
                           BoxShadow(
-                            color: CarSalesColors.primary.withValues(alpha: 0.3),
+                            color: CarSalesColors.primary.withValues(
+                              alpha: 0.3,
+                            ),
                             blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
@@ -1072,14 +1080,10 @@ class _AddCarListingScreenState extends State<AddCarListingScreen>
         onChanged: onChanged,
         keyboardType: keyboardType,
         maxLines: maxLines,
-        style: TextStyle(
-          color: CarSalesColors.textPrimary(isDark),
-        ),
+        style: TextStyle(color: CarSalesColors.textPrimary(isDark)),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: TextStyle(
-            color: CarSalesColors.textTertiary(isDark),
-          ),
+          hintStyle: TextStyle(color: CarSalesColors.textTertiary(isDark)),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.all(16),
           suffixText: suffix,
@@ -1157,7 +1161,9 @@ class _AddCarListingScreenState extends State<AddCarListingScreen>
                           ? CarSalesColors.primary
                           : CarSalesColors.textSecondary(isDark),
                       fontSize: 11,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.normal,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -1205,9 +1211,16 @@ class _AddCarListingScreenState extends State<AddCarListingScreen>
         ),
         child: Row(
           children: [
-            Icon(Icons.warning_amber, color: CarSalesColors.textTertiary(isDark), size: 20),
+            Icon(
+              Icons.warning_amber,
+              color: CarSalesColors.textTertiary(isDark),
+              size: 20,
+            ),
             const SizedBox(width: 8),
-            Text('Kasa tipi bulunamadı', style: TextStyle(color: CarSalesColors.textTertiary(isDark))),
+            Text(
+              'Kasa tipi bulunamadı',
+              style: TextStyle(color: CarSalesColors.textTertiary(isDark)),
+            ),
           ],
         ),
       );
@@ -1222,12 +1235,18 @@ class _AddCarListingScreenState extends State<AddCarListingScreen>
       ),
       child: DropdownButton<String>(
         value: _selectedBodyTypeId,
-        hint: Text('Kasa tipi seçin', style: TextStyle(color: CarSalesColors.textTertiary(isDark))),
+        hint: Text(
+          'Kasa tipi seçin',
+          style: TextStyle(color: CarSalesColors.textTertiary(isDark)),
+        ),
         isExpanded: true,
         underline: const SizedBox(),
         dropdownColor: CarSalesColors.card(isDark),
         style: TextStyle(color: CarSalesColors.textPrimary(isDark)),
-        icon: Icon(Icons.keyboard_arrow_down, color: CarSalesColors.textSecondary(isDark)),
+        icon: Icon(
+          Icons.keyboard_arrow_down,
+          color: CarSalesColors.textSecondary(isDark),
+        ),
         items: _bodyTypesData.map((type) {
           return DropdownMenuItem<String>(
             value: type.id,
@@ -1283,16 +1302,10 @@ class _AddCarListingScreenState extends State<AddCarListingScreen>
                   decoration: BoxDecoration(
                     color: color.color,
                     shape: BoxShape.circle,
-                    border: Border.all(
-                      color: CarSalesColors.border(isDark),
-                    ),
+                    border: Border.all(color: CarSalesColors.border(isDark)),
                   ),
                   child: isSelected
-                      ? Icon(
-                          Icons.check,
-                          color: color.textColor,
-                          size: 18,
-                        )
+                      ? Icon(Icons.check, color: color.textColor, size: 18)
                       : null,
                 ),
                 const SizedBox(height: 6),
@@ -1338,9 +1351,16 @@ class _AddCarListingScreenState extends State<AddCarListingScreen>
         ),
         child: Row(
           children: [
-            Icon(Icons.warning_amber, color: CarSalesColors.textTertiary(isDark), size: 20),
+            Icon(
+              Icons.warning_amber,
+              color: CarSalesColors.textTertiary(isDark),
+              size: 20,
+            ),
             const SizedBox(width: 8),
-            Text('Yakıt tipi bulunamadı', style: TextStyle(color: CarSalesColors.textTertiary(isDark))),
+            Text(
+              'Yakıt tipi bulunamadı',
+              style: TextStyle(color: CarSalesColors.textTertiary(isDark)),
+            ),
           ],
         ),
       );
@@ -1355,12 +1375,18 @@ class _AddCarListingScreenState extends State<AddCarListingScreen>
       ),
       child: DropdownButton<String>(
         value: _selectedFuelTypeId,
-        hint: Text('Yakıt tipi seçin', style: TextStyle(color: CarSalesColors.textTertiary(isDark))),
+        hint: Text(
+          'Yakıt tipi seçin',
+          style: TextStyle(color: CarSalesColors.textTertiary(isDark)),
+        ),
         isExpanded: true,
         underline: const SizedBox(),
         dropdownColor: CarSalesColors.card(isDark),
         style: TextStyle(color: CarSalesColors.textPrimary(isDark)),
-        icon: Icon(Icons.keyboard_arrow_down, color: CarSalesColors.textSecondary(isDark)),
+        icon: Icon(
+          Icons.keyboard_arrow_down,
+          color: CarSalesColors.textSecondary(isDark),
+        ),
         items: _fuelTypesData.map((type) {
           return DropdownMenuItem<String>(
             value: type.id,
@@ -1399,9 +1425,16 @@ class _AddCarListingScreenState extends State<AddCarListingScreen>
         ),
         child: Row(
           children: [
-            Icon(Icons.warning_amber, color: CarSalesColors.textTertiary(isDark), size: 20),
+            Icon(
+              Icons.warning_amber,
+              color: CarSalesColors.textTertiary(isDark),
+              size: 20,
+            ),
             const SizedBox(width: 8),
-            Text('Vites tipi bulunamadı', style: TextStyle(color: CarSalesColors.textTertiary(isDark))),
+            Text(
+              'Vites tipi bulunamadı',
+              style: TextStyle(color: CarSalesColors.textTertiary(isDark)),
+            ),
           ],
         ),
       );
@@ -1416,12 +1449,18 @@ class _AddCarListingScreenState extends State<AddCarListingScreen>
       ),
       child: DropdownButton<String>(
         value: _selectedTransmissionId,
-        hint: Text('Vites tipi seçin', style: TextStyle(color: CarSalesColors.textTertiary(isDark))),
+        hint: Text(
+          'Vites tipi seçin',
+          style: TextStyle(color: CarSalesColors.textTertiary(isDark)),
+        ),
         isExpanded: true,
         underline: const SizedBox(),
         dropdownColor: CarSalesColors.card(isDark),
         style: TextStyle(color: CarSalesColors.textPrimary(isDark)),
-        icon: Icon(Icons.keyboard_arrow_down, color: CarSalesColors.textSecondary(isDark)),
+        icon: Icon(
+          Icons.keyboard_arrow_down,
+          color: CarSalesColors.textSecondary(isDark),
+        ),
         items: _transmissionsData.map((type) {
           return DropdownMenuItem<String>(
             value: type.id,
@@ -1571,10 +1610,7 @@ class _AddCarListingScreenState extends State<AddCarListingScreen>
                 color: CarSalesColors.primary,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
-                Icons.add,
-                color: Colors.white,
-              ),
+              child: const Icon(Icons.add, color: Colors.white),
             ),
           ),
         ],
@@ -1675,11 +1711,7 @@ class _AddCarListingScreenState extends State<AddCarListingScreen>
                 ),
               ),
               child: value
-                  ? const Icon(
-                      Icons.check,
-                      color: Colors.white,
-                      size: 16,
-                    )
+                  ? const Icon(Icons.check, color: Colors.white, size: 16)
                   : null,
             ),
             const SizedBox(width: 12),
@@ -1722,7 +1754,9 @@ class _AddCarListingScreenState extends State<AddCarListingScreen>
                   ),
                 ),
                 child: _isUploadingImage
-                    ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -1730,7 +1764,9 @@ class _AddCarListingScreenState extends State<AddCarListingScreen>
                             width: 48,
                             height: 48,
                             decoration: BoxDecoration(
-                              color: CarSalesColors.primary.withValues(alpha: 0.1),
+                              color: CarSalesColors.primary.withValues(
+                                alpha: 0.1,
+                              ),
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(
@@ -1824,13 +1860,18 @@ class _AddCarListingScreenState extends State<AddCarListingScreen>
                     fit: BoxFit.cover,
                     width: double.infinity,
                     height: double.infinity,
-                    placeholder: (_, __) => Container(
+                    placeholder: (_, _) => Container(
                       color: Colors.grey[200],
-                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                      child: const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
                     ),
-                    errorWidget: (_, __, ___) => Container(
+                    errorWidget: (_, _, _) => Container(
                       color: Colors.grey[200],
-                      child: const Icon(Icons.image_not_supported, color: Colors.grey),
+                      child: const Icon(
+                        Icons.image_not_supported,
+                        color: Colors.grey,
+                      ),
                     ),
                   ),
                 ),
@@ -1913,10 +1954,19 @@ class _AddCarListingScreenState extends State<AddCarListingScreen>
                     color: CarSalesColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.camera_alt, color: CarSalesColors.primary),
+                  child: const Icon(
+                    Icons.camera_alt,
+                    color: CarSalesColors.primary,
+                  ),
                 ),
-                title: Text('Kamera', style: TextStyle(color: CarSalesColors.textPrimary(isDark))),
-                subtitle: Text('Fotoğraf çek', style: TextStyle(color: CarSalesColors.textSecondary(isDark))),
+                title: Text(
+                  'Kamera',
+                  style: TextStyle(color: CarSalesColors.textPrimary(isDark)),
+                ),
+                subtitle: Text(
+                  'Fotoğraf çek',
+                  style: TextStyle(color: CarSalesColors.textSecondary(isDark)),
+                ),
                 onTap: () {
                   Navigator.pop(context);
                   _pickImage(ImageSource.camera);
@@ -1930,10 +1980,19 @@ class _AddCarListingScreenState extends State<AddCarListingScreen>
                     color: CarSalesColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.photo_library, color: CarSalesColors.primary),
+                  child: const Icon(
+                    Icons.photo_library,
+                    color: CarSalesColors.primary,
+                  ),
                 ),
-                title: Text('Galeri', style: TextStyle(color: CarSalesColors.textPrimary(isDark))),
-                subtitle: Text('Galeriden seç', style: TextStyle(color: CarSalesColors.textSecondary(isDark))),
+                title: Text(
+                  'Galeri',
+                  style: TextStyle(color: CarSalesColors.textPrimary(isDark)),
+                ),
+                subtitle: Text(
+                  'Galeriden seç',
+                  style: TextStyle(color: CarSalesColors.textSecondary(isDark)),
+                ),
                 onTap: () {
                   Navigator.pop(context);
                   _pickImage(ImageSource.gallery);
@@ -1947,10 +2006,19 @@ class _AddCarListingScreenState extends State<AddCarListingScreen>
                     color: CarSalesColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(Icons.photo_library_outlined, color: CarSalesColors.primary),
+                  child: const Icon(
+                    Icons.photo_library_outlined,
+                    color: CarSalesColors.primary,
+                  ),
                 ),
-                title: Text('Çoklu Seçim', style: TextStyle(color: CarSalesColors.textPrimary(isDark))),
-                subtitle: Text('Birden fazla fotoğraf seç', style: TextStyle(color: CarSalesColors.textSecondary(isDark))),
+                title: Text(
+                  'Çoklu Seçim',
+                  style: TextStyle(color: CarSalesColors.textPrimary(isDark)),
+                ),
+                subtitle: Text(
+                  'Birden fazla fotoğraf seç',
+                  style: TextStyle(color: CarSalesColors.textSecondary(isDark)),
+                ),
                 onTap: () {
                   Navigator.pop(context);
                   _pickMultipleImages();
@@ -2087,11 +2155,7 @@ class _AddCarListingScreenState extends State<AddCarListingScreen>
                 ),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
-                Icons.check,
-                color: Colors.white,
-                size: 40,
-              ),
+              child: const Icon(Icons.check, color: Colors.white, size: 40),
             ),
             const SizedBox(height: 24),
             Text(
@@ -2129,10 +2193,7 @@ class _AddCarListingScreenState extends State<AddCarListingScreen>
                 ),
                 child: const Text(
                   'Tamam',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
             ),

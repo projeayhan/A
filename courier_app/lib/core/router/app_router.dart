@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -31,19 +32,25 @@ class AppRoutes {
   static const String orderDetail = '/orders/:id';
   static const String earnings = '/earnings';
   static const String profile = '/profile';
+  static const String profilePersonal = '/profile/personal';
+  static const String profileVehicle = '/profile/vehicle';
+  static const String profilePayment = '/profile/payment';
+  static const String profileNotifications = '/profile/notifications';
+  static const String profileHelp = '/profile/help';
+  static const String profileAbout = '/profile/about';
 }
 
 final routerProvider = Provider<GoRouter>((ref) {
   // refreshListenable: auth değişince GoRouter yeniden oluşturulmadan
   // sadece redirect logic'i tekrar çalışır (LoginScreen state korunur)
   final refreshNotifier = _RouterRefreshNotifier();
-  ref.listen(authProvider, (_, __) {
+  ref.listen(authProvider, (_, _) {
     refreshNotifier.notify();
   });
 
   return GoRouter(
     initialLocation: AppRoutes.login,
-    debugLogDiagnostics: true,
+    debugLogDiagnostics: kDebugMode,
     refreshListenable: refreshNotifier,
     redirect: (context, state) {
       final authState = ref.read(authProvider);
@@ -53,6 +60,17 @@ final routerProvider = Provider<GoRouter>((ref) {
       final isLoggingIn = state.matchedLocation == AppRoutes.login;
       final isRegistering = state.matchedLocation == AppRoutes.register;
       final isPendingPage = state.matchedLocation == AppRoutes.pending;
+
+      // Yükleniyor veya başlangıç → bekle
+      if (authState.status == AuthStatus.initial ||
+          authState.status == AuthStatus.loading) {
+        return null;
+      }
+
+      // Hata durumu → login'e yönlendir
+      if (authState.status == AuthStatus.error && !isLoggingIn) {
+        return AppRoutes.login;
+      }
 
       // Kayıt gerekli → kayıt sayfasına yönlendir
       if (needsReg && !isRegistering) {
@@ -65,7 +83,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
 
       // Giriş yapmamış → login'e yönlendir
-      if (!isAuth && !isPending && !needsReg && !isLoggingIn && !isRegistering) {
+      if (!isAuth &&
+          !isPending &&
+          !needsReg &&
+          !isLoggingIn &&
+          !isRegistering) {
         return AppRoutes.login;
       }
 
@@ -128,7 +150,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final orderId = state.pathParameters['id']!;
           final initialOrderData = state.extra as Map<String, dynamic>?;
-          return OrderDetailScreen(orderId: orderId, initialOrderData: initialOrderData);
+          return OrderDetailScreen(
+            orderId: orderId,
+            initialOrderData: initialOrderData,
+          );
         },
       ),
 
@@ -176,12 +201,7 @@ class MainShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      body: Stack(
-        children: [
-          child,
-          const FloatingAIAssistant(),
-        ],
-      ),
+      body: Stack(children: [child, const FloatingAIAssistant()]),
       bottomNavigationBar: const _BottomNavBar(),
     );
   }

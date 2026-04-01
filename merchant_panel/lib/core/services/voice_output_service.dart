@@ -1,9 +1,9 @@
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:merchant_panel/core/services/log_service.dart';
 
 /// Sesli çıkış servisi (OpenAI TTS via Edge Function)
 class VoiceOutputService {
@@ -38,7 +38,8 @@ class VoiceOutputService {
       _player.onPlayerStateChanged.listen((state) {
         if (state == PlayerState.playing) {
           _isSpeaking = true;
-        } else if (state == PlayerState.stopped || state == PlayerState.completed) {
+        } else if (state == PlayerState.stopped ||
+            state == PlayerState.completed) {
           _isSpeaking = false;
         }
       });
@@ -47,9 +48,9 @@ class VoiceOutputService {
       _isEnabled = prefs.getBool('tts_enabled') ?? false;
 
       _isInitialized = true;
-      debugPrint('OpenAI TTS initialized, enabled: $_isEnabled');
-    } catch (e) {
-      debugPrint('TTS initialization error: $e');
+      LogService.error('OpenAI TTS initialized, enabled: $_isEnabled', source: 'voice_output_service:initialize');
+    } catch (e, st) {
+      LogService.error('TTS initialization error', error: e, stackTrace: st, source: 'voice_output_service:initialize');
     }
   }
 
@@ -62,7 +63,9 @@ class VoiceOutputService {
     final expiresAt = session.expiresAt;
     if (expiresAt != null) {
       final expiryTime = DateTime.fromMillisecondsSinceEpoch(expiresAt * 1000);
-      if (DateTime.now().isAfter(expiryTime.subtract(const Duration(seconds: 30)))) {
+      if (DateTime.now().isAfter(
+        expiryTime.subtract(const Duration(seconds: 30)),
+      )) {
         try {
           final refreshed = await client.auth.refreshSession();
           return refreshed.session?.accessToken;
@@ -95,7 +98,7 @@ class VoiceOutputService {
 
       final token = await _getValidAccessToken();
       if (token == null) {
-        debugPrint('TTS: No valid token');
+        LogService.error('TTS: No valid token', source: 'voice_output_service:speak');
         _onComplete?.call();
         _onComplete = null;
         return;
@@ -108,7 +111,7 @@ class VoiceOutputService {
       );
 
       if (response.status != 200) {
-        debugPrint('TTS edge function error: ${response.status}');
+        LogService.error('TTS edge function error: ${response.status}', source: 'voice_output_service:speak');
         _onComplete?.call();
         _onComplete = null;
         return;
@@ -116,7 +119,7 @@ class VoiceOutputService {
 
       final data = response.data;
       if (data == null || data['success'] != true || data['audio'] == null) {
-        debugPrint('TTS: No audio in response');
+        LogService.error('TTS: No audio in response', source: 'voice_output_service:speak');
         _onComplete?.call();
         _onComplete = null;
         return;
@@ -127,8 +130,8 @@ class VoiceOutputService {
 
       _isSpeaking = true;
       await _player.play(BytesSource(audioBytes));
-    } catch (e) {
-      debugPrint('OpenAI TTS error: $e');
+    } catch (e, st) {
+      LogService.error('OpenAI TTS error', error: e, stackTrace: st, source: 'voice_output_service:speak');
       _isSpeaking = false;
       _onComplete?.call();
       _onComplete = null;
@@ -136,7 +139,10 @@ class VoiceOutputService {
   }
 
   /// Base64 encoded audio'yu doğrudan çal (inline TTS için)
-  Future<void> playBase64Audio(String audioBase64, {VoidCallback? onComplete}) async {
+  Future<void> playBase64Audio(
+    String audioBase64, {
+    VoidCallback? onComplete,
+  }) async {
     if (!_isInitialized) {
       onComplete?.call();
       return;
@@ -152,8 +158,8 @@ class VoiceOutputService {
       final Uint8List audioBytes = base64Decode(audioBase64);
       _isSpeaking = true;
       await _player.play(BytesSource(audioBytes));
-    } catch (e) {
-      debugPrint('Play base64 audio error: $e');
+    } catch (e, st) {
+      LogService.error('Play base64 audio error', error: e, stackTrace: st, source: 'voice_output_service:playBase64Audio');
       _isSpeaking = false;
       _onComplete?.call();
       _onComplete = null;
@@ -166,8 +172,8 @@ class VoiceOutputService {
       await _player.stop();
       _isSpeaking = false;
       _onComplete = null;
-    } catch (e) {
-      debugPrint('TTS stop error: $e');
+    } catch (e, st) {
+      LogService.error('TTS stop error', error: e, stackTrace: st, source: 'voice_output_service:stop');
     }
   }
 

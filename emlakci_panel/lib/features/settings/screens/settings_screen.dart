@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../providers/theme_provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../widgets/settings_section.dart';
+import 'package:emlakci_panel/core/services/log_service.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -366,7 +367,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             ),
                           );
                         }
-                      } catch (e) {
+                      } catch (e, st) {
+                        LogService.error('Failed to change password', error: e, stackTrace: st, source: 'SettingsScreen:changePassword');
                         setDialogState(() => isLoading = false);
                         if (ctx.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -458,7 +460,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 if (context.mounted) {
                   context.go('/login');
                 }
-              } catch (e) {
+              } catch (e, st) {
+                LogService.error('Failed to sign out', error: e, stackTrace: st, source: 'SettingsScreen:signOut');
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(

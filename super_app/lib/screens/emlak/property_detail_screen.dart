@@ -9,7 +9,6 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../../models/emlak/emlak_models.dart';
 import '../../core/providers/unified_favorites_provider.dart';
-import '../../core/providers/emlak_provider.dart';
 import '../../core/providers/chat_provider.dart';
 import '../../services/emlak/property_service.dart';
 import '../../services/emlak/appointment_service.dart';
@@ -19,13 +18,11 @@ import '../../core/utils/app_dialogs.dart';
 class PropertyDetailScreen extends ConsumerStatefulWidget {
   final String propertyId;
 
-  const PropertyDetailScreen({
-    super.key,
-    required this.propertyId,
-  });
+  const PropertyDetailScreen({super.key, required this.propertyId});
 
   @override
-  ConsumerState<PropertyDetailScreen> createState() => _PropertyDetailScreenState();
+  ConsumerState<PropertyDetailScreen> createState() =>
+      _PropertyDetailScreenState();
 }
 
 class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
@@ -122,9 +119,7 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading || _property == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     final property = _property!;
@@ -182,9 +177,7 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                 ),
 
                 // Bottom Padding
-                const SliverToBoxAdapter(
-                  child: SizedBox(height: 120),
-                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 120)),
               ],
             ),
 
@@ -222,11 +215,12 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
             },
             itemBuilder: (context, index) {
               return GestureDetector(
-                onTap: () => _showFullScreenGallery(context, property.images, index),
+                onTap: () =>
+                    _showFullScreenGallery(context, property.images, index),
                 child: CachedNetworkImage(
                   imageUrl: property.images[index],
                   fit: BoxFit.cover,
-                  placeholder: (_, __) => Container(
+                  placeholder: (_, _) => Container(
                     color: EmlakColors.primary.withValues(alpha: 0.1),
                     child: Center(
                       child: CircularProgressIndicator(
@@ -234,9 +228,13 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                       ),
                     ),
                   ),
-                  errorWidget: (_, __, ___) => Container(
+                  errorWidget: (_, _, _) => Container(
                     color: EmlakColors.primary.withValues(alpha: 0.3),
-                    child: const Icon(Icons.image, size: 80, color: Colors.white54),
+                    child: const Icon(
+                      Icons.image,
+                      size: 80,
+                      color: Colors.white54,
+                    ),
                   ),
                 ),
               );
@@ -313,15 +311,21 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                 ),
                 // Image Indicators
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.5),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.photo_library_rounded,
-                          color: Colors.white, size: 16),
+                      const Icon(
+                        Icons.photo_library_rounded,
+                        color: Colors.white,
+                        size: 16,
+                      ),
                       const SizedBox(width: 6),
                       Text(
                         '${_currentImageIndex + 1}/${property.images.length}',
@@ -349,7 +353,9 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
     bool isActive = false,
   }) {
     return Material(
-      color: isActive ? EmlakColors.accent : Colors.white.withValues(alpha: 0.9),
+      color: isActive
+          ? EmlakColors.accent
+          : Colors.white.withValues(alpha: 0.9),
       shape: const CircleBorder(),
       elevation: 4,
       child: InkWell(
@@ -375,7 +381,9 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
     final isFavorite = ref.watch(isEmlakFavoriteProvider(property.id));
 
     return Material(
-      color: isFavorite ? EmlakColors.accent : Colors.white.withValues(alpha: 0.9),
+      color: isFavorite
+          ? EmlakColors.accent
+          : Colors.white.withValues(alpha: 0.9),
       shape: const CircleBorder(),
       elevation: 4,
       child: InkWell(
@@ -393,7 +401,9 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
             area: property.squareMeters,
             addedAt: DateTime.now(),
           );
-          ref.read(emlakFavoriteProvider.notifier).toggleProperty(favoriteProperty);
+          ref
+              .read(emlakFavoriteProvider.notifier)
+              .toggleProperty(favoriteProperty);
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -462,157 +472,157 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
     bool isDark,
   ) {
     return Container(
-          padding: const EdgeInsets.all(16),
-          child: Column(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Title & Price
+          Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Title & Price
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          property.title,
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w700,
-                            color: isDark ? Colors.white : Colors.grey[900],
-                            height: 1.2,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.location_on_rounded,
-                              size: 18,
-                              color: EmlakColors.primary,
-                            ),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                property.location.fullAddress,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: isDark ? Colors.grey[400] : Colors.grey[600],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 16),
-
-              // Price Card
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: EmlakColors.primaryGradient,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: EmlakColors.primary.withValues(alpha: 0.3),
-                      blurRadius: 15,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    Text(
+                      property.title,
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                        color: isDark ? Colors.white : Colors.grey[900],
+                        height: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
                       children: [
-                        Text(
-                          property.listingType == ListingType.rent
-                              ? 'Aylık Kira'
-                              : 'Satış Fiyatı',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.8),
-                            fontSize: 13,
-                          ),
+                        Icon(
+                          Icons.location_on_rounded,
+                          size: 18,
+                          color: EmlakColors.primary,
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          property.fullFormattedPrice,
-                          style: const TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white,
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            property.location.fullAddress,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: isDark
+                                  ? Colors.grey[400]
+                                  : Colors.grey[600],
+                            ),
                           ),
                         ),
                       ],
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.square_foot,
-                            color: Colors.white.withValues(alpha: 0.9),
-                            size: 18,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            '${(property.price / property.squareMeters).toStringAsFixed(0)} TL/m²',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ],
                 ),
-              ),
-
-              const SizedBox(height: 20),
-
-              // Quick Stats
-              Row(
-                children: [
-                  _buildStatCard(
-                    Icons.visibility_outlined,
-                    '${property.viewCount}',
-                    'Görüntülenme',
-                    isDark,
-                  ),
-                  const SizedBox(width: 12),
-                  _buildStatCard(
-                    Icons.favorite_outline_rounded,
-                    '${property.favoriteCount}',
-                    'Favori',
-                    isDark,
-                  ),
-                  const SizedBox(width: 12),
-                  _buildStatCard(
-                    Icons.access_time_rounded,
-                    _getTimeAgo(property.createdAt),
-                    'Yayın',
-                    isDark,
-                  ),
-                ],
               ),
             ],
           ),
+
+          const SizedBox(height: 16),
+
+          // Price Card
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: EmlakColors.primaryGradient),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: EmlakColors.primary.withValues(alpha: 0.3),
+                  blurRadius: 15,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      property.listingType == ListingType.rent
+                          ? 'Aylık Kira'
+                          : 'Satış Fiyatı',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.8),
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      property.fullFormattedPrice,
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.square_foot,
+                        color: Colors.white.withValues(alpha: 0.9),
+                        size: 18,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        '${(property.price / property.squareMeters).toStringAsFixed(0)} TL/m²',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // Quick Stats
+          Row(
+            children: [
+              _buildStatCard(
+                Icons.visibility_outlined,
+                '${property.viewCount}',
+                'Görüntülenme',
+                isDark,
+              ),
+              const SizedBox(width: 12),
+              _buildStatCard(
+                Icons.favorite_outline_rounded,
+                '${property.favoriteCount}',
+                'Favori',
+                isDark,
+              ),
+              const SizedBox(width: 12),
+              _buildStatCard(
+                Icons.access_time_rounded,
+                _getTimeAgo(property.createdAt),
+                'Yayın',
+                isDark,
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -660,13 +670,33 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
     bool isDark,
   ) {
     final features = [
-      {'icon': Icons.bed_outlined, 'value': '${property.rooms}+1', 'label': 'Oda'},
-      {'icon': Icons.bathtub_outlined, 'value': '${property.bathrooms}', 'label': 'Banyo'},
-      {'icon': Icons.square_foot, 'value': '${property.squareMeters}', 'label': 'm²'},
+      {
+        'icon': Icons.bed_outlined,
+        'value': '${property.rooms}+1',
+        'label': 'Oda',
+      },
+      {
+        'icon': Icons.bathtub_outlined,
+        'value': '${property.bathrooms}',
+        'label': 'Banyo',
+      },
+      {
+        'icon': Icons.square_foot,
+        'value': '${property.squareMeters}',
+        'label': 'm²',
+      },
       if (property.floor != null)
-        {'icon': Icons.stairs, 'value': '${property.floor}/${property.totalFloors}', 'label': 'Kat'},
+        {
+          'icon': Icons.stairs,
+          'value': '${property.floor}/${property.totalFloors}',
+          'label': 'Kat',
+        },
       if (property.buildingAge != null && property.buildingAge! > 0)
-        {'icon': Icons.calendar_today_outlined, 'value': '${property.buildingAge}', 'label': 'Yaş'},
+        {
+          'icon': Icons.calendar_today_outlined,
+          'value': '${property.buildingAge}',
+          'label': 'Yaş',
+        },
     ];
 
     return Padding(
@@ -741,8 +771,7 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
         {'icon': Icons.balcony_rounded, 'label': 'Balkon'},
       if (property.hasFurniture)
         {'icon': Icons.chair_rounded, 'label': 'Eşyalı'},
-      if (property.hasPool)
-        {'icon': Icons.pool_rounded, 'label': 'Havuz'},
+      if (property.hasPool) {'icon': Icons.pool_rounded, 'label': 'Havuz'},
       if (property.hasGym)
         {'icon': Icons.fitness_center_rounded, 'label': 'Spor Salonu'},
       if (property.hasSecurity)
@@ -767,7 +796,10 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
             runSpacing: 12,
             children: amenities.map((amenity) {
               return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: isDark ? const Color(0xFF1E293B) : Colors.grey[100],
                   borderRadius: BorderRadius.circular(10),
@@ -854,8 +886,9 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
     Property property,
     bool isDark,
   ) {
-    final hasCoordinates = property.location.latitude != null &&
-                           property.location.longitude != null;
+    final hasCoordinates =
+        property.location.latitude != null &&
+        property.location.longitude != null;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
@@ -875,98 +908,108 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                 ? Material(
                     color: Colors.transparent,
                     child: InkWell(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      _openInMaps(property);
-                    },
-                    borderRadius: BorderRadius.circular(14),
-                    child: Stack(
-                      children: [
-                        FlutterMap(
-                          options: MapOptions(
-                            initialCenter: LatLng(
-                              property.location.latitude!,
-                              property.location.longitude!,
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        _openInMaps(property);
+                      },
+                      borderRadius: BorderRadius.circular(14),
+                      child: Stack(
+                        children: [
+                          FlutterMap(
+                            options: MapOptions(
+                              initialCenter: LatLng(
+                                property.location.latitude!,
+                                property.location.longitude!,
+                              ),
+                              initialZoom: 15,
+                              interactionOptions: const InteractionOptions(
+                                flags: InteractiveFlag
+                                    .none, // Harita etkileşimini devre dışı bırak
+                              ),
                             ),
-                            initialZoom: 15,
-                            interactionOptions: const InteractionOptions(
-                              flags: InteractiveFlag.none, // Harita etkileşimini devre dışı bırak
-                            ),
+                            children: [
+                              TileLayer(
+                                urlTemplate:
+                                    'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                userAgentPackageName: 'com.super.app',
+                              ),
+                              MarkerLayer(
+                                markers: [
+                                  Marker(
+                                    point: LatLng(
+                                      property.location.latitude!,
+                                      property.location.longitude!,
+                                    ),
+                                    width: 50,
+                                    height: 50,
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: EmlakColors.primary,
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: EmlakColors.primary
+                                                .withValues(alpha: 0.4),
+                                            blurRadius: 10,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ],
+                                      ),
+                                      child: const Icon(
+                                        Icons.home_rounded,
+                                        color: Colors.white,
+                                        size: 24,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
-                          children: [
-                            TileLayer(
-                              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                              userAgentPackageName: 'com.super.app',
-                            ),
-                            MarkerLayer(
-                              markers: [
-                                Marker(
-                                  point: LatLng(
-                                    property.location.latitude!,
-                                    property.location.longitude!,
+                          // Haritayı aç butonu
+                          Positioned(
+                            bottom: 12,
+                            right: 12,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.1),
+                                    blurRadius: 8,
                                   ),
-                                  width: 50,
-                                  height: 50,
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: EmlakColors.primary,
-                                      shape: BoxShape.circle,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: EmlakColors.primary.withValues(alpha: 0.4),
-                                          blurRadius: 10,
-                                          offset: const Offset(0, 4),
-                                        ),
-                                      ],
-                                    ),
-                                    child: const Icon(
-                                      Icons.home_rounded,
-                                      color: Colors.white,
-                                      size: 24,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        // Haritayı aç butonu
-                        Positioned(
-                          bottom: 12,
-                          right: 12,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.1),
-                                  blurRadius: 8,
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.open_in_new, size: 16, color: EmlakColors.primary),
-                                const SizedBox(width: 4),
-                                Text(
-                                  'Haritada Aç',
-                                  style: TextStyle(
+                                ],
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.open_in_new,
+                                    size: 16,
                                     color: EmlakColors.primary,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Haritada Aç',
+                                    style: TextStyle(
+                                      color: EmlakColors.primary,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                )
+                  )
                 : // Konum bilgisi yoksa placeholder göster
                   InkWell(
                     onTap: () => _searchInMaps(property),
@@ -993,7 +1036,9 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                             Text(
                               property.location.fullAddress,
                               style: TextStyle(
-                                color: EmlakColors.primary.withValues(alpha: 0.7),
+                                color: EmlakColors.primary.withValues(
+                                  alpha: 0.7,
+                                ),
                                 fontSize: 12,
                               ),
                               textAlign: TextAlign.center,
@@ -1031,11 +1076,16 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
 
   /// Koordinatları Google Maps'te aç
   Future<void> _openInMaps(Property property) async {
-    if (property.location.latitude == null || property.location.longitude == null) return;
+    if (property.location.latitude == null ||
+        property.location.longitude == null) {
+      return;
+    }
 
     final lat = property.location.latitude!;
     final lng = property.location.longitude!;
-    final url = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
+    final url = Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
+    );
 
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
@@ -1045,7 +1095,9 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
   /// Adres ile Google Maps'te ara
   Future<void> _searchInMaps(Property property) async {
     final address = Uri.encodeComponent(property.location.fullAddress);
-    final url = Uri.parse('https://www.google.com/maps/search/?api=1&query=$address');
+    final url = Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=$address',
+    );
 
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
@@ -1096,11 +1148,15 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                           child: CachedNetworkImage(
                             imageUrl: agent.imageUrl!,
                             fit: BoxFit.cover,
-                            placeholder: (_, __) => Container(
+                            placeholder: (_, _) => Container(
                               color: Colors.grey[200],
-                              child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                              child: const Center(
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
                             ),
-                            errorWidget: (_, __, ___) => const Icon(
+                            errorWidget: (_, _, _) => const Icon(
                               Icons.person,
                               color: Colors.white,
                               size: 30,
@@ -1165,7 +1221,9 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                             '${agent.totalListings} ilan',
                             style: TextStyle(
                               fontSize: 13,
-                              color: isDark ? Colors.grey[500] : Colors.grey[600],
+                              color: isDark
+                                  ? Colors.grey[500]
+                                  : Colors.grey[600],
                             ),
                           ),
                         ],
@@ -1177,10 +1235,12 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                 Material(
                   color: Colors.transparent,
                   child: InkWell(
-                    onTap: _isStartingChat ? null : () {
-                      HapticFeedback.selectionClick();
-                      _startChat();
-                    },
+                    onTap: _isStartingChat
+                        ? null
+                        : () {
+                            HapticFeedback.selectionClick();
+                            _startChat();
+                          },
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
                       width: 44,
@@ -1267,86 +1327,90 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
       borderRadius: BorderRadius.circular(16),
       elevation: 0,
       child: InkWell(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        context.push('/emlak/property/${property.id}');
-      },
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        width: 160,
-        margin: const EdgeInsets.symmetric(horizontal: 6),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Image
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-              child: CachedNetworkImage(
-                imageUrl: property.images.first,
-                height: 120,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                placeholder: (_, __) => Container(
-                  height: 120,
-                  color: Colors.grey[200],
-                  child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        onTap: () {
+          HapticFeedback.selectionClick();
+          context.push('/emlak/property/${property.id}');
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          width: 160,
+          margin: const EdgeInsets.symmetric(horizontal: 6),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.08),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Image
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(16),
                 ),
-                errorWidget: (_, __, ___) => Container(
+                child: CachedNetworkImage(
+                  imageUrl: property.images.first,
                   height: 120,
-                  color: EmlakColors.primary.withValues(alpha: 0.2),
-                  child: const Icon(Icons.image, color: Colors.white54),
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  placeholder: (_, _) => Container(
+                    height: 120,
+                    color: Colors.grey[200],
+                    child: const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                  errorWidget: (_, _, _) => Container(
+                    height: 120,
+                    color: EmlakColors.primary.withValues(alpha: 0.2),
+                    child: const Icon(Icons.image, color: Colors.white54),
+                  ),
                 ),
               ),
-            ),
-            // Content
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    property.title,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? Colors.white : Colors.grey[900],
+              // Content
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      property.title,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? Colors.white : Colors.grey[900],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    property.location.shortAddress,
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: isDark ? Colors.grey[500] : Colors.grey[600],
+                    const SizedBox(height: 4),
+                    Text(
+                      property.location.shortAddress,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isDark ? Colors.grey[500] : Colors.grey[600],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    property.formattedPrice,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: EmlakColors.primary,
+                    const SizedBox(height: 8),
+                    Text(
+                      property.formattedPrice,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: EmlakColors.primary,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -1362,11 +1426,7 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
     );
   }
 
-  Widget _buildBottomBar(
-    BuildContext context,
-    Property property,
-    bool isDark,
-  ) {
+  Widget _buildBottomBar(BuildContext context, Property property, bool isDark) {
     return Container(
       padding: EdgeInsets.fromLTRB(
         16,
@@ -1390,10 +1450,12 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
           Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: property.agent != null ? () {
-                HapticFeedback.selectionClick();
-                _callAgent(property.agent!);
-              } : null,
+              onTap: property.agent != null
+                  ? () {
+                      HapticFeedback.selectionClick();
+                      _callAgent(property.agent!);
+                    }
+                  : null,
               borderRadius: BorderRadius.circular(14),
               child: Container(
                 width: 48,
@@ -1402,7 +1464,11 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                   border: Border.all(color: EmlakColors.primary, width: 1.5),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(Icons.phone_rounded, color: EmlakColors.primary, size: 22),
+                child: Icon(
+                  Icons.phone_rounded,
+                  color: EmlakColors.primary,
+                  size: 22,
+                ),
               ),
             ),
           ),
@@ -1412,10 +1478,12 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
             color: EmlakColors.secondary,
             borderRadius: BorderRadius.circular(14),
             child: InkWell(
-              onTap: _isStartingChat ? null : () {
-                HapticFeedback.selectionClick();
-                _startChat();
-              },
+              onTap: _isStartingChat
+                  ? null
+                  : () {
+                      HapticFeedback.selectionClick();
+                      _startChat();
+                    },
               borderRadius: BorderRadius.circular(14),
               child: SizedBox(
                 width: 48,
@@ -1461,7 +1529,11 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.calendar_month_rounded, color: Colors.white, size: 20),
+                      Icon(
+                        Icons.calendar_month_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
                       SizedBox(width: 8),
                       Text(
                         'Randevu Al',
@@ -1498,19 +1570,22 @@ class _PropertyDetailScreenState extends ConsumerState<PropertyDetailScreen> {
   }
 
   /// Tam ekran fotoğraf galerisi
-  void _showFullScreenGallery(BuildContext context, List<String> images, int initialIndex) {
+  void _showFullScreenGallery(
+    BuildContext context,
+    List<String> images,
+    int initialIndex,
+  ) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => _FullScreenGallery(
-          images: images,
-          initialIndex: initialIndex,
-        ),
+        builder: (context) =>
+            _FullScreenGallery(images: images, initialIndex: initialIndex),
       ),
     );
   }
 
   void _shareProperty(Property property) {
-    final text = '''
+    final text =
+        '''
 ${property.title}
 
 📍 ${property.location.fullAddress}
@@ -1522,12 +1597,7 @@ ${property.description.length > 200 ? '${property.description.substring(0, 200)}
 Bu ilanı SuperCyp'te görüntüle!
 ''';
 
-    SharePlus.instance.share(
-      ShareParams(
-        text: text,
-        subject: property.title,
-      ),
-    );
+    SharePlus.instance.share(ShareParams(text: text, subject: property.title));
   }
 
   Future<void> _callAgent(PropertyAgent agent) async {
@@ -1612,14 +1682,18 @@ class _ScheduleVisitSheetState extends State<_ScheduleVisitSheet> {
         ownerId: widget.property.userId,
         date: _selectedDate!,
         time: _selectedTime!,
-        note: _noteController.text.trim().isNotEmpty ? _noteController.text.trim() : null,
+        note: _noteController.text.trim().isNotEmpty
+            ? _noteController.text.trim()
+            : null,
       );
 
       if (mounted) {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Randevu talebiniz gönderildi! İlan sahibi onayladığında bilgilendirileceksiniz.'),
+            content: const Text(
+              'Randevu talebiniz gönderildi! İlan sahibi onayladığında bilgilendirileceksiniz.',
+            ),
             backgroundColor: EmlakColors.primary,
             duration: const Duration(seconds: 4),
           ),
@@ -1696,17 +1770,24 @@ class _ScheduleVisitSheetState extends State<_ScheduleVisitSheet> {
                             width: 60,
                             height: 60,
                             fit: BoxFit.cover,
-                            placeholder: (_, __) => Container(
+                            placeholder: (_, _) => Container(
                               width: 60,
                               height: 60,
                               color: Colors.grey[200],
-                              child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                              child: const Center(
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
                             ),
-                            errorWidget: (_, __, ___) => Container(
+                            errorWidget: (_, _, _) => Container(
                               width: 60,
                               height: 60,
                               color: EmlakColors.primary.withValues(alpha: 0.2),
-                              child: const Icon(Icons.home, color: Colors.white54),
+                              child: const Icon(
+                                Icons.home,
+                                color: Colors.white54,
+                              ),
                             ),
                           ),
                         ),
@@ -1719,7 +1800,9 @@ class _ScheduleVisitSheetState extends State<_ScheduleVisitSheet> {
                                 widget.property.title,
                                 style: TextStyle(
                                   fontWeight: FontWeight.w600,
-                                  color: isDark ? Colors.white : Colors.grey[900],
+                                  color: isDark
+                                      ? Colors.white
+                                      : Colors.grey[900],
                                 ),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -1755,8 +1838,11 @@ class _ScheduleVisitSheetState extends State<_ScheduleVisitSheet> {
                       scrollDirection: Axis.horizontal,
                       itemCount: 14,
                       itemBuilder: (context, index) {
-                        final date = DateTime.now().add(Duration(days: index + 1));
-                        final isSelected = _selectedDate?.day == date.day &&
+                        final date = DateTime.now().add(
+                          Duration(days: index + 1),
+                        );
+                        final isSelected =
+                            _selectedDate?.day == date.day &&
                             _selectedDate?.month == date.month;
                         return Material(
                           color: isSelected
@@ -1791,7 +1877,9 @@ class _ScheduleVisitSheetState extends State<_ScheduleVisitSheet> {
                                       fontSize: 12,
                                       color: isSelected
                                           ? Colors.white.withValues(alpha: 0.8)
-                                          : (isDark ? Colors.grey[400] : Colors.grey[600]),
+                                          : (isDark
+                                                ? Colors.grey[400]
+                                                : Colors.grey[600]),
                                     ),
                                   ),
                                   const SizedBox(height: 4),
@@ -1802,7 +1890,9 @@ class _ScheduleVisitSheetState extends State<_ScheduleVisitSheet> {
                                       fontWeight: FontWeight.w700,
                                       color: isSelected
                                           ? Colors.white
-                                          : (isDark ? Colors.white : Colors.grey[900]),
+                                          : (isDark
+                                                ? Colors.white
+                                                : Colors.grey[900]),
                                     ),
                                   ),
                                 ],
@@ -1843,28 +1933,30 @@ class _ScheduleVisitSheetState extends State<_ScheduleVisitSheet> {
                             padding: const EdgeInsets.symmetric(
                               horizontal: 20,
                               vertical: 12,
-                          ),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(10),
-                            border: isSelected
-                                ? null
-                                : Border.all(
-                                    color: isDark
-                                        ? Colors.grey[700]!
-                                        : Colors.grey[300]!,
-                                  ),
-                          ),
-                          child: Text(
-                            time,
-                            style: TextStyle(
-                              color: isSelected
-                                  ? Colors.white
-                                  : (isDark ? Colors.white : Colors.grey[800]),
-                              fontWeight: FontWeight.w500,
+                            ),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              border: isSelected
+                                  ? null
+                                  : Border.all(
+                                      color: isDark
+                                          ? Colors.grey[700]!
+                                          : Colors.grey[300]!,
+                                    ),
+                            ),
+                            child: Text(
+                              time,
+                              style: TextStyle(
+                                color: isSelected
+                                    ? Colors.white
+                                    : (isDark
+                                          ? Colors.white
+                                          : Colors.grey[800]),
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
                         ),
-                      ),
                       );
                     }).toList(),
                   ),
@@ -1905,7 +1997,10 @@ class _ScheduleVisitSheetState extends State<_ScheduleVisitSheet> {
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
-                onPressed: (_selectedDate != null && _selectedTime != null && !_isLoading)
+                onPressed:
+                    (_selectedDate != null &&
+                        _selectedTime != null &&
+                        !_isLoading)
                     ? _submitAppointment
                     : null,
                 style: ElevatedButton.styleFrom(
@@ -1951,10 +2046,7 @@ class _FullScreenGallery extends StatefulWidget {
   final List<String> images;
   final int initialIndex;
 
-  const _FullScreenGallery({
-    required this.images,
-    required this.initialIndex,
-  });
+  const _FullScreenGallery({required this.images, required this.initialIndex});
 
   @override
   State<_FullScreenGallery> createState() => _FullScreenGalleryState();
@@ -1999,12 +2091,10 @@ class _FullScreenGalleryState extends State<_FullScreenGallery> {
                   child: CachedNetworkImage(
                     imageUrl: widget.images[index],
                     fit: BoxFit.contain,
-                    placeholder: (_, __) => Center(
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                      ),
+                    placeholder: (_, _) => Center(
+                      child: CircularProgressIndicator(color: Colors.white),
                     ),
-                    errorWidget: (_, __, ___) => const Icon(
+                    errorWidget: (_, _, _) => const Icon(
                       Icons.broken_image,
                       size: 80,
                       color: Colors.white54,
@@ -2036,17 +2126,16 @@ class _FullScreenGalleryState extends State<_FullScreenGallery> {
                       child: const SizedBox(
                         width: 44,
                         height: 44,
-                        child: Icon(
-                          Icons.close,
-                          color: Colors.white,
-                          size: 24,
-                        ),
+                        child: Icon(Icons.close, color: Colors.white, size: 24),
                       ),
                     ),
                   ),
                   // Fotoğraf sayacı
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(20),
@@ -2101,35 +2190,41 @@ class _FullScreenGalleryState extends State<_FullScreenGallery> {
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                color: isSelected ? Colors.white : Colors.transparent,
+                                color: isSelected
+                                    ? Colors.white
+                                    : Colors.transparent,
                                 width: 2,
                               ),
                             ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(6),
-                          child: Opacity(
-                            opacity: isSelected ? 1.0 : 0.5,
-                            child: CachedNetworkImage(
-                              imageUrl: widget.images[index],
-                              fit: BoxFit.cover,
-                              placeholder: (_, __) => Container(
-                                color: Colors.grey[800],
-                                child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                              ),
-                              errorWidget: (_, __, ___) => Container(
-                                color: Colors.grey[800],
-                                child: const Icon(
-                                  Icons.image,
-                                  color: Colors.white54,
-                                  size: 24,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(6),
+                              child: Opacity(
+                                opacity: isSelected ? 1.0 : 0.5,
+                                child: CachedNetworkImage(
+                                  imageUrl: widget.images[index],
+                                  fit: BoxFit.cover,
+                                  placeholder: (_, _) => Container(
+                                    color: Colors.grey[800],
+                                    child: const Center(
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    ),
+                                  ),
+                                  errorWidget: (_, _, _) => Container(
+                                    color: Colors.grey[800],
+                                    child: const Icon(
+                                      Icons.image,
+                                      color: Colors.white54,
+                                      size: 24,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                    ),
                     );
                   },
                 ),

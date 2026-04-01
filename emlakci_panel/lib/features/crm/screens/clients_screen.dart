@@ -6,6 +6,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../models/client_model.dart';
 import '../../../models/client_engagement_model.dart';
 import '../../../providers/client_provider.dart';
+import 'package:emlakci_panel/core/services/log_service.dart';
 import '../../../services/client_service.dart';
 import '../../../shared/widgets/empty_state.dart';
 import '../../../shared/widgets/stat_card.dart';
@@ -71,7 +72,8 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
           _isLoading = false;
         });
       }
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to load clients', error: e, stackTrace: st, source: 'ClientsScreen:_loadClients');
       if (mounted) {
         setState(() {
           _error = e.toString();
@@ -84,8 +86,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
   List<RealtorClient> get _filteredClients {
     var result = _clients;
     if (_selectedStatus != null) {
-      result =
-          result.where((c) => c.status.name == _selectedStatus).toList();
+      result = result.where((c) => c.status.name == _selectedStatus).toList();
     }
     if (_searchQuery.isNotEmpty) {
       final query = _searchQuery.toLowerCase();
@@ -138,98 +139,100 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
           child: _isLoading
               ? const Center(child: CircularProgressIndicator())
               : _error != null
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.error_outline,
-                              size: 48,
-                              color: AppColors.error.withValues(alpha: 0.5)),
-                          const SizedBox(height: 12),
-                          Text('Musteriler yuklenemedi',
-                              style: TextStyle(
-                                  color: AppColors.textSecondary(isDark))),
-                          const SizedBox(height: 12),
-                          TextButton(
-                              onPressed: _loadClients,
-                              child: const Text('Tekrar Dene')),
-                        ],
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        size: 48,
+                        color: AppColors.error.withValues(alpha: 0.5),
                       ),
-                    )
-                  : SingleChildScrollView(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // KPI Row
-                          _buildKpiRow(isDark),
-                          const SizedBox(height: 16),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Musteriler yuklenemedi',
+                        style: TextStyle(
+                          color: AppColors.textSecondary(isDark),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextButton(
+                        onPressed: _loadClients,
+                        child: const Text('Tekrar Dene'),
+                      ),
+                    ],
+                  ),
+                )
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // KPI Row
+                      _buildKpiRow(isDark),
+                      const SizedBox(height: 16),
 
-                          // Analytics section (2 column on desktop)
-                          if (isDesktop)
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  child: EngagementTable(
-                                    onClientTap: (id) =>
-                                        context.push('/clients/$id'),
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                const Expanded(
-                                  child: PropertyInterestTable(),
-                                ),
-                              ],
-                            )
-                          else ...[
-                            EngagementTable(
-                              onClientTap: (id) =>
-                                  context.push('/clients/$id'),
+                      // Analytics section (2 column on desktop)
+                      if (isDesktop)
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: EngagementTable(
+                                onClientTap: (id) =>
+                                    context.push('/clients/$id'),
+                              ),
                             ),
-                            const SizedBox(height: 16),
-                            const PropertyInterestTable(),
+                            const SizedBox(width: 16),
+                            const Expanded(child: PropertyInterestTable()),
                           ],
-                          const SizedBox(height: 16),
+                        )
+                      else ...[
+                        EngagementTable(
+                          onClientTap: (id) => context.push('/clients/$id'),
+                        ),
+                        const SizedBox(height: 16),
+                        const PropertyInterestTable(),
+                      ],
+                      const SizedBox(height: 16),
 
-                          // Activity feed
-                          ActivityFeed(
-                            onClientTap: (id) =>
-                                context.push('/clients/$id'),
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Client list section title
-                          Text(
-                            'Musteri Listesi',
-                            style: TextStyle(
-                              color: AppColors.textPrimary(isDark),
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-
-                          // Client table/list
-                          _filteredClients.isEmpty
-                              ? EmptyState(
-                                  message: _clients.isEmpty
-                                      ? 'Henuz musteriniz yok'
-                                      : 'Aramayla eslesen musteri bulunamadi',
-                                  icon: Icons.people_outline_rounded,
-                                  buttonText: _clients.isEmpty
-                                      ? 'Musteri Ekle'
-                                      : null,
-                                  onPressed: _clients.isEmpty
-                                      ? () => _showAddClientDialog(context)
-                                      : null,
-                                )
-                              : isDesktop
-                                  ? _buildEnhancedDataTable(isDark)
-                                  : _buildMobileList(isDark),
-                        ],
+                      // Activity feed
+                      ActivityFeed(
+                        onClientTap: (id) => context.push('/clients/$id'),
                       ),
-                    ),
+                      const SizedBox(height: 16),
+
+                      // Client list section title
+                      Text(
+                        'Musteri Listesi',
+                        style: TextStyle(
+                          color: AppColors.textPrimary(isDark),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Client table/list
+                      _filteredClients.isEmpty
+                          ? EmptyState(
+                              message: _clients.isEmpty
+                                  ? 'Henuz musteriniz yok'
+                                  : 'Aramayla eslesen musteri bulunamadi',
+                              icon: Icons.people_outline_rounded,
+                              buttonText: _clients.isEmpty
+                                  ? 'Musteri Ekle'
+                                  : null,
+                              onPressed: _clients.isEmpty
+                                  ? () => _showAddClientDialog(context)
+                                  : null,
+                            )
+                          : isDesktop
+                          ? _buildEnhancedDataTable(isDark)
+                          : _buildMobileList(isDark),
+                    ],
+                  ),
+                ),
         ),
       ],
     );
@@ -244,7 +247,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
 
     return kpisAsync.when(
       loading: () => _buildKpiRowShimmer(isDark),
-      error: (_, __) => _buildKpiRowFallback(isDark),
+      error: (_, _) => _buildKpiRowFallback(isDark),
       data: (kpis) {
         return LayoutBuilder(
           builder: (context, constraints) {
@@ -277,8 +280,9 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                       icon: Icons.star_rounded,
                       color: AppColors.accent,
                       onTap: kpis.mostEngagedClientId != null
-                          ? () => context
-                              .push('/clients/${kpis.mostEngagedClientId}')
+                          ? () => context.push(
+                              '/clients/${kpis.mostEngagedClientId}',
+                            )
                           : null,
                     ),
                   ),
@@ -329,7 +333,8 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                         color: AppColors.accent,
                         onTap: kpis.mostEngagedClientId != null
                             ? () => context.push(
-                                '/clients/${kpis.mostEngagedClientId}')
+                                '/clients/${kpis.mostEngagedClientId}',
+                              )
                             : null,
                       ),
                     ),
@@ -375,7 +380,9 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
   Widget _buildKpiRowFallback(bool isDark) {
     // Fallback with local data
     final total = _clients.length;
-    final active = _clients.where((c) => c.status == ClientStatus.active).length;
+    final active = _clients
+        .where((c) => c.status == ClientStatus.active)
+        .length;
     final due = _clients.where((c) => c.isFollowupDue).length;
 
     return Row(
@@ -442,8 +449,10 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
               if (_clients.isNotEmpty) ...[
                 const SizedBox(width: 8),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
@@ -466,8 +475,10 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
@@ -498,8 +509,9 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                           onSelected: (_) {
                             setState(() => _selectedStatus = filterValue);
                           },
-                          selectedColor:
-                              AppColors.primary.withValues(alpha: 0.15),
+                          selectedColor: AppColors.primary.withValues(
+                            alpha: 0.15,
+                          ),
                           labelStyle: TextStyle(
                             color: isSelected
                                 ? AppColors.primary
@@ -540,13 +552,18 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                       color: AppColors.textMuted(isDark),
                       fontSize: 13,
                     ),
-                    prefixIcon: Icon(Icons.search_rounded,
-                        size: 18, color: AppColors.textMuted(isDark)),
+                    prefixIcon: Icon(
+                      Icons.search_rounded,
+                      size: 18,
+                      color: AppColors.textMuted(isDark),
+                    ),
                     suffixIcon: _searchQuery.isNotEmpty
                         ? IconButton(
-                            icon: Icon(Icons.close_rounded,
-                                size: 16,
-                                color: AppColors.textMuted(isDark)),
+                            icon: Icon(
+                              Icons.close_rounded,
+                              size: 16,
+                              color: AppColors.textMuted(isDark),
+                            ),
                             onPressed: () {
                               _searchController.clear();
                               setState(() => _searchQuery = '');
@@ -559,21 +576,23 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                         : const Color(0xFFF1F5F9),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide:
-                          BorderSide(color: AppColors.border(isDark)),
+                      borderSide: BorderSide(color: AppColors.border(isDark)),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide:
-                          BorderSide(color: AppColors.border(isDark)),
+                      borderSide: BorderSide(color: AppColors.border(isDark)),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
                       borderSide: const BorderSide(
-                          color: AppColors.primary, width: 1.5),
+                        color: AppColors.primary,
+                        width: 1.5,
+                      ),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 10),
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
                     isDense: true,
                   ),
                 ),
@@ -613,8 +632,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
         columnSpacing: 12,
         horizontalMargin: 16,
         minWidth: 900,
-        headingRowColor:
-            WidgetStateProperty.all(AppColors.background(isDark)),
+        headingRowColor: WidgetStateProperty.all(AppColors.background(isDark)),
         headingTextStyle: TextStyle(
           color: AppColors.textSecondary(isDark),
           fontSize: 12,
@@ -647,8 +665,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                   children: [
                     CircleAvatar(
                       radius: 14,
-                      backgroundColor:
-                          AppColors.primary.withValues(alpha: 0.1),
+                      backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                       child: Text(
                         client.name.isNotEmpty
                             ? client.name.substring(0, 1).toUpperCase()
@@ -665,8 +682,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                       child: Text(
                         client.name,
                         overflow: TextOverflow.ellipsis,
-                        style:
-                            const TextStyle(fontWeight: FontWeight.w500),
+                        style: const TextStyle(fontWeight: FontWeight.w500),
                       ),
                     ),
                   ],
@@ -690,8 +706,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.visibility,
-                        size: 13, color: AppColors.info),
+                    Icon(Icons.visibility, size: 13, color: AppColors.info),
                     const SizedBox(width: 4),
                     Text(
                       eng != null ? '${eng.viewCount}' : '-',
@@ -710,8 +725,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.favorite,
-                        size: 13, color: AppColors.error),
+                    Icon(Icons.favorite, size: 13, color: AppColors.error),
                     const SizedBox(width: 4),
                     Text(
                       eng != null ? '${eng.favoriteCount}' : '-',
@@ -730,10 +744,13 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                 eng != null && eng.engagementScore > 0
                     ? Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
-                          color: _scoreColor(eng.engagementScore)
-                              .withValues(alpha: 0.12),
+                          color: _scoreColor(
+                            eng.engagementScore,
+                          ).withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
@@ -745,19 +762,25 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                           ),
                         ),
                       )
-                    : Text('-',
-                        style: TextStyle(
-                            color: AppColors.textMuted(isDark))),
+                    : Text(
+                        '-',
+                        style: TextStyle(color: AppColors.textMuted(isDark)),
+                      ),
               ),
               // Actions
               DataCell(
                 IconButton(
-                  icon: Icon(Icons.delete_outline_rounded,
-                      size: 18, color: AppColors.error),
+                  icon: Icon(
+                    Icons.delete_outline_rounded,
+                    size: 18,
+                    color: AppColors.error,
+                  ),
                   onPressed: () => _confirmDeleteClient(client),
                   tooltip: 'Sil',
-                  constraints:
-                      const BoxConstraints(minWidth: 32, minHeight: 32),
+                  constraints: const BoxConstraints(
+                    minWidth: 32,
+                    minHeight: 32,
+                  ),
                   padding: EdgeInsets.zero,
                 ),
               ),
@@ -804,8 +827,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.card(isDark),
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         title: Text(
           'Musteriyi Sil',
           style: TextStyle(
@@ -824,8 +846,10 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('Vazgec',
-                style: TextStyle(color: AppColors.textMuted(isDark))),
+            child: Text(
+              'Vazgec',
+              style: TextStyle(color: AppColors.textMuted(isDark)),
+            ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(ctx).pop(true),
@@ -833,7 +857,8 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
               backgroundColor: AppColors.error,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8)),
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
             child: const Text('Sil'),
           ),
@@ -855,12 +880,14 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
             ),
           );
         }
-      } catch (e) {
+      } catch (e, st) {
+        LogService.error('Failed to delete client', error: e, stackTrace: st, source: 'ClientsScreen:_deleteClient');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-                content: Text('Hata: $e'),
-                backgroundColor: AppColors.error),
+              content: Text('Hata: $e'),
+              backgroundColor: AppColors.error,
+            ),
           );
         }
       }
@@ -883,10 +910,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
     String? lookingFor;
     String? propertyType;
 
-    final lookingForOptions = [
-      ('sale', 'Satilik'),
-      ('rent', 'Kiralik'),
-    ];
+    final lookingForOptions = [('sale', 'Satilik'), ('rent', 'Kiralik')];
 
     final propertyTypeOptions = [
       ('apartment', 'Daire'),
@@ -952,8 +976,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                         children: [
                           Expanded(
                             child: Column(
-                              crossAxisAlignment:
-                                  CrossAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 _buildLabel('Telefon', isDark),
                                 const SizedBox(height: 6),
@@ -970,8 +993,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
-                              crossAxisAlignment:
-                                  CrossAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 _buildLabel('E-posta', isDark),
                                 const SizedBox(height: 6),
@@ -980,8 +1002,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                                   hint: 'ornek@email.com',
                                   isDark: isDark,
                                   prefixIcon: Icons.email_outlined,
-                                  keyboardType:
-                                      TextInputType.emailAddress,
+                                  keyboardType: TextInputType.emailAddress,
                                 ),
                               ],
                             ),
@@ -996,17 +1017,18 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                         hint: 'Secin',
                         isDark: isDark,
                         items: lookingForOptions
-                            .map((opt) => DropdownMenuItem<String>(
-                                  value: opt.$1,
-                                  child: Text(
-                                    opt.$2,
-                                    style: TextStyle(
-                                      color:
-                                          AppColors.textPrimary(isDark),
-                                      fontSize: 14,
-                                    ),
+                            .map(
+                              (opt) => DropdownMenuItem<String>(
+                                value: opt.$1,
+                                child: Text(
+                                  opt.$2,
+                                  style: TextStyle(
+                                    color: AppColors.textPrimary(isDark),
+                                    fontSize: 14,
                                   ),
-                                ))
+                                ),
+                              ),
+                            )
                             .toList(),
                         onChanged: (val) =>
                             setDialogState(() => lookingFor = val),
@@ -1019,17 +1041,18 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                         hint: 'Secin',
                         isDark: isDark,
                         items: propertyTypeOptions
-                            .map((opt) => DropdownMenuItem<String>(
-                                  value: opt.$1,
-                                  child: Text(
-                                    opt.$2,
-                                    style: TextStyle(
-                                      color:
-                                          AppColors.textPrimary(isDark),
-                                      fontSize: 14,
-                                    ),
+                            .map(
+                              (opt) => DropdownMenuItem<String>(
+                                value: opt.$1,
+                                child: Text(
+                                  opt.$2,
+                                  style: TextStyle(
+                                    color: AppColors.textPrimary(isDark),
+                                    fontSize: 14,
                                   ),
-                                ))
+                                ),
+                              ),
+                            )
                             .toList(),
                         onChanged: (val) =>
                             setDialogState(() => propertyType = val),
@@ -1048,12 +1071,14 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                             ),
                           ),
                           Padding(
-                            padding:
-                                const EdgeInsets.symmetric(horizontal: 8),
-                            child: Text('-',
-                                style: TextStyle(
-                                    color: AppColors.textMuted(isDark),
-                                    fontSize: 16)),
+                            padding: const EdgeInsets.symmetric(horizontal: 8),
+                            child: Text(
+                              '-',
+                              style: TextStyle(
+                                color: AppColors.textMuted(isDark),
+                                fontSize: 16,
+                              ),
+                            ),
                           ),
                           Expanded(
                             child: _buildTextField(
@@ -1081,9 +1106,10 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: Text('Vazgec',
-                      style:
-                          TextStyle(color: AppColors.textMuted(isDark))),
+                  child: Text(
+                    'Vazgec',
+                    style: TextStyle(color: AppColors.textMuted(isDark)),
+                  ),
                 ),
                 ElevatedButton(
                   onPressed: () async {
@@ -1144,7 +1170,8 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                           ),
                         );
                       }
-                    } catch (e) {
+                    } catch (e, st) {
+                      LogService.error('Failed to add client', error: e, stackTrace: st, source: 'ClientsScreen:addClient');
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
@@ -1159,12 +1186,17 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8)),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 12),
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
                   ),
-                  child: const Text('Kaydet',
-                      style: TextStyle(fontWeight: FontWeight.w600)),
+                  child: const Text(
+                    'Kaydet',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
                 ),
               ],
             );
@@ -1201,22 +1233,14 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
       controller: controller,
       maxLines: maxLines,
       keyboardType: keyboardType,
-      style: TextStyle(
-        color: AppColors.textPrimary(isDark),
-        fontSize: 14,
-      ),
+      style: TextStyle(color: AppColors.textPrimary(isDark), fontSize: 14),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(
-          color: AppColors.textMuted(isDark),
-          fontSize: 14,
-        ),
+        hintStyle: TextStyle(color: AppColors.textMuted(isDark), fontSize: 14),
         filled: true,
-        fillColor:
-            isDark ? AppColors.backgroundDark : const Color(0xFFF1F5F9),
+        fillColor: isDark ? AppColors.backgroundDark : const Color(0xFFF1F5F9),
         prefixIcon: prefixIcon != null
-            ? Icon(prefixIcon,
-                size: 18, color: AppColors.textMuted(isDark))
+            ? Icon(prefixIcon, size: 18, color: AppColors.textMuted(isDark))
             : null,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
@@ -1228,11 +1252,12 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide:
-              const BorderSide(color: AppColors.primary, width: 1.5),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
         ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 12,
+        ),
       ),
     );
   }
@@ -1247,8 +1272,7 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color:
-            isDark ? AppColors.backgroundDark : const Color(0xFFF1F5F9),
+        color: isDark ? AppColors.backgroundDark : const Color(0xFFF1F5F9),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: AppColors.border(isDark)),
       ),
@@ -1257,15 +1281,14 @@ class _ClientsScreenState extends ConsumerState<ClientsScreen> {
           value: value,
           hint: Text(
             hint,
-            style: TextStyle(
-              color: AppColors.textMuted(isDark),
-              fontSize: 14,
-            ),
+            style: TextStyle(color: AppColors.textMuted(isDark), fontSize: 14),
           ),
           isExpanded: true,
           dropdownColor: AppColors.card(isDark),
-          icon: Icon(Icons.keyboard_arrow_down,
-              color: AppColors.textMuted(isDark)),
+          icon: Icon(
+            Icons.keyboard_arrow_down,
+            color: AppColors.textMuted(isDark),
+          ),
           items: items,
           onChanged: onChanged,
         ),

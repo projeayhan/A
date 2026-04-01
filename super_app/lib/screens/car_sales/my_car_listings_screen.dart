@@ -72,7 +72,10 @@ class _MyCarListingsScreenState extends State<MyCarListingsScreen>
 
           // İstatistikleri hesapla
           _totalViews = allListings.fold(0, (sum, l) => sum + l.viewCount);
-          _totalFavorites = allListings.fold(0, (sum, l) => sum + l.favoriteCount);
+          _totalFavorites = allListings.fold(
+            0,
+            (sum, l) => sum + l.favoriteCount,
+          );
           _totalContacts = 0;
           _isLoading = false;
         });
@@ -115,7 +118,11 @@ class _MyCarListingsScreenState extends State<MyCarListingsScreen>
     super.dispose();
   }
 
-  int get _totalListings => _activeListings.length + _pendingListings.length + _rejectedListings.length + _soldListings.length;
+  int get _totalListings =>
+      _activeListings.length +
+      _pendingListings.length +
+      _rejectedListings.length +
+      _soldListings.length;
 
   @override
   Widget build(BuildContext context) {
@@ -318,10 +325,7 @@ class _MyCarListingsScreenState extends State<MyCarListingsScreen>
         dividerColor: Colors.transparent,
         labelColor: Colors.white,
         unselectedLabelColor: CarSalesColors.textSecondary(isDark),
-        labelStyle: const TextStyle(
-          fontWeight: FontWeight.w600,
-          fontSize: 13,
-        ),
+        labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
         tabs: [
           Tab(
             child: Row(
@@ -330,7 +334,10 @@ class _MyCarListingsScreenState extends State<MyCarListingsScreen>
                 const Text('Aktif'),
                 const SizedBox(width: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 5,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(8),
@@ -350,7 +357,10 @@ class _MyCarListingsScreenState extends State<MyCarListingsScreen>
                 const Text('Bekleyen'),
                 const SizedBox(width: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 5,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(8),
@@ -370,7 +380,10 @@ class _MyCarListingsScreenState extends State<MyCarListingsScreen>
                 const Text('Red'),
                 const SizedBox(width: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 5,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: _rejectedListings.isNotEmpty
                         ? CarSalesColors.accent.withValues(alpha: 0.8)
@@ -392,7 +405,10 @@ class _MyCarListingsScreenState extends State<MyCarListingsScreen>
                 const Text('Satıldı'),
                 const SizedBox(width: 4),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 5,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(8),
@@ -410,7 +426,11 @@ class _MyCarListingsScreenState extends State<MyCarListingsScreen>
     );
   }
 
-  Widget _buildListingsTab(List<CarListing> listings, bool isDark, String type) {
+  Widget _buildListingsTab(
+    List<CarListing> listings,
+    bool isDark,
+    String type,
+  ) {
     if (listings.isEmpty) {
       return _buildEmptyState(isDark, type);
     }
@@ -480,7 +500,10 @@ class _MyCarListingsScreenState extends State<MyCarListingsScreen>
             GestureDetector(
               onTap: () => _navigateToAddListing(),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: CarSalesColors.primaryGradient,
@@ -509,7 +532,12 @@ class _MyCarListingsScreenState extends State<MyCarListingsScreen>
     );
   }
 
-  Widget _buildListingCard(CarListing car, bool isDark, String type, int index) {
+  Widget _buildListingCard(
+    CarListing car,
+    bool isDark,
+    String type,
+    int index,
+  ) {
     return Dismissible(
       key: Key(car.id),
       direction: DismissDirection.endToStart,
@@ -570,12 +598,14 @@ class _MyCarListingsScreenState extends State<MyCarListingsScreen>
                       height: 160,
                       width: double.infinity,
                       fit: BoxFit.cover,
-                      placeholder: (_, __) => Container(
+                      placeholder: (_, _) => Container(
                         height: 160,
                         color: Colors.grey[200],
-                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                        child: const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
                       ),
-                      errorWidget: (_, __, ___) => Container(
+                      errorWidget: (_, _, _) => Container(
                         height: 160,
                         color: CarSalesColors.surface(isDark),
                         child: Icon(
@@ -623,7 +653,8 @@ class _MyCarListingsScreenState extends State<MyCarListingsScreen>
                     top: 12,
                     right: 12,
                     child: GestureDetector(
-                      onTap: () => _showListingOptions(car, isDark, type, index),
+                      onTap: () =>
+                          _showListingOptions(car, isDark, type, index),
                       child: Container(
                         width: 36,
                         height: 36,
@@ -763,7 +794,8 @@ class _MyCarListingsScreenState extends State<MyCarListingsScreen>
                                 isDark,
                                 Icons.delete_outline,
                                 'Sil',
-                                () => _confirmAndDeleteListing(car, type, index),
+                                () =>
+                                    _confirmAndDeleteListing(car, type, index),
                                 isDestructive: true,
                               ),
                           ],
@@ -780,7 +812,12 @@ class _MyCarListingsScreenState extends State<MyCarListingsScreen>
     );
   }
 
-  Widget _buildStatItem(bool isDark, IconData icon, String value, String label) {
+  Widget _buildStatItem(
+    bool isDark,
+    IconData icon,
+    String value,
+    String label,
+  ) {
     return Column(
       children: [
         Row(
@@ -867,10 +904,7 @@ class _MyCarListingsScreenState extends State<MyCarListingsScreen>
       icon: const Icon(Icons.add, color: Colors.white),
       label: const Text(
         'Yeni İlan',
-        style: TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-        ),
+        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -928,7 +962,9 @@ class _MyCarListingsScreenState extends State<MyCarListingsScreen>
           content: const Text('Moderasyon bilgisi yüklenemedi'),
           backgroundColor: CarSalesColors.secondary,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
       return;
@@ -942,19 +978,15 @@ class _MyCarListingsScreenState extends State<MyCarListingsScreen>
   }
 
   void _navigateToDetail(CarListing car) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => CarDetailScreen(car: car),
-      ),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => CarDetailScreen(car: car)));
   }
 
   void _navigateToAddListing() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const AddCarListingScreen(),
-      ),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const AddCarListingScreen()));
   }
 
   void _editListing(CarListing car) {
@@ -968,11 +1000,9 @@ class _MyCarListingsScreenState extends State<MyCarListingsScreen>
       ),
     );
     // Navigate to edit screen with car data
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const AddCarListingScreen(),
-      ),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const AddCarListingScreen()));
   }
 
   void _markAsSold(CarListing car, int index) {
@@ -1041,14 +1071,19 @@ class _MyCarListingsScreenState extends State<MyCarListingsScreen>
                   ),
                   backgroundColor: CarSalesColors.success,
                   behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                   action: SnackBarAction(
                     label: 'Geri Al',
                     textColor: Colors.white,
                     onPressed: () {
                       setState(() {
                         _soldListings.remove(car);
-                        _activeListings.insert(index.clamp(0, _activeListings.length), car);
+                        _activeListings.insert(
+                          index.clamp(0, _activeListings.length),
+                          car,
+                        );
                       });
                     },
                   ),
@@ -1059,7 +1094,9 @@ class _MyCarListingsScreenState extends State<MyCarListingsScreen>
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: CarSalesColors.success,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
             icon: const Icon(Icons.check, color: Colors.white, size: 18),
             label: const Text('Onayla', style: TextStyle(color: Colors.white)),
@@ -1069,63 +1106,71 @@ class _MyCarListingsScreenState extends State<MyCarListingsScreen>
     );
   }
 
-  Future<bool> _showDeleteConfirmationDialog(CarListing car, bool isDark) async {
+  Future<bool> _showDeleteConfirmationDialog(
+    CarListing car,
+    bool isDark,
+  ) async {
     return await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: CarSalesColors.card(isDark),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: CarSalesColors.accent.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.delete_forever,
-                color: CarSalesColors.accent,
-                size: 24,
-              ),
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: CarSalesColors.card(isDark),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'İlanı Sil',
-                style: TextStyle(
-                  color: CarSalesColors.textPrimary(isDark),
-                  fontSize: 18,
+            title: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: CarSalesColors.accent.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.delete_forever,
+                    color: CarSalesColors.accent,
+                    size: 24,
+                  ),
                 ),
-              ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'İlanı Sil',
+                    style: TextStyle(
+                      color: CarSalesColors.textPrimary(isDark),
+                      fontSize: 18,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-        content: Text(
-          '"${car.fullName}" ilanını silmek istediğinize emin misiniz?\n\nBu işlem geri alınamaz!',
-          style: TextStyle(color: CarSalesColors.textSecondary(isDark)),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(
-              'İptal',
+            content: Text(
+              '"${car.fullName}" ilanını silmek istediğinize emin misiniz?\n\nBu işlem geri alınamaz!',
               style: TextStyle(color: CarSalesColors.textSecondary(isDark)),
             ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text(
+                  'İptal',
+                  style: TextStyle(color: CarSalesColors.textSecondary(isDark)),
+                ),
+              ),
+              ElevatedButton.icon(
+                onPressed: () => Navigator.of(context).pop(true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: CarSalesColors.accent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                icon: const Icon(Icons.delete, color: Colors.white, size: 18),
+                label: const Text('Sil', style: TextStyle(color: Colors.white)),
+              ),
+            ],
           ),
-          ElevatedButton.icon(
-            onPressed: () => Navigator.of(context).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: CarSalesColors.accent,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            icon: const Icon(Icons.delete, color: Colors.white, size: 18),
-            label: const Text('Sil', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    ) ?? false;
+        ) ??
+        false;
   }
 
   void _deleteListing(CarListing car, String type, int index) {
@@ -1181,7 +1226,12 @@ class _MyCarListingsScreenState extends State<MyCarListingsScreen>
     }
   }
 
-  void _showListingOptions(CarListing car, bool isDark, String type, int index) {
+  void _showListingOptions(
+    CarListing car,
+    bool isDark,
+    String type,
+    int index,
+  ) {
     showModalBottomSheet(
       context: context,
       backgroundColor: CarSalesColors.card(isDark),
@@ -1285,7 +1335,9 @@ class _MyCarListingsScreenState extends State<MyCarListingsScreen>
                     content: const Text('Paylaşım linki kopyalandı'),
                     backgroundColor: CarSalesColors.primary,
                     behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 );
               },
@@ -1346,7 +1398,10 @@ class _MyCarListingsScreenState extends State<MyCarListingsScreen>
             ),
             const SizedBox(height: 20),
             ListTile(
-              leading: const Icon(Icons.analytics, color: CarSalesColors.primary),
+              leading: const Icon(
+                Icons.analytics,
+                color: CarSalesColors.primary,
+              ),
               title: Text(
                 'İstatistikler',
                 style: TextStyle(color: CarSalesColors.textPrimary(isDark)),
@@ -1354,7 +1409,10 @@ class _MyCarListingsScreenState extends State<MyCarListingsScreen>
               onTap: () => Navigator.of(context).pop(),
             ),
             ListTile(
-              leading: const Icon(Icons.settings, color: CarSalesColors.primary),
+              leading: const Icon(
+                Icons.settings,
+                color: CarSalesColors.primary,
+              ),
               title: Text(
                 'Ayarlar',
                 style: TextStyle(color: CarSalesColors.textPrimary(isDark)),

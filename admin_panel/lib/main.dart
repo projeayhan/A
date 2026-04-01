@@ -1,44 +1,43 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
 import 'core/services/supabase_service.dart';
-import 'core/services/security_service.dart';
+import 'core/services/log_service.dart';
 import 'core/providers/theme_provider.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await SupabaseService.initialize();
-  await initializeDateFormatting('tr_TR', null);
+void main() {
+  runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    await dotenv.load(fileName: '.env');
+    await SupabaseService.initialize();
+    await initializeDateFormatting('tr_TR', null);
 
-  FlutterError.onError = (details) {
-    FlutterError.presentError(details);
-    _logError(details.exception.toString(), details.stack?.toString());
-  };
+    FlutterError.onError = (details) {
+      // Known Riverpod + GoRouter ShellRoute issue in debug mode
+      final msg = details.exception.toString();
+      if (msg.contains('_dependents.isEmpty') ||
+          msg.contains('_dependents!.isEmpty')) {
+        debugPrint('Suppressed known _dependents.isEmpty assertion');
+        return;
+      }
+      FlutterError.presentError(details);
+      LogService.error(details.exceptionAsString(),
+          error: details.exception,
+          stackTrace: details.stack,
+          source: 'FlutterError');
+    };
 
-  runZonedGuarded(() {
+    LogService.info('Admin panel started', source: 'main');
     runApp(const ProviderScope(child: AdminPanelApp()));
   }, (error, stackTrace) {
-    _logError(error.toString(), stackTrace.toString());
+    LogService.error(error.toString(),
+        error: error, stackTrace: stackTrace, source: 'ZoneError');
   });
-}
-
-void _logError(String message, String? stack) {
-  try {
-    SecurityService(Supabase.instance.client).logSystemError(
-      errorType: 'flutter_error',
-      errorMessage: message.length > 500 ? message.substring(0, 500) : message,
-      stackTrace: stack?.length != null && stack!.length > 1000
-          ? stack.substring(0, 1000)
-          : stack,
-      severity: 'error',
-    );
-  } catch (_) {
-    // Silent - don't let error logging break the app
-  }
 }
 
 class AdminPanelApp extends ConsumerWidget {
@@ -56,6 +55,16 @@ class AdminPanelApp extends ConsumerWidget {
       darkTheme: AppTheme.darkTheme,
       themeMode: themeMode,
       routerConfig: router,
+      locale: const Locale('tr', 'TR'),
+      supportedLocales: const [
+        Locale('tr', 'TR'),
+        Locale('en', 'US'),
+      ],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
     );
   }
 }

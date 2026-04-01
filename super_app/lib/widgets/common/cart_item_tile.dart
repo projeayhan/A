@@ -65,7 +65,9 @@ class CartItemTile extends StatelessWidget {
         color: isDark ? Colors.grey[800] : Colors.white,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: isDark ? Colors.grey[700]!.withValues(alpha: 0.5) : Colors.grey[100]!,
+          color: isDark
+              ? Colors.grey[700]!.withValues(alpha: 0.5)
+              : Colors.grey[100]!,
         ),
         boxShadow: [
           BoxShadow(
@@ -96,11 +98,13 @@ class CartItemTile extends StatelessWidget {
             ? CachedNetworkImage(
                 imageUrl: item.imageUrl,
                 fit: BoxFit.cover,
-                placeholder: (_, __) => Container(
+                placeholder: (_, _) => Container(
                   color: Colors.grey[200],
-                  child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                  child: const Center(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
                 ),
-                errorWidget: (_, __, ___) => Icon(
+                errorWidget: (_, _, _) => Icon(
                   item.fallbackIcon,
                   size: 24,
                   color: isDark ? Colors.grey[600] : Colors.grey[400],

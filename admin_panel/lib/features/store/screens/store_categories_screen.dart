@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/pagination_controls.dart';
 import '../../food/services/food_admin_service.dart';
 
 class StoreCategoriesScreen extends ConsumerStatefulWidget {
@@ -14,6 +15,8 @@ class StoreCategoriesScreen extends ConsumerStatefulWidget {
 
 class _StoreCategoriesScreenState extends ConsumerState<StoreCategoriesScreen> {
   bool _isReordering = false;
+  int _currentPage = 0;
+  final int _pageSize = 25;
 
   @override
   Widget build(BuildContext context) {
@@ -124,32 +127,52 @@ class _StoreCategoriesScreenState extends ConsumerState<StoreCategoriesScreen> {
       );
     }
 
+    final totalCount = categories.length;
+    final totalPages = (totalCount / _pageSize).ceil().clamp(1, 999999);
+    final from = _currentPage * _pageSize;
+    final to = (from + _pageSize).clamp(0, totalCount);
+    final pageItems = categories.sublist(from, to);
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
         border: Border.all(color: AppColors.surfaceLight),
       ),
-      child: ReorderableListView.builder(
-        buildDefaultDragHandles: false,
-        itemCount: categories.length,
-        proxyDecorator: (child, index, animation) {
-          return AnimatedBuilder(
-            animation: animation,
-            builder: (context, child) => Material(
-              elevation: 4,
-              borderRadius: BorderRadius.circular(8),
-              color: AppColors.surfaceLight,
-              child: child,
+      child: Column(
+        children: [
+          Expanded(
+            child: ReorderableListView.builder(
+              buildDefaultDragHandles: false,
+              itemCount: pageItems.length,
+              proxyDecorator: (child, index, animation) {
+                return AnimatedBuilder(
+                  animation: animation,
+                  builder: (context, child) => Material(
+                    elevation: 4,
+                    borderRadius: BorderRadius.circular(8),
+                    color: AppColors.surfaceLight,
+                    child: child,
+                  ),
+                  child: child,
+                );
+              },
+              onReorderItem: (oldIndex, newIndex) => _onReorderItem(categories, oldIndex + from, newIndex + from),
+              itemBuilder: (context, index) {
+                final c = pageItems[index];
+                return _buildCategoryRow(c, from + index, key: ValueKey(c.id));
+              },
             ),
-            child: child,
-          );
-        },
-        onReorder: (oldIndex, newIndex) => _onReorder(categories, oldIndex, newIndex),
-        itemBuilder: (context, index) {
-          final c = categories[index];
-          return _buildCategoryRow(c, index, key: ValueKey(c.id));
-        },
+          ),
+          PaginationControls(
+            currentPage: _currentPage,
+            totalPages: totalPages,
+            totalCount: totalCount,
+            pageSize: _pageSize,
+            onPrevious: () => setState(() => _currentPage--),
+            onNext: () => setState(() => _currentPage++),
+          ),
+        ],
       ),
     );
   }
@@ -193,7 +216,7 @@ class _StoreCategoriesScreenState extends ConsumerState<StoreCategoriesScreen> {
                       width: 50,
                       height: 50,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => Icon(_getIconData(category.iconName), color: color, size: 26),
+                      errorBuilder: (ctx, err, st) => Icon(_getIconData(category.iconName), color: color, size: 26),
                     ),
                   )
                 : Icon(_getIconData(category.iconName), color: color, size: 26),
@@ -270,9 +293,9 @@ class _StoreCategoriesScreenState extends ConsumerState<StoreCategoriesScreen> {
     );
   }
 
-  Future<void> _onReorder(List<StoreCategory> categories, int oldIndex, int newIndex) async {
+  Future<void> _onReorderItem(List<StoreCategory> categories, int oldIndex, int newIndex) async {
+    // onReorderItem already provides the pre-adjusted newIndex (no --newIndex needed)
     if (oldIndex == newIndex) return;
-    if (newIndex > oldIndex) newIndex--;
 
     final ids = categories.map((c) => c.id).toList();
     final movedId = ids.removeAt(oldIndex);
@@ -383,7 +406,7 @@ class _StoreCategoriesScreenState extends ConsumerState<StoreCategoriesScreen> {
                                       width: 80,
                                       height: 80,
                                       fit: BoxFit.cover,
-                                      errorBuilder: (_, _, _) => Icon(
+                                      errorBuilder: (ctx, err, st) => Icon(
                                         _getIconData(selectedIcon),
                                         color: _parseColor(selectedColor),
                                         size: 36,
@@ -503,7 +526,7 @@ class _StoreCategoriesScreenState extends ConsumerState<StoreCategoriesScreen> {
                                 ? Image.memory(selectedImageBytes!, width: 64, height: 64, fit: BoxFit.cover)
                                 : currentImageUrl != null && currentImageUrl!.isNotEmpty
                                     ? Image.network(currentImageUrl!, width: 64, height: 64, fit: BoxFit.cover,
-                                        errorBuilder: (_, _, _) => Icon(_getIconData(selectedIcon), color: _parseColor(selectedColor), size: 32))
+                                        errorBuilder: (ctx, err, st) => Icon(_getIconData(selectedIcon), color: _parseColor(selectedColor), size: 32))
                                     : Icon(_getIconData(selectedIcon), color: _parseColor(selectedColor), size: 32),
                           ),
                         ),

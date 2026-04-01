@@ -1,5 +1,5 @@
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:super_app/core/services/log_service.dart';
 
 /// Araç Satış Mesajlaşma Servisi (SuperCyp)
 class CarChatService {
@@ -16,16 +16,14 @@ class CarChatService {
     required String listingId,
     String? sellerId, // Opsiyonel - veritabanından alınacak
   }) async {
-    debugPrint('🚗 getOrCreateConversation başladı - listingId: $listingId');
-    debugPrint('🚗 Current userId: $_userId');
+    LogService.debug('getOrCreateConversation başladı - listingId: $listingId', source: 'CarChatService:getOrCreateConversation');
 
     if (_userId == null) {
-      debugPrint('🚗 userId null - return null');
       return null;
     }
 
     try {
-      debugPrint('🚗 İlan bilgisi alınıyor...');
+      LogService.debug('İlan bilgisi alınıyor...', source: 'CarChatService:getOrCreateConversation');
       // İlanı veritabanından al ve gerçek satıcı ID'sini öğren
       final listing = await _client
           .from('car_listings')
@@ -33,9 +31,7 @@ class CarChatService {
           .eq('id', listingId)
           .single();
 
-      debugPrint('🚗 İlan bilgisi alındı: $listing');
       final realSellerId = listing['user_id'] as String;
-      debugPrint('🚗 Real seller ID: $realSellerId');
 
       // Kendi ilanına mesaj göndermeye çalışıyorsa engelle
       if (_userId == realSellerId) {
@@ -43,7 +39,7 @@ class CarChatService {
       }
 
       // Mevcut konuşma var mı kontrol et
-      debugPrint('🚗 Mevcut konuşma kontrol ediliyor...');
+      // Mevcut konuşma var mı kontrol et
       final existing = await _client
           .from('car_conversations')
           .select('''
@@ -57,9 +53,7 @@ class CarChatService {
           .eq('seller_id', realSellerId)
           .maybeSingle();
 
-      debugPrint('🚗 Mevcut konuşma sonucu: $existing');
       if (existing != null) {
-        debugPrint('🚗 Mevcut konuşma bulundu, döndürülüyor');
         return existing;
       }
 
@@ -80,8 +74,8 @@ class CarChatService {
           .single();
 
       return response;
-    } catch (e) {
-      debugPrint('Konuşma oluşturulamadı: $e');
+    } catch (e, st) {
+      LogService.error('Konuşma oluşturulamadı', error: e, stackTrace: st, source: 'CarChatService:getOrCreateConversation');
       rethrow; // Hatayı UI'a ilet
     }
   }
@@ -103,8 +97,8 @@ class CarChatService {
           .range(offset, offset + limit - 1);
 
       return (response as List).cast<Map<String, dynamic>>().reversed.toList();
-    } catch (e) {
-      debugPrint('Mesajlar alınamadı: $e');
+    } catch (e, st) {
+      LogService.error('Mesajlar alınamadı', error: e, stackTrace: st, source: 'CarChatService:getMessages');
       return [];
     }
   }
@@ -132,8 +126,8 @@ class CarChatService {
           .single();
 
       return response;
-    } catch (e) {
-      debugPrint('Mesaj gönderilemedi: $e');
+    } catch (e, st) {
+      LogService.error('Mesaj gönderilemedi', error: e, stackTrace: st, source: 'CarChatService:sendMessage');
       return null;
     }
   }
@@ -169,8 +163,8 @@ class CarChatService {
           .from('car_conversations')
           .update({updateField: 0})
           .eq('id', conversationId);
-    } catch (e) {
-      debugPrint('Mesajlar okundu olarak işaretlenemedi: $e');
+    } catch (e, st) {
+      LogService.error('Mesajlar okundu olarak işaretlenemedi', error: e, stackTrace: st, source: 'CarChatService:markMessagesAsRead');
     }
   }
 
@@ -192,8 +186,8 @@ class CarChatService {
           .order('last_message_at', ascending: false, nullsFirst: false);
 
       return (response as List).cast<Map<String, dynamic>>();
-    } catch (e) {
-      debugPrint('Konuşmalar alınamadı: $e');
+    } catch (e, st) {
+      LogService.error('Konuşmalar alınamadı', error: e, stackTrace: st, source: 'CarChatService:getConversations');
       return [];
     }
   }
@@ -218,8 +212,8 @@ class CarChatService {
         }
       }
       return total;
-    } catch (e) {
-      debugPrint('Okunmamış mesaj sayısı alınamadı: $e');
+    } catch (e, st) {
+      LogService.error('Okunmamış mesaj sayısı alınamadı', error: e, stackTrace: st, source: 'CarChatService:getTotalUnreadCount');
       return 0;
     }
   }

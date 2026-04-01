@@ -8,16 +8,14 @@ Widget buildCarSpec(IconData icon, String text) {
     children: [
       Icon(icon, size: 14, color: Colors.white60),
       const SizedBox(width: 4),
-      Text(text,
-          style: const TextStyle(fontSize: 12, color: Colors.white60)),
+      Text(text, style: const TextStyle(fontSize: 12, color: Colors.white60)),
     ],
   );
 }
 
 Widget buildCarChip(ThemeData theme, IconData icon, String text) {
   return Container(
-    padding:
-        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
     decoration: BoxDecoration(
       color: AppColors.surfaceLight,
       borderRadius: BorderRadius.circular(8),
@@ -25,14 +23,14 @@ Widget buildCarChip(ThemeData theme, IconData icon, String text) {
     child: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon,
-            size: 12, color: theme.colorScheme.onSurfaceVariant),
+        Icon(icon, size: 12, color: theme.colorScheme.onSurfaceVariant),
         const SizedBox(width: 4),
         Text(
           text,
           style: TextStyle(
-              fontSize: 11,
-              color: theme.colorScheme.onSurfaceVariant),
+            fontSize: 11,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
         ),
       ],
     ),
@@ -68,11 +66,16 @@ Widget buildFeaturedCarCard(
                   fit: BoxFit.cover,
                   memCacheWidth: 360,
                   memCacheHeight: 240,
-                  placeholder: (_, __) => Container(
+                  placeholder: (_, _) => Container(
                     color: Colors.grey[900],
-                    child: const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white24)),
+                    child: const Center(
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white24,
+                      ),
+                    ),
                   ),
-                  errorWidget: (_, __, ___) => Container(
+                  errorWidget: (_, _, _) => Container(
                     color: Colors.grey[900],
                     child: const Icon(
                       Icons.directions_car,
@@ -117,7 +120,8 @@ Widget buildFeaturedCarCard(
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        if (car.companyLogo != null && car.companyLogo!.isNotEmpty)
+                        if (car.companyLogo != null &&
+                            car.companyLogo!.isNotEmpty)
                           ClipRRect(
                             borderRadius: BorderRadius.circular(10),
                             child: CachedNetworkImage(
@@ -125,7 +129,7 @@ Widget buildFeaturedCarCard(
                               width: 20,
                               height: 20,
                               fit: BoxFit.cover,
-                              errorWidget: (_, __, ___) => const Icon(
+                              errorWidget: (_, _, _) => const Icon(
                                 Icons.business,
                                 color: Colors.white,
                                 size: 16,
@@ -133,7 +137,11 @@ Widget buildFeaturedCarCard(
                             ),
                           )
                         else
-                          const Icon(Icons.business, color: Colors.white, size: 16),
+                          const Icon(
+                            Icons.business,
+                            color: Colors.white,
+                            size: 16,
+                          ),
                         const SizedBox(width: 6),
                         Text(
                           car.companyName!,
@@ -182,8 +190,7 @@ Widget buildFeaturedCarCard(
                 ),
 
               // Discount Badge
-              if (car.discountPercentage != null &&
-                  car.discountPercentage! > 0)
+              if (car.discountPercentage != null && car.discountPercentage! > 0)
                 Positioned(
                   top: 16,
                   right: 16,
@@ -228,8 +235,7 @@ Widget buildFeaturedCarCard(
                       children: [
                         buildCarSpec(Icons.speed, car.transmissionName),
                         const SizedBox(width: 12),
-                        buildCarSpec(
-                            Icons.local_gas_station, car.fuelTypeName),
+                        buildCarSpec(Icons.local_gas_station, car.fuelTypeName),
                         const SizedBox(width: 12),
                         buildCarSpec(Icons.person, '${car.seats} Kisi'),
                       ],
@@ -241,8 +247,11 @@ Widget buildFeaturedCarCard(
                         // Rating
                         Row(
                           children: [
-                            const Icon(Icons.star,
-                                color: Colors.amber, size: 18),
+                            const Icon(
+                              Icons.star,
+                              color: Colors.amber,
+                              size: 18,
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               car.rating.toString(),
@@ -336,13 +345,15 @@ Widget buildCarListItem(
                   fit: BoxFit.cover,
                   memCacheWidth: 200,
                   memCacheHeight: 150,
-                  placeholder: (_, __) => Container(
+                  placeholder: (_, _) => Container(
                     width: 100,
                     height: 75,
                     color: AppColors.surfaceLight,
-                    child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    child: const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
                   ),
-                  errorWidget: (_, __, ___) => Container(
+                  errorWidget: (_, _, _) => Container(
                     width: 100,
                     height: 75,
                     decoration: BoxDecoration(
@@ -380,8 +391,11 @@ Widget buildCarListItem(
                     if (car.companyName != null)
                       Row(
                         children: [
-                          Icon(Icons.business, size: 12,
-                              color: theme.colorScheme.primary),
+                          Icon(
+                            Icons.business,
+                            size: 12,
+                            color: theme.colorScheme.primary,
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             car.companyName!,
@@ -393,8 +407,7 @@ Widget buildCarListItem(
                           ),
                         ],
                       ),
-                    if (car.companyName != null)
-                      const SizedBox(height: 4),
+                    if (car.companyName != null) const SizedBox(height: 4),
                     Text(
                       '${car.transmissionName} \u2022 ${car.fuelTypeName}',
                       style: TextStyle(
@@ -405,8 +418,7 @@ Widget buildCarListItem(
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        const Icon(Icons.star,
-                            color: Colors.amber, size: 14),
+                        const Icon(Icons.star, color: Colors.amber, size: 14),
                         const SizedBox(width: 3),
                         Text(
                           car.rating.toString(),
@@ -458,8 +470,7 @@ Widget buildSearchResultCard(
 }) {
   return Card(
     margin: const EdgeInsets.only(bottom: 16),
-    shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12)),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     elevation: 2,
     shadowColor: Colors.black.withValues(alpha: 0.05),
     clipBehavior: Clip.antiAlias,
@@ -484,13 +495,15 @@ Widget buildSearchResultCard(
                         fit: BoxFit.cover,
                         memCacheWidth: 200,
                         memCacheHeight: 180,
-                        placeholder: (_, __) => Container(
+                        placeholder: (_, _) => Container(
                           width: 130,
                           height: 120,
                           color: AppColors.surfaceLight,
-                          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                          child: const Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
                         ),
-                        errorWidget: (_, __, ___) => Container(
+                        errorWidget: (_, _, _) => Container(
                           width: 130,
                           height: 120,
                           color: AppColors.surfaceLight,
@@ -507,8 +520,7 @@ Widget buildSearchResultCard(
                         color: AppColors.surfaceLight,
                         child: const Icon(
                           Icons.directions_car,
-                          color:
-                              AppColors.textSecondaryLight,
+                          color: AppColors.textSecondaryLight,
                           size: 40,
                         ),
                       ),
@@ -519,8 +531,7 @@ Widget buildSearchResultCard(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Company name
                       if (car.companyName != null)
@@ -528,8 +539,11 @@ Widget buildSearchResultCard(
                           padding: const EdgeInsets.only(bottom: 4),
                           child: Row(
                             children: [
-                              Icon(Icons.business, size: 12,
-                                  color: theme.colorScheme.primary),
+                              Icon(
+                                Icons.business,
+                                size: 12,
+                                color: theme.colorScheme.primary,
+                              ),
                               const SizedBox(width: 4),
                               Text(
                                 car.companyName!,
@@ -550,35 +564,27 @@ Widget buildSearchResultCard(
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
-                                color: theme
-                                    .colorScheme.onSurface,
+                                color: theme.colorScheme.onSurface,
                               ),
                               maxLines: 1,
-                              overflow:
-                                  TextOverflow.ellipsis,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           if (car.isPremium)
                             Container(
-                              padding:
-                                  const EdgeInsets
-                                      .symmetric(
+                              padding: const EdgeInsets.symmetric(
                                 horizontal: 6,
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                gradient: AppColors
-                                    .primaryGradient,
-                                borderRadius:
-                                    BorderRadius.circular(
-                                        6),
+                                gradient: AppColors.primaryGradient,
+                                borderRadius: BorderRadius.circular(6),
                               ),
                               child: const Text(
                                 'PRO',
                                 style: TextStyle(
                                   fontSize: 9,
-                                  fontWeight:
-                                      FontWeight.bold,
+                                  fontWeight: FontWeight.bold,
                                   color: Colors.white,
                                 ),
                               ),
@@ -588,27 +594,21 @@ Widget buildSearchResultCard(
                       const SizedBox(height: 6),
                       Row(
                         children: [
-                          const Icon(
-                            Icons.star,
-                            color: Colors.amber,
-                            size: 14,
-                          ),
+                          const Icon(Icons.star, color: Colors.amber, size: 14),
                           const SizedBox(width: 4),
                           Text(
                             '${car.rating}',
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
-                              color: theme
-                                  .colorScheme.onSurface,
+                              color: theme.colorScheme.onSurface,
                             ),
                           ),
                           Text(
                             ' (${car.reviewCount})',
                             style: TextStyle(
                               fontSize: 11,
-                              color: AppColors
-                                  .textSecondaryLight,
+                              color: AppColors.textSecondaryLight,
                             ),
                           ),
                         ],
@@ -617,14 +617,17 @@ Widget buildSearchResultCard(
                       Wrap(
                         spacing: 8,
                         children: [
-                          buildCarChip(theme, Icons.speed,
-                              car.transmissionName),
                           buildCarChip(
-                              theme,
-                              Icons.local_gas_station,
-                              car.fuelTypeName),
-                          buildCarChip(theme,
-                              Icons.person, '${car.seats}'),
+                            theme,
+                            Icons.speed,
+                            car.transmissionName,
+                          ),
+                          buildCarChip(
+                            theme,
+                            Icons.local_gas_station,
+                            car.fuelTypeName,
+                          ),
+                          buildCarChip(theme, Icons.person, '${car.seats}'),
                         ],
                       ),
                     ],
@@ -645,19 +648,16 @@ Widget buildSearchResultCard(
               ),
             ),
             child: Row(
-              mainAxisAlignment:
-                  MainAxisAlignment.spaceBetween,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       '\u20BA${car.discountedDailyPrice.toInt()}/gun',
                       style: TextStyle(
                         fontSize: 13,
-                        color: theme
-                            .colorScheme.onSurfaceVariant,
+                        color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
                     Row(
@@ -667,16 +667,14 @@ Widget buildSearchResultCard(
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
-                            color:
-                                theme.colorScheme.primary,
+                            color: theme.colorScheme.primary,
                           ),
                         ),
                         Text(
                           ' / $rentalDays gun',
                           style: TextStyle(
                             fontSize: 13,
-                            color: AppColors
-                                .textSecondaryLight,
+                            color: AppColors.textSecondaryLight,
                           ),
                         ),
                       ],

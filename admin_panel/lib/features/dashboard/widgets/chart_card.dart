@@ -52,12 +52,7 @@ class ChartCard extends StatelessWidget {
                 ],
               ),
               if (actions != null)
-                Row(children: actions!)
-              else
-                IconButton(
-                  onPressed: () {},
-                  icon: const Icon(Icons.more_vert, color: AppColors.textMuted),
-                ),
+                Row(children: actions!),
             ],
           ),
           const SizedBox(height: 24),

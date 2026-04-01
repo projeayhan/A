@@ -10,10 +10,7 @@ import '../../providers/chat_provider.dart';
 class ChatScreen extends ConsumerStatefulWidget {
   final String conversationId;
 
-  const ChatScreen({
-    super.key,
-    required this.conversationId,
-  });
+  const ChatScreen({super.key, required this.conversationId});
 
   @override
   ConsumerState<ChatScreen> createState() => _ChatScreenState();
@@ -84,9 +81,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             _buildListingCard(state.conversation!.listing!),
 
           // Mesajlar
-          Expanded(
-            child: _buildMessageList(state),
-          ),
+          Expanded(child: _buildMessageList(state)),
 
           // Mesaj gönderme alanı
           _buildMessageInput(state),
@@ -142,10 +137,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 ),
                 Text(
                   isSeller ? 'Alıcı' : 'Satıcı',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                 ),
               ],
             ),
@@ -216,7 +208,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       width: 60,
                       height: 60,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _buildPlaceholderImage(),
+                      errorBuilder: (_, _, _) => _buildPlaceholderImage(),
                     )
                   : _buildPlaceholderImage(),
             ),
@@ -295,10 +287,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           children: [
             Icon(Icons.chat_bubble_outline, size: 48, color: Colors.grey[400]),
             const SizedBox(height: 16),
-            Text(
-              'Henüz mesaj yok',
-              style: TextStyle(color: Colors.grey[600]),
-            ),
+            Text('Henüz mesaj yok', style: TextStyle(color: Colors.grey[600])),
             const SizedBox(height: 8),
             Text(
               'İlk mesajı gönderin!',
@@ -330,10 +319,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         return Column(
           children: [
             if (dateSeparator != null) dateSeparator,
-            _MessageBubble(
-              message: message,
-              isMe: isMe,
-            ),
+            _MessageBubble(message: message, isMe: isMe),
           ],
         );
       },
@@ -367,10 +353,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ),
           child: Text(
             text,
-            style: TextStyle(
-              color: Colors.grey[700],
-              fontSize: 12,
-            ),
+            style: TextStyle(color: Colors.grey[700], fontSize: 12),
           ),
         ),
       ),
@@ -448,15 +431,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         height: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(Colors.white),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
                         ),
                       )
-                    : const Icon(
-                        Icons.send,
-                        color: Colors.white,
-                        size: 20,
-                      ),
+                    : const Icon(Icons.send, color: Colors.white, size: 20),
               ),
             ),
           ),
@@ -470,10 +450,7 @@ class _MessageBubble extends StatelessWidget {
   final ChatMessage message;
   final bool isMe;
 
-  const _MessageBubble({
-    required this.message,
-    required this.isMe,
-  });
+  const _MessageBubble({required this.message, required this.isMe});
 
   @override
   Widget build(BuildContext context) {

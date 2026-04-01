@@ -9,7 +9,7 @@ import '../../core/providers/address_provider.dart';
 import '../../core/providers/cart_provider.dart';
 import '../../core/providers/payment_method_provider.dart';
 import '../../core/services/restaurant_service.dart';
-import '../../core/services/delivery_service.dart';
+import '../../core/services/stripe_service.dart';
 import '../../widgets/common/payment_method_selector.dart';
 
 class CartScreen extends ConsumerStatefulWidget {
@@ -91,13 +91,15 @@ class _CartScreenState extends ConsumerState<CartScreen> {
       );
 
       final suggestions = menuItems
-          .map((item) => {
-                'id': item.id,
-                'name': item.name,
-                'price': item.discountedPrice ?? item.price,
-                'imageUrl': item.imageUrl ?? '',
-                'description': item.description ?? '',
-              })
+          .map(
+            (item) => {
+              'id': item.id,
+              'name': item.name,
+              'price': item.discountedPrice ?? item.price,
+              'imageUrl': item.imageUrl ?? '',
+              'description': item.description ?? '',
+            },
+          )
           .toList();
 
       if (mounted) {
@@ -118,12 +120,16 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     final selectedAddress = ref.read(selectedAddressProvider);
     final cartState = ref.read(cartProvider);
     if (selectedAddress == null || cartState.items.isEmpty) return;
-    if (selectedAddress.latitude == null || selectedAddress.longitude == null) return;
+    if (selectedAddress.latitude == null || selectedAddress.longitude == null) {
+      return;
+    }
 
-    ref.read(cartProvider.notifier).calculateDeliveryFee(
-      customerLat: selectedAddress.latitude!,
-      customerLon: selectedAddress.longitude!,
-    );
+    ref
+        .read(cartProvider.notifier)
+        .calculateDeliveryFee(
+          customerLat: selectedAddress.latitude!,
+          customerLon: selectedAddress.longitude!,
+        );
   }
 
   void _clearCart() {
@@ -137,7 +143,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     final cartItems = cartState.items;
 
     return Scaffold(
-      backgroundColor: isDark ? FoodColors.backgroundDark : FoodColors.backgroundLight,
+      backgroundColor: isDark
+          ? FoodColors.backgroundDark
+          : FoodColors.backgroundLight,
       body: Column(
         children: [
           // Header
@@ -148,7 +156,12 @@ class _CartScreenState extends ConsumerState<CartScreen> {
             child: cartItems.isEmpty
                 ? _buildEmptyCart(isDark)
                 : SingleChildScrollView(
-                    padding: EdgeInsets.fromLTRB(context.pagePaddingH, 24, context.pagePaddingH, 200),
+                    padding: EdgeInsets.fromLTRB(
+                      context.pagePaddingH,
+                      24,
+                      context.pagePaddingH,
+                      200,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -246,7 +259,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                 Icon(
                   Icons.delete_outline,
                   size: 18,
-                  color: cartItems.isNotEmpty ? Colors.red[500] : Colors.grey[400],
+                  color: cartItems.isNotEmpty
+                      ? Colors.red[500]
+                      : Colors.grey[400],
                 ),
                 const SizedBox(width: 4),
                 Text(
@@ -254,7 +269,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                   style: TextStyle(
                     fontSize: context.bodySize,
                     fontWeight: FontWeight.w600,
-                    color: cartItems.isNotEmpty ? Colors.red[500] : Colors.grey[400],
+                    color: cartItems.isNotEmpty
+                        ? Colors.red[500]
+                        : Colors.grey[400],
                   ),
                 ),
               ],
@@ -320,7 +337,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     final selectedAddress = ref.watch(selectedAddressProvider);
 
     String addressTitle = selectedAddress?.title ?? 'Adres Seç';
-    String addressLine1 = selectedAddress?.fullAddress ?? 'Teslimat adresi seçin';
+    String addressLine1 =
+        selectedAddress?.fullAddress ?? 'Teslimat adresi seçin';
     String addressLine2 = selectedAddress?.shortAddress ?? '';
     String addressType = selectedAddress?.type ?? 'other';
 
@@ -330,7 +348,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         color: isDark ? FoodColors.surfaceDark : Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isDark ? Colors.grey[700]!.withValues(alpha: 0.5) : Colors.grey[100]!,
+          color: isDark
+              ? Colors.grey[700]!.withValues(alpha: 0.5)
+              : Colors.grey[100]!,
         ),
         boxShadow: [
           BoxShadow(
@@ -374,7 +394,10 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                     ),
                     const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: isDark
                             ? const Color(0xFF166534).withValues(alpha: 0.3)
@@ -382,11 +405,15 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        addressType == 'home' ? 'Ev' : (addressType == 'work' ? 'İş' : addressTitle),
+                        addressType == 'home'
+                            ? 'Ev'
+                            : (addressType == 'work' ? 'İş' : addressTitle),
                         style: TextStyle(
                           fontSize: context.captionSmallSize,
                           fontWeight: FontWeight.bold,
-                          color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF15803D),
+                          color: isDark
+                              ? const Color(0xFF4ADE80)
+                              : const Color(0xFF15803D),
                         ),
                       ),
                     ),
@@ -476,7 +503,10 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                       Navigator.pop(ctx);
                       context.push('/settings/addresses');
                     },
-                    child: const Text('Yeni Ekle', style: TextStyle(color: FoodColors.primary)),
+                    child: const Text(
+                      'Yeni Ekle',
+                      style: TextStyle(color: FoodColors.primary),
+                    ),
                   ),
                 ],
               ),
@@ -492,7 +522,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
 
                 return InkWell(
                   onTap: () {
-                    ref.read(addressProvider.notifier).setDefaultAddress(address.id);
+                    ref
+                        .read(addressProvider.notifier)
+                        .setDefaultAddress(address.id);
                     Navigator.pop(ctx);
                     // Recalculate delivery fee for new address
                     Future.microtask(() => _calculateDeliveryFee());
@@ -522,7 +554,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                           child: Icon(
                             address.type == 'home'
                                 ? Icons.home
-                                : (address.type == 'work' ? Icons.work : Icons.location_on),
+                                : (address.type == 'work'
+                                      ? Icons.work
+                                      : Icons.location_on),
                             color: FoodColors.primary,
                             size: 20,
                           ),
@@ -537,7 +571,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                                 style: TextStyle(
                                   fontSize: context.bodySize,
                                   fontWeight: FontWeight.bold,
-                                  color: isDark ? Colors.white : Colors.grey[900],
+                                  color: isDark
+                                      ? Colors.white
+                                      : Colors.grey[900],
                                 ),
                               ),
                               const SizedBox(height: 4),
@@ -554,7 +590,10 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                           ),
                         ),
                         if (isSelected)
-                          const Icon(Icons.check_circle, color: FoodColors.primary),
+                          const Icon(
+                            Icons.check_circle,
+                            color: FoodColors.primary,
+                          ),
                       ],
                     ),
                   ),
@@ -647,7 +686,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         color: isDark ? FoodColors.surfaceDark : Colors.white,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: isDark ? Colors.grey[700]!.withValues(alpha: 0.5) : Colors.grey[100]!,
+          color: isDark
+              ? Colors.grey[700]!.withValues(alpha: 0.5)
+              : Colors.grey[100]!,
         ),
         boxShadow: [
           BoxShadow(
@@ -670,11 +711,13 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                   ? CachedNetworkImage(
                       imageUrl: item.imageUrl,
                       fit: BoxFit.cover,
-                      placeholder: (_, __) => Container(
+                      placeholder: (_, _) => Container(
                         color: Colors.grey[200],
-                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                        child: const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
                       ),
-                      errorWidget: (_, __, ___) => Icon(
+                      errorWidget: (_, _, _) => Icon(
                         Icons.fastfood,
                         size: 24,
                         color: isDark ? Colors.grey[600] : Colors.grey[400],
@@ -709,7 +752,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                       ),
                     ),
                     GestureDetector(
-                      onTap: () => ref.read(cartProvider.notifier).removeItem(item.id),
+                      onTap: () =>
+                          ref.read(cartProvider.notifier).removeItem(item.id),
                       child: Icon(
                         Icons.close,
                         size: context.iconSmall,
@@ -733,7 +777,10 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                 if (item.extra != null) ...[
                   const SizedBox(height: 2),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 5,
+                      vertical: 1,
+                    ),
                     decoration: BoxDecoration(
                       color: isDark
                           ? FoodColors.primary.withValues(alpha: 0.2)
@@ -783,7 +830,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
       child: Row(
         children: [
           GestureDetector(
-            onTap: () => ref.read(cartProvider.notifier).decrementQuantity(item.id),
+            onTap: () =>
+                ref.read(cartProvider.notifier).decrementQuantity(item.id),
             child: Container(
               width: 28,
               height: 28,
@@ -818,7 +866,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
             ),
           ),
           GestureDetector(
-            onTap: () => ref.read(cartProvider.notifier).incrementQuantity(item.id),
+            onTap: () =>
+                ref.read(cartProvider.notifier).incrementQuantity(item.id),
             child: Container(
               width: 28,
               height: 28,
@@ -832,11 +881,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                   ),
                 ],
               ),
-              child: const Icon(
-                Icons.add,
-                size: 16,
-                color: Colors.white,
-              ),
+              child: const Icon(Icons.add, size: 16, color: Colors.white),
             ),
           ),
         ],
@@ -848,8 +893,12 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     final cartState = ref.read(cartProvider);
 
     // Get merchant info from existing cart items
-    final merchantId = cartState.items.isNotEmpty ? cartState.items.first.merchantId : null;
-    final merchantName = cartState.items.isNotEmpty ? cartState.items.first.merchantName : null;
+    final merchantId = cartState.items.isNotEmpty
+        ? cartState.items.first.merchantId
+        : null;
+    final merchantName = cartState.items.isNotEmpty
+        ? cartState.items.first.merchantName
+        : null;
 
     final cartItem = CartItem(
       id: suggestion['id'] as String,
@@ -933,7 +982,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: _suggestions.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            separatorBuilder: (_, _) => const SizedBox(width: 12),
             itemBuilder: (context, index) {
               final suggestion = _suggestions[index];
               return Container(
@@ -943,7 +992,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                   color: isDark ? FoodColors.surfaceDark : Colors.white,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: isDark ? Colors.grey[700]!.withValues(alpha: 0.5) : Colors.grey[100]!,
+                    color: isDark
+                        ? Colors.grey[700]!.withValues(alpha: 0.5)
+                        : Colors.grey[100]!,
                   ),
                   boxShadow: [
                     BoxShadow(
@@ -963,11 +1014,13 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                           imageUrl: suggestion['imageUrl'] ?? '',
                           fit: BoxFit.cover,
                           width: double.infinity,
-                          placeholder: (_, __) => Container(
+                          placeholder: (_, _) => Container(
                             color: Colors.grey[200],
-                            child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                            child: const Center(
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
                           ),
-                          errorWidget: (_, __, ___) => Center(
+                          errorWidget: (_, _, _) => Center(
                             child: Icon(
                               Icons.fastfood,
                               color: Colors.grey[400],
@@ -1032,32 +1085,50 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     final options = <PaymentOption>[];
     int idx = 0;
     if (paymentState.creditCardOnDeliveryEnabled) {
-      options.add(PaymentOption(
-        index: idx++,
-        icon: Icons.credit_card,
-        title: 'Kredi Kartı',
-        subtitle: 'Kapıda Kredi Kartı',
-        paymentMethodKey: 'credit_card_on_delivery',
-      ));
+      options.add(
+        PaymentOption(
+          index: idx++,
+          icon: Icons.credit_card,
+          title: 'Kredi Kartı',
+          subtitle: 'Kapıda Kredi Kartı',
+          paymentMethodKey: 'credit_card_on_delivery',
+        ),
+      );
     }
     if (paymentState.cashEnabled) {
-      options.add(PaymentOption(
-        index: idx++,
-        icon: Icons.payments_outlined,
-        title: 'Nakit',
-        subtitle: 'Kapıda Nakit Ödeme',
-        paymentMethodKey: 'cash',
-      ));
+      options.add(
+        PaymentOption(
+          index: idx++,
+          icon: Icons.payments_outlined,
+          title: 'Nakit',
+          subtitle: 'Kapıda Nakit Ödeme',
+          paymentMethodKey: 'cash',
+        ),
+      );
     }
+    if (paymentState.onlinePaymentEnabled) {
+      options.add(
+        PaymentOption(
+          index: idx++,
+          icon: Icons.payment_rounded,
+          title: 'Online Ödeme',
+          subtitle: 'Stripe ile Güvenli Ödeme',
+          paymentMethodKey: 'online',
+        ),
+      );
+    }
+
     // Fallback: en az bir seçenek olsun
     if (options.isEmpty) {
-      options.add(const PaymentOption(
-        index: 0,
-        icon: Icons.payments_outlined,
-        title: 'Nakit',
-        subtitle: 'Kapıda Nakit Ödeme',
-        paymentMethodKey: 'cash',
-      ));
+      options.add(
+        const PaymentOption(
+          index: 0,
+          icon: Icons.payments_outlined,
+          title: 'Nakit',
+          subtitle: 'Kapıda Nakit Ödeme',
+          paymentMethodKey: 'cash',
+        ),
+      );
     }
     return options;
   }
@@ -1067,7 +1138,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     // Seçili index geçerli değilse sıfırla
     if (!options.any((o) => o.index == _selectedPaymentMethod)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _selectedPaymentMethod = options.first.index);
+        if (mounted) {
+          setState(() => _selectedPaymentMethod = options.first.index);
+        }
       });
     }
 
@@ -1083,16 +1156,18 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        ...options.map((option) => Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: _buildPaymentOption(
-            index: option.index,
-            icon: option.icon,
-            title: option.title,
-            subtitle: option.subtitle,
-            isDark: isDark,
+        ...options.map(
+          (option) => Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: _buildPaymentOption(
+              index: option.index,
+              icon: option.icon,
+              title: option.title,
+              subtitle: option.subtitle,
+              isDark: isDark,
+            ),
           ),
-        )),
+        ),
       ],
     );
   }
@@ -1136,8 +1211,8 @@ class _CartScreenState extends ConsumerState<CartScreen> {
               decoration: BoxDecoration(
                 color: isSelected
                     ? (isDark
-                        ? FoodColors.primary.withValues(alpha: 0.2)
-                        : FoodColors.primary.withValues(alpha: 0.06))
+                          ? FoodColors.primary.withValues(alpha: 0.2)
+                          : FoodColors.primary.withValues(alpha: 0.06))
                     : (isDark ? Colors.grey[700] : Colors.grey[50]),
                 shape: BoxShape.circle,
               ),
@@ -1212,7 +1287,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         color: isDark ? FoodColors.surfaceDark : Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isDark ? Colors.grey[700]!.withValues(alpha: 0.5) : Colors.grey[100]!,
+          color: isDark
+              ? Colors.grey[700]!.withValues(alpha: 0.5)
+              : Colors.grey[100]!,
         ),
         boxShadow: [
           BoxShadow(
@@ -1224,7 +1301,11 @@ class _CartScreenState extends ConsumerState<CartScreen> {
       ),
       child: Column(
         children: [
-          _buildSummaryRow('Ara Toplam', '${subtotal.toStringAsFixed(2)} TL', isDark),
+          _buildSummaryRow(
+            'Ara Toplam',
+            '${subtotal.toStringAsFixed(2)} TL',
+            isDark,
+          ),
           const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1241,7 +1322,10 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                   if (cartState.deliveryZoneName != null) ...[
                     const SizedBox(width: 6),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
                       decoration: BoxDecoration(
                         color: isDark
                             ? FoodColors.primary.withValues(alpha: 0.15)
@@ -1270,7 +1354,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                       ),
                     )
                   : Text(
-                      deliveryFee <= 0 ? 'Ücretsiz' : '${deliveryFee.toStringAsFixed(2)} TL',
+                      deliveryFee <= 0
+                          ? 'Ücretsiz'
+                          : '${deliveryFee.toStringAsFixed(2)} TL',
                       style: TextStyle(
                         fontSize: context.bodySize,
                         fontWeight: FontWeight.w600,
@@ -1301,12 +1387,19 @@ class _CartScreenState extends ConsumerState<CartScreen> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.warning_amber_rounded, color: Colors.red[400], size: 18),
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    color: Colors.red[400],
+                    size: 18,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       cartState.deliveryError!,
-                      style: TextStyle(fontSize: context.captionSize, color: Colors.red[600]),
+                      style: TextStyle(
+                        fontSize: context.captionSize,
+                        color: Colors.red[600],
+                      ),
                     ),
                   ),
                 ],
@@ -1332,7 +1425,10 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                   Expanded(
                     child: Text(
                       cartState.deliveryError!,
-                      style: TextStyle(fontSize: context.captionSize, color: Colors.amber[800]),
+                      style: TextStyle(
+                        fontSize: context.captionSize,
+                        color: Colors.amber[800],
+                      ),
                     ),
                   ),
                 ],
@@ -1414,7 +1510,10 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                   color: Colors.grey[500],
                 ),
                 border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
               ),
             ),
           ),
@@ -1495,6 +1594,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
       return;
     }
 
+    final availableOptions = _getAvailableFoodPaymentOptions();
+    final paymentKey = PaymentOptions.resolvePaymentMethod(availableOptions, _selectedPaymentMethod);
+
     setState(() => _isPlacingOrder = true);
 
     try {
@@ -1514,7 +1616,7 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         return map;
       }).toList();
 
-      // Create order in Supabase
+      // Create order in Supabase (online ödemede önce pending olarak oluştur)
       final orderId = await RestaurantService.createOrder(
         merchantId: cartState.merchantId!,
         items: orderItems,
@@ -1524,32 +1626,62 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         deliveryAddress: selectedAddress.fullAddress,
         deliveryLatitude: selectedAddress.latitude,
         deliveryLongitude: selectedAddress.longitude,
-        paymentMethod: PaymentOptions.resolvePaymentMethod(
-          _getAvailableFoodPaymentOptions(), _selectedPaymentMethod),
+        paymentMethod: paymentKey,
         deliveryInstructions: _noteController.text.trim().isEmpty
             ? null
             : _noteController.text.trim(),
       );
 
-      if (orderId != null) {
-        // Clear cart after successful order
-        ref.read(cartProvider.notifier).clearCart();
+      if (orderId == null) throw Exception('Sipariş oluşturulamadı');
 
-        // Navigate to success screen
-        if (mounted) {
-          context.go(
-            '/food/order-success/$orderId',
-            extra: {
-              'totalAmount': total,
-              'restaurantName': cartState.merchantName ?? 'Restoran',
-              'deliveryTime': cartState.estimatedDeliveryMin != null
-                  ? '~${cartState.estimatedDeliveryMin} dakika'
-                  : '25-35 dakika',
-            },
-          );
+      // Online ödeme: Stripe payment
+      if (paymentKey == 'online') {
+        final result = await StripeService.instance.processPayment(
+          amount: total,
+          description: 'Yemek siparişi — ${cartState.merchantName ?? 'Restoran'}',
+          metadata: {
+            'type': 'food_order',
+            'order_id': orderId,
+            'merchant_id': cartState.merchantId ?? '',
+          },
+        );
+        if (!mounted) return;
+
+        // Web'de checkout redirect — sayfa yönlendirildi, webhook halleder
+        if (result.paymentReference == 'checkout_redirect') {
+          ref.read(cartProvider.notifier).clearCart();
+          return;
         }
-      } else {
-        throw Exception('Sipariş oluşturulamadı');
+
+        if (!result.success) {
+          await RestaurantService.cancelOrder(orderId);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Ödeme tamamlanamadı.'), backgroundColor: Colors.orange),
+            );
+            setState(() => _isPlacingOrder = false);
+          }
+          return;
+        }
+        // Ödeme onaylandı → payment_status güncelle
+        await RestaurantService.updateOrderPaymentStatus(orderId, 'paid');
+      }
+
+      // Clear cart after successful order
+      ref.read(cartProvider.notifier).clearCart();
+
+      // Navigate to success screen
+      if (mounted) {
+        context.go(
+          '/food/order-success/$orderId',
+          extra: {
+            'totalAmount': total,
+            'restaurantName': cartState.merchantName ?? 'Restoran',
+            'deliveryTime': cartState.estimatedDeliveryMin != null
+                ? '~${cartState.estimatedDeliveryMin} dakika'
+                : '25-35 dakika',
+          },
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -1562,7 +1694,12 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     }
   }
 
-  Widget _buildSummaryRow(String label, String value, bool isDark, {bool isDiscount = false}) {
+  Widget _buildSummaryRow(
+    String label,
+    String value,
+    bool isDark, {
+    bool isDiscount = false,
+  }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -1570,7 +1707,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           label,
           style: TextStyle(
             fontSize: context.bodySize,
-            color: isDiscount ? FoodColors.primary : (isDark ? Colors.grey[400] : Colors.grey[500]),
+            color: isDiscount
+                ? FoodColors.primary
+                : (isDark ? Colors.grey[400] : Colors.grey[500]),
             fontWeight: isDiscount ? FontWeight.w500 : FontWeight.normal,
           ),
         ),
@@ -1579,7 +1718,9 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           style: TextStyle(
             fontSize: context.bodySize,
             fontWeight: FontWeight.w600,
-            color: isDiscount ? FoodColors.primary : (isDark ? Colors.white : Colors.grey[900]),
+            color: isDiscount
+                ? FoodColors.primary
+                : (isDark ? Colors.white : Colors.grey[900]),
           ),
         ),
       ],
@@ -1608,15 +1749,33 @@ class _CartScreenState extends ConsumerState<CartScreen> {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _buildNavItem(Icons.home, 'Ana Sayfa', false, isDark, '/'),
-          _buildNavItem(Icons.favorite, 'Favoriler', false, isDark, '/favorites'),
-          _buildNavItem(Icons.receipt_long, 'Siparişlerim', false, isDark, '/orders'),
+          _buildNavItem(
+            Icons.favorite,
+            'Favoriler',
+            false,
+            isDark,
+            '/favorites',
+          ),
+          _buildNavItem(
+            Icons.receipt_long,
+            'Siparişlerim',
+            false,
+            isDark,
+            '/orders',
+          ),
           _buildNavItem(Icons.person, 'Profil', false, isDark, '/profile'),
         ],
       ),
     );
   }
 
-  Widget _buildNavItem(IconData icon, String label, bool isSelected, bool isDark, String route) {
+  Widget _buildNavItem(
+    IconData icon,
+    String label,
+    bool isSelected,
+    bool isDark,
+    String route,
+  ) {
     return Expanded(
       child: GestureDetector(
         onTap: () => context.go(route),

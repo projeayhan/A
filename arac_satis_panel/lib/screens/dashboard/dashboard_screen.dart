@@ -26,7 +26,7 @@ class DashboardScreen extends ConsumerWidget {
           statsAsync.when(
             data: (stats) => _buildStatsGrid(context, stats),
             loading: () => _buildSkeletonStatsGrid(),
-            error: (_, __) => _buildSkeletonStatsGrid(),
+            error: (_, _) => _buildSkeletonStatsGrid(),
           ),
           const SizedBox(height: 32),
 
@@ -203,7 +203,6 @@ class DashboardScreen extends ConsumerWidget {
       ],
     );
   }
-
 }
 
 class _QuickActionButton extends StatelessWidget {

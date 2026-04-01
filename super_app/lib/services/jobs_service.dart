@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/utils/cache_helper.dart';
 import '../models/jobs/job_data_models.dart';
+import 'package:super_app/core/services/log_service.dart';
 
 /// AI Moderasyon sonucu
 class ModerationResult {
@@ -70,8 +71,8 @@ class JobsService {
           return (response as List)
               .map((json) => JobCategoryData.fromJson(json))
               .toList();
-        } catch (e) {
-          debugPrint('JobsService.getCategories error: $e');
+        } catch (e, st) {
+          LogService.error('getCategories error', error: e, stackTrace: st, source: 'JobsService:getCategories');
           return [];
         }
       },
@@ -95,8 +96,8 @@ class JobsService {
           return (response as List)
               .map((json) => JobSubcategoryData.fromJson(json))
               .toList();
-        } catch (e) {
-          debugPrint('JobsService.getSubcategories error: $e');
+        } catch (e, st) {
+          LogService.error('getSubcategories error', error: e, stackTrace: st, source: 'JobsService:getSubcategories');
           return [];
         }
       },
@@ -128,8 +129,8 @@ class JobsService {
           return (response as List)
               .map((json) => JobSkillData.fromJson(json))
               .toList();
-        } catch (e) {
-          debugPrint('JobsService.getSkills error: $e');
+        } catch (e, st) {
+          LogService.error('getSkills error', error: e, stackTrace: st, source: 'JobsService:getSkills');
           return [];
         }
       },
@@ -154,8 +155,8 @@ class JobsService {
           return (response as List)
               .map((json) => JobBenefitData.fromJson(json))
               .toList();
-        } catch (e) {
-          debugPrint('JobsService.getBenefits error: $e');
+        } catch (e, st) {
+          LogService.error('getBenefits error', error: e, stackTrace: st, source: 'JobsService:getBenefits');
           return [];
         }
       },
@@ -174,8 +175,8 @@ class JobsService {
           .single();
 
       return CompanyData.fromJson(response);
-    } catch (e) {
-      debugPrint('JobsService.getCompany error: $e');
+    } catch (e, st) {
+      LogService.error('getCompany error', error: e, stackTrace: st, source: 'JobsService:getCompany');
       return null;
     }
   }
@@ -193,8 +194,8 @@ class JobsService {
 
       if (response == null) return null;
       return CompanyData.fromJson(response);
-    } catch (e) {
-      debugPrint('JobsService.getUserCompany error: $e');
+    } catch (e, st) {
+      LogService.error('getUserCompany error', error: e, stackTrace: st, source: 'JobsService:getUserCompany');
       return null;
     }
   }
@@ -214,8 +215,8 @@ class JobsService {
           .single();
 
       return CompanyData.fromJson(response);
-    } catch (e) {
-      debugPrint('JobsService.createCompany error: $e');
+    } catch (e, st) {
+      LogService.error('createCompany error', error: e, stackTrace: st, source: 'JobsService:createCompany');
       return null;
     }
   }
@@ -252,8 +253,8 @@ class JobsService {
           .single();
 
       return JobPosterData.fromJson(newPoster);
-    } catch (e) {
-      debugPrint('JobsService.getOrCreatePoster error: $e');
+    } catch (e, st) {
+      LogService.error('getOrCreatePoster error', error: e, stackTrace: st, source: 'JobsService:getOrCreatePoster');
       return null;
     }
   }
@@ -358,9 +359,8 @@ class JobsService {
       return responseList
           .map((json) => JobListingData.fromJson(json))
           .toList();
-    } catch (e, stack) {
-      debugPrint('JobsService.getActiveListings error: $e');
-      debugPrint('Stack trace: $stack');
+    } catch (e, st) {
+      LogService.error('getActiveListings error', error: e, stackTrace: st, source: 'JobsService:getActiveListings');
       return [];
     }
   }
@@ -409,8 +409,8 @@ class JobsService {
               .single();
 
           return JobListingData.fromJson(response);
-        } catch (e) {
-          debugPrint('JobsService.getListing error: $e');
+        } catch (e, st) {
+          LogService.error('getListing error', error: e, stackTrace: st, source: 'JobsService:getListing');
           return null;
         }
       },
@@ -429,8 +429,8 @@ class JobsService {
         final skill = JobSkillData.fromJson(json['skill']);
         return skill.copyWith(isRequired: json['is_required'] as bool);
       }).toList();
-    } catch (e) {
-      debugPrint('JobsService.getListingSkills error: $e');
+    } catch (e, st) {
+      LogService.error('getListingSkills error', error: e, stackTrace: st, source: 'JobsService:getListingSkills');
       return [];
     }
   }
@@ -446,8 +446,8 @@ class JobsService {
       return (response as List)
           .map((json) => JobBenefitData.fromJson(json['benefit']))
           .toList();
-    } catch (e) {
-      debugPrint('JobsService.getListingBenefits error: $e');
+    } catch (e, st) {
+      LogService.error('getListingBenefits error', error: e, stackTrace: st, source: 'JobsService:getListingBenefits');
       return [];
     }
   }
@@ -476,8 +476,8 @@ class JobsService {
       return (response as List)
           .map((json) => JobListingData.fromJson(json))
           .toList();
-    } catch (e) {
-      debugPrint('JobsService.getUserListings error: $e');
+    } catch (e, st) {
+      LogService.error('getUserListings error', error: e, stackTrace: st, source: 'JobsService:getUserListings');
       return [];
     }
   }
@@ -508,8 +508,8 @@ class JobsService {
       // moderateListing(listing.id);
 
       return listing;
-    } catch (e) {
-      debugPrint('JobsService.createListing error: $e');
+    } catch (e, st) {
+      LogService.error('createListing error', error: e, stackTrace: st, source: 'JobsService:createListing');
       return null;
     }
   }
@@ -528,8 +528,8 @@ class JobsService {
 
       debugPrint('Moderation response: ${response.status} - ${response.data}');
       return null;
-    } catch (e) {
-      debugPrint('JobsService._moderateListing error: $e');
+    } catch (e, st) {
+      LogService.error('_moderateListing error', error: e, stackTrace: st, source: 'JobsService:_moderateListing');
       return null;
     }
   }
@@ -548,8 +548,8 @@ class JobsService {
 
       if (response == null) return null;
       return ModerationResult.fromJson(response);
-    } catch (e) {
-      debugPrint('JobsService.getModerationResult error: $e');
+    } catch (e, st) {
+      LogService.error('getModerationResult error', error: e, stackTrace: st, source: 'JobsService:getModerationResult');
       return null;
     }
   }
@@ -566,8 +566,8 @@ class JobsService {
           .eq('user_id', _userId!);
 
       return true;
-    } catch (e) {
-      debugPrint('JobsService.updateListing error: $e');
+    } catch (e, st) {
+      LogService.error('updateListing error', error: e, stackTrace: st, source: 'JobsService:updateListing');
       return false;
     }
   }
@@ -584,8 +584,8 @@ class JobsService {
           .eq('user_id', _userId!);
 
       return true;
-    } catch (e) {
-      debugPrint('JobsService.deleteListing error: $e');
+    } catch (e, st) {
+      LogService.error('deleteListing error', error: e, stackTrace: st, source: 'JobsService:deleteListing');
       return false;
     }
   }
@@ -611,8 +611,8 @@ class JobsService {
       }
 
       return true;
-    } catch (e) {
-      debugPrint('JobsService.saveListingSkills error: $e');
+    } catch (e, st) {
+      LogService.error('saveListingSkills error', error: e, stackTrace: st, source: 'JobsService:saveListingSkills');
       return false;
     }
   }
@@ -637,8 +637,8 @@ class JobsService {
       }
 
       return true;
-    } catch (e) {
-      debugPrint('JobsService.saveListingBenefits error: $e');
+    } catch (e, st) {
+      LogService.error('saveListingBenefits error', error: e, stackTrace: st, source: 'JobsService:saveListingBenefits');
       return false;
     }
   }
@@ -687,8 +687,8 @@ class JobsService {
           .single();
 
       return JobApplicationData.fromJson(response);
-    } catch (e) {
-      debugPrint('JobsService.applyToListing error: $e');
+    } catch (e, st) {
+      LogService.error('applyToListing error', error: e, stackTrace: st, source: 'JobsService:applyToListing');
       return null;
     }
   }
@@ -712,8 +712,8 @@ class JobsService {
       return (response as List)
           .map((json) => JobApplicationData.fromJson(json))
           .toList();
-    } catch (e) {
-      debugPrint('JobsService.getUserApplications error: $e');
+    } catch (e, st) {
+      LogService.error('getUserApplications error', error: e, stackTrace: st, source: 'JobsService:getUserApplications');
       return [];
     }
   }
@@ -730,8 +730,8 @@ class JobsService {
       return (response as List)
           .map((json) => JobApplicationData.fromJson(json))
           .toList();
-    } catch (e) {
-      debugPrint('JobsService.getListingApplications error: $e');
+    } catch (e, st) {
+      LogService.error('getListingApplications error', error: e, stackTrace: st, source: 'JobsService:getListingApplications');
       return [];
     }
   }
@@ -749,8 +749,8 @@ class JobsService {
           .eq('id', applicationId);
 
       return true;
-    } catch (e) {
-      debugPrint('JobsService.updateApplicationStatus error: $e');
+    } catch (e, st) {
+      LogService.error('updateApplicationStatus error', error: e, stackTrace: st, source: 'JobsService:updateApplicationStatus');
       return false;
     }
   }
@@ -768,8 +768,8 @@ class JobsService {
           .maybeSingle();
 
       return response != null;
-    } catch (e) {
-      debugPrint('JobsService.hasApplied error: $e');
+    } catch (e, st) {
+      LogService.error('hasApplied error', error: e, stackTrace: st, source: 'JobsService:hasApplied');
       return false;
     }
   }
@@ -787,8 +787,8 @@ class JobsService {
       });
 
       return true;
-    } catch (e) {
-      debugPrint('JobsService.addToFavorites error: $e');
+    } catch (e, st) {
+      LogService.error('addToFavorites error', error: e, stackTrace: st, source: 'JobsService:addToFavorites');
       return false;
     }
   }
@@ -805,8 +805,8 @@ class JobsService {
           .eq('user_id', _userId!);
 
       return true;
-    } catch (e) {
-      debugPrint('JobsService.removeFromFavorites error: $e');
+    } catch (e, st) {
+      LogService.error('removeFromFavorites error', error: e, stackTrace: st, source: 'JobsService:removeFromFavorites');
       return false;
     }
   }
@@ -824,8 +824,8 @@ class JobsService {
           .maybeSingle();
 
       return response != null;
-    } catch (e) {
-      debugPrint('JobsService.isFavorite error: $e');
+    } catch (e, st) {
+      LogService.error('isFavorite error', error: e, stackTrace: st, source: 'JobsService:isFavorite');
       return false;
     }
   }
@@ -851,8 +851,8 @@ class JobsService {
       return (response as List)
           .map((json) => JobListingData.fromJson(json['listing']))
           .toList();
-    } catch (e) {
-      debugPrint('JobsService.getFavoriteListings error: $e');
+    } catch (e, st) {
+      LogService.error('getFavoriteListings error', error: e, stackTrace: st, source: 'JobsService:getFavoriteListings');
       return [];
     }
   }
@@ -867,8 +867,8 @@ class JobsService {
         'p_user_id': _userId,
         'p_session_id': sessionId,
       });
-    } catch (e) {
-      debugPrint('JobsService.incrementViewCount error: $e');
+    } catch (e, st) {
+      LogService.error('incrementViewCount error', error: e, stackTrace: st, source: 'JobsService:incrementViewCount');
     }
   }
 
@@ -908,8 +908,8 @@ class JobsService {
         'categories': (categories as List).length,
         'urgent_listings': (urgentListings as List).length,
       };
-    } catch (e) {
-      debugPrint('JobsService.getDashboardStats error: $e');
+    } catch (e, st) {
+      LogService.error('getDashboardStats error', error: e, stackTrace: st, source: 'JobsService:getDashboardStats');
       return {
         'active_listings': 0,
         'companies': 0,
@@ -938,8 +938,8 @@ class JobsService {
           return (response as List)
               .map((json) => JobPromotionPrice.fromJson(json))
               .toList();
-        } catch (e) {
-          debugPrint('JobsService.getPromotionPrices error: $e');
+        } catch (e, st) {
+          LogService.error('getPromotionPrices error', error: e, stackTrace: st, source: 'JobsService:getPromotionPrices');
           return [];
         }
       },
@@ -990,8 +990,8 @@ class JobsService {
       }
 
       return true;
-    } catch (e) {
-      debugPrint('JobsService.purchasePromotion error: $e');
+    } catch (e, st) {
+      LogService.error('purchasePromotion error', error: e, stackTrace: st, source: 'JobsService:purchasePromotion');
       return false;
     }
   }

@@ -6,7 +6,9 @@ import '../../core/theme/app_theme.dart';
 
 // All orders provider
 final allOrdersProvider = FutureProvider<Map<String, List<Map<String, dynamic>>>>((ref) async {
-  final active = await CourierService.getActiveOrders();
+  final profile = await CourierService.getCourierProfile();
+  final courierId = profile?['id'] as String? ?? '';
+  final active = courierId.isNotEmpty ? await CourierService.getActiveOrders(courierId) : <Map<String, dynamic>>[];
   final completed = await CourierService.getCompletedOrders();
   return {
     'active': active,

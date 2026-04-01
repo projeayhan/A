@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:emlakci_panel/core/services/log_service.dart';
 import '../../core/theme/app_colors.dart';
 import '../../providers/realtor_provider.dart';
 import '../../providers/theme_provider.dart';
@@ -44,7 +45,9 @@ class _EmlakShellState extends ConsumerState<EmlakShell> {
   Future<void> _handleIdleTimeout() async {
     try {
       await Supabase.instance.client.auth.signOut();
-    } catch (_) {}
+    } catch (e, st) {
+      LogService.error('Sign out failed', error: e, stackTrace: st, source: 'EmlakShell:_handleIdleTimeout');
+    }
     if (mounted) {
       context.go('/login');
     }
@@ -63,6 +66,8 @@ class _EmlakShellState extends ConsumerState<EmlakShell> {
     if (route.startsWith('/appointments')) return 'Randevular';
     if (route.startsWith('/clients')) return 'Musteriler';
     if (route.startsWith('/analytics')) return 'Performans';
+    if (route.startsWith('/promotions')) return 'One Cikarma';
+    if (route.startsWith('/banner-ads')) return 'Banner Reklamları';
     if (route.startsWith('/chat')) return 'Mesajlar';
     if (route.startsWith('/profile')) return 'Profil';
     if (route.startsWith('/settings')) return 'Ayarlar';
@@ -262,6 +267,22 @@ class _EmlakShellState extends ConsumerState<EmlakShell> {
                 showLabel: showLabels,
                 isMobileDrawer: isMobileDrawer,
               ),
+              _buildNavItem(
+                icon: Icons.star_rounded,
+                label: 'One Cikarma',
+                route: '/promotions',
+                currentRoute: currentRoute,
+                showLabel: showLabels,
+                isMobileDrawer: isMobileDrawer,
+              ),
+              _buildNavItem(
+                icon: Icons.campaign_rounded,
+                label: 'Banner Reklamları',
+                route: '/banner-ads',
+                currentRoute: currentRoute,
+                showLabel: showLabels,
+                isMobileDrawer: isMobileDrawer,
+              ),
 
               const SizedBox(height: 16),
 
@@ -310,7 +331,9 @@ class _EmlakShellState extends ConsumerState<EmlakShell> {
               onTap: () async {
                 try {
                   await Supabase.instance.client.auth.signOut();
-                } catch (_) {}
+                } catch (e, st) {
+                  LogService.error('Sign out failed', error: e, stackTrace: st, source: 'EmlakShell:signOut');
+                }
                 if (mounted) {
                   if (isMobileDrawer) Navigator.of(context).pop();
                   context.go('/login');
@@ -719,7 +742,9 @@ class _EmlakShellState extends ConsumerState<EmlakShell> {
                   if (value == 'logout') {
                     try {
                       await Supabase.instance.client.auth.signOut();
-                    } catch (_) {}
+                    } catch (e, st) {
+                      LogService.error('Sign out failed', error: e, stackTrace: st, source: 'EmlakShell:popupSignOut');
+                    }
                     if (mounted) context.go('/login');
                   } else if (value == 'profile') {
                     context.go('/profile');

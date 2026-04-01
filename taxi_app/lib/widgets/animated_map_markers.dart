@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'dart:math' as math;
+import '../core/services/log_service.dart';
 
 class AnimatedMapMarkers {
   static Future<BitmapDescriptor> createCustomMarker({
@@ -40,8 +41,8 @@ class AnimatedMapMarkers {
         assetPath: 'assets/images/taxi_3d_icon.png',
         size: Size(size, size),
       );
-    } catch (e) {
-      debugPrint('Error loading taxi marker: $e');
+    } catch (e, st) {
+      LogService.error('Error loading taxi marker', error: e, stackTrace: st, source: 'AnimatedMapMarkers:createTaxiMarker');
       return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange);
     }
   }
@@ -53,8 +54,8 @@ class AnimatedMapMarkers {
         assetPath: 'assets/images/passenger_3d_icon.png',
         size: Size(size, size),
       );
-    } catch (e) {
-      debugPrint('Error loading pickup marker: $e');
+    } catch (e, st) {
+      LogService.error('Error loading pickup marker', error: e, stackTrace: st, source: 'AnimatedMapMarkers:createPickupMarker');
       return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen);
     }
   }
@@ -76,8 +77,8 @@ class AnimatedMapMarkers {
         assetPath: 'assets/images/passenger_3d_icon.png',
         size: Size(size, size),
       );
-    } catch (e) {
-      debugPrint('Error loading customer marker: $e');
+    } catch (e, st) {
+      LogService.error('Error loading customer marker', error: e, stackTrace: st, source: 'AnimatedMapMarkers:createCustomerMarker');
       return BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue);
     }
   }

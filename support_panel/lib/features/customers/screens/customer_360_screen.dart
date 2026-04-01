@@ -6,6 +6,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/services/customer_service.dart';
 import '../../../core/models/customer_360_model.dart';
 import '../../../core/router/app_router.dart';
+import 'package:support_panel/core/services/log_service.dart';
 import '../../../shared/widgets/status_badge.dart';
 
 class Customer360Screen extends ConsumerStatefulWidget {
@@ -42,7 +43,8 @@ class _Customer360ScreenState extends ConsumerState<Customer360Screen> with Sing
       final service = ref.read(customerServiceProvider);
       final data = await service.getCustomer360(widget.customerId);
       setState(() { _data = data; _isLoading = false; });
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to load customer 360', error: e, stackTrace: st, source: 'Customer360Screen:_load');
       setState(() { _error = e.toString(); _isLoading = false; });
     }
   }

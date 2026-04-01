@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supabase_service.dart';
 import 'notification_sound_service.dart';
+import 'package:super_app/core/services/log_service.dart';
 
 /// Service to handle real-time review reply notifications
 class ReviewNotificationService {
@@ -84,8 +85,8 @@ class ReviewNotificationService {
     try {
       NotificationSoundService.playNotificationSound();
       await HapticFeedback.mediumImpact();
-    } catch (e) {
-      debugPrint('Could not play notification feedback: $e');
+    } catch (e, st) {
+      LogService.error('Could not play notification feedback', error: e, stackTrace: st, source: 'ReviewNotificationService:_playNotificationSound');
     }
   }
 

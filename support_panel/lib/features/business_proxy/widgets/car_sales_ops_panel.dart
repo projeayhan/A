@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/business_proxy_service.dart';
 import '../../../core/services/storage_service.dart';
+import 'package:support_panel/core/services/log_service.dart';
 
 class CarSalesOpsPanel extends ConsumerStatefulWidget {
   final String businessId;
@@ -41,7 +42,8 @@ class _CarSalesOpsPanelState extends ConsumerState<CarSalesOpsPanel> with Single
         service.getCarBrands(),
       ]);
       setState(() { _listings = results[0]; _contactRequests = results[1]; _brands = results[2]; _isLoading = false; });
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to load car sales data', error: e, stackTrace: st, source: 'CarSalesOpsPanel:_loadData');
       setState(() => _isLoading = false);
     }
   }
@@ -341,7 +343,8 @@ class _CarSalesOpsPanelState extends ConsumerState<CarSalesOpsPanel> with Single
                   }
                   if (ctx.mounted) Navigator.pop(ctx);
                   _loadData();
-                } catch (e) {
+                } catch (e, st) {
+                  LogService.error('Failed to save car listing', error: e, stackTrace: st, source: 'CarSalesOpsPanel:saveListing');
                   ss(() => isSaving = false);
                   if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error));
                 }

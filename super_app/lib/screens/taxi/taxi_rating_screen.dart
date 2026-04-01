@@ -10,10 +10,7 @@ import '../../core/utils/app_dialogs.dart';
 class TaxiRatingScreen extends ConsumerStatefulWidget {
   final TaxiRide ride;
 
-  const TaxiRatingScreen({
-    super.key,
-    required this.ride,
-  });
+  const TaxiRatingScreen({super.key, required this.ride});
 
   @override
   ConsumerState<TaxiRatingScreen> createState() => _TaxiRatingScreenState();
@@ -23,7 +20,7 @@ class _TaxiRatingScreenState extends ConsumerState<TaxiRatingScreen>
     with TickerProviderStateMixin {
   int _rating = 5;
   String _comment = '';
-  List<String> _selectedTagKeys = [];
+  final List<String> _selectedTagKeys = [];
   bool _isSubmitting = false;
 
   // Animations
@@ -34,18 +31,57 @@ class _TaxiRatingScreenState extends ConsumerState<TaxiRatingScreen>
 
   // Feedback tags from database - varsayılan değerlerle başla
   List<TaxiFeedbackTag> _positiveTags = [
-    TaxiFeedbackTag(id: '1', tagKey: 'clean_vehicle', tagText: 'Temiz araç', category: 'positive'),
-    TaxiFeedbackTag(id: '2', tagKey: 'safe_driving', tagText: 'Güvenli sürüş', category: 'positive'),
-    TaxiFeedbackTag(id: '3', tagKey: 'friendly', tagText: 'Güler yüzlü', category: 'positive'),
-    TaxiFeedbackTag(id: '4', tagKey: 'good_route', tagText: 'İyi rota', category: 'positive'),
+    TaxiFeedbackTag(
+      id: '1',
+      tagKey: 'clean_vehicle',
+      tagText: 'Temiz araç',
+      category: 'positive',
+    ),
+    TaxiFeedbackTag(
+      id: '2',
+      tagKey: 'safe_driving',
+      tagText: 'Güvenli sürüş',
+      category: 'positive',
+    ),
+    TaxiFeedbackTag(
+      id: '3',
+      tagKey: 'friendly',
+      tagText: 'Güler yüzlü',
+      category: 'positive',
+    ),
+    TaxiFeedbackTag(
+      id: '4',
+      tagKey: 'good_route',
+      tagText: 'İyi rota',
+      category: 'positive',
+    ),
   ];
   List<TaxiFeedbackTag> _negativeTags = [
-    TaxiFeedbackTag(id: '5', tagKey: 'dirty_vehicle', tagText: 'Kirli araç', category: 'negative'),
-    TaxiFeedbackTag(id: '6', tagKey: 'rude_driver', tagText: 'Kaba davranış', category: 'negative'),
-    TaxiFeedbackTag(id: '7', tagKey: 'bad_route', tagText: 'Kötü rota', category: 'negative'),
-    TaxiFeedbackTag(id: '8', tagKey: 'unsafe_driving', tagText: 'Tehlikeli sürüş', category: 'negative'),
+    TaxiFeedbackTag(
+      id: '5',
+      tagKey: 'dirty_vehicle',
+      tagText: 'Kirli araç',
+      category: 'negative',
+    ),
+    TaxiFeedbackTag(
+      id: '6',
+      tagKey: 'rude_driver',
+      tagText: 'Kaba davranış',
+      category: 'negative',
+    ),
+    TaxiFeedbackTag(
+      id: '7',
+      tagKey: 'bad_route',
+      tagText: 'Kötü rota',
+      category: 'negative',
+    ),
+    TaxiFeedbackTag(
+      id: '8',
+      tagKey: 'unsafe_driving',
+      tagText: 'Tehlikeli sürüş',
+      category: 'negative',
+    ),
   ];
-
 
   @override
   void initState() {
@@ -62,9 +98,10 @@ class _TaxiRatingScreenState extends ConsumerState<TaxiRatingScreen>
       vsync: this,
     );
 
-    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _fadeController, curve: Curves.easeOut),
-    );
+    _fadeAnimation = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _fadeController, curve: Curves.easeOut));
 
     _scaleAnimation = Tween<double>(begin: 0.8, end: 1).animate(
       CurvedAnimation(parent: _scaleController, curve: Curves.elasticOut),
@@ -82,17 +119,21 @@ class _TaxiRatingScreenState extends ConsumerState<TaxiRatingScreen>
     // Varsayılan etiketler zaten ayarlı, sadece veritabanından güncellemeyi dene
     try {
       debugPrint('TaxiRatingScreen: Calling TaxiService.getFeedbackTags');
-      final tagsData = await TaxiService.getFeedbackTags()
-          .timeout(const Duration(seconds: 3), onTimeout: () {
-            debugPrint('TaxiRatingScreen: TaxiService.getFeedbackTags TIMEOUT');
-            return <Map<String, dynamic>>[];
-          });
+      final tagsData = await TaxiService.getFeedbackTags().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () {
+          debugPrint('TaxiRatingScreen: TaxiService.getFeedbackTags TIMEOUT');
+          return <Map<String, dynamic>>[];
+        },
+      );
       debugPrint('TaxiRatingScreen: Tags loaded, count: ${tagsData.length}');
 
       // Sadece başarılı bir şekilde veri geldiyse güncelle
       if (mounted && tagsData.isNotEmpty) {
         setState(() {
-          final allTags = tagsData.map((t) => TaxiFeedbackTag.fromJson(t)).toList();
+          final allTags = tagsData
+              .map((t) => TaxiFeedbackTag.fromJson(t))
+              .toList();
           _positiveTags = allTags.where((t) => t.isPositive).toList();
           _negativeTags = allTags.where((t) => t.isNegative).toList();
         });
@@ -141,9 +182,7 @@ class _TaxiRatingScreenState extends ConsumerState<TaxiRatingScreen>
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -162,10 +201,7 @@ class _TaxiRatingScreenState extends ConsumerState<TaxiRatingScreen>
             const SizedBox(height: 20),
             const Text(
               'Teşekkürler!',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             const Text(
@@ -477,7 +513,9 @@ class _TaxiRatingScreenState extends ConsumerState<TaxiRatingScreen>
                     color: isSelected
                         ? colorScheme.onPrimaryContainer
                         : colorScheme.onSurface,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                    fontWeight: isSelected
+                        ? FontWeight.w600
+                        : FontWeight.normal,
                   ),
                 ),
               ),

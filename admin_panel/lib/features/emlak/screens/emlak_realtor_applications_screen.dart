@@ -53,11 +53,13 @@ class RealtorApplication {
       licenseNumber: json['license_number'] as String?,
       taxNumber: json['tax_number'] as String?,
       experienceYears: json['experience_years'] as int? ?? 0,
-      specialization: (json['specialization'] as List<dynamic>?)
+      specialization:
+          (json['specialization'] as List<dynamic>?)
               ?.map((e) => e as String)
               .toList() ??
           [],
-      workingCities: (json['working_cities'] as List<dynamic>?)
+      workingCities:
+          (json['working_cities'] as List<dynamic>?)
               ?.map((e) => e as String)
               .toList() ??
           [],
@@ -93,11 +95,14 @@ class RealtorApplicationService {
     final adminId = _client.auth.currentUser?.id;
 
     // Başvuruyu onayla
-    await _client.from('realtor_applications').update({
-      'status': 'approved',
-      'reviewed_by': adminId,
-      'reviewed_at': DateTime.now().toIso8601String(),
-    }).eq('id', applicationId);
+    await _client
+        .from('realtor_applications')
+        .update({
+          'status': 'approved',
+          'reviewed_by': adminId,
+          'reviewed_at': DateTime.now().toIso8601String(),
+        })
+        .eq('id', applicationId);
 
     // Başvuru bilgilerini al
     final application = await _client
@@ -121,21 +126,27 @@ class RealtorApplicationService {
   }
 
   Future<void> rejectApplication(
-      String applicationId, String rejectionReason) async {
+    String applicationId,
+    String rejectionReason,
+  ) async {
     final adminId = _client.auth.currentUser?.id;
 
-    await _client.from('realtor_applications').update({
-      'status': 'rejected',
-      'rejection_reason': rejectionReason,
-      'reviewed_by': adminId,
-      'reviewed_at': DateTime.now().toIso8601String(),
-    }).eq('id', applicationId);
+    await _client
+        .from('realtor_applications')
+        .update({
+          'status': 'rejected',
+          'rejection_reason': rejectionReason,
+          'reviewed_by': adminId,
+          'reviewed_at': DateTime.now().toIso8601String(),
+        })
+        .eq('id', applicationId);
   }
 
   Future<void> updateAdminNotes(String applicationId, String notes) async {
-    await _client.from('realtor_applications').update({
-      'admin_notes': notes,
-    }).eq('id', applicationId);
+    await _client
+        .from('realtor_applications')
+        .update({'admin_notes': notes})
+        .eq('id', applicationId);
   }
 
   Future<int> getPendingCount() async {
@@ -149,16 +160,20 @@ class RealtorApplicationService {
 }
 
 /// Provider
-final realtorApplicationServiceProvider =
-    Provider<RealtorApplicationService>((ref) {
+final realtorApplicationServiceProvider = Provider<RealtorApplicationService>((
+  ref,
+) {
   return RealtorApplicationService(ref.watch(supabaseProvider));
 });
 
 final realtorApplicationsProvider =
-    FutureProvider.family<List<RealtorApplication>, String?>((ref, status) async {
-  final service = ref.watch(realtorApplicationServiceProvider);
-  return service.getApplications(status: status);
-});
+    FutureProvider.family<List<RealtorApplication>, String?>((
+      ref,
+      status,
+    ) async {
+      final service = ref.watch(realtorApplicationServiceProvider);
+      return service.getApplications(status: status);
+    });
 
 final pendingApplicationsCountProvider = FutureProvider<int>((ref) async {
   final service = ref.watch(realtorApplicationServiceProvider);
@@ -242,8 +257,10 @@ class _EmlakRealtorApplicationsScreenState
             data: (count) => count > 0
                 ? Container(
                     margin: const EdgeInsets.only(left: 8),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFEF4444),
                       borderRadius: BorderRadius.circular(10),
@@ -259,7 +276,7 @@ class _EmlakRealtorApplicationsScreenState
                   )
                 : const SizedBox.shrink(),
             loading: () => const SizedBox.shrink(),
-            error: (_, __) => const SizedBox.shrink(),
+            error: (_, _) => const SizedBox.shrink(),
           ),
         ],
       ),
@@ -276,18 +293,11 @@ class _EmlakRealtorApplicationsScreenState
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  Icons.inbox_outlined,
-                  size: 64,
-                  color: Colors.grey[400],
-                ),
+                Icon(Icons.inbox_outlined, size: 64, color: Colors.grey[400]),
                 const SizedBox(height: 16),
                 Text(
                   'Başvuru bulunamadı',
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 16,
-                  ),
+                  style: TextStyle(color: Colors.grey[600], fontSize: 16),
                 ),
               ],
             ),
@@ -308,9 +318,7 @@ class _EmlakRealtorApplicationsScreenState
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, _) => Center(
-        child: Text('Hata: $error'),
-      ),
+      error: (error, _) => Center(child: Text('Hata: $error')),
     );
   }
 
@@ -318,9 +326,7 @@ class _EmlakRealtorApplicationsScreenState
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -330,7 +336,9 @@ class _EmlakRealtorApplicationsScreenState
             Row(
               children: [
                 CircleAvatar(
-                  backgroundColor: const Color(0xFF10B981).withValues(alpha: 0.1),
+                  backgroundColor: const Color(
+                    0xFF10B981,
+                  ).withValues(alpha: 0.1),
                   child: Text(
                     application.fullName[0].toUpperCase(),
                     style: const TextStyle(
@@ -353,10 +361,7 @@ class _EmlakRealtorApplicationsScreenState
                       ),
                       Text(
                         application.email,
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 13,
-                        ),
+                        style: TextStyle(color: Colors.grey[600], fontSize: 13),
                       ),
                     ],
                   ),
@@ -371,9 +376,14 @@ class _EmlakRealtorApplicationsScreenState
             if (application.companyName != null)
               _buildDetailRow(Icons.business, application.companyName!),
             if (application.licenseNumber != null)
-              _buildDetailRow(Icons.badge, 'Lisans: ${application.licenseNumber}'),
+              _buildDetailRow(
+                Icons.badge,
+                'Lisans: ${application.licenseNumber}',
+              ),
             _buildDetailRow(
-                Icons.work_history, '${application.experienceYears} yıl deneyim'),
+              Icons.work_history,
+              '${application.experienceYears} yıl deneyim',
+            ),
 
             // Specializations
             if (application.specialization.isNotEmpty) ...[
@@ -382,10 +392,12 @@ class _EmlakRealtorApplicationsScreenState
                 spacing: 8,
                 runSpacing: 8,
                 children: application.specialization
-                    .map((s) => Chip(
-                          label: Text(s, style: const TextStyle(fontSize: 12)),
-                          backgroundColor: Colors.grey[100],
-                        ))
+                    .map(
+                      (s) => Chip(
+                        label: Text(s, style: const TextStyle(fontSize: 12)),
+                        backgroundColor: Colors.grey[100],
+                      ),
+                    )
                     .toList(),
               ),
             ],
@@ -400,10 +412,7 @@ class _EmlakRealtorApplicationsScreenState
                   Expanded(
                     child: Text(
                       application.workingCities.join(', '),
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 13,
-                      ),
+                      style: TextStyle(color: Colors.grey[600], fontSize: 13),
                     ),
                   ),
                 ],
@@ -432,10 +441,7 @@ class _EmlakRealtorApplicationsScreenState
                     const SizedBox(height: 4),
                     Text(
                       application.applicantMessage!,
-                      style: TextStyle(
-                        color: Colors.grey[700],
-                        fontSize: 13,
-                      ),
+                      style: TextStyle(color: Colors.grey[700], fontSize: 13),
                     ),
                   ],
                 ),
@@ -497,10 +503,7 @@ class _EmlakRealtorApplicationsScreenState
                     const SizedBox(height: 4),
                     Text(
                       application.rejectionReason!,
-                      style: TextStyle(
-                        color: Colors.red[700],
-                        fontSize: 13,
-                      ),
+                      style: TextStyle(color: Colors.red[700], fontSize: 13),
                     ),
                   ],
                 ),
@@ -516,10 +519,7 @@ class _EmlakRealtorApplicationsScreenState
                 const SizedBox(width: 4),
                 Text(
                   'Başvuru: ${DateFormat('dd.MM.yyyy HH:mm').format(application.createdAt)}',
-                  style: TextStyle(
-                    color: Colors.grey[500],
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: Colors.grey[500], fontSize: 12),
                 ),
               ],
             ),
@@ -572,10 +572,7 @@ class _EmlakRealtorApplicationsScreenState
           Expanded(
             child: Text(
               text,
-              style: TextStyle(
-                color: Colors.grey[700],
-                fontSize: 14,
-              ),
+              style: TextStyle(color: Colors.grey[700], fontSize: 14),
             ),
           ),
         ],
@@ -731,11 +728,12 @@ class _EmlakRealtorApplicationsScreenState
                 return;
               }
               Navigator.pop(context);
-              await _rejectApplication(application, reasonController.text.trim());
+              await _rejectApplication(
+                application,
+                reasonController.text.trim(),
+              );
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             child: const Text('Reddet'),
           ),
         ],
@@ -745,7 +743,9 @@ class _EmlakRealtorApplicationsScreenState
 
   Future<void> _approveApplication(RealtorApplication application) async {
     try {
-      await ref.read(realtorApplicationServiceProvider).approveApplication(application.id, application.userId);
+      await ref
+          .read(realtorApplicationServiceProvider)
+          .approveApplication(application.id, application.userId);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -761,19 +761,20 @@ class _EmlakRealtorApplicationsScreenState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Hata: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Hata: $e'), backgroundColor: Colors.red),
         );
       }
     }
   }
 
   Future<void> _rejectApplication(
-      RealtorApplication application, String reason) async {
+    RealtorApplication application,
+    String reason,
+  ) async {
     try {
-      await ref.read(realtorApplicationServiceProvider).rejectApplication(application.id, reason);
+      await ref
+          .read(realtorApplicationServiceProvider)
+          .rejectApplication(application.id, reason);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -789,10 +790,7 @@ class _EmlakRealtorApplicationsScreenState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Hata: $e'),
-            backgroundColor: Colors.red,
-          ),
+          SnackBar(content: Text('Hata: $e'), backgroundColor: Colors.red),
         );
       }
     }

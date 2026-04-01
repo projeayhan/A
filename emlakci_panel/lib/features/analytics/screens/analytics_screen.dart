@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../providers/realtor_provider.dart';
 import '../../../core/theme/app_colors.dart';
+import 'package:emlakci_panel/core/services/log_service.dart';
 
 /// Analytics Screen - Extracted from monolith _buildPerformanceContent
 /// Shows property performance analytics with time filtering, stat cards,
@@ -2380,7 +2381,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     try {
       final date = DateTime.parse(dateStr);
       return '${date.day}.${date.month}.${date.year}';
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to parse date', error: e, stackTrace: st, source: 'AnalyticsScreen:_formatDate');
       return dateStr;
     }
   }

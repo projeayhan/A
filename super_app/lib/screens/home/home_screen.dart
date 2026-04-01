@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme/app_theme.dart';
@@ -11,6 +12,7 @@ import '../../widgets/home/service_card.dart';
 import '../../widgets/home/promo_banner.dart';
 import '../../widgets/delivery_header.dart';
 import '../../core/providers/user_provider.dart';
+import '../../l10n/app_localizations.dart';
 
 // Enhanced searchable data model with source info
 class SearchableItem {
@@ -42,93 +44,98 @@ class SearchableItem {
 }
 
 // Unified search provider
-final unifiedSearchProvider = FutureProvider.family<List<SearchableItem>, String>((ref, query) async {
-  if (query.isEmpty || query.length < 2) return [];
+final unifiedSearchProvider =
+    FutureProvider.family<List<SearchableItem>, String>((ref, query) async {
+      if (query.isEmpty || query.length < 3) return [];
 
-  final results = <SearchableItem>[];
-  final lowerQuery = query.toLowerCase();
+      final results = <SearchableItem>[];
+      final lowerQuery = query.toLowerCase();
 
-  // Search restaurants
-  final restaurants = await ref.watch(restaurantsProvider.future);
-  for (final restaurant in restaurants) {
-    if (restaurant.name.toLowerCase().contains(lowerQuery) ||
-        (restaurant.description?.toLowerCase().contains(lowerQuery) ?? false) ||
-        restaurant.categoryTags.any((tag) => tag.toLowerCase().contains(lowerQuery))) {
-      results.add(SearchableItem(
-        id: restaurant.id,
-        name: restaurant.name,
-        category: restaurant.categoryTags.isNotEmpty ? restaurant.categoryTags.first : 'Restoran',
-        description: restaurant.description ?? restaurant.deliveryTime,
-        imageUrl: restaurant.logoUrl ?? restaurant.coverUrl ?? '',
-        type: 'restaurant',
-        rating: restaurant.rating,
-      ));
-    }
-  }
-
-  // Search menu items with restaurant info
-  for (final restaurant in restaurants) {
-    final menuItems = await RestaurantService.getMenuItems(restaurant.id);
-    for (final item in menuItems) {
-      if (item.name.toLowerCase().contains(lowerQuery) ||
-          (item.description?.toLowerCase().contains(lowerQuery) ?? false)) {
-        results.add(SearchableItem(
-          id: item.id,
-          name: item.name,
-          category: item.category ?? 'Yemek',
-          description: item.description ?? '',
-          imageUrl: item.imageUrl ?? '',
-          type: 'menu_item',
-          sourceId: restaurant.id,
-          sourceName: restaurant.name,
-          sourceImageUrl: restaurant.logoUrl,
-          price: item.discountedPrice ?? item.price,
-          rating: restaurant.rating,
-        ));
+      // Search restaurants - only by name
+      final restaurants = await ref.read(restaurantsProvider.future);
+      for (final restaurant in restaurants) {
+        if (restaurant.name.toLowerCase().contains(lowerQuery)) {
+          results.add(
+            SearchableItem(
+              id: restaurant.id,
+              name: restaurant.name,
+              category: restaurant.categoryTags.isNotEmpty
+                  ? restaurant.categoryTags.first
+                  : 'Restoran',
+              description: restaurant.description ?? restaurant.deliveryTime,
+              imageUrl: restaurant.logoUrl ?? restaurant.coverUrl ?? '',
+              type: 'restaurant',
+              rating: restaurant.rating,
+            ),
+          );
+        }
       }
-    }
-  }
 
-  // Search stores
-  final stores = await ref.watch(storesProvider.future);
-  for (final store in stores) {
-    if (store.name.toLowerCase().contains(lowerQuery) ||
-        store.tags.any((tag) => tag.toLowerCase().contains(lowerQuery))) {
-      results.add(SearchableItem(
-        id: store.id,
-        name: store.name,
-        category: store.tags.isNotEmpty ? store.tags.first : 'Mağaza',
-        description: store.deliveryTime,
-        imageUrl: store.logoUrl,
-        type: 'store',
-        rating: store.rating,
-      ));
-    }
-  }
+      // Search menu items - only by name
+      for (final restaurant in restaurants) {
+        final menuItems = await RestaurantService.getMenuItems(restaurant.id);
+        for (final item in menuItems) {
+          if (item.name.toLowerCase().contains(lowerQuery)) {
+            results.add(
+              SearchableItem(
+                id: item.id,
+                name: item.name,
+                category: item.category ?? 'Yemek',
+                description: item.description ?? '',
+                imageUrl: item.imageUrl ?? '',
+                type: 'menu_item',
+                sourceId: restaurant.id,
+                sourceName: restaurant.name,
+                sourceImageUrl: restaurant.logoUrl,
+                price: item.discountedPrice ?? item.price,
+                rating: restaurant.rating,
+              ),
+            );
+          }
+        }
+      }
 
-  // Search store products
-  final products = await ref.watch(storeProductsProvider.future);
-  for (final product in products) {
-    if (product.name.toLowerCase().contains(lowerQuery) ||
-        product.description.toLowerCase().contains(lowerQuery) ||
-        product.category.toLowerCase().contains(lowerQuery)) {
-      results.add(SearchableItem(
-        id: product.id,
-        name: product.name,
-        category: product.category,
-        description: product.description,
-        imageUrl: product.imageUrl,
-        type: 'store_product',
-        sourceId: product.storeId,
-        sourceName: product.storeName,
-        price: product.price,
-        rating: product.rating,
-      ));
-    }
-  }
+      // Search stores - only by name
+      final stores = await ref.read(storesProvider.future);
+      for (final store in stores) {
+        if (store.name.toLowerCase().contains(lowerQuery)) {
+          results.add(
+            SearchableItem(
+              id: store.id,
+              name: store.name,
+              category: store.tags.isNotEmpty ? store.tags.first : 'Mağaza',
+              description: store.deliveryTime,
+              imageUrl: store.logoUrl,
+              type: 'store',
+              rating: store.rating,
+            ),
+          );
+        }
+      }
 
-  return results;
-});
+      // Search store products - only by name
+      final products = await ref.read(storeProductsProvider.future);
+      for (final product in products) {
+        if (product.name.toLowerCase().contains(lowerQuery)) {
+          results.add(
+            SearchableItem(
+              id: product.id,
+              name: product.name,
+              category: product.category,
+              description: product.description,
+              imageUrl: product.imageUrl,
+              type: 'store_product',
+              sourceId: product.storeId,
+              sourceName: product.storeName,
+              price: product.price,
+              rating: product.rating,
+            ),
+          );
+        }
+      }
+
+      return results;
+    });
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -183,7 +190,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       _isSearching = true;
     });
 
-    if (query.isEmpty || query.length < 2) {
+    if (query.isEmpty || query.length < 3) {
       _removeOverlay();
       setState(() {
         _searchResults = [];
@@ -277,7 +284,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
             SizedBox(height: context.itemGap),
             Text(
-              'Aranıyor...',
+              S.of(context)!.searching,
               style: TextStyle(
                 fontSize: 14,
                 color: isDark ? Colors.grey[400] : Colors.grey[600],
@@ -289,7 +296,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
 
     // No results
-    if (_searchResults.isEmpty && _searchQuery.isNotEmpty && _searchQuery.length >= 2) {
+    if (_searchResults.isEmpty &&
+        _searchQuery.isNotEmpty &&
+        _searchQuery.length >= 3) {
       return Container(
         padding: EdgeInsets.all(context.cardPadding * 2),
         decoration: BoxDecoration(
@@ -305,10 +314,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ),
         child: Column(
           children: [
-            Icon(Icons.search_off_rounded, size: context.iconLarge * 1.5, color: Colors.grey[400]),
+            Icon(
+              Icons.search_off_rounded,
+              size: context.iconLarge * 1.5,
+              color: Colors.grey[400],
+            ),
             SizedBox(height: context.itemGap),
             Text(
-              'Sonuç bulunamadı',
+              S.of(context)!.noResults,
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
@@ -317,7 +330,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
             const SizedBox(height: 4),
             Text(
-              '"$_searchQuery" için sonuç yok',
+              S.of(context)!.noResultsFor(_searchQuery),
               style: TextStyle(fontSize: 13, color: Colors.grey[500]),
             ),
           ],
@@ -326,10 +339,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
 
     // Group results by type
-    final restaurants = _searchResults.where((i) => i.type == 'restaurant').toList();
-    final menuItems = _searchResults.where((i) => i.type == 'menu_item').toList();
+    final restaurants = _searchResults
+        .where((i) => i.type == 'restaurant')
+        .toList();
+    final menuItems = _searchResults
+        .where((i) => i.type == 'menu_item')
+        .toList();
     final stores = _searchResults.where((i) => i.type == 'store').toList();
-    final storeProducts = _searchResults.where((i) => i.type == 'store_product').toList();
+    final storeProducts = _searchResults
+        .where((i) => i.type == 'store_product')
+        .toList();
 
     return Container(
       constraints: BoxConstraints(
@@ -355,29 +374,46 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             children: [
               // Restoranlar
               if (restaurants.isNotEmpty) ...[
-                _buildSectionHeader('Restoranlar', Icons.restaurant, isDark),
-                ...restaurants.take(3).map((item) => _buildSearchItem(item, isDark)),
+                _buildSectionHeader(S.of(context)!.restaurants, Icons.restaurant, isDark),
+                ...restaurants
+                    .take(3)
+                    .map((item) => _buildSearchItem(item, isDark)),
               ],
               // Menü Ürünleri (Restoran ürünleri)
               if (menuItems.isNotEmpty) ...[
                 if (restaurants.isNotEmpty)
-                  Divider(height: 1, color: isDark ? Colors.grey[800] : Colors.grey[200]),
-                _buildSectionHeader('Yemekler', Icons.lunch_dining, isDark),
-                ...menuItems.take(5).map((item) => _buildSearchItem(item, isDark)),
+                  Divider(
+                    height: 1,
+                    color: isDark ? Colors.grey[800] : Colors.grey[200],
+                  ),
+                _buildSectionHeader(S.of(context)!.meals, Icons.lunch_dining, isDark),
+                ...menuItems
+                    .take(5)
+                    .map((item) => _buildSearchItem(item, isDark)),
               ],
               // Mağazalar
               if (stores.isNotEmpty) ...[
                 if (restaurants.isNotEmpty || menuItems.isNotEmpty)
-                  Divider(height: 1, color: isDark ? Colors.grey[800] : Colors.grey[200]),
-                _buildSectionHeader('Mağazalar', Icons.storefront, isDark),
+                  Divider(
+                    height: 1,
+                    color: isDark ? Colors.grey[800] : Colors.grey[200],
+                  ),
+                _buildSectionHeader(S.of(context)!.stores, Icons.storefront, isDark),
                 ...stores.take(3).map((item) => _buildSearchItem(item, isDark)),
               ],
               // Mağaza Ürünleri
               if (storeProducts.isNotEmpty) ...[
-                if (restaurants.isNotEmpty || menuItems.isNotEmpty || stores.isNotEmpty)
-                  Divider(height: 1, color: isDark ? Colors.grey[800] : Colors.grey[200]),
-                _buildSectionHeader('Ürünler', Icons.shopping_bag, isDark),
-                ...storeProducts.take(5).map((item) => _buildSearchItem(item, isDark)),
+                if (restaurants.isNotEmpty ||
+                    menuItems.isNotEmpty ||
+                    stores.isNotEmpty)
+                  Divider(
+                    height: 1,
+                    color: isDark ? Colors.grey[800] : Colors.grey[200],
+                  ),
+                _buildSectionHeader(S.of(context)!.products, Icons.shopping_bag, isDark),
+                ...storeProducts
+                    .take(5)
+                    .map((item) => _buildSearchItem(item, isDark)),
               ],
             ],
           ),
@@ -500,11 +536,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ? CachedNetworkImage(
                         imageUrl: item.imageUrl,
                         fit: BoxFit.cover,
-                        placeholder: (_, __) => Container(
+                        placeholder: (_, _) => Container(
                           color: Colors.grey[200],
-                          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                          child: const Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
                         ),
-                        errorWidget: (_, __, ___) => Container(
+                        errorWidget: (_, _, _) => Container(
                           color: typeColor.withValues(alpha: 0.1),
                           child: Icon(typeIcon, color: typeColor, size: 28),
                         ),
@@ -537,7 +575,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     Row(
                       children: [
                         Icon(
-                          item.type == 'menu_item' ? Icons.restaurant : Icons.storefront,
+                          item.type == 'menu_item'
+                              ? Icons.restaurant
+                              : Icons.storefront,
                           size: 12,
                           color: typeColor,
                         ),
@@ -563,7 +603,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     children: [
                       // Category
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: typeColor.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(4),
@@ -585,12 +628,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
-                            color: isDark ? Colors.white : const Color(0xFF111827),
+                            color: isDark
+                                ? Colors.white
+                                : const Color(0xFF111827),
                           ),
                         ),
                       ],
                       // Rating (for businesses)
-                      if (item.rating != null && item.rating! > 0 && !isProduct) ...[
+                      if (item.rating != null &&
+                          item.rating! > 0 &&
+                          !isProduct) ...[
                         const Spacer(),
                         Icon(Icons.star_rounded, size: 14, color: Colors.amber),
                         const SizedBox(width: 2),
@@ -619,42 +666,76 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      backgroundColor: isDark ? AppColors.backgroundDark : const Color(0xFFF8F9FA),
-      body: Column(
-        children: [
-          const DeliveryHeader(showCart: true),
-          Expanded(
-            child: CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(child: _buildWelcomeHeader(isDark)),
-                SliverToBoxAdapter(child: _buildSearchBar(isDark)),
-                SliverPadding(
-                  padding: context.pageInsets,
-                  sliver: SliverList(
-                    delegate: SliverChildListDelegate([
-                      PromoBanner(),
-                      SizedBox(height: context.sectionGap),
-                      _buildServicesSection(isDark),
-                      SizedBox(height: context.bottomNavPadding),
-                    ]),
-                  ),
-                ),
-              ],
-            ),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        final shouldExit = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text(S.of(context)!.exitTitle),
+            content: Text(S.of(context)!.exitMessage),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text(S.of(context)!.no),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: Text(S.of(context)!.yes),
+              ),
+            ],
           ),
-        ],
+        );
+        if (shouldExit == true) {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: isDark
+            ? AppColors.backgroundDark
+            : const Color(0xFFF8F9FA),
+        body: Column(
+          children: [
+            const DeliveryHeader(showCart: true),
+            Expanded(
+              child: CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(child: _buildWelcomeHeader(isDark)),
+                  SliverToBoxAdapter(child: _buildSearchBar(isDark)),
+                  SliverPadding(
+                    padding: context.pageInsets,
+                    sliver: SliverList(
+                      delegate: SliverChildListDelegate([
+                        PromoBanner(),
+                        SizedBox(height: context.sectionGap),
+                        _buildServicesSection(isDark),
+                        SizedBox(height: context.bottomNavPadding),
+                      ]),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildWelcomeHeader(bool isDark) {
     final userProfile = ref.watch(userProfileProvider);
-    final userName = [userProfile?.firstName, userProfile?.lastName]
-        .where((s) => s != null && s.isNotEmpty)
-        .join(' ');
+    final userName = [
+      userProfile?.firstName,
+      userProfile?.lastName,
+    ].where((s) => s != null && s.isNotEmpty).join(' ');
     return Container(
-      padding: EdgeInsets.fromLTRB(context.pagePaddingH, context.pagePaddingV, context.pagePaddingH, 0),
+      padding: EdgeInsets.fromLTRB(
+        context.pagePaddingH,
+        context.pagePaddingV,
+        context.pagePaddingH,
+        0,
+      ),
       child: Row(
         children: [
           // Avatar & Welcome
@@ -688,7 +769,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'HOŞ GELDİN,',
+                  S.of(context)!.welcomeGreeting,
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -698,7 +779,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  userName.isNotEmpty ? userName : 'Kullanıcı',
+                  userName.isNotEmpty ? userName : S.of(context)!.userFallback,
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -743,7 +824,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               // Focus is handled by the TextField itself
             },
             decoration: InputDecoration(
-              hintText: 'Restoran, mağaza veya ürün ara...',
+              hintText: S.of(context)!.searchHint,
               hintStyle: TextStyle(
                 color: Colors.grey[400],
                 fontSize: 14,
@@ -751,7 +832,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
               prefixIcon: Icon(
                 Icons.search,
-                color: _searchFocusNode.hasFocus ? AppColors.primary : Colors.grey[400],
+                color: _searchFocusNode.hasFocus
+                    ? AppColors.primary
+                    : Colors.grey[400],
               ),
               suffixIcon: _searchQuery.isNotEmpty
                   ? GestureDetector(
@@ -783,7 +866,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       children: [
         // Section Header
         Text(
-          'Hizmetlerimiz',
+          S.of(context)!.ourServices,
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -795,13 +878,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
         // Main Food Card
         ServiceCard(
-          title: 'Yemek',
-          subtitle: 'Lezzet kapında',
+          title: S.of(context)!.food,
+          subtitle: S.of(context)!.foodSubtitle,
           icon: Icons.lunch_dining,
           gradientColors: const [Color(0xFFFB923C), Color(0xFFEA580C)],
           height: context.isMobile ? 180 : 220,
           isLarge: true,
-          imageUrl: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800',
+          imageUrl:
+              'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800',
           onTap: () => context.push('/food'),
         ),
 
@@ -812,8 +896,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           children: [
             Expanded(
               child: ServiceCard(
-                title: 'Mağazalar',
-                subtitle: 'Market & Alışveriş',
+                title: S.of(context)!.stores,
+                subtitle: S.of(context)!.storesSubtitle,
                 icon: Icons.storefront,
                 gradientColors: const [Color(0xFF34D399), Color(0xFF0D9488)],
                 height: context.isMobile ? 130 : 160,
@@ -823,8 +907,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             SizedBox(width: context.itemGap),
             Expanded(
               child: ServiceCard(
-                title: 'Taksi',
-                subtitle: 'Hızlı ulaşım',
+                title: S.of(context)!.taxi,
+                subtitle: S.of(context)!.taxiSubtitle,
                 icon: Icons.local_taxi,
                 gradientColors: const [Color(0xFFFDE047), Color(0xFFFBBF24)],
                 height: context.isMobile ? 130 : 160,
@@ -842,8 +926,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           children: [
             Expanded(
               child: ServiceCard(
-                title: 'Araç Kiralama',
-                subtitle: 'Saatlik & Günlük',
+                title: S.of(context)!.carRental,
+                subtitle: S.of(context)!.carRentalSubtitle,
                 icon: Icons.car_rental,
                 gradientColors: const [Color(0xFF8B5CF6), Color(0xFF9333EA)],
                 height: context.isMobile ? 130 : 160,
@@ -853,8 +937,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             SizedBox(width: context.itemGap),
             Expanded(
               child: ServiceCard(
-                title: 'Emlak',
-                subtitle: 'Konut & Arsa',
+                title: S.of(context)!.realEstate,
+                subtitle: S.of(context)!.realEstateSubtitle,
                 icon: Icons.real_estate_agent,
                 gradientColors: const [Color(0xFF60A5FA), Color(0xFF06B6D4)],
                 height: context.isMobile ? 130 : 160,
@@ -871,8 +955,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           children: [
             Expanded(
               child: _buildCompactCard(
-                title: 'Araç Satışı',
-                subtitle: '2. El Fırsatlar',
+                title: S.of(context)!.carSales,
+                subtitle: S.of(context)!.carSalesSubtitle,
                 icon: Icons.directions_car,
                 gradientColors: const [Color(0xFFF43F5E), Color(0xFFDC2626)],
                 isDark: isDark,
@@ -882,8 +966,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             SizedBox(width: context.itemGap),
             Expanded(
               child: _buildCompactCard(
-                title: 'İş İlanları',
-                subtitle: 'Kariyer Fırsatları',
+                title: S.of(context)!.jobListings,
+                subtitle: S.of(context)!.jobListingsSubtitle,
                 icon: Icons.work,
                 gradientColors: [
                   isDark ? const Color(0xFF374151) : const Color(0xFF0F766E),
@@ -900,8 +984,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
         // Market Card - Grocery stores with delivery zones
         ServiceCard(
-          title: 'Market',
-          subtitle: 'Taze ürünler kapında',
+          title: S.of(context)!.grocery,
+          subtitle: S.of(context)!.grocerySubtitle,
           icon: Icons.shopping_cart,
           gradientColors: const [Color(0xFF22C55E), Color(0xFF16A34A)],
           height: context.isMobile ? 130 : 160,
@@ -923,62 +1007,61 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-      padding: EdgeInsets.all(cardPadding),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: gradientColors,
-          begin: Alignment.centerLeft,
-          end: Alignment.centerRight,
+        padding: EdgeInsets.all(cardPadding),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: gradientColors,
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: gradientColors.first.withValues(alpha: 0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: gradientColors.first.withValues(alpha: 0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(10),
+        child: Row(
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: Colors.white, size: 18),
             ),
-            child: Icon(icon, color: Colors.white, size: 18),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: 9,
-                    color: Colors.white.withValues(alpha: 0.8),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 9,
+                      color: Colors.white.withValues(alpha: 0.8),
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }
-
 }

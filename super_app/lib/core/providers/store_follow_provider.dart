@@ -1,8 +1,8 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/store/store_model.dart';
 import '../services/supabase_service.dart';
+import 'package:super_app/core/services/log_service.dart';
 
 // Takip Edilen Mağaza Modeli
 class FollowedStore {
@@ -54,7 +54,8 @@ class StoreFollowState {
   FollowedStore? getFollowedStore(String storeId) {
     try {
       return followedStores.firstWhere((s) => s.id == storeId);
-    } catch (_) {
+    } catch (e, st) {
+      LogService.error('Error getting follow record', error: e, stackTrace: st, source: 'StoreFollowProvider:_getFollowRecord');
       return null;
     }
   }
@@ -99,8 +100,8 @@ class StoreFollowNotifier extends StateNotifier<StoreFollowState> {
       }).toList();
 
       state = state.copyWith(followedStores: stores);
-    } catch (e) {
-      if (kDebugMode) debugPrint('Takip listesi yüklenemedi: $e');
+    } catch (e, st) {
+      LogService.error('Takip listesi yüklenemedi', error: e, stackTrace: st, source: 'StoreFollowProvider:loadFollowedStores');
     }
   }
 
@@ -140,9 +141,9 @@ class StoreFollowNotifier extends StateNotifier<StoreFollowState> {
           createdAt: DateTime.now(),
         ),
       );
-    } catch (e) {
+    } catch (e, st) {
       // Hata olursa UI'ı geri al
-      if (kDebugMode) debugPrint('Takip hatası: $e');
+      LogService.error('Takip hatası', error: e, stackTrace: st, source: 'StoreFollowProvider:followStore');
       state = state.copyWith(
         followedStores: state.followedStores.where((s) => s.id != store.id).toList(),
       );
@@ -165,9 +166,9 @@ class StoreFollowNotifier extends StateNotifier<StoreFollowState> {
           .delete()
           .eq('user_id', userId)
           .eq('merchant_id', storeId);
-    } catch (e) {
+    } catch (e, st) {
       // Hata olursa geri al
-      if (kDebugMode) debugPrint('Takipten çıkma hatası: $e');
+      LogService.error('Takipten çıkma hatası', error: e, stackTrace: st, source: 'StoreFollowProvider:unfollowStore');
       state = state.copyWith(followedStores: previousStores);
     }
   }

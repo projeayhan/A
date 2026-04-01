@@ -1,5 +1,6 @@
 /// Realtor Client (CRM) Model
 /// DB Table: realtor_clients
+library;
 
 /// Client status enum
 enum ClientStatus {
@@ -74,12 +75,10 @@ class RealtorClient {
       propertyType: json['property_type'] as String?,
       budgetMin: (json['budget_min'] as num?)?.toDouble(),
       budgetMax: (json['budget_max'] as num?)?.toDouble(),
-      preferredCities: (json['preferred_cities'] as List<dynamic>?)
-              ?.cast<String>() ??
-          [],
-      preferredDistricts: (json['preferred_districts'] as List<dynamic>?)
-              ?.cast<String>() ??
-          [],
+      preferredCities:
+          (json['preferred_cities'] as List<dynamic>?)?.cast<String>() ?? [],
+      preferredDistricts:
+          (json['preferred_districts'] as List<dynamic>?)?.cast<String>() ?? [],
       status: ClientStatus.fromString(json['status'] as String?),
       source: json['source'] as String?,
       notes: json['notes'] as String?,

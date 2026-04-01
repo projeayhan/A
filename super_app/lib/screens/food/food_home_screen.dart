@@ -8,9 +8,9 @@ import '../../core/providers/cart_provider.dart';
 import '../../core/providers/notification_provider.dart';
 import '../../core/providers/restaurant_provider.dart';
 import '../../core/services/restaurant_service.dart';
-import '../../core/theme/app_responsive.dart';
 import '../../widgets/food/food_banner_carousel.dart';
 import '../../widgets/food/restaurant_card.dart';
+import '../../widgets/common/shimmer_widgets.dart';
 
 // Search data models - veriler Supabase'den yüklenir
 class SearchableFood {
@@ -361,10 +361,6 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
     _removeNotificationOverlay();
     _removeAddressOverlay();
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final screenWidth = MediaQuery.of(context).size.width;
-    final dropdownWidth = (screenWidth - 32).clamp(0.0, 380.0);
-    // Position: align right edge of dropdown with the bell icon
-    final offsetX = -(dropdownWidth - 40);
 
     _notificationOverlayEntry = OverlayEntry(
       builder: (context) => Stack(
@@ -377,15 +373,12 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
             ),
           ),
           Positioned(
-            width: dropdownWidth,
-            child: CompositedTransformFollower(
-              link: _notificationLayerLink,
-              showWhenUnlinked: false,
-              offset: Offset(offsetX, 45),
-              child: Material(
-                color: Colors.transparent,
-                child: _buildNotificationOverlayContent(isDark),
-              ),
+            left: 16,
+            right: 16,
+            top: MediaQuery.of(context).padding.top + 62,
+            child: Material(
+              color: Colors.transparent,
+              child: _buildNotificationOverlayContent(isDark),
             ),
           ),
         ],
@@ -403,16 +396,26 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
 
   IconData _getNotificationIcon(String iconName) {
     switch (iconName) {
-      case 'restaurant': return Icons.restaurant;
-      case 'shopping_bag': return Icons.shopping_bag;
-      case 'local_taxi': return Icons.local_taxi;
-      case 'directions_car': return Icons.directions_car;
-      case 'work': return Icons.work;
-      case 'home': return Icons.home;
-      case 'celebration': return Icons.celebration;
-      case 'delivery_dining': return Icons.delivery_dining;
-      case 'star': return Icons.star;
-      default: return Icons.notifications;
+      case 'restaurant':
+        return Icons.restaurant;
+      case 'shopping_bag':
+        return Icons.shopping_bag;
+      case 'local_taxi':
+        return Icons.local_taxi;
+      case 'directions_car':
+        return Icons.directions_car;
+      case 'work':
+        return Icons.work;
+      case 'home':
+        return Icons.home;
+      case 'celebration':
+        return Icons.celebration;
+      case 'delivery_dining':
+        return Icons.delivery_dining;
+      case 'star':
+        return Icons.star;
+      default:
+        return Icons.notifications;
     }
   }
 
@@ -492,7 +495,11 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
               padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
               child: Column(
                 children: [
-                  Icon(Icons.notifications_none_rounded, size: 48, color: Colors.grey[300]),
+                  Icon(
+                    Icons.notifications_none_rounded,
+                    size: 48,
+                    color: Colors.grey[300],
+                  ),
                   const SizedBox(height: 12),
                   Text(
                     'Henüz bildiriminiz yok',
@@ -514,7 +521,9 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
                   return InkWell(
                     onTap: () {
                       if (!notification.isRead) {
-                        ref.read(notificationProvider.notifier).markAsRead(notification.id);
+                        ref
+                            .read(notificationProvider.notifier)
+                            .markAsRead(notification.id);
                       }
                       _removeNotificationOverlay();
                     },
@@ -527,7 +536,9 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
                         border: index < notifications.length - 1
                             ? Border(
                                 bottom: BorderSide(
-                                  color: isDark ? Colors.grey[800]! : Colors.grey[100]!,
+                                  color: isDark
+                                      ? Colors.grey[800]!
+                                      : Colors.grey[100]!,
                                 ),
                               )
                             : null,
@@ -563,7 +574,9 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
                                           fontWeight: notification.isRead
                                               ? FontWeight.w500
                                               : FontWeight.bold,
-                                          color: isDark ? Colors.white : Colors.grey[900],
+                                          color: isDark
+                                              ? Colors.white
+                                              : Colors.grey[900],
                                         ),
                                       ),
                                     ),
@@ -581,14 +594,20 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
                                 const SizedBox(height: 4),
                                 Text(
                                   notification.body,
-                                  style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.grey[500],
+                                  ),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                                 const SizedBox(height: 6),
                                 Text(
                                   _getTimeAgo(notification.createdAt),
-                                  style: TextStyle(fontSize: 11, color: Colors.grey[400]),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey[400],
+                                  ),
                                 ),
                               ],
                             ),
@@ -714,7 +733,9 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
 
             return InkWell(
               onTap: () {
-                ref.read(addressProvider.notifier).setDefaultAddress(address.id);
+                ref
+                    .read(addressProvider.notifier)
+                    .setDefaultAddress(address.id);
                 _removeAddressOverlay();
               },
               borderRadius: BorderRadius.vertical(
@@ -866,7 +887,7 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
       _searchQuery = query.toLowerCase();
     });
 
-    if (query.isEmpty) {
+    if (query.isEmpty || query.length < 3) {
       _searchDebounceTimer?.cancel();
       _removeOverlay();
       setState(() {
@@ -898,27 +919,31 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
       if (!mounted || _searchController.text.trim() != query) return;
 
       final restaurants = (results[0] as List<Restaurant>)
-          .map((r) => SearchableRestaurant(
-                id: r.id,
-                name: r.name,
-                categories: r.categoryTags.join(', '),
-                rating: r.rating,
-                deliveryTime: r.deliveryTime,
-                imageUrl: r.coverUrl ?? r.logoUrl ?? '',
-              ))
+          .map(
+            (r) => SearchableRestaurant(
+              id: r.id,
+              name: r.name,
+              categories: r.categoryTags.join(', '),
+              rating: r.rating,
+              deliveryTime: r.deliveryTime,
+              imageUrl: r.coverUrl ?? r.logoUrl ?? '',
+            ),
+          )
           .toList();
 
       final foods = (results[1] as List<Map<String, dynamic>>)
-          .map((f) => SearchableFood(
-                id: f['id'] as String,
-                name: f['name'] as String,
-                description: f['description'] as String,
-                price: f['price'] as double,
-                imageUrl: f['imageUrl'] as String,
-                rating: f['rating'] as double,
-                restaurantId: f['merchantId'] as String,
-                restaurantName: f['restaurantName'] as String,
-              ))
+          .map(
+            (f) => SearchableFood(
+              id: f['id'] as String,
+              name: f['name'] as String,
+              description: f['description'] as String,
+              price: f['price'] as double,
+              imageUrl: f['imageUrl'] as String,
+              rating: f['rating'] as double,
+              restaurantId: f['merchantId'] as String,
+              restaurantName: f['restaurantName'] as String,
+            ),
+          )
           .toList();
 
       setState(() {
@@ -1144,11 +1169,13 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
                 child: CachedNetworkImage(
                   imageUrl: restaurant.imageUrl,
                   fit: BoxFit.cover,
-                  placeholder: (_, __) => Container(
+                  placeholder: (_, _) => Container(
                     color: Colors.grey[200],
-                    child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    child: const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
                   ),
-                  errorWidget: (_, __, ___) => Container(
+                  errorWidget: (_, _, _) => Container(
                     color: FoodColors.primary.withValues(alpha: 0.1),
                     child: const Icon(
                       Icons.restaurant,
@@ -1269,11 +1296,13 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
                 child: CachedNetworkImage(
                   imageUrl: food.imageUrl,
                   fit: BoxFit.cover,
-                  placeholder: (_, __) => Container(
+                  placeholder: (_, _) => Container(
                     color: Colors.grey[200],
-                    child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    child: const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
                   ),
-                  errorWidget: (_, __, ___) => Container(
+                  errorWidget: (_, _, _) => Container(
                     color: FoodColors.primary.withValues(alpha: 0.1),
                     child: const Icon(
                       Icons.fastfood,
@@ -1357,8 +1386,8 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
   Widget _buildSeeAllButton(bool isDark) {
     return InkWell(
       onTap: () {
-        // TODO: Navigate to full search results page
         _removeOverlay();
+        context.push('/food');
       },
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
@@ -1397,10 +1426,24 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final restaurantsAsync = ref.watch(restaurantsProvider);
     return Scaffold(
-      backgroundColor: isDark ? FoodColors.backgroundDark : FoodColors.backgroundLight,
+      backgroundColor: isDark
+          ? FoodColors.backgroundDark
+          : FoodColors.backgroundLight,
       body: restaurantsAsync.when(
         data: (restaurants) => _buildHomeContent(isDark, restaurants),
-        loading: () => const Center(child: CircularProgressIndicator(color: FoodColors.primary)),
+        loading: () => ListView(
+          padding: const EdgeInsets.all(16),
+          children: const [
+            ShimmerBox(height: 180, borderRadius: 14),
+            SizedBox(height: 16),
+            ShimmerBox(height: 115, borderRadius: 12),
+            SizedBox(height: 16),
+            ShimmerCarCard(),
+            ShimmerCarCard(),
+            ShimmerCarCard(),
+            ShimmerCarCard(),
+          ],
+        ),
         error: (error, stack) => Center(child: Text('Hata: $error')),
       ),
     );
@@ -1413,19 +1456,25 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
     if (_selectedCategory != null && _selectedCategory != 'Tümü') {
       results = results.where((r) {
         final tags = r['categoryTags'] as List<String>;
-        return tags.any((tag) => tag.toLowerCase().contains(_selectedCategory!.toLowerCase()));
+        return tags.any(
+          (tag) => tag.toLowerCase().contains(_selectedCategory!.toLowerCase()),
+        );
       }).toList();
     }
 
     // Rating filter
     if (_minRating != null) {
-      results = results.where((r) => (r['rating'] as double) >= _minRating!).toList();
+      results = results
+          .where((r) => (r['rating'] as double) >= _minRating!)
+          .toList();
     }
 
     // Sorting
     switch (_selectedSorting) {
       case 'Puana Göre':
-        results.sort((a, b) => (b['rating'] as double).compareTo(a['rating'] as double));
+        results.sort(
+          (a, b) => (b['rating'] as double).compareTo(a['rating'] as double),
+        );
         break;
       case 'En Yakın':
         // TODO: Sort by distance when location is available
@@ -1445,8 +1494,14 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
         break;
       case 'Fiyat (Düşükten Yükseğe)':
         results.sort((a, b) {
-          final aMin = (a['minOrder'] as String).replaceAll(RegExp(r'[^\d.]'), '');
-          final bMin = (b['minOrder'] as String).replaceAll(RegExp(r'[^\d.]'), '');
+          final aMin = (a['minOrder'] as String).replaceAll(
+            RegExp(r'[^\d.]'),
+            '',
+          );
+          final bMin = (b['minOrder'] as String).replaceAll(
+            RegExp(r'[^\d.]'),
+            '',
+          );
           final aVal = double.tryParse(aMin) ?? 0;
           final bVal = double.tryParse(bMin) ?? 0;
           return aVal.compareTo(bVal);
@@ -1454,8 +1509,14 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
         break;
       case 'Fiyat (Yüksekten Düşüğe)':
         results.sort((a, b) {
-          final aMin = (a['minOrder'] as String).replaceAll(RegExp(r'[^\d.]'), '');
-          final bMin = (b['minOrder'] as String).replaceAll(RegExp(r'[^\d.]'), '');
+          final aMin = (a['minOrder'] as String).replaceAll(
+            RegExp(r'[^\d.]'),
+            '',
+          );
+          final bMin = (b['minOrder'] as String).replaceAll(
+            RegExp(r'[^\d.]'),
+            '',
+          );
           final aVal = double.tryParse(aMin) ?? 0;
           final bVal = double.tryParse(bMin) ?? 0;
           return bVal.compareTo(aVal);
@@ -1538,9 +1599,7 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
                     final restaurant = filteredRestaurants[index];
                     return Padding(
                       padding: EdgeInsets.only(
-                        bottom: index < filteredRestaurants.length - 1
-                            ? 16
-                            : 0,
+                        bottom: index < filteredRestaurants.length - 1 ? 16 : 0,
                       ),
                       child: RestaurantCard(
                         restaurantId: restaurant['id'],
@@ -1964,7 +2023,7 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             itemCount: categories.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            separatorBuilder: (_, _) => const SizedBox(width: 12),
             itemBuilder: (context, index) {
               final category = categories[index];
               final isSelected =
@@ -1988,9 +2047,12 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
       },
       loading: () => const SizedBox(
         height: 115,
-        child: Center(child: CircularProgressIndicator()),
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: ShimmerBox(height: 115, borderRadius: 12),
+        ),
       ),
-      error: (_, __) => const SizedBox(height: 115),
+      error: (_, _) => const SizedBox(height: 115),
     );
   }
 
@@ -2100,11 +2162,13 @@ class _FoodHomeScreenState extends ConsumerState<FoodHomeScreen> {
                 child: CachedNetworkImage(
                   imageUrl: imageUrl,
                   fit: BoxFit.cover,
-                  placeholder: (_, __) => Container(
+                  placeholder: (_, _) => Container(
                     color: Colors.grey[200],
-                    child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    child: const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
                   ),
-                  errorWidget: (_, __, ___) => Container(
+                  errorWidget: (_, _, _) => Container(
                     color: isDark ? FoodColors.surfaceDark : Colors.grey[100],
                     child: Icon(
                       Icons.restaurant,

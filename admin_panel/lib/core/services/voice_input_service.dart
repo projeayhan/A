@@ -1,3 +1,4 @@
+import 'package:admin_panel/core/services/log_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 import 'package:speech_to_text/speech_recognition_result.dart';

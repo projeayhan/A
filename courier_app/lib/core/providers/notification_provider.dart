@@ -2,7 +2,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 // Bildirimler provider'ı - realtime dinleme ile
-final notificationsProvider = StreamProvider<List<Map<String, dynamic>>>((ref) async* {
+final notificationsProvider = StreamProvider<List<Map<String, dynamic>>>((
+  ref,
+) async* {
   final supabase = Supabase.instance.client;
   final userId = supabase.auth.currentUser?.id;
 
@@ -25,10 +27,11 @@ final notificationsProvider = StreamProvider<List<Map<String, dynamic>>>((ref) a
   yield await fetchNotifications();
 
   // Realtime dinleme
-  await for (final _ in supabase
-      .from('notifications')
-      .stream(primaryKey: ['id'])
-      .eq('user_id', userId)) {
+  await for (final _
+      in supabase
+          .from('notifications')
+          .stream(primaryKey: ['id'])
+          .eq('user_id', userId)) {
     yield await fetchNotifications();
   }
 });
@@ -37,9 +40,10 @@ final notificationsProvider = StreamProvider<List<Map<String, dynamic>>>((ref) a
 final unreadNotificationCountProvider = Provider<int>((ref) {
   final notificationsAsync = ref.watch(notificationsProvider);
   return notificationsAsync.when(
-    data: (notifications) => notifications.where((n) => n['is_read'] != true).length,
+    data: (notifications) =>
+        notifications.where((n) => n['is_read'] != true).length,
     loading: () => 0,
-    error: (_, __) => 0,
+    error: (_, _) => 0,
   );
 });
 
@@ -69,9 +73,6 @@ class NotificationService {
 
   // Bildirimi sil
   static Future<void> deleteNotification(String notificationId) async {
-    await _supabase
-        .from('notifications')
-        .delete()
-        .eq('id', notificationId);
+    await _supabase.from('notifications').delete().eq('id', notificationId);
   }
 }

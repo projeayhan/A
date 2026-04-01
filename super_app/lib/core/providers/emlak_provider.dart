@@ -147,7 +147,7 @@ final premiumPropertiesProvider = FutureProvider<List<Property>>((ref) async {
 // ÖNE ÇIKAN + PREMİUM BİRLEŞİK PROVIDER
 // ============================================
 
-final featuredAndPremiumProvider = FutureProvider.family<List<Property>, String?>((ref, city) async {
+final featuredAndPremiumProvider = FutureProvider.autoDispose.family<List<Property>, String?>((ref, city) async {
   final service = ref.watch(propertyServiceProvider);
   return service.getFeaturedAndPremiumProperties(city: city);
 });
@@ -157,7 +157,7 @@ final featuredAndPremiumProvider = FutureProvider.family<List<Property>, String?
 // ============================================
 
 final propertyDetailProvider =
-    FutureProvider.family<Property?, String>((ref, propertyId) async {
+    FutureProvider.autoDispose.family<Property?, String>((ref, propertyId) async {
   final service = ref.watch(propertyServiceProvider);
   return service.getPropertyById(propertyId);
 });
@@ -167,7 +167,7 @@ final propertyDetailProvider =
 // ============================================
 
 final similarPropertiesProvider =
-    FutureProvider.family<List<Property>, Property>((ref, property) async {
+    FutureProvider.autoDispose.family<List<Property>, Property>((ref, property) async {
   final service = ref.watch(propertyServiceProvider);
   return service.getSimilarProperties(property, limit: 4);
 });
@@ -384,7 +384,7 @@ final citiesProvider = FutureProvider<List<String>>((ref) async {
 });
 
 final districtsByCityProvider =
-    FutureProvider.family<List<String>, String>((ref, city) async {
+    FutureProvider.autoDispose.family<List<String>, String>((ref, city) async {
   final service = ref.watch(propertyServiceProvider);
   return service.getDistrictsByCity(city);
 });
@@ -394,7 +394,7 @@ final districtsByCityProvider =
 // ============================================
 
 final propertyViewStatsProvider =
-    FutureProvider.family<Map<String, dynamic>, String>((ref, propertyId) async {
+    FutureProvider.autoDispose.family<Map<String, dynamic>, String>((ref, propertyId) async {
   final service = ref.watch(propertyServiceProvider);
   return service.getPropertyViewStats(propertyId);
 });
@@ -429,7 +429,7 @@ final amenitiesProvider = FutureProvider<List<AmenityModel>>((ref) async {
 });
 
 // Kategoriye göre özellikler
-final amenitiesByCategoryProvider = FutureProvider.family<List<AmenityModel>, String?>((ref, category) async {
+final amenitiesByCategoryProvider = FutureProvider.autoDispose.family<List<AmenityModel>, String?>((ref, category) async {
   final service = ref.watch(propertyServiceProvider);
   final data = await service.getAmenities(category: category);
   return data.map((json) => AmenityModel.fromJson(json)).toList();

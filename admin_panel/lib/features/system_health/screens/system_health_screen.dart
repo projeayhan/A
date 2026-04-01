@@ -131,7 +131,7 @@ class SystemHealthScreen extends ConsumerWidget {
             healthAsync.when(
               data: (health) => _buildServiceCards(health),
               loading: () => const SizedBox(),
-              error: (_, __) => const SizedBox(),
+              error: (_, _) => const SizedBox(),
             ),
 
             const SizedBox(height: 24),
@@ -327,7 +327,7 @@ class SystemHealthScreen extends ConsumerWidget {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: services.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        separatorBuilder: (_, _) => const SizedBox(width: 12),
         itemBuilder: (context, index) {
           final service = services[index] as Map<String, dynamic>;
           return _buildServiceCard(service);
@@ -513,7 +513,7 @@ class SystemHealthScreen extends ConsumerWidget {
         return ListView.separated(
           padding: const EdgeInsets.all(16),
           itemCount: logs.length,
-          separatorBuilder: (_, __) =>
+          separatorBuilder: (_, _) =>
               const Divider(color: AppColors.surfaceLight),
           itemBuilder: (context, index) {
             final log = logs[index];
@@ -610,7 +610,7 @@ class SystemHealthScreen extends ConsumerWidget {
         return ListView.separated(
           padding: const EdgeInsets.all(16),
           itemCount: alerts.length,
-          separatorBuilder: (_, __) =>
+          separatorBuilder: (_, _) =>
               const Divider(color: AppColors.surfaceLight),
           itemBuilder: (context, index) {
             final alert = alerts[index];
@@ -703,7 +703,7 @@ class SystemHealthScreen extends ConsumerWidget {
         return ListView.separated(
           padding: const EdgeInsets.all(16),
           itemCount: rules.length,
-          separatorBuilder: (_, __) =>
+          separatorBuilder: (_, _) =>
               const Divider(color: AppColors.surfaceLight),
           itemBuilder: (context, index) {
             final rule = rules[index];

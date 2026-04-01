@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/business_proxy_service.dart';
 import '../../../core/services/storage_service.dart';
+import 'package:support_panel/core/services/log_service.dart';
 
 class EmlakOpsPanel extends ConsumerStatefulWidget {
   final String businessId;
@@ -39,7 +40,8 @@ class _EmlakOpsPanelState extends ConsumerState<EmlakOpsPanel> with SingleTicker
         service.getPropertyAppointments(widget.businessId),
       ]);
       setState(() { _properties = results[0]; _appointments = results[1]; _isLoading = false; });
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to load emlak data', error: e, stackTrace: st, source: 'EmlakOpsPanel:_loadData');
       setState(() => _isLoading = false);
     }
   }
@@ -342,7 +344,8 @@ class _EmlakOpsPanelState extends ConsumerState<EmlakOpsPanel> with SingleTicker
                       }
                       if (ctx.mounted) Navigator.pop(ctx);
                       _loadData();
-                    } catch (e) {
+                    } catch (e, st) {
+                      LogService.error('Failed to save property', error: e, stackTrace: st, source: 'EmlakOpsPanel:saveProperty');
                       ss(() => isSaving = false);
                       if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Hata: $e'), backgroundColor: AppColors.error));
                     }

@@ -17,18 +17,36 @@ import '../../core/providers/store_provider.dart';
 import '../../core/providers/ai_context_provider.dart';
 import '../../core/utils/name_masking.dart';
 
+// Flat list item types for lazy ListView in product tab
+enum _ItemType {
+  popularGrid,
+  reviews,
+  categoryHeader,
+  product,
+  separator,
+  bottomPadding,
+}
+
+class _ListItem {
+  final _ItemType type;
+  final Object? payload;
+  const _ListItem(this.type, {this.payload});
+}
+
 // Reviews provider for a store (merchant)
 final storeReviewsProvider =
-    FutureProvider.family<List<Map<String, dynamic>>, String>(
-        (ref, merchantId) async {
-  final response = await SupabaseService.client
-      .from('reviews')
-      .select('*')
-      .eq('merchant_id', merchantId)
-      .order('created_at', ascending: false)
-      .limit(10);
-  return List<Map<String, dynamic>>.from(response);
-});
+    FutureProvider.family<List<Map<String, dynamic>>, String>((
+      ref,
+      merchantId,
+    ) async {
+      final response = await SupabaseService.client
+          .from('reviews')
+          .select('*')
+          .eq('merchant_id', merchantId)
+          .order('created_at', ascending: false)
+          .limit(10);
+      return List<Map<String, dynamic>>.from(response);
+    });
 
 class StoreDetailScreen extends ConsumerStatefulWidget {
   final Store store;
@@ -113,9 +131,20 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen>
             _memberSince = DateTime.tryParse(createdAt);
           }
 
-          if (workingHoursResponse != null && workingHoursResponse['is_open'] == true) {
-            final openTime = (workingHoursResponse['open_time'] as String?)?.substring(0, 5) ?? '';
-            final closeTime = (workingHoursResponse['close_time'] as String?)?.substring(0, 5) ?? '';
+          if (workingHoursResponse != null &&
+              workingHoursResponse['is_open'] == true) {
+            final openTime =
+                (workingHoursResponse['open_time'] as String?)?.substring(
+                  0,
+                  5,
+                ) ??
+                '';
+            final closeTime =
+                (workingHoursResponse['close_time'] as String?)?.substring(
+                  0,
+                  5,
+                ) ??
+                '';
             _workingHours = '$openTime - $closeTime';
           } else {
             _workingHours = 'Kapalı';
@@ -170,7 +199,8 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen>
 
     // Debounce
     Future.delayed(const Duration(milliseconds: 200), () {
-      if (mounted && _productSearchController.text.trim().toLowerCase() == query) {
+      if (mounted &&
+          _productSearchController.text.trim().toLowerCase() == query) {
         _showSearchOverlay();
       }
     });
@@ -191,11 +221,14 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen>
   List<StoreProduct> _getFilteredSearchResults(List<StoreProduct> allProducts) {
     if (_productSearchQuery.length < 2) return [];
     final query = _productSearchQuery.toLowerCase();
-    return allProducts.where((p) {
-      return p.name.toLowerCase().contains(query) ||
-          p.category.toLowerCase().contains(query) ||
-          (p.description?.toLowerCase().contains(query) ?? false);
-    }).take(8).toList();
+    return allProducts
+        .where((p) {
+          return p.name.toLowerCase().contains(query) ||
+              p.category.toLowerCase().contains(query) ||
+              (p.description.toLowerCase().contains(query) ?? false);
+        })
+        .take(8)
+        .toList();
   }
 
   OverlayEntry _createSearchOverlayEntry() {
@@ -232,7 +265,11 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen>
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.search_off, size: 40, color: Colors.grey[400]),
+                          Icon(
+                            Icons.search_off,
+                            size: 40,
+                            color: Colors.grey[400],
+                          ),
                           const SizedBox(height: 8),
                           Text(
                             '"$_productSearchQuery" için ürün bulunamadı',
@@ -249,7 +286,7 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen>
                       shrinkWrap: true,
                       padding: const EdgeInsets.symmetric(vertical: 8),
                       itemCount: results.length,
-                      separatorBuilder: (_, __) => Divider(
+                      separatorBuilder: (_, _) => Divider(
                         height: 1,
                         indent: 60,
                         color: isDark ? Colors.grey[800] : Colors.grey[200],
@@ -260,38 +297,36 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen>
                           dense: true,
                           leading: ClipRRect(
                             borderRadius: BorderRadius.circular(8),
-                            child: product.imageUrl != null
-                                ? CachedNetworkImage(
-                                    imageUrl: product.imageUrl!,
-                                    width: 44,
-                                    height: 44,
-                                    fit: BoxFit.cover,
-                                    memCacheWidth: 88,
-                                    memCacheHeight: 88,
-                                    placeholder: (_, __) => Container(
-                                      width: 44,
-                                      height: 44,
-                                      color: Colors.grey[200],
-                                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                                    ),
-                                    errorWidget: (_, __, ___) => Container(
-                                      width: 44,
-                                      height: 44,
-                                      color: StoreColors.primary.withValues(alpha: 0.1),
-                                      child: Icon(Icons.shopping_bag_outlined,
-                                          color: StoreColors.primary, size: 22),
-                                    ),
-                                  )
-                                : Container(
-                                    width: 44,
-                                    height: 44,
-                                    decoration: BoxDecoration(
-                                      color: StoreColors.primary.withValues(alpha: 0.1),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Icon(Icons.shopping_bag_outlined,
-                                        color: StoreColors.primary, size: 22),
+                            child: CachedNetworkImage(
+                              imageUrl: product.imageUrl,
+                              width: 44,
+                              height: 44,
+                              fit: BoxFit.cover,
+                              memCacheWidth: 88,
+                              memCacheHeight: 88,
+                              placeholder: (_, _) => Container(
+                                width: 44,
+                                height: 44,
+                                color: Colors.grey[200],
+                                child: const Center(
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
                                   ),
+                                ),
+                              ),
+                              errorWidget: (_, _, _) => Container(
+                                width: 44,
+                                height: 44,
+                                color: StoreColors.primary.withValues(
+                                  alpha: 0.1,
+                                ),
+                                child: Icon(
+                                  Icons.shopping_bag_outlined,
+                                  color: StoreColors.primary,
+                                  size: 22,
+                                ),
+                              ),
+                            ),
                           ),
                           title: Text(
                             product.name,
@@ -304,7 +339,9 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen>
                             overflow: TextOverflow.ellipsis,
                           ),
                           subtitle: Text(
-                            product.category.isNotEmpty ? product.category : 'Ürün',
+                            product.category.isNotEmpty
+                                ? product.category
+                                : 'Ürün',
                             style: TextStyle(
                               fontSize: context.captionSize,
                               color: isDark ? Colors.white54 : Colors.grey[500],
@@ -344,7 +381,9 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen>
     final cartState = ref.watch(storeCartProvider);
 
     return Scaffold(
-      backgroundColor: isDark ? StoreColors.backgroundDark : StoreColors.backgroundLight,
+      backgroundColor: isDark
+          ? StoreColors.backgroundDark
+          : StoreColors.backgroundLight,
       body: NestedScrollView(
         controller: _scrollController,
         headerSliverBuilder: (context, innerBoxIsScrolled) {
@@ -394,13 +433,15 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen>
                         fit: BoxFit.cover,
                         memCacheWidth: 64,
                         memCacheHeight: 64,
-                        placeholder: (_, __) => Container(
+                        placeholder: (_, _) => Container(
                           width: 32,
                           height: 32,
                           color: Colors.grey[200],
-                          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                          child: const Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
                         ),
-                        errorWidget: (_, __, ___) => Container(
+                        errorWidget: (_, _, _) => Container(
                           width: 32,
                           height: 32,
                           color: StoreColors.primary,
@@ -437,11 +478,13 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen>
                       fit: BoxFit.cover,
                       memCacheWidth: 800,
                       memCacheHeight: 400,
-                      placeholder: (_, __) => Container(
+                      placeholder: (_, _) => Container(
                         color: Colors.grey[200],
-                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                        child: const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
                       ),
-                      errorWidget: (_, __, ___) => Container(
+                      errorWidget: (_, _, _) => Container(
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
@@ -496,13 +539,17 @@ class _StoreDetailScreenState extends ConsumerState<StoreDetailScreen>
                                 fit: BoxFit.cover,
                                 memCacheWidth: 120,
                                 memCacheHeight: 120,
-                                placeholder: (_, __) => Container(
+                                placeholder: (_, _) => Container(
                                   width: 60,
                                   height: 60,
                                   color: Colors.grey[200],
-                                  child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                  child: const Center(
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
                                 ),
-                                errorWidget: (_, __, ___) => Container(
+                                errorWidget: (_, _, _) => Container(
                                   width: 60,
                                   height: 60,
                                   color: StoreColors.primary,
@@ -870,7 +917,13 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
             ),
           ),
           const SizedBox(height: 2),
-          Text(label, style: TextStyle(fontSize: context.captionSmallSize, color: Colors.grey[500])),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: context.captionSmallSize,
+              color: Colors.grey[500],
+            ),
+          ),
         ],
       ),
     );
@@ -889,7 +942,13 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
     final productsAsync = ref.watch(productsByStoreProvider(widget.store.id));
     final allProducts = productsAsync.valueOrNull ?? [];
 
-    // Build category map with sort_order
+    // Build grouped map once — O(n) — reused everywhere instead of repeated .where() calls
+    final groupedByCategory = <String, List<StoreProduct>>{};
+    for (final product in allProducts) {
+      groupedByCategory.putIfAbsent(product.category, () => []).add(product);
+    }
+
+    // Build category sort-order map
     final categoryMap = <String, int>{}; // category name -> sort order
     for (final product in allProducts) {
       if (product.category.isNotEmpty && product.category != 'Diğer') {
@@ -915,14 +974,17 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
 
     for (final entry in sortedCategories) {
       final categoryName = entry.key;
-      final count = allProducts.where((p) => p.category == categoryName).length;
+      // O(1) lookup instead of O(n) .where()
+      final count = groupedByCategory[categoryName]?.length ?? 0;
 
       // Determine icon based on category name
       IconData icon = Icons.category_rounded;
       final lowerName = categoryName.toLowerCase();
       if (lowerName.contains('elektronik') || lowerName.contains('telefon')) {
         icon = Icons.devices_rounded;
-      } else if (lowerName.contains('giyim') || lowerName.contains('elbise') || lowerName.contains('kıyafet')) {
+      } else if (lowerName.contains('giyim') ||
+          lowerName.contains('elbise') ||
+          lowerName.contains('kıyafet')) {
         icon = Icons.checkroom_rounded;
       } else if (lowerName.contains('ayakkabı')) {
         icon = Icons.shopping_bag_rounded;
@@ -930,7 +992,8 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
         icon = Icons.restaurant_rounded;
       } else if (lowerName.contains('spor')) {
         icon = Icons.sports_soccer_rounded;
-      } else if (lowerName.contains('kozmetik') || lowerName.contains('güzellik')) {
+      } else if (lowerName.contains('kozmetik') ||
+          lowerName.contains('güzellik')) {
         icon = Icons.face_rounded;
       } else if (lowerName.contains('ev') || lowerName.contains('mobilya')) {
         icon = Icons.home_rounded;
@@ -981,7 +1044,11 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                         ),
                         suffixIcon: _productSearchQuery.isNotEmpty
                             ? IconButton(
-                                icon: Icon(Icons.close, size: 18, color: Colors.grey[400]),
+                                icon: Icon(
+                                  Icons.close,
+                                  size: 18,
+                                  color: Colors.grey[400],
+                                ),
                                 onPressed: () {
                                   _productSearchController.clear();
                                   _productSearchFocusNode.unfocus();
@@ -990,14 +1057,20 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                             : null,
                         filled: true,
                         fillColor: isDark ? Colors.grey[800] : Colors.grey[100],
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide.none,
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: StoreColors.primary, width: 1.5),
+                          borderSide: BorderSide(
+                            color: StoreColors.primary,
+                            width: 1.5,
+                          ),
                         ),
                       ),
                     ),
@@ -1009,7 +1082,10 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                 height: 52,
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   child: Row(
                     children: categories.map((cat) {
                       final catId = cat['id'] as String?;
@@ -1024,33 +1100,62 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                           },
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
+                            ),
                             decoration: BoxDecoration(
                               color: isSelected
                                   ? StoreColors.primary
-                                  : (isDark ? Colors.grey[800] : Colors.grey[100]),
+                                  : (isDark
+                                        ? Colors.grey[800]
+                                        : Colors.grey[100]),
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
                                 color: isSelected
                                     ? StoreColors.primary
-                                    : (isDark ? Colors.grey[700]! : Colors.grey[300]!),
+                                    : (isDark
+                                          ? Colors.grey[700]!
+                                          : Colors.grey[300]!),
                                 width: 1,
                               ),
                               boxShadow: isSelected
-                                  ? [BoxShadow(color: StoreColors.primary.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 2))]
+                                  ? [
+                                      BoxShadow(
+                                        color: StoreColors.primary.withValues(
+                                          alpha: 0.3,
+                                        ),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ]
                                   : null,
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(cat['icon'] as IconData, size: 16, color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.grey[700])),
+                                Icon(
+                                  cat['icon'] as IconData,
+                                  size: 16,
+                                  color: isSelected
+                                      ? Colors.white
+                                      : (isDark
+                                            ? Colors.white70
+                                            : Colors.grey[700]),
+                                ),
                                 const SizedBox(width: 6),
                                 Text(
                                   cat['name'] as String,
                                   style: TextStyle(
                                     fontSize: context.bodySmallSize,
-                                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                                    color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.grey[700]),
+                                    fontWeight: isSelected
+                                        ? FontWeight.w600
+                                        : FontWeight.w500,
+                                    color: isSelected
+                                        ? Colors.white
+                                        : (isDark
+                                              ? Colors.white70
+                                              : Colors.grey[700]),
                                   ),
                                 ),
                               ],
@@ -1065,128 +1170,232 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
             ],
           ),
         ),
-        // Scrollable products below
+        // Scrollable products below — lazy ListView.builder
         Expanded(
-          child: SingleChildScrollView(
-            child: _selectedCategory == null
-                ? _buildGroupedProductsView(allProducts, sortedCategories, isDark)
-                : _buildFilteredCategoryView(allProducts, isDark),
-          ),
+          child: _selectedCategory == null
+              ? _buildGroupedListView(
+                  allProducts,
+                  sortedCategories,
+                  groupedByCategory,
+                  isDark,
+                )
+              : _buildFilteredListView(groupedByCategory, isDark),
         ),
       ],
     );
   }
 
-  Widget _buildFilteredCategoryView(List<StoreProduct> allProducts, bool isDark) {
-    final filteredProducts = allProducts.where((p) => p.category == _selectedCategory).toList();
+  // Lazy ListView for a single selected category
+  Widget _buildFilteredListView(
+    Map<String, List<StoreProduct>> groupedByCategory,
+    bool isDark,
+  ) {
+    final products = groupedByCategory[_selectedCategory] ?? [];
+    if (products.isEmpty) {
+      return ListView(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(32),
+            child: Center(
+              child: Text(
+                'Bu kategoride ürün bulunmuyor',
+                style: TextStyle(
+                  color: isDark ? Colors.grey[400] : Colors.grey[600],
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+    // index 0 = header, 1..n = products, n+1 = bottom padding
+    return ListView.builder(
+      itemCount: products.length + 2,
+      itemBuilder: (ctx, i) {
+        if (i == 0) {
+          return _buildSectionHeader(
+            _selectedCategory!,
+            products.length,
+            isDark,
+            icon: Icons.category,
+            color: StoreColors.primary,
+          );
+        }
+        if (i == products.length + 1) return const SizedBox(height: 16);
+        final product = products[i - 1];
+        return RepaintBoundary(
+          child: Column(
+            children: [
+              _buildProductListItem(product, isDark),
+              Divider(
+                height: 0.5,
+                indent: 16,
+                endIndent: 16,
+                color: isDark ? Colors.grey[800] : Colors.grey[100],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
-    if (filteredProducts.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.all(32),
-        child: Center(
-          child: Text(
-            'Bu kategoride ürün bulunmuyor',
-            style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600]),
+  // Lazy ListView for all categories — flat item list avoids rendering everything at once
+  Widget _buildGroupedListView(
+    List<StoreProduct> allProducts,
+    List<MapEntry<String, int>> sortedCategories,
+    Map<String, List<StoreProduct>> groupedByCategory,
+    bool isDark,
+  ) {
+    final topPopular =
+        (allProducts.toList()
+              ..sort((a, b) => b.soldCount.compareTo(a.soldCount)))
+            .take(6)
+            .toList();
+
+    // Build flat list once — O(n) — ListView.builder will render lazily
+    final items = <_ListItem>[];
+
+    if (topPopular.isNotEmpty) {
+      items.add(
+        _ListItem(
+          _ItemType.categoryHeader,
+          payload: (
+            name: 'Popüler',
+            count: topPopular.length,
+            icon: Icons.local_fire_department,
+            color: Colors.orange,
+            isPopular: true,
           ),
         ),
       );
+      items.add(_ListItem(_ItemType.popularGrid, payload: topPopular));
+      items.add(_ListItem(_ItemType.separator));
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Category Title Header
-        _buildSectionHeader(_selectedCategory!, filteredProducts.length, isDark, icon: Icons.category, color: StoreColors.primary),
-        // Product list
-        ...filteredProducts.map((product) => Column(
-          children: [
-            _buildProductListItem(product, isDark),
-            Divider(height: 0.5, indent: 16, endIndent: 16, color: isDark ? Colors.grey[800] : Colors.grey[100]),
-          ],
-        )),
-        const SizedBox(height: 16),
-      ],
-    );
-  }
+    items.add(_ListItem(_ItemType.reviews));
 
-  Widget _buildGroupedProductsView(
-    List<StoreProduct> allProducts,
-    List<MapEntry<String, int>> sortedCategories,
-    bool isDark,
-  ) {
-    // Get popular products (top 6 by sold_count)
-    final popularProducts = List<StoreProduct>.from(allProducts)
-      ..sort((a, b) => b.soldCount.compareTo(a.soldCount));
-    final topPopular = popularProducts.take(6).toList();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Popüler Section - grid layout
-        if (topPopular.isNotEmpty) ...[
-          _buildSectionHeader('Popüler', topPopular.length, isDark, icon: Icons.local_fire_department, color: Colors.orange, isPopular: true),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                childAspectRatio: 0.78,
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
-              ),
-              itemCount: topPopular.length,
-              itemBuilder: (context, index) => _buildPopularGridCard(topPopular[index], isDark),
-            ),
+    for (final entry in sortedCategories) {
+      final products = groupedByCategory[entry.key] ?? [];
+      if (products.isEmpty) continue;
+      items.add(
+        _ListItem(
+          _ItemType.categoryHeader,
+          payload: (
+            name: entry.key,
+            count: products.length,
+            icon: Icons.category,
+            color: StoreColors.primary,
+            isPopular: false,
           ),
-          Container(height: 6, color: isDark ? Colors.black.withValues(alpha: 0.2) : const Color(0xFFF3F4F6)),
-        ],
+        ),
+      );
+      for (final p in products) {
+        items.add(_ListItem(_ItemType.product, payload: p));
+      }
+      items.add(_ListItem(_ItemType.separator));
+    }
 
-        // Reviews carousel
-        _buildInlineReviewsCarousel(isDark),
+    final uncategorized = [
+      ...?groupedByCategory[''],
+      ...?groupedByCategory['Diğer'],
+    ];
+    if (uncategorized.isNotEmpty) {
+      items.add(
+        _ListItem(
+          _ItemType.categoryHeader,
+          payload: (
+            name: 'Diğer',
+            count: uncategorized.length,
+            icon: Icons.more_horiz,
+            color: Colors.grey,
+            isPopular: false,
+          ),
+        ),
+      );
+      for (final p in uncategorized) {
+        items.add(_ListItem(_ItemType.product, payload: p));
+      }
+    }
 
-        // Sorted Categories - horizontal card layout
-        ...sortedCategories.map((entry) {
-          final categoryName = entry.key;
-          final categoryProducts = allProducts.where((p) => p.category == categoryName).toList();
-          if (categoryProducts.isEmpty) return const SizedBox.shrink();
+    items.add(_ListItem(_ItemType.bottomPadding));
 
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildSectionHeader(categoryName, categoryProducts.length, isDark, icon: Icons.category, color: StoreColors.primary),
-              ...categoryProducts.map((product) => Column(
+    return ListView.builder(
+      itemCount: items.length,
+      itemBuilder: (ctx, i) {
+        final item = items[i];
+        switch (item.type) {
+          case _ItemType.popularGrid:
+            final products = item.payload as List<StoreProduct>;
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  childAspectRatio: 0.78,
+                  crossAxisSpacing: 8,
+                  mainAxisSpacing: 8,
+                ),
+                itemCount: products.length,
+                itemBuilder: (_, j) =>
+                    _buildPopularGridCard(products[j], isDark),
+              ),
+            );
+          case _ItemType.reviews:
+            return _buildInlineReviewsCarousel(isDark);
+          case _ItemType.categoryHeader:
+            final h =
+                item.payload
+                    as ({
+                      String name,
+                      int count,
+                      IconData icon,
+                      Color color,
+                      bool isPopular,
+                    });
+            return _buildSectionHeader(
+              h.name,
+              h.count,
+              isDark,
+              icon: h.icon,
+              color: h.color,
+              isPopular: h.isPopular,
+            );
+          case _ItemType.product:
+            final product = item.payload as StoreProduct;
+            return RepaintBoundary(
+              child: Column(
                 children: [
                   _buildProductListItem(product, isDark),
-                  Divider(height: 0.5, indent: 16, endIndent: 16, color: isDark ? Colors.grey[800] : Colors.grey[100]),
+                  Divider(
+                    height: 0.5,
+                    indent: 16,
+                    endIndent: 16,
+                    color: isDark ? Colors.grey[800] : Colors.grey[100],
+                  ),
                 ],
-              )),
-              Container(height: 6, color: isDark ? Colors.black.withValues(alpha: 0.2) : const Color(0xFFF3F4F6)),
-            ],
-          );
-        }),
-
-        // Products without category
-        ...() {
-          final uncategorized = allProducts.where((p) => p.category.isEmpty || p.category == 'Diğer').toList();
-          if (uncategorized.isEmpty) return <Widget>[];
-          return [
-            _buildSectionHeader('Diğer', uncategorized.length, isDark, icon: Icons.more_horiz, color: Colors.grey),
-            ...uncategorized.map((product) => Column(
-              children: [
-                _buildProductListItem(product, isDark),
-                Divider(height: 0.5, indent: 16, endIndent: 16, color: isDark ? Colors.grey[800] : Colors.grey[100]),
-              ],
-            )),
-          ];
-        }(),
-        const SizedBox(height: 16),
-      ],
+              ),
+            );
+          case _ItemType.separator:
+            return Container(
+              height: 6,
+              color: isDark
+                  ? Colors.black.withValues(alpha: 0.2)
+                  : const Color(0xFFF3F4F6),
+            );
+          case _ItemType.bottomPadding:
+            return const SizedBox(height: 16);
+        }
+      },
     );
   }
 
-  Widget _buildSectionHeader(String title, int count, bool isDark, {
+  Widget _buildSectionHeader(
+    String title,
+    int count,
+    bool isDark, {
     IconData icon = Icons.category,
     Color color = const Color(0xFF6366F1),
     bool isPopular = false,
@@ -1199,9 +1408,7 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
             ? color.withValues(alpha: 0.08)
             : color.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(10),
-        border: Border(
-          left: BorderSide(color: color, width: 3.5),
-        ),
+        border: Border(left: BorderSide(color: color, width: 3.5)),
       ),
       child: Row(
         children: [
@@ -1242,7 +1449,10 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
   Widget _buildPopularGridCard(StoreProduct product, bool isDark) {
     return GestureDetector(
       onTap: () {
-        context.push('/store/product/${product.id}', extra: {'product': product});
+        context.push(
+          '/store/product/${product.id}',
+          extra: {'product': product},
+        );
       },
       child: Container(
         decoration: BoxDecoration(
@@ -1264,19 +1474,29 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                 children: [
                   Positioned.fill(
                     child: ClipRRect(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(10)),
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(10),
+                      ),
                       child: CachedNetworkImage(
-                        imageUrl: ImageUtils.getProductThumbnail(product.imageUrl),
+                        imageUrl: ImageUtils.getProductThumbnail(
+                          product.imageUrl,
+                        ),
                         fit: BoxFit.cover,
                         memCacheWidth: 400,
                         memCacheHeight: 400,
-                        placeholder: (_, __) => Container(
+                        placeholder: (_, _) => Container(
                           color: isDark ? Colors.grey[800] : Colors.grey[200],
-                          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                          child: const Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
                         ),
-                        errorWidget: (_, __, ___) => Container(
+                        errorWidget: (_, _, _) => Container(
                           color: isDark ? Colors.grey[800] : Colors.grey[100],
-                          child: Icon(Icons.shopping_bag_outlined, size: 32, color: Colors.grey[400]),
+                          child: Icon(
+                            Icons.shopping_bag_outlined,
+                            size: 32,
+                            color: Colors.grey[400],
+                          ),
                         ),
                       ),
                     ),
@@ -1286,11 +1506,21 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                       top: 6,
                       left: 6,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                        decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(4)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
                         child: Text(
                           '%${product.discountPercent}',
-                          style: TextStyle(color: Colors.white, fontSize: context.captionSmallSize, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: context.captionSmallSize,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
@@ -1333,7 +1563,10 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
   Widget _buildProductListItem(StoreProduct product, bool isDark) {
     return InkWell(
       onTap: () {
-        context.push('/store/product/${product.id}', extra: {'product': product});
+        context.push(
+          '/store/product/${product.id}',
+          extra: {'product': product},
+        );
       },
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -1376,7 +1609,9 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                         style: TextStyle(
                           fontSize: context.bodySize,
                           fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : const Color(0xFF111827),
+                          color: isDark
+                              ? Colors.white
+                              : const Color(0xFF111827),
                         ),
                       ),
                       if (product.originalPrice != null) ...[
@@ -1393,7 +1628,10 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                       if (product.discountPercent != null) ...[
                         const SizedBox(width: 6),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.red.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(4),
@@ -1411,9 +1649,14 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                       if (product.freeShipping) ...[
                         const SizedBox(width: 6),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 5,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                            color: const Color(
+                              0xFF10B981,
+                            ).withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
@@ -1428,27 +1671,41 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                       ],
                     ],
                   ),
-                  if (product.rating > 0 || product.formattedSoldCount.isNotEmpty) ...[
+                  if (product.rating > 0 ||
+                      product.formattedSoldCount.isNotEmpty) ...[
                     const SizedBox(height: 4),
                     Row(
                       children: [
                         if (product.rating > 0) ...[
-                          Icon(Icons.star_rounded, color: Colors.amber, size: context.captionSize),
+                          Icon(
+                            Icons.star_rounded,
+                            color: Colors.amber,
+                            size: context.captionSize,
+                          ),
                           const SizedBox(width: 2),
                           Text(
                             '${product.rating.toStringAsFixed(1)} (${product.reviewCount})',
-                            style: TextStyle(fontSize: context.captionSize, color: Colors.grey[500]),
+                            style: TextStyle(
+                              fontSize: context.captionSize,
+                              color: Colors.grey[500],
+                            ),
                           ),
                         ],
                         if (product.formattedSoldCount.isNotEmpty) ...[
                           if (product.rating > 0) ...[
                             const SizedBox(width: 8),
-                            Text('·', style: TextStyle(color: Colors.grey[400])),
+                            Text(
+                              '·',
+                              style: TextStyle(color: Colors.grey[400]),
+                            ),
                             const SizedBox(width: 8),
                           ],
                           Text(
                             product.formattedSoldCount,
-                            style: TextStyle(fontSize: context.captionSize, color: Colors.grey[500]),
+                            style: TextStyle(
+                              fontSize: context.captionSize,
+                              color: Colors.grey[500],
+                            ),
                           ),
                         ],
                       ],
@@ -1471,13 +1728,19 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                   fit: BoxFit.cover,
                   memCacheWidth: 200,
                   memCacheHeight: 200,
-                  placeholder: (_, __) => Container(
+                  placeholder: (_, _) => Container(
                     color: isDark ? Colors.grey[800] : Colors.grey[200],
-                    child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    child: const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
                   ),
-                  errorWidget: (_, __, ___) => Container(
+                  errorWidget: (_, _, _) => Container(
                     color: isDark ? Colors.grey[800] : Colors.grey[100],
-                    child: Icon(Icons.shopping_bag_outlined, size: 28, color: Colors.grey[400]),
+                    child: Icon(
+                      Icons.shopping_bag_outlined,
+                      size: 28,
+                      color: Colors.grey[400],
+                    ),
                   ),
                 ),
               ),
@@ -1514,15 +1777,17 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 itemCount: reviews.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 10),
+                separatorBuilder: (_, _) => const SizedBox(width: 10),
                 itemBuilder: (context, index) {
                   final review = reviews[index];
                   final comment = review['comment'] as String? ?? '';
-                  final customerName = review['customer_name'] as String? ?? 'Anonim';
+                  final customerName =
+                      review['customer_name'] as String? ?? 'Anonim';
                   final courierRating = review['courier_rating'] as int? ?? 0;
                   final serviceRating = review['service_rating'] as int? ?? 0;
                   final tasteRating = review['taste_rating'] as int? ?? 0;
-                  final avgRating = (courierRating + serviceRating + tasteRating) / 3;
+                  final avgRating =
+                      (courierRating + serviceRating + tasteRating) / 3;
 
                   return Container(
                     width: 220,
@@ -1530,7 +1795,9 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                     decoration: BoxDecoration(
                       color: isDark ? Colors.grey[900] : Colors.white,
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(color: isDark ? Colors.grey[800]! : Colors.grey[200]!),
+                      border: Border.all(
+                        color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
+                      ),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1543,7 +1810,9 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
                                 fontSize: context.bodySmallSize,
-                                color: isDark ? Colors.white70 : Colors.grey[700],
+                                color: isDark
+                                    ? Colors.white70
+                                    : Colors.grey[700],
                                 height: 1.3,
                               ),
                             ),
@@ -1551,11 +1820,16 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                         const SizedBox(height: 6),
                         Row(
                           children: [
-                            ...List.generate(5, (i) => Icon(
-                              i < avgRating.round() ? Icons.star_rounded : Icons.star_border_rounded,
-                              size: 14,
-                              color: Colors.amber,
-                            )),
+                            ...List.generate(
+                              5,
+                              (i) => Icon(
+                                i < avgRating.round()
+                                    ? Icons.star_rounded
+                                    : Icons.star_border_rounded,
+                                size: 14,
+                                color: Colors.amber,
+                              ),
+                            ),
                             const Spacer(),
                             Text(
                               maskUserName(customerName),
@@ -1573,12 +1847,17 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
               ),
             ),
             const SizedBox(height: 8),
-            Container(height: 6, color: isDark ? Colors.black.withValues(alpha: 0.2) : const Color(0xFFF3F4F6)),
+            Container(
+              height: 6,
+              color: isDark
+                  ? Colors.black.withValues(alpha: 0.2)
+                  : const Color(0xFFF3F4F6),
+            ),
           ],
         );
       },
       loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
     );
   }
 
@@ -1629,6 +1908,13 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
               '${widget.store.deliveryTime} içinde teslimat',
               isDark,
             ),
+            if (widget.store.minOrderAmount > 0)
+              _buildInfoRow(
+                Icons.shopping_bag_outlined,
+                'Min. Sepet Tutarı',
+                '₺${widget.store.minOrderAmount.toStringAsFixed(2)}',
+                isDark,
+              ),
           ], isDark),
           const SizedBox(height: 16),
           _buildInfoCard('İletişim', [
@@ -1694,7 +1980,10 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
               children: [
                 Text(
                   label,
-                  style: TextStyle(fontSize: context.captionSize, color: Colors.grey[500]),
+                  style: TextStyle(
+                    fontSize: context.captionSize,
+                    color: Colors.grey[500],
+                  ),
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -1713,8 +2002,7 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
   }
 
   Widget _buildReviewsTab(bool isDark) {
-    final reviewsAsync =
-        ref.watch(storeReviewsProvider(widget.store.id));
+    final reviewsAsync = ref.watch(storeReviewsProvider(widget.store.id));
 
     return reviewsAsync.when(
       data: (reviews) {
@@ -1750,8 +2038,7 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color:
-                        Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
+                    color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
                     blurRadius: 8,
                   ),
                 ],
@@ -1771,21 +2058,32 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                       Row(
                         children: List.generate(5, (index) {
                           if (index < avgRating.floor()) {
-                            return const Icon(Icons.star_rounded,
-                                color: Colors.amber, size: 20);
+                            return const Icon(
+                              Icons.star_rounded,
+                              color: Colors.amber,
+                              size: 20,
+                            );
                           } else if (index < avgRating) {
-                            return const Icon(Icons.star_half_rounded,
-                                color: Colors.amber, size: 20);
+                            return const Icon(
+                              Icons.star_half_rounded,
+                              color: Colors.amber,
+                              size: 20,
+                            );
                           }
-                          return Icon(Icons.star_border_rounded,
-                              color: Colors.grey[400], size: 20);
+                          return Icon(
+                            Icons.star_border_rounded,
+                            color: Colors.grey[400],
+                            size: 20,
+                          );
                         }),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         '$totalReviews değerlendirme',
-                        style:
-                            TextStyle(fontSize: context.captionSize, color: Colors.grey[500]),
+                        style: TextStyle(
+                          fontSize: context.captionSize,
+                          color: Colors.grey[500],
+                        ),
                       ),
                     ],
                   ),
@@ -1794,35 +2092,40 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                     child: Column(
                       children: [
                         _buildRatingBar(
-                            '5',
-                            totalReviews > 0
-                                ? (ratingCounts[5] ?? 0) / totalReviews
-                                : 0,
-                            isDark),
+                          '5',
+                          totalReviews > 0
+                              ? (ratingCounts[5] ?? 0) / totalReviews
+                              : 0,
+                          isDark,
+                        ),
                         _buildRatingBar(
-                            '4',
-                            totalReviews > 0
-                                ? (ratingCounts[4] ?? 0) / totalReviews
-                                : 0,
-                            isDark),
+                          '4',
+                          totalReviews > 0
+                              ? (ratingCounts[4] ?? 0) / totalReviews
+                              : 0,
+                          isDark,
+                        ),
                         _buildRatingBar(
-                            '3',
-                            totalReviews > 0
-                                ? (ratingCounts[3] ?? 0) / totalReviews
-                                : 0,
-                            isDark),
+                          '3',
+                          totalReviews > 0
+                              ? (ratingCounts[3] ?? 0) / totalReviews
+                              : 0,
+                          isDark,
+                        ),
                         _buildRatingBar(
-                            '2',
-                            totalReviews > 0
-                                ? (ratingCounts[2] ?? 0) / totalReviews
-                                : 0,
-                            isDark),
+                          '2',
+                          totalReviews > 0
+                              ? (ratingCounts[2] ?? 0) / totalReviews
+                              : 0,
+                          isDark,
+                        ),
                         _buildRatingBar(
-                            '1',
-                            totalReviews > 0
-                                ? (ratingCounts[1] ?? 0) / totalReviews
-                                : 0,
-                            isDark),
+                          '1',
+                          totalReviews > 0
+                              ? (ratingCounts[1] ?? 0) / totalReviews
+                              : 0,
+                          isDark,
+                        ),
                       ],
                     ),
                   ),
@@ -1845,8 +2148,11 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.rate_review_outlined,
-                          size: 48, color: Colors.grey[400]),
+                      Icon(
+                        Icons.rate_review_outlined,
+                        size: 48,
+                        color: Colors.grey[400],
+                      ),
                       const SizedBox(height: 8),
                       Text(
                         'Henüz değerlendirme yok',
@@ -1860,7 +2166,7 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (_, __) => const SizedBox(),
+      error: (_, _) => const SizedBox(),
     );
   }
 
@@ -1893,8 +2199,9 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                 widthFactor: percentage,
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.amber
-                        .withValues(alpha: percentage > 0.5 ? 1.0 : 0.6),
+                    color: Colors.amber.withValues(
+                      alpha: percentage > 0.5 ? 1.0 : 0.6,
+                    ),
                     borderRadius: BorderRadius.circular(3),
                   ),
                 ),
@@ -1916,7 +2223,7 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
     final customerName = maskUserName(review['customer_name'] as String?);
     final createdAt =
         DateTime.tryParse(review['created_at'] as String? ?? '') ??
-            DateTime.now();
+        DateTime.now();
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1924,8 +2231,9 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
       decoration: BoxDecoration(
         color: isDark ? Colors.grey[900] : Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border:
-            Border.all(color: isDark ? Colors.grey[800]! : Colors.grey[200]!),
+        border: Border.all(
+          color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1958,15 +2266,17 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                     ),
                     Text(
                       _formatReviewDate(createdAt),
-                      style: TextStyle(fontSize: context.captionSmallSize, color: Colors.grey[500]),
+                      style: TextStyle(
+                        fontSize: context.captionSmallSize,
+                        color: Colors.grey[500],
+                      ),
                     ),
                   ],
                 ),
               ),
               // Rating badge
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: _getRatingColor(avgRating).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
@@ -1974,8 +2284,11 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.star,
-                        size: 14, color: _getRatingColor(avgRating)),
+                    Icon(
+                      Icons.star,
+                      size: 14,
+                      color: _getRatingColor(avgRating),
+                    ),
                     const SizedBox(width: 2),
                     Text(
                       avgRating.toStringAsFixed(1),
@@ -2026,7 +2339,8 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                 color: StoreColors.primary.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                    color: StoreColors.primary.withValues(alpha: 0.2)),
+                  color: StoreColors.primary.withValues(alpha: 0.2),
+                ),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -2049,8 +2363,7 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
                         Text(
                           merchantReply,
                           style: TextStyle(
-                            color:
-                                isDark ? Colors.grey[300] : Colors.grey[700],
+                            color: isDark ? Colors.grey[300] : Colors.grey[700],
                             fontSize: context.captionSize,
                           ),
                         ),
@@ -2078,7 +2391,10 @@ SuperCyp'te bu mağazayı keşfet! 🛍️
         children: [
           Text(
             label,
-            style: TextStyle(fontSize: context.captionSmallSize, color: Colors.grey[500]),
+            style: TextStyle(
+              fontSize: context.captionSmallSize,
+              color: Colors.grey[500],
+            ),
           ),
           const SizedBox(width: 4),
           const Icon(Icons.star, size: 10, color: Colors.amber),
@@ -2247,9 +2563,11 @@ class _StoreChatSheetState extends State<_StoreChatSheet> {
             if (_messages.any((m) => m['id'] == newMsg['id'])) return;
             // Temp mesajı gerçek mesajla değiştir
             if (newMsg['sender_type'] == 'customer') {
-              final tempIdx = _messages.indexWhere((m) =>
-                m['id'].toString().startsWith('temp_') &&
-                m['message'] == newMsg['message']);
+              final tempIdx = _messages.indexWhere(
+                (m) =>
+                    m['id'].toString().startsWith('temp_') &&
+                    m['message'] == newMsg['message'],
+              );
               if (tempIdx != -1) {
                 setState(() => _messages[tempIdx] = newMsg);
                 return;
@@ -2367,13 +2685,15 @@ class _StoreChatSheetState extends State<_StoreChatSheet> {
                     fit: BoxFit.cover,
                     memCacheWidth: 88,
                     memCacheHeight: 88,
-                    placeholder: (_, __) => Container(
+                    placeholder: (_, _) => Container(
                       width: 44,
                       height: 44,
                       color: Colors.grey[200],
-                      child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                      child: const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
                     ),
-                    errorWidget: (_, __, ___) => Container(
+                    errorWidget: (_, _, _) => Container(
                       width: 44,
                       height: 44,
                       color: StoreColors.primary,
@@ -2432,99 +2752,119 @@ class _StoreChatSheetState extends State<_StoreChatSheet> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _messages.isEmpty
-                    ? _buildEmptyChat(isDark)
-                    : ListView.builder(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.all(16),
-                        itemCount: _messages.length,
-                        itemBuilder: (context, index) {
-                          final msg = _messages[index];
-                          final isMe = msg['sender_type'] == 'customer';
-                          final time = DateTime.tryParse(msg['created_at'] ?? '');
-                          final timeStr = time != null
-                              ? '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}'
-                              : '';
+                ? _buildEmptyChat(isDark)
+                : ListView.builder(
+                    controller: _scrollController,
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _messages.length,
+                    itemBuilder: (context, index) {
+                      final msg = _messages[index];
+                      final isMe = msg['sender_type'] == 'customer';
+                      final time = DateTime.tryParse(msg['created_at'] ?? '');
+                      final timeStr = time != null
+                          ? '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}'
+                          : '';
 
-                          return Align(
-                            alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                            child: Container(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              constraints: BoxConstraints(
-                                maxWidth: MediaQuery.of(context).size.width * 0.7,
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  if (!isMe) ...[
-                                    ClipRRect(
-                                      borderRadius: BorderRadius.circular(14),
-                                      child: CachedNetworkImage(
-                                        imageUrl: widget.logoUrl,
-                                        width: 28,
-                                        height: 28,
-                                        fit: BoxFit.cover,
-                                        memCacheWidth: 56,
-                                        memCacheHeight: 56,
-                                        errorWidget: (_, __, ___) => Container(
-                                          width: 28,
-                                          height: 28,
-                                          decoration: BoxDecoration(
-                                            color: StoreColors.primary,
-                                            borderRadius: BorderRadius.circular(14),
-                                          ),
-                                          child: const Icon(Icons.store, color: Colors.white, size: 14),
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                  ],
-                                  Flexible(
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      return Align(
+                        alignment: isMe
+                            ? Alignment.centerRight
+                            : Alignment.centerLeft,
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          constraints: BoxConstraints(
+                            maxWidth: MediaQuery.of(context).size.width * 0.7,
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              if (!isMe) ...[
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(14),
+                                  child: CachedNetworkImage(
+                                    imageUrl: widget.logoUrl,
+                                    width: 28,
+                                    height: 28,
+                                    fit: BoxFit.cover,
+                                    memCacheWidth: 56,
+                                    memCacheHeight: 56,
+                                    errorWidget: (_, _, _) => Container(
+                                      width: 28,
+                                      height: 28,
                                       decoration: BoxDecoration(
-                                        color: isMe
-                                            ? StoreColors.primary
-                                            : (isDark ? Colors.grey[800] : Colors.grey[100]),
-                                        borderRadius: BorderRadius.only(
-                                          topLeft: const Radius.circular(16),
-                                          topRight: const Radius.circular(16),
-                                          bottomLeft: Radius.circular(isMe ? 16 : 4),
-                                          bottomRight: Radius.circular(isMe ? 4 : 16),
-                                        ),
+                                        color: StoreColors.primary,
+                                        borderRadius: BorderRadius.circular(14),
                                       ),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            msg['message'] ?? '',
-                                            style: TextStyle(
-                                              color: isMe
-                                                  ? Colors.white
-                                                  : (isDark ? Colors.white : Colors.black87),
-                                              fontSize: context.bodySize,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            timeStr,
-                                            style: TextStyle(
-                                              fontSize: 10,
-                                              color: isMe
-                                                  ? Colors.white.withValues(alpha: 0.7)
-                                                  : Colors.grey[500],
-                                            ),
-                                          ),
-                                        ],
+                                      child: const Icon(
+                                        Icons.store,
+                                        color: Colors.white,
+                                        size: 14,
                                       ),
                                     ),
                                   ),
-                                ],
+                                ),
+                                const SizedBox(width: 8),
+                              ],
+                              Flexible(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 10,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isMe
+                                        ? StoreColors.primary
+                                        : (isDark
+                                              ? Colors.grey[800]
+                                              : Colors.grey[100]),
+                                    borderRadius: BorderRadius.only(
+                                      topLeft: const Radius.circular(16),
+                                      topRight: const Radius.circular(16),
+                                      bottomLeft: Radius.circular(
+                                        isMe ? 16 : 4,
+                                      ),
+                                      bottomRight: Radius.circular(
+                                        isMe ? 4 : 16,
+                                      ),
+                                    ),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        msg['message'] ?? '',
+                                        style: TextStyle(
+                                          color: isMe
+                                              ? Colors.white
+                                              : (isDark
+                                                    ? Colors.white
+                                                    : Colors.black87),
+                                          fontSize: context.bodySize,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        timeStr,
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: isMe
+                                              ? Colors.white.withValues(
+                                                  alpha: 0.7,
+                                                )
+                                              : Colors.grey[500],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
-                            ),
-                          );
-                        },
-                      ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
           ),
           // Input Area
           Container(
@@ -2604,7 +2944,7 @@ class _StoreChatSheetState extends State<_StoreChatSheet> {
                 fit: BoxFit.cover,
                 memCacheWidth: 56,
                 memCacheHeight: 56,
-                errorWidget: (_, __, ___) => Container(
+                errorWidget: (_, _, _) => Container(
                   width: 28,
                   height: 28,
                   decoration: BoxDecoration(
@@ -2618,7 +2958,10 @@ class _StoreChatSheetState extends State<_StoreChatSheet> {
             const SizedBox(width: 8),
             Flexible(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
                   color: isDark ? Colors.grey[800] : Colors.grey[100],
                   borderRadius: const BorderRadius.only(

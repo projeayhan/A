@@ -63,10 +63,14 @@ class _BookingScreenState extends State<BookingScreen> {
   // Custom address delivery
   bool _isPickupCustomAddress = false;
   bool _isDropoffCustomAddress = false;
-  final TextEditingController _pickupCustomAddressController = TextEditingController();
-  final TextEditingController _pickupCustomAddressNotesController = TextEditingController();
-  final TextEditingController _dropoffCustomAddressController = TextEditingController();
-  final TextEditingController _dropoffCustomAddressNotesController = TextEditingController();
+  final TextEditingController _pickupCustomAddressController =
+      TextEditingController();
+  final TextEditingController _pickupCustomAddressNotesController =
+      TextEditingController();
+  final TextEditingController _dropoffCustomAddressController =
+      TextEditingController();
+  final TextEditingController _dropoffCustomAddressNotesController =
+      TextEditingController();
 
   List<RentalLocation> _locations = [];
 
@@ -75,8 +79,11 @@ class _BookingScreenState extends State<BookingScreen> {
     super.initState();
     _loadLocations();
     _loadPackagesAndServices();
-    _pickupDate = widget.initialPickupDate ?? DateTime.now().add(const Duration(days: 1));
-    _dropoffDate = widget.initialDropoffDate ?? DateTime.now().add(const Duration(days: 4));
+    _pickupDate =
+        widget.initialPickupDate ?? DateTime.now().add(const Duration(days: 1));
+    _dropoffDate =
+        widget.initialDropoffDate ??
+        DateTime.now().add(const Duration(days: 4));
     _pickupTime = const TimeOfDay(hour: 10, minute: 0);
     _dropoffTime = const TimeOfDay(hour: 10, minute: 0);
   }
@@ -89,8 +96,12 @@ class _BookingScreenState extends State<BookingScreen> {
       final servicesData = await rentalService.getCompanyServices(companyId);
       if (mounted) {
         setState(() {
-          _packages = packagesData.map((p) => RentalPackage.fromJson(p)).toList();
-          _availableServices = servicesData.map((s) => AdditionalService.fromJson(s)).toList();
+          _packages = packagesData
+              .map((p) => RentalPackage.fromJson(p))
+              .toList();
+          _availableServices = servicesData
+              .map((s) => AdditionalService.fromJson(s))
+              .toList();
           if (_packages.isNotEmpty) {
             _selectedPackage = _packages.firstWhere(
               (p) => p.tier == 'comfort',
@@ -115,24 +126,34 @@ class _BookingScreenState extends State<BookingScreen> {
           _isPickupCustomAddress = widget.initialIsPickupCustomAddress;
           _isDropoffCustomAddress = widget.initialIsDropoffCustomAddress;
 
-          if (widget.initialIsPickupCustomAddress && widget.initialPickupCustomAddress != null) {
-            _pickupCustomAddressController.text = widget.initialPickupCustomAddress!;
+          if (widget.initialIsPickupCustomAddress &&
+              widget.initialPickupCustomAddress != null) {
+            _pickupCustomAddressController.text =
+                widget.initialPickupCustomAddress!;
             if (widget.initialPickupCustomAddressNote != null) {
-              _pickupCustomAddressNotesController.text = widget.initialPickupCustomAddressNote!;
+              _pickupCustomAddressNotesController.text =
+                  widget.initialPickupCustomAddressNote!;
             }
             _pickupLocation = null;
           } else {
-            _pickupLocation = widget.initialPickupLocation ?? (_locations.isNotEmpty ? _locations.first : null);
+            _pickupLocation =
+                widget.initialPickupLocation ??
+                (_locations.isNotEmpty ? _locations.first : null);
           }
 
-          if (widget.initialIsDropoffCustomAddress && widget.initialDropoffCustomAddress != null) {
-            _dropoffCustomAddressController.text = widget.initialDropoffCustomAddress!;
+          if (widget.initialIsDropoffCustomAddress &&
+              widget.initialDropoffCustomAddress != null) {
+            _dropoffCustomAddressController.text =
+                widget.initialDropoffCustomAddress!;
             if (widget.initialDropoffCustomAddressNote != null) {
-              _dropoffCustomAddressNotesController.text = widget.initialDropoffCustomAddressNote!;
+              _dropoffCustomAddressNotesController.text =
+                  widget.initialDropoffCustomAddressNote!;
             }
             _dropoffLocation = null;
           } else {
-            _dropoffLocation = widget.initialDropoffLocation ?? (_locations.isNotEmpty ? _locations.first : null);
+            _dropoffLocation =
+                widget.initialDropoffLocation ??
+                (_locations.isNotEmpty ? _locations.first : null);
           }
 
           if (!_isPickupCustomAddress && !_isDropoffCustomAddress) {
@@ -149,18 +170,24 @@ class _BookingScreenState extends State<BookingScreen> {
           _locations = [];
           _isPickupCustomAddress = widget.initialIsPickupCustomAddress;
           _isDropoffCustomAddress = widget.initialIsDropoffCustomAddress;
-          if (widget.initialIsPickupCustomAddress && widget.initialPickupCustomAddress != null) {
-            _pickupCustomAddressController.text = widget.initialPickupCustomAddress!;
+          if (widget.initialIsPickupCustomAddress &&
+              widget.initialPickupCustomAddress != null) {
+            _pickupCustomAddressController.text =
+                widget.initialPickupCustomAddress!;
             if (widget.initialPickupCustomAddressNote != null) {
-              _pickupCustomAddressNotesController.text = widget.initialPickupCustomAddressNote!;
+              _pickupCustomAddressNotesController.text =
+                  widget.initialPickupCustomAddressNote!;
             }
           } else {
             _pickupLocation = widget.initialPickupLocation;
           }
-          if (widget.initialIsDropoffCustomAddress && widget.initialDropoffCustomAddress != null) {
-            _dropoffCustomAddressController.text = widget.initialDropoffCustomAddress!;
+          if (widget.initialIsDropoffCustomAddress &&
+              widget.initialDropoffCustomAddress != null) {
+            _dropoffCustomAddressController.text =
+                widget.initialDropoffCustomAddress!;
             if (widget.initialDropoffCustomAddressNote != null) {
-              _dropoffCustomAddressNotesController.text = widget.initialDropoffCustomAddressNote!;
+              _dropoffCustomAddressNotesController.text =
+                  widget.initialDropoffCustomAddressNote!;
             }
           } else {
             _dropoffLocation = widget.initialDropoffLocation;
@@ -215,9 +242,13 @@ class _BookingScreenState extends State<BookingScreen> {
     final dropoffValid = _sameDropoffLocation
         ? pickupValid
         : (_isDropoffCustomAddress
-            ? _dropoffCustomAddressController.text.trim().isNotEmpty
-            : _dropoffLocation != null);
-    return pickupValid && dropoffValid && _pickupDate != null && _dropoffDate != null && _agreeTerms;
+              ? _dropoffCustomAddressController.text.trim().isNotEmpty
+              : _dropoffLocation != null);
+    return pickupValid &&
+        dropoffValid &&
+        _pickupDate != null &&
+        _dropoffDate != null &&
+        _agreeTerms;
   }
 
   @override
@@ -247,7 +278,10 @@ class _BookingScreenState extends State<BookingScreen> {
             ),
             Text(
               widget.car.fullName,
-              style: TextStyle(fontSize: 14, color: theme.colorScheme.onSurfaceVariant),
+              style: TextStyle(
+                fontSize: 14,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),
@@ -270,7 +304,9 @@ class _BookingScreenState extends State<BookingScreen> {
                     title: 'Tarih & Konum',
                     subtitle: _dateLocationSummary,
                     isExpanded: _isDateLocationExpanded,
-                    onToggle: () => setState(() => _isDateLocationExpanded = !_isDateLocationExpanded),
+                    onToggle: () => setState(
+                      () => _isDateLocationExpanded = !_isDateLocationExpanded,
+                    ),
                     child: _buildDateLocationContent(theme),
                   ),
                   const SizedBox(height: 8),
@@ -282,7 +318,9 @@ class _BookingScreenState extends State<BookingScreen> {
                     title: 'Paket Secin',
                     subtitle: _packageSummary,
                     isExpanded: _isPackageExpanded,
-                    onToggle: () => setState(() => _isPackageExpanded = !_isPackageExpanded),
+                    onToggle: () => setState(
+                      () => _isPackageExpanded = !_isPackageExpanded,
+                    ),
                     child: _buildPackageContent(theme),
                   ),
                   const SizedBox(height: 8),
@@ -294,7 +332,9 @@ class _BookingScreenState extends State<BookingScreen> {
                     title: 'Ek Hizmetler',
                     subtitle: _servicesSummary,
                     isExpanded: _isServicesExpanded,
-                    onToggle: () => setState(() => _isServicesExpanded = !_isServicesExpanded),
+                    onToggle: () => setState(
+                      () => _isServicesExpanded = !_isServicesExpanded,
+                    ),
                     child: _buildServicesContent(theme),
                   ),
                   const SizedBox(height: 12),
@@ -321,7 +361,9 @@ class _BookingScreenState extends State<BookingScreen> {
 
   String get _dateLocationSummary {
     if (_pickupDate == null) return 'Tarih ve konum secin';
-    final loc = _isPickupCustomAddress ? 'Adrese Teslim' : (_pickupLocation?.name ?? '');
+    final loc = _isPickupCustomAddress
+        ? 'Adrese Teslim'
+        : (_pickupLocation?.name ?? '');
     return '$loc  ·  ${_pickupDate!.day}/${_pickupDate!.month} - ${_dropoffDate!.day}/${_dropoffDate!.month}';
   }
 
@@ -359,10 +401,16 @@ class _BookingScreenState extends State<BookingScreen> {
                 fit: BoxFit.cover,
                 memCacheWidth: 160,
                 memCacheHeight: 112,
-                placeholder: (_, __) => Container(width: 80, height: 56, color: theme.dividerColor),
-                errorWidget: (_, __, ___) => Container(
-                  width: 80, height: 56, color: theme.dividerColor,
-                  child: Icon(Icons.directions_car, color: theme.colorScheme.onSurfaceVariant),
+                placeholder: (_, _) =>
+                    Container(width: 80, height: 56, color: theme.dividerColor),
+                errorWidget: (_, _, _) => Container(
+                  width: 80,
+                  height: 56,
+                  color: theme.dividerColor,
+                  child: Icon(
+                    Icons.directions_car,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ),
             ),
@@ -373,19 +421,30 @@ class _BookingScreenState extends State<BookingScreen> {
                 children: [
                   Text(
                     widget.car.fullName,
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: theme.colorScheme.onSurface),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: theme.colorScheme.onSurface,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     '${widget.car.transmissionName} · ${widget.car.fuelTypeName}',
-                    style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
             ),
             Text(
               '₺${_carDailyPrice.toInt()}/gun',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: theme.colorScheme.primary),
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.primary,
+              ),
             ),
           ],
         ),
@@ -408,7 +467,11 @@ class _BookingScreenState extends State<BookingScreen> {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: isExpanded ? theme.colorScheme.primary.withValues(alpha: 0.3) : theme.dividerColor),
+        side: BorderSide(
+          color: isExpanded
+              ? theme.colorScheme.primary.withValues(alpha: 0.3)
+              : theme.dividerColor,
+        ),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -424,13 +487,17 @@ class _BookingScreenState extends State<BookingScreen> {
                     decoration: BoxDecoration(
                       color: isExpanded
                           ? theme.colorScheme.primary.withValues(alpha: 0.1)
-                          : theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.08),
+                          : theme.colorScheme.onSurfaceVariant.withValues(
+                              alpha: 0.08,
+                            ),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(
                       icon,
                       size: 20,
-                      color: isExpanded ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant,
+                      color: isExpanded
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -450,7 +517,10 @@ class _BookingScreenState extends State<BookingScreen> {
                           const SizedBox(height: 2),
                           Text(
                             subtitle,
-                            style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -461,7 +531,10 @@ class _BookingScreenState extends State<BookingScreen> {
                   AnimatedRotation(
                     turns: isExpanded ? 0.5 : 0,
                     duration: const Duration(milliseconds: 200),
-                    child: Icon(Icons.keyboard_arrow_down, color: theme.colorScheme.onSurfaceVariant),
+                    child: Icon(
+                      Icons.keyboard_arrow_down,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
@@ -489,14 +562,25 @@ class _BookingScreenState extends State<BookingScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 4),
-        Text('Alis Noktasi', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface)),
+        Text(
+          'Alis Noktasi',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: theme.colorScheme.onSurface,
+          ),
+        ),
         const SizedBox(height: 8),
-        _buildLocationSelector(value: _pickupLocation, onChanged: (loc) {
-          setState(() {
-            _pickupLocation = loc;
-            if (_sameDropoffLocation) _dropoffLocation = loc;
-          });
-        }, isPickup: true),
+        _buildLocationSelector(
+          value: _pickupLocation,
+          onChanged: (loc) {
+            setState(() {
+              _pickupLocation = loc;
+              if (_sameDropoffLocation) _dropoffLocation = loc;
+            });
+          },
+          isPickup: true,
+        ),
 
         const SizedBox(height: 12),
         // Same location toggle
@@ -513,22 +597,33 @@ class _BookingScreenState extends State<BookingScreen> {
             child: Row(
               children: [
                 SizedBox(
-                  width: 22, height: 22,
+                  width: 22,
+                  height: 22,
                   child: Checkbox(
                     value: _sameDropoffLocation,
                     onChanged: (val) {
                       setState(() {
                         _sameDropoffLocation = val ?? false;
-                        if (_sameDropoffLocation) _dropoffLocation = _pickupLocation;
+                        if (_sameDropoffLocation) {
+                          _dropoffLocation = _pickupLocation;
+                        }
                       });
                     },
                     activeColor: theme.colorScheme.primary,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4),
+                    ),
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                 ),
                 const SizedBox(width: 8),
-                Text('Ayni noktaya teslim et', style: TextStyle(fontSize: 14, color: theme.colorScheme.onSurface)),
+                Text(
+                  'Ayni noktaya teslim et',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
               ],
             ),
           ),
@@ -536,19 +631,53 @@ class _BookingScreenState extends State<BookingScreen> {
 
         if (!_sameDropoffLocation) ...[
           const SizedBox(height: 12),
-          Text('Teslim Noktasi', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface)),
+          Text(
+            'Teslim Noktasi',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
           const SizedBox(height: 8),
-          _buildLocationSelector(value: _dropoffLocation, onChanged: (loc) => setState(() => _dropoffLocation = loc), isPickup: false),
+          _buildLocationSelector(
+            value: _dropoffLocation,
+            onChanged: (loc) => setState(() => _dropoffLocation = loc),
+            isPickup: false,
+          ),
         ],
 
         const SizedBox(height: 16),
-        Text('Tarih ve Saat', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface)),
+        Text(
+          'Tarih ve Saat',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: theme.colorScheme.onSurface,
+          ),
+        ),
         const SizedBox(height: 8),
         Row(
           children: [
-            Expanded(child: _buildDateTimeCard(title: 'Alis', date: _pickupDate, time: _pickupTime, onDateTap: () => _selectDate(true), onTimeTap: () => _selectTime(true))),
+            Expanded(
+              child: _buildDateTimeCard(
+                title: 'Alis',
+                date: _pickupDate,
+                time: _pickupTime,
+                onDateTap: () => _selectDate(true),
+                onTimeTap: () => _selectTime(true),
+              ),
+            ),
             const SizedBox(width: 12),
-            Expanded(child: _buildDateTimeCard(title: 'Teslim', date: _dropoffDate, time: _dropoffTime, onDateTap: () => _selectDate(false), onTimeTap: () => _selectTime(false))),
+            Expanded(
+              child: _buildDateTimeCard(
+                title: 'Teslim',
+                date: _dropoffDate,
+                time: _dropoffTime,
+                onDateTap: () => _selectDate(false),
+                onTimeTap: () => _selectTime(false),
+              ),
+            ),
           ],
         ),
 
@@ -564,9 +693,20 @@ class _BookingScreenState extends State<BookingScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.calendar_today, color: theme.colorScheme.primary, size: 18),
+                Icon(
+                  Icons.calendar_today,
+                  color: theme.colorScheme.primary,
+                  size: 18,
+                ),
                 const SizedBox(width: 8),
-                Text('Toplam $_rentalDays gun kiralama', style: TextStyle(color: theme.colorScheme.primary, fontSize: 14, fontWeight: FontWeight.w600)),
+                Text(
+                  'Toplam $_rentalDays gun kiralama',
+                  style: TextStyle(
+                    color: theme.colorScheme.primary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
           ),
@@ -582,9 +722,15 @@ class _BookingScreenState extends State<BookingScreen> {
     required ValueChanged<RentalLocation> onChanged,
     required bool isPickup,
   }) {
-    final isCustomAddress = isPickup ? _isPickupCustomAddress : _isDropoffCustomAddress;
-    final addressController = isPickup ? _pickupCustomAddressController : _dropoffCustomAddressController;
-    final notesController = isPickup ? _pickupCustomAddressNotesController : _dropoffCustomAddressNotesController;
+    final isCustomAddress = isPickup
+        ? _isPickupCustomAddress
+        : _isDropoffCustomAddress;
+    final addressController = isPickup
+        ? _pickupCustomAddressController
+        : _dropoffCustomAddressController;
+    final notesController = isPickup
+        ? _pickupCustomAddressNotesController
+        : _dropoffCustomAddressNotesController;
     final theme = Theme.of(context);
 
     return Column(
@@ -602,23 +748,38 @@ class _BookingScreenState extends State<BookingScreen> {
               return InkWell(
                 onTap: () {
                   setState(() {
-                    if (isPickup) { _isPickupCustomAddress = false; } else { _isDropoffCustomAddress = false; }
+                    if (isPickup) {
+                      _isPickupCustomAddress = false;
+                    } else {
+                      _isDropoffCustomAddress = false;
+                    }
                   });
                   onChanged(location);
                 },
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
-                    color: isSelected ? theme.colorScheme.primary.withValues(alpha: 0.08) : null,
-                    border: Border(bottom: BorderSide(
-                      color: location != _locations.last ? theme.dividerColor : Colors.transparent,
-                    )),
+                    color: isSelected
+                        ? theme.colorScheme.primary.withValues(alpha: 0.08)
+                        : null,
+                    border: Border(
+                      bottom: BorderSide(
+                        color: location != _locations.last
+                            ? theme.dividerColor
+                            : Colors.transparent,
+                      ),
+                    ),
                   ),
                   child: Row(
                     children: [
                       Icon(
                         location.isAirport ? Icons.flight : Icons.location_on,
-                        color: location.isAirport ? AppColors.info : AppColors.success,
+                        color: location.isAirport
+                            ? AppColors.info
+                            : AppColors.success,
                         size: 18,
                       ),
                       const SizedBox(width: 10),
@@ -626,17 +787,32 @@ class _BookingScreenState extends State<BookingScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(location.name, style: TextStyle(
-                              color: theme.colorScheme.onSurface,
-                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                              fontSize: 14,
-                            )),
-                            Text(location.workingHours, style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant)),
+                            Text(
+                              location.name,
+                              style: TextStyle(
+                                color: theme.colorScheme.onSurface,
+                                fontWeight: isSelected
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
+                                fontSize: 14,
+                              ),
+                            ),
+                            Text(
+                              location.workingHours,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
                           ],
                         ),
                       ),
                       if (isSelected)
-                        Icon(Icons.check_circle, color: theme.colorScheme.primary, size: 20),
+                        Icon(
+                          Icons.check_circle,
+                          color: theme.colorScheme.primary,
+                          size: 20,
+                        ),
                     ],
                   ),
                 ),
@@ -652,14 +828,23 @@ class _BookingScreenState extends State<BookingScreen> {
           borderRadius: BorderRadius.circular(10),
           onTap: () {
             setState(() {
-              if (isPickup) { _isPickupCustomAddress = !_isPickupCustomAddress; } else { _isDropoffCustomAddress = !_isDropoffCustomAddress; }
+              if (isPickup) {
+                _isPickupCustomAddress = !_isPickupCustomAddress;
+              } else {
+                _isDropoffCustomAddress = !_isDropoffCustomAddress;
+              }
             });
           },
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: isCustomAddress ? theme.colorScheme.primary : theme.dividerColor, width: isCustomAddress ? 1.5 : 1),
+              border: Border.all(
+                color: isCustomAddress
+                    ? theme.colorScheme.primary
+                    : theme.dividerColor,
+                width: isCustomAddress ? 1.5 : 1,
+              ),
             ),
             child: Row(
               children: [
@@ -669,12 +854,32 @@ class _BookingScreenState extends State<BookingScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Adrese Teslim', style: TextStyle(color: theme.colorScheme.onSurface, fontWeight: isCustomAddress ? FontWeight.w600 : FontWeight.normal, fontSize: 14)),
-                      Text('Araci istediginiz adrese teslim edelim', style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant)),
+                      Text(
+                        'Adrese Teslim',
+                        style: TextStyle(
+                          color: theme.colorScheme.onSurface,
+                          fontWeight: isCustomAddress
+                              ? FontWeight.w600
+                              : FontWeight.normal,
+                          fontSize: 14,
+                        ),
+                      ),
+                      Text(
+                        'Araci istediginiz adrese teslim edelim',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
                     ],
                   ),
                 ),
-                if (isCustomAddress) Icon(Icons.check_circle, color: theme.colorScheme.primary, size: 20),
+                if (isCustomAddress)
+                  Icon(
+                    Icons.check_circle,
+                    color: theme.colorScheme.primary,
+                    size: 20,
+                  ),
               ],
             ),
           ),
@@ -711,10 +916,20 @@ class _BookingScreenState extends State<BookingScreen> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.info_outline, color: AppColors.warning, size: 16),
+                const Icon(
+                  Icons.info_outline,
+                  color: AppColors.warning,
+                  size: 16,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text('Adrese teslim icin ek ucret uygulanabilir', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
+                  child: Text(
+                    'Adrese teslim icin ek ucret uygulanabilir',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -743,17 +958,35 @@ class _BookingScreenState extends State<BookingScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: TextStyle(color: theme.colorScheme.primary, fontSize: 12, fontWeight: FontWeight.w600)),
+          Text(
+            title,
+            style: TextStyle(
+              color: theme.colorScheme.primary,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           const SizedBox(height: 8),
           InkWell(
             onTap: onDateTap,
             child: Row(
               children: [
-                Icon(Icons.calendar_today, color: theme.colorScheme.onSurfaceVariant, size: 16),
+                Icon(
+                  Icons.calendar_today,
+                  color: theme.colorScheme.onSurfaceVariant,
+                  size: 16,
+                ),
                 const SizedBox(width: 8),
                 Text(
-                  date != null ? '${date.day}/${date.month}/${date.year}' : 'Tarih sec',
-                  style: TextStyle(fontSize: 14, color: date != null ? theme.colorScheme.onSurface : theme.colorScheme.onSurfaceVariant),
+                  date != null
+                      ? '${date.day}/${date.month}/${date.year}'
+                      : 'Tarih sec',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: date != null
+                        ? theme.colorScheme.onSurface
+                        : theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -763,11 +996,20 @@ class _BookingScreenState extends State<BookingScreen> {
             onTap: onTimeTap,
             child: Row(
               children: [
-                Icon(Icons.access_time, color: theme.colorScheme.onSurfaceVariant, size: 16),
+                Icon(
+                  Icons.access_time,
+                  color: theme.colorScheme.onSurfaceVariant,
+                  size: 16,
+                ),
                 const SizedBox(width: 8),
                 Text(
                   time != null ? time.format(context) : 'Saat sec',
-                  style: TextStyle(fontSize: 14, color: time != null ? theme.colorScheme.onSurface : theme.colorScheme.onSurfaceVariant),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: time != null
+                        ? theme.colorScheme.onSurface
+                        : theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -781,12 +1023,17 @@ class _BookingScreenState extends State<BookingScreen> {
 
   Widget _buildPackageContent(ThemeData theme) {
     if (_isLoadingPackages) {
-      return Column(children: List.generate(2, (_) => const ShimmerSelectionCard()));
+      return Column(
+        children: List.generate(2, (_) => const ShimmerSelectionCard()),
+      );
     }
     if (_packages.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
-        child: Text('Paket bulunamadi', style: TextStyle(color: theme.colorScheme.onSurfaceVariant)),
+        child: Text(
+          'Paket bulunamadi',
+          style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+        ),
       );
     }
     return Column(
@@ -797,7 +1044,11 @@ class _BookingScreenState extends State<BookingScreen> {
     );
   }
 
-  Widget _buildPackageCard(RentalPackage package, bool isSelected, ThemeData theme) {
+  Widget _buildPackageCard(
+    RentalPackage package,
+    bool isSelected,
+    ThemeData theme,
+  ) {
     final packagePrice = package.dailyPrice * _rentalDays;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -808,15 +1059,28 @@ class _BookingScreenState extends State<BookingScreen> {
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: isSelected ? theme.colorScheme.primary : theme.dividerColor, width: isSelected ? 1.5 : 1),
-            color: isSelected ? theme.colorScheme.primary.withValues(alpha: 0.04) : null,
+            border: Border.all(
+              color: isSelected
+                  ? theme.colorScheme.primary
+                  : theme.dividerColor,
+              width: isSelected ? 1.5 : 1,
+            ),
+            color: isSelected
+                ? theme.colorScheme.primary.withValues(alpha: 0.04)
+                : null,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  Icon(_getPackageIcon(package.iconName), color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant, size: 22),
+                  Icon(
+                    _getPackageIcon(package.iconName),
+                    color: isSelected
+                        ? theme.colorScheme.primary
+                        : theme.colorScheme.onSurfaceVariant,
+                    size: 22,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
@@ -824,35 +1088,85 @@ class _BookingScreenState extends State<BookingScreen> {
                       children: [
                         Row(
                           children: [
-                            Text(package.name, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface)),
+                            Text(
+                              package.name,
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                                color: isSelected
+                                    ? theme.colorScheme.primary
+                                    : theme.colorScheme.onSurface,
+                              ),
+                            ),
                             if (package.isPopular) ...[
                               const SizedBox(width: 8),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(color: AppColors.success, borderRadius: BorderRadius.circular(6)),
-                                child: const Text('Onerilen', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.white)),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.success,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Text(
+                                  'Onerilen',
+                                  style: TextStyle(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
                               ),
                             ],
                           ],
                         ),
-                        Text(package.description, style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurfaceVariant)),
+                        Text(
+                          package.description,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
                       ],
                     ),
                   ),
                   packagePrice > 0
-                      ? Text('+₺${packagePrice.toInt()}', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface))
-                      : Text('Dahil', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.success)),
+                      ? Text(
+                          '+₺${packagePrice.toInt()}',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: isSelected
+                                ? theme.colorScheme.primary
+                                : theme.colorScheme.onSurface,
+                          ),
+                        )
+                      : Text(
+                          'Dahil',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.success,
+                          ),
+                        ),
                 ],
               ),
               if (package.includedServices.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Wrap(
-                  spacing: 6, runSpacing: 6,
+                  spacing: 6,
+                  runSpacing: 6,
                   children: package.includedServices.map((service) {
                     return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.onSurfaceVariant.withValues(alpha: 0.06),
+                        color: theme.colorScheme.onSurfaceVariant.withValues(
+                          alpha: 0.06,
+                        ),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Row(
@@ -860,7 +1174,13 @@ class _BookingScreenState extends State<BookingScreen> {
                         children: [
                           Icon(Icons.check, color: AppColors.success, size: 12),
                           const SizedBox(width: 4),
-                          Text(service, style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 11)),
+                          Text(
+                            service,
+                            style: TextStyle(
+                              color: theme.colorScheme.onSurfaceVariant,
+                              fontSize: 11,
+                            ),
+                          ),
                         ],
                       ),
                     );
@@ -878,12 +1198,17 @@ class _BookingScreenState extends State<BookingScreen> {
 
   Widget _buildServicesContent(ThemeData theme) {
     if (_isLoadingPackages) {
-      return Column(children: List.generate(3, (_) => const ShimmerSelectionCard()));
+      return Column(
+        children: List.generate(3, (_) => const ShimmerSelectionCard()),
+      );
     }
     if (_availableServices.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
-        child: Text('Ek hizmet bulunamadi', style: TextStyle(color: theme.colorScheme.onSurfaceVariant)),
+        child: Text(
+          'Ek hizmet bulunamadi',
+          style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+        ),
       );
     }
     return Column(
@@ -894,7 +1219,11 @@ class _BookingScreenState extends State<BookingScreen> {
     );
   }
 
-  Widget _buildServiceCard(AdditionalService service, bool isSelected, ThemeData theme) {
+  Widget _buildServiceCard(
+    AdditionalService service,
+    bool isSelected,
+    ThemeData theme,
+  ) {
     final totalPrice = service.dailyPrice * _rentalDays;
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
@@ -902,48 +1231,100 @@ class _BookingScreenState extends State<BookingScreen> {
         borderRadius: BorderRadius.circular(10),
         onTap: () {
           setState(() {
-            if (isSelected) { _selectedServices.remove(service.id); } else { _selectedServices.add(service.id); }
+            if (isSelected) {
+              _selectedServices.remove(service.id);
+            } else {
+              _selectedServices.add(service.id);
+            }
           });
         },
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: isSelected ? theme.colorScheme.primary : theme.dividerColor, width: isSelected ? 1.5 : 1),
-            color: isSelected ? theme.colorScheme.primary.withValues(alpha: 0.04) : null,
+            border: Border.all(
+              color: isSelected
+                  ? theme.colorScheme.primary
+                  : theme.dividerColor,
+              width: isSelected ? 1.5 : 1,
+            ),
+            color: isSelected
+                ? theme.colorScheme.primary.withValues(alpha: 0.04)
+                : null,
           ),
           child: Row(
             children: [
-              Icon(_getServiceIcon(service.iconName), color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurfaceVariant, size: 20),
+              Icon(
+                _getServiceIcon(service.iconName),
+                color: isSelected
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.onSurfaceVariant,
+                size: 20,
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(service.name, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface)),
-                    Text(service.description, style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant)),
+                    Text(
+                      service.name,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                    Text(
+                      service.description,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
                   ],
                 ),
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('₺${totalPrice.toInt()}', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface)),
-                  Text('₺${service.dailyPrice.toInt()}/gun', style: TextStyle(fontSize: 10, color: theme.colorScheme.onSurfaceVariant)),
+                  Text(
+                    '₺${totalPrice.toInt()}',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: isSelected
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.onSurface,
+                    ),
+                  ),
+                  Text(
+                    '₺${service.dailyPrice.toInt()}/gun',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(width: 6),
               SizedBox(
-                width: 22, height: 22,
+                width: 22,
+                height: 22,
                 child: Checkbox(
                   value: isSelected,
                   onChanged: (val) {
                     setState(() {
-                      if (val == true) { _selectedServices.add(service.id); } else { _selectedServices.remove(service.id); }
+                      if (val == true) {
+                        _selectedServices.add(service.id);
+                      } else {
+                        _selectedServices.remove(service.id);
+                      }
                     });
                   },
                   activeColor: theme.colorScheme.primary,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(4),
+                  ),
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
               ),
@@ -959,18 +1340,36 @@ class _BookingScreenState extends State<BookingScreen> {
   Widget _buildPriceBreakdown(ThemeData theme) {
     return Card(
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: theme.dividerColor)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: theme.dividerColor),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Fiyat Detayi', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: theme.colorScheme.onSurface)),
+            Text(
+              'Fiyat Detayi',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
             const SizedBox(height: 10),
-            _buildPriceRow('Arac kirasi ($_rentalDays gun)', _carTotalPrice, theme),
+            _buildPriceRow(
+              'Arac kirasi ($_rentalDays gun)',
+              _carTotalPrice,
+              theme,
+            ),
             if (_packagePrice > 0) ...[
               const SizedBox(height: 6),
-              _buildPriceRow('${_selectedPackage?.name ?? ''} paket', _packagePrice, theme),
+              _buildPriceRow(
+                '${_selectedPackage?.name ?? ''} paket',
+                _packagePrice,
+                theme,
+              ),
             ],
             if (_servicesPrice > 0) ...[
               const SizedBox(height: 6),
@@ -983,8 +1382,22 @@ class _BookingScreenState extends State<BookingScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Toplam', style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 16, fontWeight: FontWeight.bold)),
-                Text('₺${_totalPrice.toInt()}', style: TextStyle(color: theme.colorScheme.primary, fontSize: 22, fontWeight: FontWeight.bold)),
+                Text(
+                  'Toplam',
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurface,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  '₺${_totalPrice.toInt()}',
+                  style: TextStyle(
+                    color: theme.colorScheme.primary,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ],
             ),
           ],
@@ -997,8 +1410,21 @@ class _BookingScreenState extends State<BookingScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 13)),
-        Text('₺${price.toInt()}', style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 13, fontWeight: FontWeight.w500)),
+        Text(
+          label,
+          style: TextStyle(
+            color: theme.colorScheme.onSurfaceVariant,
+            fontSize: 13,
+          ),
+        ),
+        Text(
+          '₺${price.toInt()}',
+          style: TextStyle(
+            color: theme.colorScheme.onSurface,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
       ],
     );
   }
@@ -1013,17 +1439,22 @@ class _BookingScreenState extends State<BookingScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: _agreeTerms ? theme.colorScheme.primary : theme.dividerColor),
+          border: Border.all(
+            color: _agreeTerms ? theme.colorScheme.primary : theme.dividerColor,
+          ),
         ),
         child: Row(
           children: [
             SizedBox(
-              width: 22, height: 22,
+              width: 22,
+              height: 22,
               child: Checkbox(
                 value: _agreeTerms,
                 onChanged: (val) => setState(() => _agreeTerms = val ?? false),
                 activeColor: theme.colorScheme.primary,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4),
+                ),
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
             ),
@@ -1031,10 +1462,19 @@ class _BookingScreenState extends State<BookingScreen> {
             Expanded(
               child: RichText(
                 text: TextSpan(
-                  style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 13),
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontSize: 13,
+                  ),
                   children: [
                     const TextSpan(text: 'Kiralama '),
-                    TextSpan(text: 'sartlar ve kosullari', style: TextStyle(color: theme.colorScheme.primary, decoration: TextDecoration.underline)),
+                    TextSpan(
+                      text: 'sartlar ve kosullari',
+                      style: TextStyle(
+                        color: theme.colorScheme.primary,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
                     const TextSpan(text: ' okudum ve kabul ediyorum.'),
                   ],
                 ),
@@ -1051,12 +1491,20 @@ class _BookingScreenState extends State<BookingScreen> {
   Widget _buildBottomBar(ThemeData theme) {
     return Container(
       padding: EdgeInsets.only(
-        left: 16, right: 16, top: 10,
+        left: 16,
+        right: 16,
+        top: 10,
         bottom: MediaQuery.of(context).padding.bottom + 10,
       ),
       decoration: BoxDecoration(
         color: theme.cardColor,
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 8, offset: const Offset(0, -2))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -1065,8 +1513,21 @@ class _BookingScreenState extends State<BookingScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('Toplam', style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 12)),
-                Text('₺${_totalPrice.toInt()}', style: TextStyle(color: theme.colorScheme.primary, fontSize: 22, fontWeight: FontWeight.bold)),
+                Text(
+                  'Toplam',
+                  style: TextStyle(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontSize: 12,
+                  ),
+                ),
+                Text(
+                  '₺${_totalPrice.toInt()}',
+                  style: TextStyle(
+                    color: theme.colorScheme.primary,
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ],
             ),
           ),
@@ -1078,14 +1539,29 @@ class _BookingScreenState extends State<BookingScreen> {
               disabledBackgroundColor: theme.dividerColor,
               disabledForegroundColor: theme.colorScheme.onSurfaceVariant,
               padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             child: _isSubmitting
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
                 : const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text('Onayla', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      Text(
+                        'Onayla',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                       SizedBox(width: 6),
                       Icon(Icons.check, size: 20),
                     ],
@@ -1101,7 +1577,9 @@ class _BookingScreenState extends State<BookingScreen> {
   Future<void> _selectDate(bool isPickup) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: isPickup ? DateTime.now() : (_pickupDate ?? DateTime.now()).add(const Duration(days: 1)),
+      initialDate: isPickup
+          ? DateTime.now()
+          : (_pickupDate ?? DateTime.now()).add(const Duration(days: 1)),
       firstDate: isPickup ? DateTime.now() : (_pickupDate ?? DateTime.now()),
       lastDate: DateTime.now().add(const Duration(days: 365)),
     );
@@ -1109,7 +1587,9 @@ class _BookingScreenState extends State<BookingScreen> {
       setState(() {
         if (isPickup) {
           _pickupDate = picked;
-          if (_dropoffDate != null && _dropoffDate!.isBefore(picked)) _dropoffDate = null;
+          if (_dropoffDate != null && _dropoffDate!.isBefore(picked)) {
+            _dropoffDate = null;
+          }
         } else {
           _dropoffDate = picked;
         }
@@ -1118,10 +1598,17 @@ class _BookingScreenState extends State<BookingScreen> {
   }
 
   Future<void> _selectTime(bool isPickup) async {
-    final TimeOfDay? picked = await showTimePicker(context: context, initialTime: TimeOfDay.now());
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
     if (picked != null) {
       setState(() {
-        if (isPickup) { _pickupTime = picked; } else { _dropoffTime = picked; }
+        if (isPickup) {
+          _pickupTime = picked;
+        } else {
+          _dropoffTime = picked;
+        }
       });
     }
   }
@@ -1139,19 +1626,41 @@ class _BookingScreenState extends State<BookingScreen> {
       final rentalService = RentalService();
       final selectedServicesData = _selectedServices.map((serviceId) {
         final service = _availableServices.firstWhere((s) => s.id == serviceId);
-        return {'id': service.id, 'name': service.name, 'daily_price': service.dailyPrice, 'total_price': service.dailyPrice * _rentalDays};
+        return {
+          'id': service.id,
+          'name': service.name,
+          'daily_price': service.dailyPrice,
+          'total_price': service.dailyPrice * _rentalDays,
+        };
       }).toList();
 
       final booking = await rentalService.createBooking(
         carId: widget.car.id,
         companyId: widget.car.companyId,
         pickupLocationId: _isPickupCustomAddress ? null : _pickupLocation!.id,
-        dropoffLocationId: _isDropoffCustomAddress ? null : _dropoffLocation!.id,
-        pickupDate: DateTime(_pickupDate!.year, _pickupDate!.month, _pickupDate!.day, _pickupTime?.hour ?? 10, _pickupTime?.minute ?? 0),
-        dropoffDate: DateTime(_dropoffDate!.year, _dropoffDate!.month, _dropoffDate!.day, _dropoffTime?.hour ?? 10, _dropoffTime?.minute ?? 0),
+        dropoffLocationId: _isDropoffCustomAddress
+            ? null
+            : _dropoffLocation!.id,
+        pickupDate: DateTime(
+          _pickupDate!.year,
+          _pickupDate!.month,
+          _pickupDate!.day,
+          _pickupTime?.hour ?? 10,
+          _pickupTime?.minute ?? 0,
+        ),
+        dropoffDate: DateTime(
+          _dropoffDate!.year,
+          _dropoffDate!.month,
+          _dropoffDate!.day,
+          _dropoffTime?.hour ?? 10,
+          _dropoffTime?.minute ?? 0,
+        ),
         dailyRate: _carDailyPrice,
         rentalDays: _rentalDays,
-        customerName: user.userMetadata?['full_name'] ?? user.email?.split('@').first ?? 'Musteri',
+        customerName:
+            user.userMetadata?['full_name'] ??
+            user.email?.split('@').first ??
+            'Musteri',
         customerPhone: user.userMetadata?['phone'] ?? '',
         customerEmail: user.email ?? '',
         selectedServices: selectedServicesData,
@@ -1162,11 +1671,19 @@ class _BookingScreenState extends State<BookingScreen> {
         packageName: _selectedPackage?.name,
         packageDailyPrice: _selectedPackage?.dailyPrice ?? 0,
         isPickupCustomAddress: _isPickupCustomAddress,
-        pickupCustomAddress: _isPickupCustomAddress ? _pickupCustomAddressController.text.trim() : null,
-        pickupCustomAddressNotes: _isPickupCustomAddress ? _pickupCustomAddressNotesController.text.trim() : null,
+        pickupCustomAddress: _isPickupCustomAddress
+            ? _pickupCustomAddressController.text.trim()
+            : null,
+        pickupCustomAddressNotes: _isPickupCustomAddress
+            ? _pickupCustomAddressNotesController.text.trim()
+            : null,
         isDropoffCustomAddress: _isDropoffCustomAddress,
-        dropoffCustomAddress: _isDropoffCustomAddress ? _dropoffCustomAddressController.text.trim() : null,
-        dropoffCustomAddressNotes: _isDropoffCustomAddress ? _dropoffCustomAddressNotesController.text.trim() : null,
+        dropoffCustomAddress: _isDropoffCustomAddress
+            ? _dropoffCustomAddressController.text.trim()
+            : null,
+        dropoffCustomAddressNotes: _isDropoffCustomAddress
+            ? _dropoffCustomAddressNotesController.text.trim()
+            : null,
       );
 
       if (!mounted) return;
@@ -1182,7 +1699,9 @@ class _BookingScreenState extends State<BookingScreen> {
             onClose: () {
               Navigator.of(dialogContext, rootNavigator: true).pop();
               WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (context.mounted) Navigator.of(context).popUntil((route) => route.isFirst);
+                if (context.mounted) {
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                }
               });
             },
           ),
@@ -1203,31 +1722,53 @@ class _BookingScreenState extends State<BookingScreen> {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Row(children: [Icon(Icons.error_outline, color: AppColors.error), SizedBox(width: 8), Text('Hata')]),
+        title: const Row(
+          children: [
+            Icon(Icons.error_outline, color: AppColors.error),
+            SizedBox(width: 8),
+            Text('Hata'),
+          ],
+        ),
         content: Text(message),
-        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Tamam'))],
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Tamam'),
+          ),
+        ],
       ),
     );
   }
 
   IconData _getPackageIcon(String name) {
     switch (name) {
-      case 'directions_car': return Icons.directions_car;
-      case 'star': return Icons.star;
-      case 'workspace_premium': return Icons.workspace_premium;
-      default: return Icons.check_circle;
+      case 'directions_car':
+        return Icons.directions_car;
+      case 'star':
+        return Icons.star;
+      case 'workspace_premium':
+        return Icons.workspace_premium;
+      default:
+        return Icons.check_circle;
     }
   }
 
   IconData _getServiceIcon(String name) {
     switch (name) {
-      case 'gps_fixed': return Icons.gps_fixed;
-      case 'child_care': return Icons.child_care;
-      case 'person_add': return Icons.person_add;
-      case 'wifi': return Icons.wifi;
-      case 'ac_unit': return Icons.ac_unit;
-      case 'luggage': return Icons.luggage;
-      default: return Icons.add_circle;
+      case 'gps_fixed':
+        return Icons.gps_fixed;
+      case 'child_care':
+        return Icons.child_care;
+      case 'person_add':
+        return Icons.person_add;
+      case 'wifi':
+        return Icons.wifi;
+      case 'ac_unit':
+        return Icons.ac_unit;
+      case 'luggage':
+        return Icons.luggage;
+      default:
+        return Icons.add_circle;
     }
   }
 }
@@ -1240,13 +1781,19 @@ class _BookingSuccessDialog extends StatefulWidget {
   final String bookingNumber;
   final VoidCallback onClose;
 
-  const _BookingSuccessDialog({required this.car, required this.totalPrice, required this.bookingNumber, required this.onClose});
+  const _BookingSuccessDialog({
+    required this.car,
+    required this.totalPrice,
+    required this.bookingNumber,
+    required this.onClose,
+  });
 
   @override
   State<_BookingSuccessDialog> createState() => _BookingSuccessDialogState();
 }
 
-class _BookingSuccessDialogState extends State<_BookingSuccessDialog> with SingleTickerProviderStateMixin {
+class _BookingSuccessDialogState extends State<_BookingSuccessDialog>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
@@ -1254,14 +1801,26 @@ class _BookingSuccessDialogState extends State<_BookingSuccessDialog> with Singl
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(duration: const Duration(milliseconds: 600), vsync: this);
-    _scaleAnimation = Tween<double>(begin: 0.5, end: 1).animate(CurvedAnimation(parent: _controller, curve: Curves.elasticOut));
-    _fadeAnimation = Tween<double>(begin: 0, end: 1).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+    _scaleAnimation = Tween<double>(
+      begin: 0.5,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.elasticOut));
+    _fadeAnimation = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
     _controller.forward();
   }
 
   @override
-  void dispose() { _controller.dispose(); super.dispose(); }
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1280,7 +1839,13 @@ class _BookingSuccessDialogState extends State<_BookingSuccessDialog> with Singl
                 decoration: BoxDecoration(
                   color: theme.cardColor,
                   borderRadius: BorderRadius.circular(16),
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, 10))],
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -1290,31 +1855,85 @@ class _BookingSuccessDialogState extends State<_BookingSuccessDialog> with Singl
                       decoration: BoxDecoration(
                         gradient: AppColors.primaryGradient,
                         shape: BoxShape.circle,
-                        boxShadow: [BoxShadow(color: AppColors.primary.withValues(alpha: 0.4), blurRadius: 24)],
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withValues(alpha: 0.4),
+                            blurRadius: 24,
+                          ),
+                        ],
                       ),
-                      child: const Icon(Icons.check, color: Colors.white, size: 40),
+                      child: const Icon(
+                        Icons.check,
+                        color: Colors.white,
+                        size: 40,
+                      ),
                     ),
                     const SizedBox(height: 24),
-                    Text('Rezervasyon Basarili!', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: theme.colorScheme.onSurface)),
+                    Text(
+                      'Rezervasyon Basarili!',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
                     const SizedBox(height: 12),
-                    Text('${widget.car.fullName} icin rezervasyonunuz alindi.', textAlign: TextAlign.center, style: TextStyle(fontSize: 14, color: theme.colorScheme.onSurfaceVariant)),
+                    Text(
+                      '${widget.car.fullName} icin rezervasyonunuz alindi.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
                     if (widget.bookingNumber.isNotEmpty) ...[
                       const SizedBox(height: 12),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(color: theme.colorScheme.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                        child: Text('Rezervasyon No: ${widget.bookingNumber}', style: TextStyle(color: theme.colorScheme.primary, fontSize: 14, fontWeight: FontWeight.w600)),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary.withValues(
+                            alpha: 0.1,
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'Rezervasyon No: ${widget.bookingNumber}',
+                          style: TextStyle(
+                            color: theme.colorScheme.primary,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ],
                     const SizedBox(height: 24),
                     Container(
                       padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(color: theme.scaffoldBackgroundColor, borderRadius: BorderRadius.circular(12)),
+                      decoration: BoxDecoration(
+                        color: theme.scaffoldBackgroundColor,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text('Toplam: ', style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 16)),
-                          Text('₺${widget.totalPrice.toInt()}', style: TextStyle(color: theme.colorScheme.primary, fontSize: 24, fontWeight: FontWeight.bold)),
+                          Text(
+                            'Toplam: ',
+                            style: TextStyle(
+                              color: theme.colorScheme.onSurfaceVariant,
+                              fontSize: 16,
+                            ),
+                          ),
+                          Text(
+                            '₺${widget.totalPrice.toInt()}',
+                            style: TextStyle(
+                              color: theme.colorScheme.primary,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -1327,9 +1946,17 @@ class _BookingSuccessDialogState extends State<_BookingSuccessDialog> with Singl
                           backgroundColor: theme.colorScheme.primary,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
-                        child: const Text('Tamam', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        child: const Text(
+                          'Tamam',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ),
                   ],

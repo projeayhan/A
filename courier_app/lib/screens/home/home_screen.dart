@@ -1,451 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 import '../../core/providers/auth_provider.dart';
+import '../../core/providers/home_providers.dart';
 import '../../core/providers/notification_provider.dart';
 import '../../core/services/courier_service.dart';
-import '../../core/services/push_notification_service.dart';
 import '../../core/theme/app_theme.dart';
 import 'package:go_router/go_router.dart';
-
-// Work Mode enum
-enum WorkMode { platform, restaurant, both }
-
-// ============ OPTİMİZE EDİLMİŞ PROVIDER'LAR ============
-
-// Kurye verisi state class
-class CourierDataState {
-  final Map<String, dynamic>? profile;
-  final List<Map<String, dynamic>> assignedOrders;
-  final List<Map<String, dynamic>> pendingOrders;
-  final List<Map<String, dynamic>> activeOrders;
-  final List<Map<String, dynamic>> courierRequests;
-  final bool isLoading;
-
-  const CourierDataState({
-    this.profile,
-    this.assignedOrders = const [],
-    this.pendingOrders = const [],
-    this.activeOrders = const [],
-    this.courierRequests = const [],
-    this.isLoading = true,
-  });
-
-  bool get isOnline => profile?['is_online'] == true;
-
-  WorkMode get workMode {
-    final mode = profile?['work_mode'] as String?;
-    switch (mode) {
-      case 'platform':
-        return WorkMode.platform;
-      case 'restaurant':
-        return WorkMode.restaurant;
-      case 'both':
-      default:
-        return WorkMode.both;
-    }
-  }
-
-  CourierDataState copyWith({
-    Map<String, dynamic>? profile,
-    List<Map<String, dynamic>>? assignedOrders,
-    List<Map<String, dynamic>>? pendingOrders,
-    List<Map<String, dynamic>>? activeOrders,
-    List<Map<String, dynamic>>? courierRequests,
-    bool? isLoading,
-  }) {
-    return CourierDataState(
-      profile: profile ?? this.profile,
-      assignedOrders: assignedOrders ?? this.assignedOrders,
-      pendingOrders: pendingOrders ?? this.pendingOrders,
-      activeOrders: activeOrders ?? this.activeOrders,
-      courierRequests: courierRequests ?? this.courierRequests,
-      isLoading: isLoading ?? this.isLoading,
-    );
-  }
-}
-
-// Tek bir ana profil provider - tüm kurye verilerini yönetir
-final courierDataProvider = NotifierProvider<CourierDataNotifier, CourierDataState>(
-  CourierDataNotifier.new,
-);
-
-class CourierDataNotifier extends Notifier<CourierDataState> {
-  RealtimeChannel? _profileChannel;
-  RealtimeChannel? _ordersChannel;
-  RealtimeChannel? _requestsChannel;
-  String? _courierId;
-  Timer? _refreshTimer;
-  Timer? _requestsRefreshTimer;
-
-  @override
-  CourierDataState build() {
-    // Cleanup on dispose
-    ref.onDispose(() {
-      _profileChannel?.unsubscribe();
-      _ordersChannel?.unsubscribe();
-      _requestsChannel?.unsubscribe();
-      _refreshTimer?.cancel();
-      _requestsRefreshTimer?.cancel();
-    });
-
-    // Initialize
-    _init();
-    return const CourierDataState();
-  }
-
-  Future<void> _init() async {
-    final supabase = Supabase.instance.client;
-    final userId = supabase.auth.currentUser?.id;
-    if (userId == null) {
-      state = state.copyWith(isLoading: false);
-      return;
-    }
-
-    // İlk veri yükleme
-    await _loadAllData();
-
-    // Profil değişikliklerini dinle
-    _profileChannel = supabase.channel('profile_$userId')
-      .onPostgresChanges(
-        event: PostgresChangeEvent.all,
-        schema: 'public',
-        table: 'couriers',
-        filter: PostgresChangeFilter(
-          type: PostgresChangeFilterType.eq,
-          column: 'user_id',
-          value: userId,
-        ),
-        callback: (_) => _loadProfile(),
-      ).subscribe();
-
-    // Sipariş ve request subscriptions'ı kur
-    _setupOrderSubscriptions();
-
-    // Siparişler için periyodik yenileme (3 saniyede bir)
-    // Realtime RLS limitasyonu nedeniyle polling gerekli
-    _refreshTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-      if (state.isOnline) {
-        _loadOrders(); // Atanan siparişleri kontrol et
-        _loadPendingOrders();
-      }
-    });
-
-    // Courier requests için daha sık yenileme (5 saniyede bir)
-    // Realtime çalışmasa bile teklifler hızlıca görünsün
-    _requestsRefreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
-      if (state.isOnline && _courierId != null) {
-        _loadRequests();
-      }
-    });
-  }
-
-  void _setupOrderSubscriptions() {
-    if (_courierId == null) return;
-    final supabase = Supabase.instance.client;
-
-    // Mevcut subscriptions'ı temizle
-    _ordersChannel?.unsubscribe();
-    _requestsChannel?.unsubscribe();
-
-    // Sipariş değişikliklerini dinle
-    // NOT: courier_id filtresi kullanmıyoruz çünkü sipariş atandığında
-    // eski değer NULL olduğu için filter çalışmıyor
-    _ordersChannel = supabase.channel('orders_courier_$_courierId')
-      .onPostgresChanges(
-        event: PostgresChangeEvent.all,
-        schema: 'public',
-        table: 'orders',
-        callback: (payload) {
-          debugPrint('Realtime order event received: ${payload.eventType}');
-
-          final newRecord = payload.newRecord;
-          final oldRecord = payload.oldRecord;
-
-          // String'e çevirerek karşılaştır (tip uyumsuzluğunu önle)
-          final newCourierId = newRecord['courier_id']?.toString();
-          final oldCourierId = oldRecord['courier_id']?.toString();
-          final myCourierId = _courierId;
-
-          debugPrint('Order courier check: new=$newCourierId, old=$oldCourierId, me=$myCourierId');
-
-          // Bu kuryeyle ilgili bir değişiklik mi kontrol et
-          if (newCourierId == myCourierId || oldCourierId == myCourierId) {
-            debugPrint('Order change detected for this courier: ${newRecord['order_number']}');
-
-            // Yeni sipariş atandıysa bildirim göster
-            if (oldCourierId == null && newCourierId == myCourierId) {
-              debugPrint('New order assigned to this courier!');
-              _showOrderAssignedNotification(newRecord);
-            }
-
-            _loadOrders();
-          }
-        },
-      ).subscribe((status, [error]) {
-        debugPrint('Orders subscription status: $status, error: $error');
-      });
-
-    // Courier requests dinle - INSERT için özel kanal
-    _requestsChannel = supabase.channel('requests_${_courierId}_${DateTime.now().millisecondsSinceEpoch}')
-      .onPostgresChanges(
-        event: PostgresChangeEvent.insert,
-        schema: 'public',
-        table: 'courier_requests',
-        filter: PostgresChangeFilter(
-          type: PostgresChangeFilterType.eq,
-          column: 'courier_id',
-          value: _courierId,
-        ),
-        callback: (payload) {
-          debugPrint('New courier request received: ${payload.newRecord}');
-          _loadRequests();
-        },
-      )
-      .onPostgresChanges(
-        event: PostgresChangeEvent.update,
-        schema: 'public',
-        table: 'courier_requests',
-        filter: PostgresChangeFilter(
-          type: PostgresChangeFilterType.eq,
-          column: 'courier_id',
-          value: _courierId,
-        ),
-        callback: (_) => _loadRequests(),
-      )
-      .onPostgresChanges(
-        event: PostgresChangeEvent.delete,
-        schema: 'public',
-        table: 'courier_requests',
-        filter: PostgresChangeFilter(
-          type: PostgresChangeFilterType.eq,
-          column: 'courier_id',
-          value: _courierId,
-        ),
-        callback: (_) => _loadRequests(),
-      ).subscribe((status, [error]) {
-        debugPrint('Courier requests subscription status: $status, error: $error');
-      });
-  }
-
-  Future<void> _loadAllData() async {
-    await _loadProfile();
-    if (_courierId != null) {
-      await Future.wait([
-        _loadOrders(),
-        _loadPendingOrders(),
-        _loadRequests(),
-      ]);
-    }
-    state = state.copyWith(isLoading: false);
-  }
-
-  Future<void> _loadProfile() async {
-    final supabase = Supabase.instance.client;
-    final userId = supabase.auth.currentUser?.id;
-    if (userId == null) return;
-
-    try {
-      final profile = await supabase
-          .from('couriers')
-          .select()
-          .eq('user_id', userId)
-          .maybeSingle();
-
-      _courierId = profile?['id'] as String?;
-      debugPrint('_loadProfile: courier_id = $_courierId');
-      debugPrint('_loadProfile: profile = $profile');
-      state = state.copyWith(profile: profile);
-
-      // Profile yüklendikten sonra subscriptions'ı kur
-      if (_courierId != null) {
-        _setupOrderSubscriptions();
-      }
-    } catch (e) {
-      debugPrint('Load profile error: $e');
-    }
-  }
-
-  Future<void> _loadOrders() async {
-    if (_courierId == null) {
-      debugPrint('_loadOrders: _courierId is null, skipping');
-      return;
-    }
-    final supabase = Supabase.instance.client;
-
-    try {
-      debugPrint('_loadOrders: Loading orders for courier $_courierId sorted by distance');
-
-      // RPC ile mesafeye göre sıralı siparişleri al
-      final sortedOrders = await supabase.rpc('get_courier_orders_by_distance', params: {
-        'p_courier_id': _courierId,
-      });
-
-      // RPC sonucunu UI'ın beklediği formata dönüştür
-      final assignedOrders = (sortedOrders as List).map((order) {
-        return {
-          'id': order['id'],
-          'order_number': order['order_number'],
-          'status': order['status'],
-          'delivery_address': order['delivery_address'],
-          'delivery_lat': order['delivery_latitude'],
-          'delivery_lon': order['delivery_longitude'],
-          'delivery_fee': order['delivery_fee'],
-          'distance_km': order['distance_km'],
-          'estimated_minutes': order['estimated_minutes'],
-          'merchants': {
-            'business_name': order['merchant_name'],
-            'address': order['merchant_address'],
-            'latitude': order['merchant_latitude'],
-            'longitude': order['merchant_longitude'],
-          },
-        };
-      }).toList();
-
-      debugPrint('_loadOrders: Found ${assignedOrders.length} assigned orders (sorted by distance)');
-      for (var order in assignedOrders) {
-        debugPrint('  - Order: ${order['order_number']} status: ${order['status']} distance: ${order['distance_km']} km');
-      }
-
-      // Active orders
-      final activeOrders = await CourierService.getActiveOrders();
-      debugPrint('_loadOrders: Found ${activeOrders.length} active orders');
-
-      state = state.copyWith(
-        assignedOrders: List<Map<String, dynamic>>.from(assignedOrders),
-        activeOrders: activeOrders,
-      );
-    } catch (e) {
-      debugPrint('Load orders error: $e');
-    }
-  }
-
-  Future<void> _loadPendingOrders() async {
-    try {
-      final pendingOrders = await CourierService.getPendingOrders();
-      state = state.copyWith(pendingOrders: pendingOrders);
-    } catch (e) {
-      debugPrint('Load pending orders error: $e');
-    }
-  }
-
-  Future<void> _loadRequests() async {
-    if (_courierId == null) return;
-    final supabase = Supabase.instance.client;
-
-    try {
-      // RPC fonksiyonu kullan - RLS sorununu bypass eder
-      final response = await supabase
-          .rpc('get_courier_pending_requests', params: {
-            'p_courier_id': _courierId,
-          });
-
-      // Response'u uygun formata dönüştür
-      final requests = (response as List).map((r) {
-        return {
-          'id': r['id'],
-          'order_id': r['order_id'],
-          'courier_id': r['courier_id'],
-          'status': r['status'],
-          'distance_km': r['distance_km'],
-          'estimated_duration_min': r['estimated_duration_min'],
-          'delivery_fee': r['delivery_fee'],
-          'offered_at': r['offered_at'],
-          'expires_at': r['expires_at'],
-          'responded_at': r['responded_at'],
-          'created_at': r['created_at'],
-          'orders': r['order_data'],
-          'merchants': r['merchant_data'],
-        };
-      }).toList();
-
-      // orders içine merchants'ı da ekle (mevcut UI beklentisi için)
-      for (var req in requests) {
-        if (req['orders'] != null) {
-          req['orders']['merchants'] = req['merchants'];
-        }
-      }
-
-      state = state.copyWith(courierRequests: List<Map<String, dynamic>>.from(requests));
-    } catch (e) {
-      debugPrint('Load requests error: $e');
-    }
-  }
-
-  Future<void> refresh() async {
-    await _loadAllData();
-  }
-
-  Future<void> refreshOrders() async {
-    await Future.wait([
-      _loadOrders(),
-      _loadPendingOrders(),
-    ]);
-  }
-
-  Future<void> refreshRequests() async {
-    await _loadRequests();
-  }
-
-  /// Yeni sipariş atandığında local bildirim göster
-  void _showOrderAssignedNotification(Map<String, dynamic> orderData) {
-    final orderNumber = orderData['order_number'] as String? ?? '';
-    final merchants = orderData['merchants'] as Map<String, dynamic>?;
-    final merchantName = merchants?['business_name'] as String?;
-
-    debugPrint('New order assigned: #$orderNumber from $merchantName');
-
-    // Push notification service ile bildirim göster
-    pushNotificationService.showOrderAssignedNotification(
-      orderNumber: orderNumber,
-      merchantName: merchantName,
-    );
-  }
-}
-
-// Eski provider'lar için uyumluluk (diğer ekranlar kullanıyor olabilir)
-final courierProfileProvider = Provider<AsyncValue<Map<String, dynamic>?>>((ref) {
-  final data = ref.watch(courierDataProvider);
-  if (data.isLoading) return const AsyncValue.loading();
-  return AsyncValue.data(data.profile);
-});
-
-final isOnlineProvider = Provider<bool>((ref) {
-  return ref.watch(courierDataProvider).isOnline;
-});
-
-final workModeProvider = Provider<WorkMode>((ref) {
-  return ref.watch(courierDataProvider).workMode;
-});
-
-// Pending orders provider (uyumluluk için)
-final pendingOrdersProvider = Provider<AsyncValue<List<Map<String, dynamic>>>>((ref) {
-  final data = ref.watch(courierDataProvider);
-  if (data.isLoading) return const AsyncValue.loading();
-  return AsyncValue.data(data.pendingOrders);
-});
-
-// Active orders provider (uyumluluk için)
-final activeOrdersProvider = Provider<AsyncValue<List<Map<String, dynamic>>>>((ref) {
-  final data = ref.watch(courierDataProvider);
-  if (data.isLoading) return const AsyncValue.loading();
-  return AsyncValue.data(data.activeOrders);
-});
-
-// Assigned orders provider (uyumluluk için)
-final assignedOrdersProvider = Provider<AsyncValue<List<Map<String, dynamic>>>>((ref) {
-  final data = ref.watch(courierDataProvider);
-  if (data.isLoading) return const AsyncValue.loading();
-  return AsyncValue.data(data.assignedOrders);
-});
-
-// Courier requests provider (uyumluluk için)
-final courierRequestsProvider = Provider<AsyncValue<List<Map<String, dynamic>>>>((ref) {
-  final data = ref.watch(courierDataProvider);
-  if (data.isLoading) return const AsyncValue.loading();
-  return AsyncValue.data(data.courierRequests);
-});
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -463,113 +24,133 @@ class HomeScreen extends ConsumerWidget {
     return Stack(
       children: [
         Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: () async {
-            await ref.read(courierDataProvider.notifier).refreshOrders();
-          },
-          child: CustomScrollView(
-            slivers: [
-              // Header
-              SliverToBoxAdapter(
-                child: _buildHeader(context, ref, authState, isOnline),
-              ),
-
-              // Online/Offline Card
-              SliverToBoxAdapter(
-                child: _buildOnlineCard(context, ref, isOnline),
-              ),
-
-              // Work Mode Card (only when online)
-              if (isOnline)
-                SliverToBoxAdapter(
-                  child: _buildWorkModeCard(context, ref, workMode),
-                ),
-
-              // Assigned Orders Section (Restoran tarafından atanan siparişler)
-              assignedOrders.when(
-                data: (orders) {
-                  if (orders.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
-                  return SliverToBoxAdapter(
-                    child: _buildAssignedOrdersSection(context, ref, orders),
-                  );
-                },
-                loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
-                error: (_, __) => const SliverToBoxAdapter(child: SizedBox.shrink()),
-              ),
-
-              // Active Orders Section
-              activeOrders.when(
-                data: (orders) {
-                  if (orders.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
-                  return SliverToBoxAdapter(
-                    child: _buildActiveOrdersSection(context, ref, orders),
-                  );
-                },
-                loading: () => const SliverToBoxAdapter(child: SizedBox.shrink()),
-                error: (_, __) => const SliverToBoxAdapter(child: SizedBox.shrink()),
-              ),
-
-              // Available Orders Section
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Bekleyen Siparişler',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      IconButton(
-                        onPressed: () {
-                          ref.invalidate(pendingOrdersProvider);
-                        },
-                        icon: const Icon(Icons.refresh, color: AppColors.primary),
-                      ),
-                    ],
+          backgroundColor: AppColors.background,
+          body: SafeArea(
+            child: RefreshIndicator(
+              onRefresh: () async {
+                await ref.read(courierDataProvider.notifier).refreshOrders();
+              },
+              child: CustomScrollView(
+                slivers: [
+                  // Header
+                  SliverToBoxAdapter(
+                    child: _buildHeader(context, ref, authState, isOnline),
                   ),
-                ),
-              ),
 
-              // Pending Orders List
-              pendingOrders.when(
-                data: (orders) {
-                  if (!isOnline) {
-                    return SliverToBoxAdapter(
-                      child: _buildOfflineMessage(context),
-                    );
-                  }
-                  if (orders.isEmpty) {
-                    return SliverToBoxAdapter(
-                      child: _buildEmptyOrders(context),
-                    );
-                  }
-                  return SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) => _buildOrderCard(context, ref, orders[index]),
-                        childCount: orders.length,
+                  // Online/Offline Card
+                  SliverToBoxAdapter(
+                    child: _buildOnlineCard(context, ref, isOnline),
+                  ),
+
+                  // Work Mode Card (only when online)
+                  if (isOnline)
+                    SliverToBoxAdapter(
+                      child: _buildWorkModeCard(context, ref, workMode),
+                    ),
+
+                  // Assigned Orders Section (Restoran tarafından atanan siparişler)
+                  assignedOrders.when(
+                    data: (orders) {
+                      if (orders.isEmpty) {
+                        return const SliverToBoxAdapter(
+                          child: SizedBox.shrink(),
+                        );
+                      }
+                      return SliverToBoxAdapter(
+                        child: _buildAssignedOrdersSection(
+                          context,
+                          ref,
+                          orders,
+                        ),
+                      );
+                    },
+                    loading: () =>
+                        const SliverToBoxAdapter(child: SizedBox.shrink()),
+                    error: (_, _) =>
+                        const SliverToBoxAdapter(child: SizedBox.shrink()),
+                  ),
+
+                  // Active Orders Section
+                  activeOrders.when(
+                    data: (orders) {
+                      if (orders.isEmpty) {
+                        return const SliverToBoxAdapter(
+                          child: SizedBox.shrink(),
+                        );
+                      }
+                      return SliverToBoxAdapter(
+                        child: _buildActiveOrdersSection(context, ref, orders),
+                      );
+                    },
+                    loading: () =>
+                        const SliverToBoxAdapter(child: SizedBox.shrink()),
+                    error: (_, _) =>
+                        const SliverToBoxAdapter(child: SizedBox.shrink()),
+                  ),
+
+                  // Available Orders Section
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Bekleyen Siparişler',
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                          IconButton(
+                            onPressed: () {
+                              ref.invalidate(pendingOrdersProvider);
+                            },
+                            icon: const Icon(
+                              Icons.refresh,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  );
-                },
-                loading: () => const SliverToBoxAdapter(
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-                error: (error, _) => SliverToBoxAdapter(
-                  child: Center(child: Text('Hata: $error')),
-                ),
-              ),
+                  ),
 
-              const SliverToBoxAdapter(child: SizedBox(height: 100)),
-            ],
+                  // Pending Orders List
+                  pendingOrders.when(
+                    data: (orders) {
+                      if (!isOnline) {
+                        return SliverToBoxAdapter(
+                          child: _buildOfflineMessage(context),
+                        );
+                      }
+                      if (orders.isEmpty) {
+                        return SliverToBoxAdapter(
+                          child: _buildEmptyOrders(context),
+                        );
+                      }
+                      return SliverPadding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        sliver: SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) =>
+                                _buildOrderCard(context, ref, orders[index]),
+                            childCount: orders.length,
+                          ),
+                        ),
+                      );
+                    },
+                    loading: () => const SliverToBoxAdapter(
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
+                    error: (error, _) => SliverToBoxAdapter(
+                      child: Center(child: Text('Hata: $error')),
+                    ),
+                  ),
+
+                  const SliverToBoxAdapter(child: SizedBox(height: 100)),
+                ],
+              ),
+            ),
           ),
         ),
-      ),
-    ),
         // Courier Request Overlay - Sadece platform modunda veya 'her ikisi' modunda göster
         // Restoran modunda kuryeye direkt atama yapılır, onay gerekmez
         if (workMode != WorkMode.restaurant)
@@ -579,13 +160,18 @@ class HomeScreen extends ConsumerWidget {
               return _CourierRequestOverlay(
                 request: requests.first,
                 onAccept: () async {
-                  final orderData = await CourierService.acceptCourierRequest(requests.first['id']);
+                  final orderData = await CourierService.acceptCourierRequest(
+                    requests.first['id'],
+                  );
                   if (orderData != null) {
                     ref.read(courierDataProvider.notifier).refreshOrders();
                     ref.read(courierDataProvider.notifier).refreshRequests();
                     if (context.mounted) {
                       // Sipariş detaylarını extra olarak gönder
-                      final result = await context.push('/orders/${requests.first['order_id']}', extra: orderData);
+                      final result = await context.push(
+                        '/orders/${requests.first['order_id']}',
+                        extra: orderData,
+                      );
                       if (result == true) {
                         ref.read(courierDataProvider.notifier).refreshOrders();
                       }
@@ -593,19 +179,26 @@ class HomeScreen extends ConsumerWidget {
                   }
                 },
                 onReject: () async {
-                  await CourierService.rejectCourierRequest(requests.first['id']);
+                  await CourierService.rejectCourierRequest(
+                    requests.first['id'],
+                  );
                   ref.read(courierDataProvider.notifier).refreshRequests();
                 },
               );
             },
             loading: () => const SizedBox.shrink(),
-            error: (_, __) => const SizedBox.shrink(),
+            error: (_, _) => const SizedBox.shrink(),
           ),
       ],
     );
   }
 
-  Widget _buildHeader(BuildContext context, WidgetRef ref, AuthState authState, bool isOnline) {
+  Widget _buildHeader(
+    BuildContext context,
+    WidgetRef ref,
+    AuthState authState,
+    bool isOnline,
+  ) {
     return Container(
       padding: const EdgeInsets.all(20),
       child: Row(
@@ -728,7 +321,10 @@ class HomeScreen extends ConsumerWidget {
                   children: [
                     const Text(
                       'Bildirimler',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     TextButton(
                       onPressed: () {
@@ -750,9 +346,16 @@ class HomeScreen extends ConsumerWidget {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.notifications_none, size: 64, color: AppColors.textHint),
+                            Icon(
+                              Icons.notifications_none,
+                              size: 64,
+                              color: AppColors.textHint,
+                            ),
                             SizedBox(height: 16),
-                            Text('Henüz bildiriminiz yok', style: TextStyle(color: AppColors.textSecondary)),
+                            Text(
+                              'Henüz bildiriminiz yok',
+                              style: TextStyle(color: AppColors.textSecondary),
+                            ),
                           ],
                         ),
                       );
@@ -761,12 +364,13 @@ class HomeScreen extends ConsumerWidget {
                       controller: scrollController,
                       padding: const EdgeInsets.all(16),
                       itemCount: notifs.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      separatorBuilder: (_, _) => const SizedBox(height: 8),
                       itemBuilder: (context, index) {
                         final notif = notifs[index];
                         final isRead = notif['is_read'] == true;
                         final type = notif['type'] as String? ?? 'info';
-                        final data = notif['data'] as Map<String, dynamic>? ?? {};
+                        final data =
+                            notif['data'] as Map<String, dynamic>? ?? {};
 
                         IconData icon;
                         Color color;
@@ -802,9 +406,13 @@ class HomeScreen extends ConsumerWidget {
                             // Sipariş detayına git
                             if (data['order_id'] != null) {
                               Navigator.pop(context);
-                              final result = await context.push('/orders/${data['order_id']}');
+                              final result = await context.push(
+                                '/orders/${data['order_id']}',
+                              );
                               if (result == true) {
-                                ref.read(courierDataProvider.notifier).refreshOrders();
+                                ref
+                                    .read(courierDataProvider.notifier)
+                                    .refreshOrders();
                               }
                             }
                           },
@@ -812,10 +420,14 @@ class HomeScreen extends ConsumerWidget {
                           child: Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: isRead ? AppColors.background : color.withValues(alpha: 0.05),
+                              color: isRead
+                                  ? AppColors.background
+                                  : color.withValues(alpha: 0.05),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: isRead ? AppColors.border : color.withValues(alpha: 0.2),
+                                color: isRead
+                                    ? AppColors.border
+                                    : color.withValues(alpha: 0.2),
                               ),
                             ),
                             child: Row(
@@ -832,12 +444,15 @@ class HomeScreen extends ConsumerWidget {
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         notif['title'] ?? '',
                                         style: TextStyle(
-                                          fontWeight: isRead ? FontWeight.normal : FontWeight.w600,
+                                          fontWeight: isRead
+                                              ? FontWeight.normal
+                                              : FontWeight.w600,
                                         ),
                                       ),
                                       const SizedBox(height: 2),
@@ -869,7 +484,8 @@ class HomeScreen extends ConsumerWidget {
                       },
                     );
                   },
-                  loading: () => const Center(child: CircularProgressIndicator()),
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
                   error: (e, _) => Center(child: Text('Hata: $e')),
                 ),
               ),
@@ -888,7 +504,10 @@ class HomeScreen extends ConsumerWidget {
         gradient: LinearGradient(
           colors: isOnline
               ? [AppColors.success, AppColors.success.withValues(alpha: 0.8)]
-              : [AppColors.textSecondary, AppColors.textSecondary.withValues(alpha: 0.8)],
+              : [
+                  AppColors.textSecondary,
+                  AppColors.textSecondary.withValues(alpha: 0.8),
+                ],
         ),
         borderRadius: BorderRadius.circular(16),
       ),
@@ -936,10 +555,16 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildWorkModeCard(BuildContext context, WidgetRef ref, WorkMode workMode) {
+  Widget _buildWorkModeCard(
+    BuildContext context,
+    WidgetRef ref,
+    WorkMode workMode,
+  ) {
     // Kuryenin merchant_id'si var mı kontrol et
     final courierProfile = ref.watch(courierProfileProvider);
-    final hasMerchant = courierProfile.whenData((data) => data?['merchant_id'] != null).value ?? false;
+    final hasMerchant =
+        courierProfile.whenData((data) => data?['merchant_id'] != null).value ??
+        false;
 
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 16, 20, 0),
@@ -981,7 +606,9 @@ class HomeScreen extends ConsumerWidget {
                 label: 'Restoran',
                 isSelected: workMode == WorkMode.restaurant,
                 isDisabled: !hasMerchant,
-                onTap: hasMerchant ? () => CourierService.updateWorkMode('restaurant') : null,
+                onTap: hasMerchant
+                    ? () => CourierService.updateWorkMode('restaurant')
+                    : null,
               ),
               const SizedBox(width: 8),
               _WorkModeButton(
@@ -989,7 +616,9 @@ class HomeScreen extends ConsumerWidget {
                 label: 'Her İkisi',
                 isSelected: workMode == WorkMode.both,
                 isDisabled: !hasMerchant,
-                onTap: hasMerchant ? () => CourierService.updateWorkMode('both') : null,
+                onTap: hasMerchant
+                    ? () => CourierService.updateWorkMode('both')
+                    : null,
               ),
             ],
           ),
@@ -1019,7 +648,11 @@ class HomeScreen extends ConsumerWidget {
     }
   }
 
-  Widget _buildAssignedOrdersSection(BuildContext context, WidgetRef ref, List<Map<String, dynamic>> orders) {
+  Widget _buildAssignedOrdersSection(
+    BuildContext context,
+    WidgetRef ref,
+    List<Map<String, dynamic>> orders,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1033,7 +666,11 @@ class HomeScreen extends ConsumerWidget {
                   color: AppColors.warning.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: Icon(Icons.assignment, color: AppColors.warning, size: 20),
+                child: Icon(
+                  Icons.assignment,
+                  color: AppColors.warning,
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 12),
               Text(
@@ -1042,14 +679,20 @@ class HomeScreen extends ConsumerWidget {
               ),
               const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.warning,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   '${orders.length}',
-                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ],
@@ -1060,7 +703,11 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildAssignedOrderCard(BuildContext context, WidgetRef ref, Map<String, dynamic> order) {
+  Widget _buildAssignedOrderCard(
+    BuildContext context,
+    WidgetRef ref,
+    Map<String, dynamic> order,
+  ) {
     final merchant = order['merchants'] as Map<String, dynamic>?;
     final deliveryFee = (order['delivery_fee'] as num?)?.toDouble() ?? 0;
     final status = order['status'] as String? ?? '';
@@ -1109,7 +756,10 @@ class HomeScreen extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.success.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
@@ -1124,7 +774,10 @@ class HomeScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 4),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: status == 'ready'
                           ? AppColors.success.withValues(alpha: 0.1)
@@ -1135,7 +788,9 @@ class HomeScreen extends ConsumerWidget {
                       status == 'ready' ? 'Hazır' : 'Hazırlanıyor',
                       style: TextStyle(
                         fontSize: 11,
-                        color: status == 'ready' ? AppColors.success : AppColors.info,
+                        color: status == 'ready'
+                            ? AppColors.success
+                            : AppColors.info,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -1224,13 +879,23 @@ class HomeScreen extends ConsumerWidget {
                   onPressed: status == 'ready'
                       ? () async {
                           // Siparişi teslim aldım olarak işaretle
-                          final success = await CourierService.updateOrderStatus(order['id'], 'picked_up');
+                          final success =
+                              await CourierService.updateOrderStatus(
+                                order['id'],
+                                'picked_up',
+                              );
                           if (success) {
-                            ref.read(courierDataProvider.notifier).refreshOrders();
+                            ref
+                                .read(courierDataProvider.notifier)
+                                .refreshOrders();
                             if (context.mounted) {
-                              final result = await context.push('/orders/${order['id']}');
+                              final result = await context.push(
+                                '/orders/${order['id']}',
+                              );
                               if (result == true) {
-                                ref.read(courierDataProvider.notifier).refreshOrders();
+                                ref
+                                    .read(courierDataProvider.notifier)
+                                    .refreshOrders();
                               }
                             }
                           }
@@ -1251,7 +916,11 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildActiveOrdersSection(BuildContext context, WidgetRef ref, List<Map<String, dynamic>> orders) {
+  Widget _buildActiveOrdersSection(
+    BuildContext context,
+    WidgetRef ref,
+    List<Map<String, dynamic>> orders,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1267,7 +936,11 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildActiveOrderCard(BuildContext context, WidgetRef ref, Map<String, dynamic> order) {
+  Widget _buildActiveOrderCard(
+    BuildContext context,
+    WidgetRef ref,
+    Map<String, dynamic> order,
+  ) {
     final merchant = order['merchants'] as Map<String, dynamic>?;
 
     return Container(
@@ -1380,7 +1053,11 @@ class HomeScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildOrderCard(BuildContext context, WidgetRef ref, Map<String, dynamic> order) {
+  Widget _buildOrderCard(
+    BuildContext context,
+    WidgetRef ref,
+    Map<String, dynamic> order,
+  ) {
     final merchant = order['merchants'] as Map<String, dynamic>?;
     final deliveryFee = (order['delivery_fee'] as num?)?.toDouble() ?? 0;
 
@@ -1406,7 +1083,11 @@ class HomeScreen extends ConsumerWidget {
                   color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.restaurant, color: AppColors.primary, size: 20),
+                child: const Icon(
+                  Icons.restaurant,
+                  color: AppColors.primary,
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1425,7 +1106,10 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.success.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(20),
@@ -1450,11 +1134,7 @@ class HomeScreen extends ConsumerWidget {
               Column(
                 children: [
                   Icon(Icons.store, size: 16, color: AppColors.primary),
-                  Container(
-                    width: 2,
-                    height: 24,
-                    color: AppColors.border,
-                  ),
+                  Container(width: 2, height: 24, color: AppColors.border),
                   Icon(Icons.location_on, size: 16, color: AppColors.error),
                 ],
               ),
@@ -1491,9 +1171,11 @@ class HomeScreen extends ConsumerWidget {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () async {
-                // Siparişi teslim aldım olarak işaretle
-                final success = await CourierService.updateOrderStatus(order['id'], 'picked_up');
-                if (success) {
+                // Race condition'ı önlemek için atomik RPC kullan
+                final orderData = await CourierService.acceptCourierRequest(
+                  order['id'],
+                );
+                if (orderData != null) {
                   ref.read(courierDataProvider.notifier).refreshOrders();
                   if (context.mounted) {
                     final result = await context.push('/orders/${order['id']}');
@@ -1531,6 +1213,7 @@ class _CourierRequestOverlay extends StatefulWidget {
 class _CourierRequestOverlayState extends State<_CourierRequestOverlay> {
   late Timer _timer;
   int _remainingSeconds = 30;
+  int _initialSeconds = 30;
 
   @override
   void initState() {
@@ -1545,6 +1228,7 @@ class _CourierRequestOverlayState extends State<_CourierRequestOverlay> {
       _remainingSeconds = expiresAt.difference(DateTime.now()).inSeconds;
       if (_remainingSeconds < 0) _remainingSeconds = 0;
     }
+    _initialSeconds = _remainingSeconds > 0 ? _remainingSeconds : 30;
   }
 
   void _startTimer() {
@@ -1570,7 +1254,8 @@ class _CourierRequestOverlayState extends State<_CourierRequestOverlay> {
   Widget build(BuildContext context) {
     final order = widget.request['orders'] as Map<String, dynamic>?;
     final merchant = order?['merchants'] as Map<String, dynamic>?;
-    final deliveryFee = (widget.request['delivery_fee'] as num?)?.toDouble() ?? 0;
+    final deliveryFee =
+        (widget.request['delivery_fee'] as num?)?.toDouble() ?? 0;
     final distance = (widget.request['distance_km'] as num?)?.toDouble() ?? 0;
     final merchantType = merchant?['type'] as String? ?? 'restaurant';
     final isStore = merchantType == 'store';
@@ -1597,11 +1282,16 @@ class _CourierRequestOverlayState extends State<_CourierRequestOverlay> {
                       width: 80,
                       height: 80,
                       child: CircularProgressIndicator(
-                        value: _remainingSeconds / 30,
+                        value: (_remainingSeconds / _initialSeconds).clamp(
+                          0.0,
+                          1.0,
+                        ),
                         strokeWidth: 6,
                         backgroundColor: AppColors.border,
                         valueColor: AlwaysStoppedAnimation<Color>(
-                          _remainingSeconds <= 10 ? AppColors.error : AppColors.primary,
+                          _remainingSeconds <= 10
+                              ? AppColors.error
+                              : AppColors.primary,
                         ),
                       ),
                     ),
@@ -1610,7 +1300,9 @@ class _CourierRequestOverlayState extends State<_CourierRequestOverlay> {
                       style: TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
-                        color: _remainingSeconds <= 10 ? AppColors.error : AppColors.textPrimary,
+                        color: _remainingSeconds <= 10
+                            ? AppColors.error
+                            : AppColors.textPrimary,
                       ),
                     ),
                   ],
@@ -1621,10 +1313,7 @@ class _CourierRequestOverlayState extends State<_CourierRequestOverlay> {
                 // Title
                 const Text(
                   'Yeni Sipariş Teklifi!',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
 
                 const SizedBox(height: 16),
@@ -1658,7 +1347,8 @@ class _CourierRequestOverlayState extends State<_CourierRequestOverlay> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  merchant?['business_name'] ?? (isStore ? 'Mağaza' : 'Restoran'),
+                                  merchant?['business_name'] ??
+                                      (isStore ? 'Mağaza' : 'Restoran'),
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w600,
                                     fontSize: 16,
@@ -1681,7 +1371,11 @@ class _CourierRequestOverlayState extends State<_CourierRequestOverlay> {
                       const Divider(height: 24),
                       Row(
                         children: [
-                          Icon(Icons.location_on, size: 18, color: AppColors.error),
+                          Icon(
+                            Icons.location_on,
+                            size: 18,
+                            color: AppColors.error,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
@@ -1838,23 +1532,23 @@ class _WorkModeButton extends StatelessWidget {
                   : AppColors.background,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: isSelected && !isDisabled ? AppColors.primary : AppColors.border,
+                color: isSelected && !isDisabled
+                    ? AppColors.primary
+                    : AppColors.border,
                 width: isSelected && !isDisabled ? 2 : 1,
               ),
             ),
             child: Column(
               children: [
-                Icon(
-                  icon,
-                  color: effectiveColor,
-                  size: 24,
-                ),
+                Icon(icon, color: effectiveColor, size: 24),
                 const SizedBox(height: 4),
                 Text(
                   label,
                   style: TextStyle(
                     fontSize: 12,
-                    fontWeight: isSelected && !isDisabled ? FontWeight.w600 : FontWeight.normal,
+                    fontWeight: isSelected && !isDisabled
+                        ? FontWeight.w600
+                        : FontWeight.normal,
                     color: effectiveColor,
                   ),
                 ),

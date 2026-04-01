@@ -1,6 +1,6 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'log_service.dart';
 
 class GeocodingService {
   static const String _apiKey = 'AIzaSyDKGWWyuU8vbE_8H50XaFCi7exSSFolLnQ';
@@ -26,8 +26,8 @@ class GeocodingService {
         }
       }
       return null;
-    } catch (e) {
-      debugPrint('Geocoding error: $e');
+    } catch (e, st) {
+      LogService.error('Geocoding error', error: e, stackTrace: st, source: 'GeocodingService:getAddressFromCoordinates');
       return null;
     }
   }
@@ -78,8 +78,8 @@ class GeocodingService {
         }
       }
       return null;
-    } catch (e) {
-      debugPrint('Short geocoding error: $e');
+    } catch (e, st) {
+      LogService.error('Short geocoding error', error: e, stackTrace: st, source: 'GeocodingService:getShortAddressFromCoordinates');
       return null;
     }
   }
@@ -108,8 +108,8 @@ class GeocodingService {
         }
       }
       return null;
-    } catch (e) {
-      debugPrint('Geocoding error: $e');
+    } catch (e, st) {
+      LogService.error('Geocoding error', error: e, stackTrace: st, source: 'GeocodingService:getCoordinatesFromAddress');
       return null;
     }
   }

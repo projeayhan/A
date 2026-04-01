@@ -1,7 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supabase_service.dart';
 import '../utils/cache_helper.dart';
+import 'package:super_app/core/services/log_service.dart';
 
 class Restaurant {
   final String id;
@@ -243,8 +243,8 @@ class RestaurantService {
           return (response as List)
               .map((json) => Restaurant.fromMerchantJson(json))
               .toList();
-        } catch (e) {
-          if (kDebugMode) print('Error fetching restaurants: $e');
+        } catch (e, st) {
+          LogService.error('Error fetching restaurants', error: e, stackTrace: st, source: 'RestaurantService:getRestaurants');
           return [];
         }
       },
@@ -267,8 +267,8 @@ class RestaurantService {
           return (response as List)
               .map((json) => RestaurantCategory.fromJson(json))
               .toList();
-        } catch (e) {
-          if (kDebugMode) print('Error fetching restaurant categories: $e');
+        } catch (e, st) {
+          LogService.error('Error fetching restaurant categories', error: e, stackTrace: st, source: 'RestaurantService:getCategories');
           return [];
         }
       },
@@ -311,8 +311,8 @@ class RestaurantService {
       return (response as List)
           .map((json) => Restaurant.fromMerchantJson(json))
           .toList();
-    } catch (e) {
-      if (kDebugMode) print('Error fetching restaurants by category: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching restaurants by category', error: e, stackTrace: st, source: 'RestaurantService:getRestaurantsByCategory');
       return [];
     }
   }
@@ -332,8 +332,8 @@ class RestaurantService {
               .single();
 
           return Restaurant.fromMerchantJson(response);
-        } catch (e) {
-          if (kDebugMode) print('Error fetching restaurant: $e');
+        } catch (e, st) {
+          LogService.error('Error fetching restaurant', error: e, stackTrace: st, source: 'RestaurantService:getRestaurantById');
           return null;
         }
       },
@@ -370,8 +370,8 @@ class RestaurantService {
               hasOptionGroups: hasOptionGroups,
             );
           }).toList();
-        } catch (e) {
-          if (kDebugMode) print('Error fetching menu items: $e');
+        } catch (e, st) {
+          LogService.error('Error fetching menu items', error: e, stackTrace: st, source: 'RestaurantService:getMenuItems');
           return [];
         }
       },
@@ -405,7 +405,7 @@ class RestaurantService {
             .inFilter('id', deliverableIds)
             .eq('type', 'restaurant')
             .eq('is_approved', true)
-            .or('business_name.ilike.%$query%,description.ilike.%$query%')
+            .ilike('business_name', '%$query%')
             .order('rating', ascending: false)
             .limit(20);
 
@@ -419,15 +419,15 @@ class RestaurantService {
           .select()
           .eq('type', 'restaurant')
           .eq('is_approved', true)
-          .or('business_name.ilike.%$query%,description.ilike.%$query%')
+          .ilike('business_name', '%$query%')
           .order('rating', ascending: false)
           .limit(20);
 
       return (response as List)
           .map((json) => Restaurant.fromMerchantJson(json))
           .toList();
-    } catch (e) {
-      if (kDebugMode) print('Error searching restaurants: $e');
+    } catch (e, st) {
+      LogService.error('Error searching restaurants', error: e, stackTrace: st, source: 'RestaurantService:searchRestaurants');
       return [];
     }
   }
@@ -456,8 +456,8 @@ class RestaurantService {
           'restaurantName': merchant?['business_name'] as String? ?? '',
         };
       }).toList();
-    } catch (e) {
-      if (kDebugMode) print('Error searching menu items: $e');
+    } catch (e, st) {
+      LogService.error('Error searching menu items', error: e, stackTrace: st, source: 'RestaurantService:searchMenuItems');
       return [];
     }
   }
@@ -511,8 +511,8 @@ class RestaurantService {
       return (response as List)
           .map((json) => Restaurant.fromMerchantJson(json))
           .toList();
-    } catch (e) {
-      if (kDebugMode) print('Error fetching popular restaurants: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching popular restaurants', error: e, stackTrace: st, source: 'RestaurantService:getPopularRestaurants');
       return [];
     }
   }
@@ -540,33 +540,57 @@ class RestaurantService {
 
       // Merchant tipini al ve ilgili komisyon oranını çek
       double? commissionRate;
+      String? storeName;
       try {
-        // Merchant tipini al
+        // Merchant tipini ve adını al
         final merchantData = await _client
             .from('merchants')
-            .select('type')
+            .select('type, business_name')
             .eq('id', merchantId)
             .maybeSingle();
 
         if (merchantData != null) {
+          storeName = merchantData['business_name'] as String?;
           final merchantType = merchantData['type'] as String? ?? 'restaurant';
 
-          // Platform komisyon oranını al
-          final commissionData = await _client
-              .from('platform_commissions')
-              .select('platform_commission_rate')
-              .eq('service_type', merchantType)
-              .eq('is_active', true)
+          // Önce merchant-specific override kontrol et
+          final overrideData = await _client
+              .from('merchant_commission_overrides')
+              .select('custom_rate')
+              .eq('merchant_id', merchantId)
               .maybeSingle();
 
-          if (commissionData != null) {
+          if (overrideData != null) {
             commissionRate = double.tryParse(
-              commissionData['platform_commission_rate']?.toString() ?? ''
+              overrideData['custom_rate']?.toString() ?? ''
             );
+          } else {
+            // Sektör bazlı varsayılan komisyon oranını al
+            const sectorMap = {
+              'restaurant': 'food',
+              'store': 'store',
+              'market': 'market',
+              'taxi': 'taxi',
+            };
+            final sector = sectorMap[merchantType] ?? 'food';
+            final sectorData = await _client
+                .from('commission_rates')
+                .select('default_rate')
+                .eq('sector', sector)
+                .eq('is_active', true)
+                .maybeSingle();
+
+            if (sectorData != null) {
+              commissionRate = double.tryParse(
+                sectorData['default_rate']?.toString() ?? ''
+              );
+            } else {
+              commissionRate = 10.0; // Fallback
+            }
           }
         }
-      } catch (e) {
-        if (kDebugMode) print('Error fetching commission rate: $e');
+      } catch (e, st) {
+        LogService.error('Error fetching commission rate', error: e, stackTrace: st, source: 'RestaurantService:createOrder');
       }
 
       final response = await _client.from('orders').insert({
@@ -584,15 +608,42 @@ class RestaurantService {
         'customer_phone': customerPhone,
         'delivery_instructions': deliveryInstructions,
         'payment_method': paymentMethod ?? 'cash',
-        'status': 'pending',
-        'payment_status': 'pending',
+        'status': paymentMethod == 'online' ? 'awaiting_payment' : 'pending',
+        'payment_status': paymentMethod == 'online' ? 'awaiting' : 'pending',
         'commission_rate': commissionRate,
+        'store_name': storeName,
       }).select('id').single();
 
       return response['id'] as String;
-    } catch (e) {
-      if (kDebugMode) print('Error creating order: $e');
-      return null;
+    } catch (e, st) {
+      LogService.error('Error creating order', error: e, stackTrace: st, source: 'RestaurantService:createOrder');
+      throw Exception('Sipariş oluşturulamadı: $e');
+    }
+  }
+
+  /// Online ödeme onaylandıktan sonra sipariş ödeme durumunu güncelle.
+  static Future<void> updateOrderPaymentStatus(String orderId, String status) async {
+    try {
+      final update = <String, dynamic>{'payment_status': status};
+      // Ödeme onaylandıysa siparişi merchant'a göster
+      if (status == 'paid') {
+        update['status'] = 'pending';
+      }
+      await _client.from('orders').update(update).eq('id', orderId);
+    } catch (e, st) {
+      LogService.error('Error updating order payment status', error: e, stackTrace: st, source: 'RestaurantService:updateOrderPaymentStatus');
+    }
+  }
+
+  /// Online ödeme başarısız olduğunda bekleyen siparişi iptal et.
+  static Future<void> cancelOrder(String orderId) async {
+    try {
+      await _client.from('orders').update({
+        'status': 'cancelled',
+        'payment_status': 'failed',
+      }).eq('id', orderId);
+    } catch (e, st) {
+      LogService.error('Error cancelling order', error: e, stackTrace: st, source: 'RestaurantService:cancelOrder');
     }
   }
 
@@ -609,8 +660,8 @@ class RestaurantService {
           .order('created_at', ascending: false);
 
       return List<Map<String, dynamic>>.from(response);
-    } catch (e) {
-      if (kDebugMode) print('Error fetching user orders: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching user orders', error: e, stackTrace: st, source: 'RestaurantService:getUserOrders');
       return [];
     }
   }
@@ -660,10 +711,9 @@ class RestaurantService {
       }
 
       return (isOpen: true, message: null, openTime: openTime, closeTime: closeTime);
-    } catch (e) {
-      if (kDebugMode) print('Error checking working hours: $e');
-      // Hata durumunda siparişe izin ver, server-side kontrol yapacak
-      return (isOpen: true, message: null, openTime: null, closeTime: null);
+    } catch (e, st) {
+      LogService.error('Error checking working hours', error: e, stackTrace: st, source: 'RestaurantService:isRestaurantOpen');
+      return (isOpen: false, message: 'Çalışma saatleri alınamadı', openTime: null, closeTime: null);
     }
   }
 
@@ -689,8 +739,8 @@ class RestaurantService {
           categories.sort((a, b) => a.compareTo(b));
 
           return categories;
-        } catch (e) {
-          if (kDebugMode) print('Error fetching menu categories: $e');
+        } catch (e, st) {
+          LogService.error('Error fetching menu categories', error: e, stackTrace: st, source: 'RestaurantService:getMenuCategories');
           return [];
         }
       },
@@ -744,8 +794,8 @@ class RestaurantService {
       return (restaurantResponse as List)
           .map((json) => json['id'] as String)
           .toList();
-    } catch (e) {
-      if (kDebugMode) print('Error fetching restaurants by menu category: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching restaurants by menu category', error: e, stackTrace: st, source: 'RestaurantService:getRestaurantsByMenuCategory');
       return [];
     }
   }
@@ -788,8 +838,8 @@ class RestaurantService {
               category: map['category'] as String?,
             );
           }).toList();
-        } catch (e) {
-          if (kDebugMode) print('Error fetching frequently bought together: $e');
+        } catch (e, st) {
+          LogService.error('Error fetching frequently bought together', error: e, stackTrace: st, source: 'RestaurantService:getFrequentlyBoughtTogether');
           return [];
         }
       },

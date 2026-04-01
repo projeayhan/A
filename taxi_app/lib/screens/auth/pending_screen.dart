@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/providers/auth_provider.dart';
+import '../../core/services/log_service.dart';
 import '../../core/services/taxi_service.dart';
 import '../../core/theme/app_theme.dart';
 
@@ -60,7 +61,8 @@ class _PendingScreenState extends ConsumerState<PendingScreen> {
   Map<String, dynamic>? _getDocument(String type) {
     try {
       return _documents.firstWhere((d) => d['type'] == type);
-    } catch (_) {
+    } catch (e, st) {
+      LogService.error('getDocument error', error: e, stackTrace: st, source: 'PendingScreen:_getDocument');
       return null;
     }
   }

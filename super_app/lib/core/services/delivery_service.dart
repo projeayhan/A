@@ -1,6 +1,6 @@
-import 'package:flutter/foundation.dart';
 import 'supabase_service.dart';
 import '../utils/cache_helper.dart';
+import 'package:super_app/core/services/log_service.dart';
 
 class DeliveryEstimate {
   final bool canDeliver;
@@ -64,8 +64,8 @@ class DeliveryService {
             freeDeliveryEligible: data['free_delivery_eligible'] as bool? ?? false,
             errorMessage: data['error_message'] as String?,
           );
-        } catch (e) {
-          debugPrint('DeliveryService.getDeliveryEstimate error: $e');
+        } catch (e, st) {
+          LogService.error('DeliveryService.getDeliveryEstimate error', error: e, stackTrace: st, source: 'DeliveryService:getDeliveryEstimate');
           return null;
         }
       },

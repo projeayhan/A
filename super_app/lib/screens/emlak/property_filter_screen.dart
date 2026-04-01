@@ -29,23 +29,58 @@ const _ticariTypes = [
 
 /// Oda sayısı seçenekleri
 const _roomOptions = [
-  '1+0', '1+1', '2+1', '2+2', '3+1', '3+2',
-  '4+1', '4+2', '5', '5+1', '5+2', '5+3',
-  '5+4', '6+1', '6+2', '6+3', '6+4', '7+1',
-  '7+2', '7+3', '8+',
+  '1+0',
+  '1+1',
+  '2+1',
+  '2+2',
+  '3+1',
+  '3+2',
+  '4+1',
+  '4+2',
+  '5',
+  '5+1',
+  '5+2',
+  '5+3',
+  '5+4',
+  '6+1',
+  '6+2',
+  '6+3',
+  '6+4',
+  '7+1',
+  '7+2',
+  '7+3',
+  '8+',
 ];
 
 /// Bina yaşı seçenekleri
 const _buildingAgeOptions = [
-  '0', 'project', '1', '2', '3', '4', '5',
-  '6-10', '11-15', '16-20', '21-25', '26+',
+  '0',
+  'project',
+  '1',
+  '2',
+  '3',
+  '4',
+  '5',
+  '6-10',
+  '11-15',
+  '16-20',
+  '21-25',
+  '26+',
 ];
 
 const _buildingAgeLabels = {
-  '0': '0', 'project': 'Proje Aşamasında',
-  '1': '1', '2': '2', '3': '3', '4': '4', '5': '5',
-  '6-10': '6 - 10', '11-15': '11 - 15', '16-20': '16 - 20',
-  '21-25': '21 - 25', '26+': '26+',
+  '0': '0',
+  'project': 'Proje Aşamasında',
+  '1': '1',
+  '2': '2',
+  '3': '3',
+  '4': '4',
+  '5': '5',
+  '6-10': '6 - 10',
+  '11-15': '11 - 15',
+  '16-20': '16 - 20',
+  '21-25': '21 - 25',
+  '26+': '26+',
 };
 
 /// Eşya durumu seçenekleri
@@ -230,7 +265,9 @@ class _PropertyFilterScreenState extends ConsumerState<PropertyFilterScreen> {
     if (f.selectedPropertyTypes != null) {
       for (final name in f.selectedPropertyTypes!) {
         try {
-          _selectedPropertyTypes.add(PropertyType.values.firstWhere((e) => e.name == name));
+          _selectedPropertyTypes.add(
+            PropertyType.values.firstWhere((e) => e.name == name),
+          );
         } catch (_) {}
       }
     } else if (f.type != null) {
@@ -247,7 +284,9 @@ class _PropertyFilterScreenState extends ConsumerState<PropertyFilterScreen> {
     if (f.roomTypes != null) _selectedRoomTypes.addAll(f.roomTypes!);
     if (f.buildingAges != null) _selectedBuildingAges.addAll(f.buildingAges!);
     if (f.floors != null) _selectedFloors.addAll(f.floors!);
-    if (f.furnitureStatuses != null) _selectedFurnitureStatuses.addAll(f.furnitureStatuses!);
+    if (f.furnitureStatuses != null) {
+      _selectedFurnitureStatuses.addAll(f.furnitureStatuses!);
+    }
     if (f.ownerTypes != null) _selectedOwnerTypes.addAll(f.ownerTypes!);
 
     // Boolean özellikler
@@ -258,16 +297,19 @@ class _PropertyFilterScreenState extends ConsumerState<PropertyFilterScreen> {
       'hasSecurityCamera': f.hasSecurityCamera, 'hasTerrace': f.hasTerrace,
       'hasInsulation': f.hasInsulation, 'hasWaterTank': f.hasWaterTank,
       'hasWell': f.hasWell, 'hasBarbeque': f.hasBarbeque,
-      'hasDoubleGlazing': f.hasDoubleGlazing, 'hasCoveredParking': f.hasCoveredParking,
+      'hasDoubleGlazing': f.hasDoubleGlazing,
+      'hasCoveredParking': f.hasCoveredParking,
       'hasGenerator': f.hasGenerator, 'hasElevator': f.hasElevator,
       'hasParking': f.hasParking, 'hasSandstoneHouse': f.hasSandstoneHouse,
       // İç
       'isDuplex': f.isDuplex, 'hasAirConditioning': f.hasAirConditioning,
       'hasBalcony': f.hasBalcony, 'hasShutter': f.hasShutter,
-      'hasBuiltinKitchen': f.hasBuiltinKitchen, 'hasBuiltinWardrobe': f.hasBuiltinWardrobe,
+      'hasBuiltinKitchen': f.hasBuiltinKitchen,
+      'hasBuiltinWardrobe': f.hasBuiltinWardrobe,
       'hasIntercom': f.hasIntercom, 'hasFireplace': f.hasFireplace,
       'hasCrown': f.hasCrown, 'hasLaundryRoom': f.hasLaundryRoom,
-      'hasParentBathroom': f.hasParentBathroom, 'hasParentCloset': f.hasParentCloset,
+      'hasParentBathroom': f.hasParentBathroom,
+      'hasParentCloset': f.hasParentCloset,
       'hasNaturalMarble': f.hasNaturalMarble, 'hasPanelDoor': f.hasPanelDoor,
       'hasParquet': f.hasParquet, 'hasShower': f.hasShower,
       'hasSteelDoor': f.hasSteelDoor, 'hasTvInfra': f.hasTvInfra,
@@ -287,8 +329,12 @@ class _PropertyFilterScreenState extends ConsumerState<PropertyFilterScreen> {
     }
 
     // Controllers
-    if (_minPrice != null) _minPriceController.text = _minPrice!.toInt().toString();
-    if (_maxPrice != null) _maxPriceController.text = _maxPrice!.toInt().toString();
+    if (_minPrice != null) {
+      _minPriceController.text = _minPrice!.toInt().toString();
+    }
+    if (_maxPrice != null) {
+      _maxPriceController.text = _maxPrice!.toInt().toString();
+    }
     if (_minSqm != null) _minSqmController.text = _minSqm.toString();
     if (_maxSqm != null) _maxSqmController.text = _maxSqm.toString();
     if (_keyword.isNotEmpty) _keywordController.text = _keyword;
@@ -333,11 +379,19 @@ class _PropertyFilterScreenState extends ConsumerState<PropertyFilterScreen> {
       minSquareMeters: _minSqm,
       maxSquareMeters: _maxSqm,
       keyword: _keyword.isEmpty ? null : _keyword,
-      roomTypes: _selectedRoomTypes.isNotEmpty ? Set.from(_selectedRoomTypes) : null,
-      buildingAges: _selectedBuildingAges.isNotEmpty ? Set.from(_selectedBuildingAges) : null,
+      roomTypes: _selectedRoomTypes.isNotEmpty
+          ? Set.from(_selectedRoomTypes)
+          : null,
+      buildingAges: _selectedBuildingAges.isNotEmpty
+          ? Set.from(_selectedBuildingAges)
+          : null,
       floors: _selectedFloors.isNotEmpty ? Set.from(_selectedFloors) : null,
-      furnitureStatuses: _selectedFurnitureStatuses.isNotEmpty ? Set.from(_selectedFurnitureStatuses) : null,
-      ownerTypes: _selectedOwnerTypes.isNotEmpty ? Set.from(_selectedOwnerTypes) : null,
+      furnitureStatuses: _selectedFurnitureStatuses.isNotEmpty
+          ? Set.from(_selectedFurnitureStatuses)
+          : null,
+      ownerTypes: _selectedOwnerTypes.isNotEmpty
+          ? Set.from(_selectedOwnerTypes)
+          : null,
       listingDateRange: _listingDateRange == 'all' ? null : _listingDateRange,
       isOpenToTrade: _isOpenToTrade ? true : null,
       isInComplex: _isInComplex ? true : null,
@@ -472,7 +526,10 @@ class _PropertyFilterScreenState extends ConsumerState<PropertyFilterScreen> {
           if (activeCount > 0)
             TextButton(
               onPressed: _clearAll,
-              child: Text('Temizle', style: TextStyle(color: EmlakColors.error, fontSize: 13)),
+              child: Text(
+                'Temizle',
+                style: TextStyle(color: EmlakColors.error, fontSize: 13),
+              ),
             ),
         ],
       ),
@@ -492,59 +549,113 @@ class _PropertyFilterScreenState extends ConsumerState<PropertyFilterScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // 2. Lokasyon
-                        _buildSectionHeader('Lokasyon', Icons.location_on_outlined, isDark),
+                        _buildSectionHeader(
+                          'Lokasyon',
+                          Icons.location_on_outlined,
+                          isDark,
+                        ),
                         const SizedBox(height: 8),
                         _buildLocationSection(isDark),
                         const SizedBox(height: 20),
 
                         // 3. Emlak Tipi
-                        _buildSectionHeader('Emlak Tipi', Icons.apartment_rounded, isDark),
+                        _buildSectionHeader(
+                          'Emlak Tipi',
+                          Icons.apartment_rounded,
+                          isDark,
+                        ),
                         const SizedBox(height: 8),
                         _buildPropertyTypeSection(isDark),
                         const SizedBox(height: 20),
 
                         // 4. Fiyat Aralığı
-                        _buildSectionHeader('Fiyat Aralığı', Icons.monetization_on_outlined, isDark),
+                        _buildSectionHeader(
+                          'Fiyat Aralığı',
+                          Icons.monetization_on_outlined,
+                          isDark,
+                        ),
                         const SizedBox(height: 8),
                         _buildPriceSection(isDark),
                         const SizedBox(height: 20),
 
                         // 5. Alan m²
-                        _buildSectionHeader('Alan - m²', Icons.straighten_outlined, isDark),
+                        _buildSectionHeader(
+                          'Alan - m²',
+                          Icons.straighten_outlined,
+                          isDark,
+                        ),
                         const SizedBox(height: 8),
-                        _buildRangeRow(_minSqmController, _maxSqmController, isDark,
-                          onMinChanged: (v) => _minSqm = v.isNotEmpty ? int.tryParse(v) : null,
-                          onMaxChanged: (v) => _maxSqm = v.isNotEmpty ? int.tryParse(v) : null,
+                        _buildRangeRow(
+                          _minSqmController,
+                          _maxSqmController,
+                          isDark,
+                          onMinChanged: (v) =>
+                              _minSqm = v.isNotEmpty ? int.tryParse(v) : null,
+                          onMaxChanged: (v) =>
+                              _maxSqm = v.isNotEmpty ? int.tryParse(v) : null,
                         ),
                         const SizedBox(height: 16),
 
                         // 6. Detaylı Arama
-                        _buildExpandableSection('Detaylı Arama', Icons.tune_rounded, isDark,
-                          _buildDetailedSearchContent(isDark)),
+                        _buildExpandableSection(
+                          'Detaylı Arama',
+                          Icons.tune_rounded,
+                          isDark,
+                          _buildDetailedSearchContent(isDark),
+                        ),
                         const SizedBox(height: 8),
 
                         // 7. Toggle'lar
-                        _buildToggleRow('Sadece Takasa Açık', _isOpenToTrade, isDark,
-                            (v) => setState(() => _isOpenToTrade = v)),
+                        _buildToggleRow(
+                          'Sadece Takasa Açık',
+                          _isOpenToTrade,
+                          isDark,
+                          (v) => setState(() => _isOpenToTrade = v),
+                        ),
                         Divider(color: EmlakColors.border(isDark), height: 1),
-                        _buildToggleRow('Site İçerisinde', _isInComplex, isDark,
-                            (v) => setState(() => _isInComplex = v)),
+                        _buildToggleRow(
+                          'Site İçerisinde',
+                          _isInComplex,
+                          isDark,
+                          (v) => setState(() => _isInComplex = v),
+                        ),
                         Divider(color: EmlakColors.border(isDark), height: 1),
                         const SizedBox(height: 8),
 
                         // 8. Dış Özellikler
-                        _buildExpandableSection('Dış Özellikler', Icons.yard_outlined, isDark,
-                          _buildBooleanFeatureGrid(_exteriorFeatureKeys, isDark)),
+                        _buildExpandableSection(
+                          'Dış Özellikler',
+                          Icons.yard_outlined,
+                          isDark,
+                          _buildBooleanFeatureGrid(
+                            _exteriorFeatureKeys,
+                            isDark,
+                          ),
+                        ),
                         const SizedBox(height: 8),
 
                         // 9. İç Özellikler
-                        _buildExpandableSection('İç Özellikler', Icons.chair_outlined, isDark,
-                          _buildBooleanFeatureGrid(_interiorFeatureKeys, isDark)),
+                        _buildExpandableSection(
+                          'İç Özellikler',
+                          Icons.chair_outlined,
+                          isDark,
+                          _buildBooleanFeatureGrid(
+                            _interiorFeatureKeys,
+                            isDark,
+                          ),
+                        ),
                         const SizedBox(height: 8),
 
                         // 10. Konum Özellikleri
-                        _buildExpandableSection('Konum Özellikleri', Icons.explore_outlined, isDark,
-                          _buildBooleanFeatureGrid(_locationFeatureKeys, isDark)),
+                        _buildExpandableSection(
+                          'Konum Özellikleri',
+                          Icons.explore_outlined,
+                          isDark,
+                          _buildBooleanFeatureGrid(
+                            _locationFeatureKeys,
+                            isDark,
+                          ),
+                        ),
                         const SizedBox(height: 24),
                       ],
                     ),
@@ -567,10 +678,14 @@ class _PropertyFilterScreenState extends ConsumerState<PropertyFilterScreen> {
       children: [
         Icon(icon, size: 20, color: EmlakColors.primary),
         const SizedBox(width: 8),
-        Text(title, style: TextStyle(
-          fontSize: 15, fontWeight: FontWeight.w700,
-          color: EmlakColors.textPrimary(isDark),
-        )),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            color: EmlakColors.textPrimary(isDark),
+          ),
+        ),
       ],
     );
   }
@@ -600,16 +715,23 @@ class _PropertyFilterScreenState extends ConsumerState<PropertyFilterScreen> {
               child: InkWell(
                 onTap: () {
                   HapticFeedback.selectionClick();
-                  setState(() => _listingType = _listingType == t.$1 ? null : t.$1);
+                  setState(
+                    () => _listingType = _listingType == t.$1 ? null : t.$1,
+                  );
                 },
                 child: SizedBox(
                   height: 44,
                   child: Center(
-                    child: Text(t.$2, style: TextStyle(
-                      color: sel ? Colors.white : EmlakColors.textPrimary(isDark),
-                      fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
-                      fontSize: 13,
-                    )),
+                    child: Text(
+                      t.$2,
+                      style: TextStyle(
+                        color: sel
+                            ? Colors.white
+                            : EmlakColors.textPrimary(isDark),
+                        fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
+                        fontSize: 13,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -626,17 +748,31 @@ class _PropertyFilterScreenState extends ConsumerState<PropertyFilterScreen> {
   Widget _buildLocationSection(bool isDark) {
     return Row(
       children: [
-        Expanded(child: _buildDropdown(
-          value: _selectedCity.isEmpty ? null : _selectedCity,
-          hint: 'Şehir Seçiniz', items: _cities, isDark: isDark,
-          onChanged: (v) { setState(() { _selectedCity = v ?? ''; _selectedDistrict = ''; }); _loadDistricts(); },
-        )),
+        Expanded(
+          child: _buildDropdown(
+            value: _selectedCity.isEmpty ? null : _selectedCity,
+            hint: 'Şehir Seçiniz',
+            items: _cities,
+            isDark: isDark,
+            onChanged: (v) {
+              setState(() {
+                _selectedCity = v ?? '';
+                _selectedDistrict = '';
+              });
+              _loadDistricts();
+            },
+          ),
+        ),
         const SizedBox(width: 10),
-        Expanded(child: _buildDropdown(
-          value: _selectedDistrict.isEmpty ? null : _selectedDistrict,
-          hint: 'Bölge Seçiniz', items: _districts, isDark: isDark,
-          onChanged: (v) => setState(() => _selectedDistrict = v ?? ''),
-        )),
+        Expanded(
+          child: _buildDropdown(
+            value: _selectedDistrict.isEmpty ? null : _selectedDistrict,
+            hint: 'Bölge Seçiniz',
+            items: _districts,
+            isDark: isDark,
+            onChanged: (v) => setState(() => _selectedDistrict = v ?? ''),
+          ),
+        ),
       ],
     );
   }
@@ -648,13 +784,15 @@ class _PropertyFilterScreenState extends ConsumerState<PropertyFilterScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(children: [
-          _buildCategoryBtn('Konut', 'konut', isDark),
-          const SizedBox(width: 8),
-          _buildCategoryBtn('Arsa', 'arsa', isDark),
-          const SizedBox(width: 8),
-          _buildCategoryBtn('Ticari Emlak', 'ticari', isDark),
-        ]),
+        Row(
+          children: [
+            _buildCategoryBtn('Konut', 'konut', isDark),
+            const SizedBox(width: 8),
+            _buildCategoryBtn('Arsa', 'arsa', isDark),
+            const SizedBox(width: 8),
+            _buildCategoryBtn('Ticari Emlak', 'ticari', isDark),
+          ],
+        ),
         if (_selectedCategory != null) ...[
           const SizedBox(height: 12),
           _buildPropertySubTypes(isDark),
@@ -674,8 +812,13 @@ class _PropertyFilterScreenState extends ConsumerState<PropertyFilterScreen> {
           onTap: () {
             HapticFeedback.selectionClick();
             setState(() {
-              if (_selectedCategory == cat) { _selectedCategory = null; _selectedPropertyTypes.clear(); }
-              else { _selectedCategory = cat; _selectedPropertyTypes.clear(); }
+              if (_selectedCategory == cat) {
+                _selectedCategory = null;
+                _selectedPropertyTypes.clear();
+              } else {
+                _selectedCategory = cat;
+                _selectedPropertyTypes.clear();
+              }
             });
           },
           borderRadius: BorderRadius.circular(10),
@@ -684,12 +827,20 @@ class _PropertyFilterScreenState extends ConsumerState<PropertyFilterScreen> {
             padding: const EdgeInsets.symmetric(vertical: 12),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: sel ? EmlakColors.primary : EmlakColors.border(isDark)),
+              border: Border.all(
+                color: sel ? EmlakColors.primary : EmlakColors.border(isDark),
+              ),
             ),
-            child: Center(child: Text(label, style: TextStyle(
-              color: sel ? Colors.white : EmlakColors.textSecondary(isDark),
-              fontWeight: sel ? FontWeight.w700 : FontWeight.w500, fontSize: 13,
-            ))),
+            child: Center(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: sel ? Colors.white : EmlakColors.textSecondary(isDark),
+                  fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
+                  fontSize: 13,
+                ),
+              ),
+            ),
           ),
         ),
       ),
@@ -697,15 +848,27 @@ class _PropertyFilterScreenState extends ConsumerState<PropertyFilterScreen> {
   }
 
   Widget _buildPropertySubTypes(bool isDark) {
-    final types = _selectedCategory == 'konut' ? _konutTypes
-        : _selectedCategory == 'arsa' ? _arsaTypes : _ticariTypes;
+    final types = _selectedCategory == 'konut'
+        ? _konutTypes
+        : _selectedCategory == 'arsa'
+        ? _arsaTypes
+        : _ticariTypes;
     final w = (MediaQuery.of(context).size.width - 32) / 2;
     return Wrap(
       children: types.map((pt) {
         final sel = _selectedPropertyTypes.contains(pt);
-        return SizedBox(width: w, child: _buildCheckboxTile(pt.label, sel, isDark, () {
-          setState(() { if (sel) _selectedPropertyTypes.remove(pt); else _selectedPropertyTypes.add(pt); });
-        }));
+        return SizedBox(
+          width: w,
+          child: _buildCheckboxTile(pt.label, sel, isDark, () {
+            setState(() {
+              if (sel) {
+                _selectedPropertyTypes.remove(pt);
+              } else {
+                _selectedPropertyTypes.add(pt);
+              }
+            });
+          }),
+        );
       }).toList(),
     );
   }
@@ -730,15 +893,21 @@ class _PropertyFilterScreenState extends ConsumerState<PropertyFilterScreen> {
           children: [
             // "Tümü" butonu
             _buildCurrencyChip(null, 'Tümü', isDark),
-            ...currencyOptions.map((c) =>
-              _buildCurrencyChip(c['code']!, '${c['symbol']} ${c['code']}', isDark)),
+            ...currencyOptions.map(
+              (c) => _buildCurrencyChip(
+                c['code']!,
+                '${c['symbol']} ${c['code']}',
+                isDark,
+              ),
+            ),
           ],
         ),
         const SizedBox(height: 12),
         _buildDropdown(
           value: _selectedPricePreset,
           hint: 'Lütfen Seçiniz',
-          items: _pricePresets.keys.toList(), isDark: isDark,
+          items: _pricePresets.keys.toList(),
+          isDark: isDark,
           itemLabelBuilder: (k) => _pricePresets[k]!['label'] as String,
           onChanged: (v) => setState(() {
             _selectedPricePreset = v;
@@ -753,9 +922,18 @@ class _PropertyFilterScreenState extends ConsumerState<PropertyFilterScreen> {
           }),
         ),
         const SizedBox(height: 10),
-        _buildRangeRow(_minPriceController, _maxPriceController, isDark,
-          onMinChanged: (v) { _minPrice = v.isNotEmpty ? double.tryParse(v) : null; _selectedPricePreset = null; },
-          onMaxChanged: (v) { _maxPrice = v.isNotEmpty ? double.tryParse(v) : null; _selectedPricePreset = null; },
+        _buildRangeRow(
+          _minPriceController,
+          _maxPriceController,
+          isDark,
+          onMinChanged: (v) {
+            _minPrice = v.isNotEmpty ? double.tryParse(v) : null;
+            _selectedPricePreset = null;
+          },
+          onMaxChanged: (v) {
+            _maxPrice = v.isNotEmpty ? double.tryParse(v) : null;
+            _selectedPricePreset = null;
+          },
         ),
       ],
     );
@@ -807,31 +985,75 @@ class _PropertyFilterScreenState extends ConsumerState<PropertyFilterScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildInput(_keywordController, 'Anahtar kelime ile arama yap', isDark,
-          isNumeric: false, prefixIcon: Icons.search,
-          onChanged: (v) => _keyword = v),
+        _buildInput(
+          _keywordController,
+          'Anahtar kelime ile arama yap',
+          isDark,
+          isNumeric: false,
+          prefixIcon: Icons.search,
+          onChanged: (v) => _keyword = v,
+        ),
         const SizedBox(height: 16),
-        _buildSubExpand('Oda Sayısı', isDark, _buildStringCheckboxGrid(_roomOptions, _selectedRoomTypes, isDark, 3)),
-        _buildSubExpand('Bina Yaşı', isDark, _buildStringCheckboxGrid(
-          _buildingAgeOptions, _selectedBuildingAges, isDark, 3, labelMap: _buildingAgeLabels)),
+        _buildSubExpand(
+          'Oda Sayısı',
+          isDark,
+          _buildStringCheckboxGrid(_roomOptions, _selectedRoomTypes, isDark, 3),
+        ),
+        _buildSubExpand(
+          'Bina Yaşı',
+          isDark,
+          _buildStringCheckboxGrid(
+            _buildingAgeOptions,
+            _selectedBuildingAges,
+            isDark,
+            3,
+            labelMap: _buildingAgeLabels,
+          ),
+        ),
         _buildSubExpand('Kat', isDark, _buildFloorGrid(isDark)),
-        _buildSubExpand('Eşya Durumu', isDark, _buildStringCheckboxGrid(
-          _furnitureOptions.keys.toList(), _selectedFurnitureStatuses, isDark, 2, labelMap: _furnitureOptions)),
+        _buildSubExpand(
+          'Eşya Durumu',
+          isDark,
+          _buildStringCheckboxGrid(
+            _furnitureOptions.keys.toList(),
+            _selectedFurnitureStatuses,
+            isDark,
+            2,
+            labelMap: _furnitureOptions,
+          ),
+        ),
         _buildSubExpand('İlan Sahibi', isDark, _buildOwnerSection(isDark)),
         _buildSubExpand('İlan Ekleme Tarihi', isDark, _buildDateRadio(isDark)),
       ],
     );
   }
 
-  Widget _buildStringCheckboxGrid(List<String> opts, Set<String> sel, bool isDark, int cols, {Map<String, String>? labelMap}) {
+  Widget _buildStringCheckboxGrid(
+    List<String> opts,
+    Set<String> sel,
+    bool isDark,
+    int cols, {
+    Map<String, String>? labelMap,
+  }) {
     final w = (MediaQuery.of(context).size.width - 48) / cols;
     return Wrap(
       children: opts.map((o) {
         final s = sel.contains(o);
-        return SizedBox(width: w, child: _buildCheckboxTile(
-          labelMap?[o] ?? o, s, isDark,
-          () => setState(() { if (s) sel.remove(o); else sel.add(o); }),
-        ));
+        return SizedBox(
+          width: w,
+          child: _buildCheckboxTile(
+            labelMap?[o] ?? o,
+            s,
+            isDark,
+            () => setState(() {
+              if (s) {
+                sel.remove(o);
+              } else {
+                sel.add(o);
+              }
+            }),
+          ),
+        );
       }).toList(),
     );
   }
@@ -841,9 +1063,21 @@ class _PropertyFilterScreenState extends ConsumerState<PropertyFilterScreen> {
     return Wrap(
       children: List.generate(16, (i) => i).map((f) {
         final s = _selectedFloors.contains(f);
-        return SizedBox(width: w, child: _buildCheckboxTile('$f', s, isDark,
-          () => setState(() { if (s) _selectedFloors.remove(f); else _selectedFloors.add(f); }),
-        ));
+        return SizedBox(
+          width: w,
+          child: _buildCheckboxTile(
+            '$f',
+            s,
+            isDark,
+            () => setState(() {
+              if (s) {
+                _selectedFloors.remove(f);
+              } else {
+                _selectedFloors.add(f);
+              }
+            }),
+          ),
+        );
       }).toList(),
     );
   }
@@ -853,12 +1087,18 @@ class _PropertyFilterScreenState extends ConsumerState<PropertyFilterScreen> {
     return Wrap(
       children: _ownerOptions.entries.map((e) {
         final s = _selectedOwnerTypes.contains(e.key);
-        return SizedBox(width: w, child: _buildCheckboxTile(e.value, s, isDark, () {
-          setState(() {
-            if (s) _selectedOwnerTypes.remove(e.key);
-            else _selectedOwnerTypes.add(e.key);
-          });
-        }));
+        return SizedBox(
+          width: w,
+          child: _buildCheckboxTile(e.value, s, isDark, () {
+            setState(() {
+              if (s) {
+                _selectedOwnerTypes.remove(e.key);
+              } else {
+                _selectedOwnerTypes.add(e.key);
+              }
+            });
+          }),
+        );
       }).toList(),
     );
   }
@@ -868,25 +1108,44 @@ class _PropertyFilterScreenState extends ConsumerState<PropertyFilterScreen> {
     return Wrap(
       children: _dateOptions.entries.map((e) {
         final s = _listingDateRange == e.key;
-        return SizedBox(width: w, child: InkWell(
-          onTap: () {
-            HapticFeedback.selectionClick();
-            setState(() => _listingDateRange = e.key);
-          },
-          borderRadius: BorderRadius.circular(8),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(s ? Icons.radio_button_checked : Icons.radio_button_off,
-                size: 18, color: s ? EmlakColors.primary : EmlakColors.textTertiary(isDark)),
-              const SizedBox(width: 6),
-              Flexible(child: Text(e.value, style: TextStyle(
-                fontSize: 12, color: s ? EmlakColors.primary : EmlakColors.textPrimary(isDark),
-                fontWeight: s ? FontWeight.w600 : FontWeight.w400,
-              ))),
-            ]),
+        return SizedBox(
+          width: w,
+          child: InkWell(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              setState(() => _listingDateRange = e.key);
+            },
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    s ? Icons.radio_button_checked : Icons.radio_button_off,
+                    size: 18,
+                    color: s
+                        ? EmlakColors.primary
+                        : EmlakColors.textTertiary(isDark),
+                  ),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      e.value,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: s
+                            ? EmlakColors.primary
+                            : EmlakColors.textPrimary(isDark),
+                        fontWeight: s ? FontWeight.w600 : FontWeight.w400,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-        ));
+        );
       }).toList(),
     );
   }
@@ -899,9 +1158,18 @@ class _PropertyFilterScreenState extends ConsumerState<PropertyFilterScreen> {
     return Wrap(
       children: featureMap.entries.map((e) {
         final s = _features[e.key] == true;
-        return SizedBox(width: w, child: _buildCheckboxTile(e.value, s, isDark, () {
-          setState(() { if (s) _features.remove(e.key); else _features[e.key] = true; });
-        }));
+        return SizedBox(
+          width: w,
+          child: _buildCheckboxTile(e.value, s, isDark, () {
+            setState(() {
+              if (s) {
+                _features.remove(e.key);
+              } else {
+                _features[e.key] = true;
+              }
+            });
+          }),
+        );
       }).toList(),
     );
   }
@@ -911,36 +1179,56 @@ class _PropertyFilterScreenState extends ConsumerState<PropertyFilterScreen> {
   // ==========================================
   Widget _buildBottomBar(bool isDark, int activeCount) {
     return Container(
-      padding: EdgeInsets.only(left: 16, right: 16, top: 12,
-        bottom: MediaQuery.of(context).padding.bottom + 12),
+      padding: EdgeInsets.only(
+        left: 16,
+        right: 16,
+        top: 12,
+        bottom: MediaQuery.of(context).padding.bottom + 12,
+      ),
       decoration: BoxDecoration(
         color: EmlakColors.card(isDark),
         border: Border(top: BorderSide(color: EmlakColors.border(isDark))),
       ),
-      child: Row(children: [
-        if (activeCount > 0) ...[
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: EmlakColors.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(20),
+      child: Row(
+        children: [
+          if (activeCount > 0) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: EmlakColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                '$activeCount filtre',
+                style: TextStyle(
+                  color: EmlakColors.primary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
             ),
-            child: Text('$activeCount filtre', style: TextStyle(
-              color: EmlakColors.primary, fontWeight: FontWeight.w600, fontSize: 13)),
+            const SizedBox(width: 12),
+          ],
+          Expanded(
+            child: ElevatedButton(
+              onPressed: () => Navigator.pop(context, _buildFilter()),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: EmlakColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                elevation: 0,
+              ),
+              child: const Text(
+                'Uygula',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+              ),
+            ),
           ),
-          const SizedBox(width: 12),
         ],
-        Expanded(child: ElevatedButton(
-          onPressed: () => Navigator.pop(context, _buildFilter()),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: EmlakColors.primary, foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            elevation: 0,
-          ),
-          child: const Text('Uygula', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-        )),
-      ]),
+      ),
     );
   }
 
@@ -948,7 +1236,12 @@ class _PropertyFilterScreenState extends ConsumerState<PropertyFilterScreen> {
   // REUSABLE WIDGETS
   // ==========================================
 
-  Widget _buildCheckboxTile(String label, bool sel, bool isDark, VoidCallback onTap) {
+  Widget _buildCheckboxTile(
+    String label,
+    bool sel,
+    bool isDark,
+    VoidCallback onTap,
+  ) {
     return InkWell(
       onTap: () {
         HapticFeedback.selectionClick();
@@ -957,37 +1250,68 @@ class _PropertyFilterScreenState extends ConsumerState<PropertyFilterScreen> {
       borderRadius: BorderRadius.circular(8),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Container(
-            width: 20, height: 20,
-            decoration: BoxDecoration(
-              color: sel ? EmlakColors.primary : Colors.transparent,
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: sel ? EmlakColors.primary : EmlakColors.border(isDark), width: 1.5),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 20,
+              height: 20,
+              decoration: BoxDecoration(
+                color: sel ? EmlakColors.primary : Colors.transparent,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(
+                  color: sel ? EmlakColors.primary : EmlakColors.border(isDark),
+                  width: 1.5,
+                ),
+              ),
+              child: sel
+                  ? const Icon(Icons.check, size: 14, color: Colors.white)
+                  : null,
             ),
-            child: sel ? const Icon(Icons.check, size: 14, color: Colors.white) : null,
-          ),
-          const SizedBox(width: 8),
-          Flexible(child: Text(label, style: TextStyle(
-            fontSize: 13,
-            color: sel ? EmlakColors.textPrimary(isDark) : EmlakColors.textSecondary(isDark),
-            fontWeight: sel ? FontWeight.w600 : FontWeight.w400,
-          ))),
-        ]),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: sel
+                      ? EmlakColors.textPrimary(isDark)
+                      : EmlakColors.textSecondary(isDark),
+                  fontWeight: sel ? FontWeight.w600 : FontWeight.w400,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildExpandableSection(String title, IconData icon, bool isDark, Widget content) {
+  Widget _buildExpandableSection(
+    String title,
+    IconData icon,
+    bool isDark,
+    Widget content,
+  ) {
     return Theme(
       data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
       child: ExpansionTile(
         tilePadding: const EdgeInsets.symmetric(horizontal: 4),
         childrenPadding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
         leading: Icon(icon, size: 20, color: EmlakColors.primary),
-        title: Text(title, style: TextStyle(
-          fontSize: 15, fontWeight: FontWeight.w700, color: EmlakColors.textPrimary(isDark))),
-        trailing: Icon(Icons.add, size: 20, color: EmlakColors.textSecondary(isDark)),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w700,
+            color: EmlakColors.textPrimary(isDark),
+          ),
+        ),
+        trailing: Icon(
+          Icons.add,
+          size: 20,
+          color: EmlakColors.textSecondary(isDark),
+        ),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
           side: BorderSide(color: EmlakColors.border(isDark)),
@@ -1009,29 +1333,60 @@ class _PropertyFilterScreenState extends ConsumerState<PropertyFilterScreen> {
       child: ExpansionTile(
         tilePadding: EdgeInsets.zero,
         childrenPadding: const EdgeInsets.only(bottom: 8),
-        title: Text(title, style: TextStyle(
-          fontSize: 14, fontWeight: FontWeight.w600, color: EmlakColors.textPrimary(isDark))),
-        trailing: Icon(Icons.add, size: 18, color: EmlakColors.textSecondary(isDark)),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: EmlakColors.textPrimary(isDark),
+          ),
+        ),
+        trailing: Icon(
+          Icons.add,
+          size: 18,
+          color: EmlakColors.textSecondary(isDark),
+        ),
         children: [content],
       ),
     );
   }
 
-  Widget _buildToggleRow(String label, bool value, bool isDark, ValueChanged<bool> onChanged) {
+  Widget _buildToggleRow(
+    String label,
+    bool value,
+    bool isDark,
+    ValueChanged<bool> onChanged,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        Text(label, style: TextStyle(
-          fontSize: 14, fontWeight: FontWeight.w500, color: EmlakColors.textPrimary(isDark))),
-        Switch.adaptive(value: value, onChanged: onChanged,
-          activeTrackColor: EmlakColors.primary, activeThumbColor: Colors.white),
-      ]),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: EmlakColors.textPrimary(isDark),
+            ),
+          ),
+          Switch.adaptive(
+            value: value,
+            onChanged: onChanged,
+            activeTrackColor: EmlakColors.primary,
+            activeThumbColor: Colors.white,
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildDropdown({
-    required String? value, required String hint, required List<String> items,
-    required bool isDark, required ValueChanged<String?> onChanged,
+    required String? value,
+    required String hint,
+    required List<String> items,
+    required bool isDark,
+    required ValueChanged<String?> onChanged,
     String Function(String)? itemLabelBuilder,
   }) {
     return Container(
@@ -1044,36 +1399,76 @@ class _PropertyFilterScreenState extends ConsumerState<PropertyFilterScreen> {
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: value,
-          hint: Text(hint, style: TextStyle(color: EmlakColors.textTertiary(isDark), fontSize: 14)),
+          hint: Text(
+            hint,
+            style: TextStyle(
+              color: EmlakColors.textTertiary(isDark),
+              fontSize: 14,
+            ),
+          ),
           isExpanded: true,
-          icon: Icon(Icons.keyboard_arrow_down_rounded, color: EmlakColors.textSecondary(isDark)),
+          icon: Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: EmlakColors.textSecondary(isDark),
+          ),
           dropdownColor: EmlakColors.card(isDark),
-          items: items.map((i) => DropdownMenuItem(
-            value: i,
-            child: Text(itemLabelBuilder?.call(i) ?? i,
-              style: TextStyle(color: EmlakColors.textPrimary(isDark), fontSize: 14)),
-          )).toList(),
+          items: items
+              .map(
+                (i) => DropdownMenuItem(
+                  value: i,
+                  child: Text(
+                    itemLabelBuilder?.call(i) ?? i,
+                    style: TextStyle(
+                      color: EmlakColors.textPrimary(isDark),
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              )
+              .toList(),
           onChanged: onChanged,
         ),
       ),
     );
   }
 
-  Widget _buildRangeRow(TextEditingController minC, TextEditingController maxC, bool isDark, {
-    required ValueChanged<String> onMinChanged, required ValueChanged<String> onMaxChanged,
+  Widget _buildRangeRow(
+    TextEditingController minC,
+    TextEditingController maxC,
+    bool isDark, {
+    required ValueChanged<String> onMinChanged,
+    required ValueChanged<String> onMaxChanged,
   }) {
-    return Row(children: [
-      Expanded(child: _buildInput(minC, 'En Az', isDark, onChanged: onMinChanged)),
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        child: Text('-', style: TextStyle(color: EmlakColors.textSecondary(isDark), fontSize: 16, fontWeight: FontWeight.w600)),
-      ),
-      Expanded(child: _buildInput(maxC, 'En Çok', isDark, onChanged: onMaxChanged)),
-    ]);
+    return Row(
+      children: [
+        Expanded(
+          child: _buildInput(minC, 'En Az', isDark, onChanged: onMinChanged),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: Text(
+            '-',
+            style: TextStyle(
+              color: EmlakColors.textSecondary(isDark),
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        Expanded(
+          child: _buildInput(maxC, 'En Çok', isDark, onChanged: onMaxChanged),
+        ),
+      ],
+    );
   }
 
-  Widget _buildInput(TextEditingController c, String hint, bool isDark, {
-    required ValueChanged<String> onChanged, bool isNumeric = true, IconData? prefixIcon,
+  Widget _buildInput(
+    TextEditingController c,
+    String hint,
+    bool isDark, {
+    required ValueChanged<String> onChanged,
+    bool isNumeric = true,
+    IconData? prefixIcon,
   }) {
     return TextField(
       controller: c,
@@ -1081,13 +1476,35 @@ class _PropertyFilterScreenState extends ConsumerState<PropertyFilterScreen> {
       style: TextStyle(color: EmlakColors.textPrimary(isDark), fontSize: 14),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: TextStyle(color: EmlakColors.textTertiary(isDark), fontSize: 14),
-        prefixIcon: prefixIcon != null ? Icon(prefixIcon, size: 20, color: EmlakColors.textTertiary(isDark)) : null,
-        filled: true, fillColor: EmlakColors.surface(isDark),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: EmlakColors.border(isDark))),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: EmlakColors.border(isDark))),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: EmlakColors.primary)),
+        hintStyle: TextStyle(
+          color: EmlakColors.textTertiary(isDark),
+          fontSize: 14,
+        ),
+        prefixIcon: prefixIcon != null
+            ? Icon(
+                prefixIcon,
+                size: 20,
+                color: EmlakColors.textTertiary(isDark),
+              )
+            : null,
+        filled: true,
+        fillColor: EmlakColors.surface(isDark),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 12,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: EmlakColors.border(isDark)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: EmlakColors.border(isDark)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: EmlakColors.primary),
+        ),
       ),
       onChanged: onChanged,
     );

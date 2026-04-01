@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/services/log_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/services/communication_service.dart';
 
@@ -39,7 +40,8 @@ class _EmergencyContactsScreenState extends State<EmergencyContactsScreen> {
           _isLoading = false;
         });
       }
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('loadContacts error', error: e, stackTrace: st, source: 'EmergencyContactsScreen:_loadContacts');
       if (mounted) {
         setState(() => _isLoading = false);
       }

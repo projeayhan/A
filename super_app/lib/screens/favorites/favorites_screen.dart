@@ -70,7 +70,9 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
     final totalCount = ref.watch(totalFavoriteCountProvider);
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.backgroundDark : const Color(0xFFF8F9FA),
+      backgroundColor: isDark
+          ? AppColors.backgroundDark
+          : const Color(0xFFF8F9FA),
       body: SafeArea(
         child: Column(
           children: [
@@ -144,10 +146,7 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
                 ),
                 Text(
                   '$totalCount öğe kaydedildi',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey[500],
-                  ),
+                  style: TextStyle(fontSize: 13, color: Colors.grey[500]),
                 ),
               ],
             ),
@@ -177,7 +176,10 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
                 final isSelected = _tabController.index == index;
 
                 return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: isSelected
                         ? tab.color
@@ -186,7 +188,9 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
                     border: isSelected
                         ? null
                         : Border.all(
-                            color: isDark ? Colors.grey[700]! : Colors.grey[200]!,
+                            color: isDark
+                                ? Colors.grey[700]!
+                                : Colors.grey[200]!,
                           ),
                     boxShadow: isSelected
                         ? [
@@ -213,7 +217,9 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
                         tab.title,
                         style: TextStyle(
                           fontSize: 13,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                          fontWeight: isSelected
+                              ? FontWeight.bold
+                              : FontWeight.w500,
                           color: isSelected
                               ? Colors.white
                               : (isDark ? Colors.grey[300] : Colors.grey[700]),
@@ -239,31 +245,54 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
     final totalCount = ref.watch(totalFavoriteCountProvider);
 
     if (totalCount == 0) {
-      return _buildEmptyState(isDark, 'Henüz favori eklemediniz', Icons.favorite_border_rounded);
+      return _buildEmptyState(
+        isDark,
+        'Henüz favori eklemediniz',
+        Icons.favorite_border_rounded,
+      );
     }
 
     // Use separate Consumer widgets to isolate rebuilds per section
     return ListView(
-      padding: EdgeInsets.fromLTRB(context.pagePaddingH, 8, context.pagePaddingH, context.bottomNavPadding),
+      padding: EdgeInsets.fromLTRB(
+        context.pagePaddingH,
+        8,
+        context.pagePaddingH,
+        context.bottomNavPadding,
+      ),
       children: [
         // Yemek Favorileri - isolated rebuild
         Consumer(
           builder: (context, ref, _) {
-            final foodFavorites = ref.watch(foodFavoriteProvider.select((s) => s.restaurants));
+            final foodFavorites = ref.watch(
+              foodFavoriteProvider.select((s) => s.restaurants),
+            );
             if (foodFavorites.isEmpty) return const SizedBox.shrink();
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildSectionHeader('Yemek', FavoriteServiceColors.food, Icons.restaurant_rounded, foodFavorites.length),
+                _buildSectionHeader(
+                  'Yemek',
+                  FavoriteServiceColors.food,
+                  Icons.restaurant_rounded,
+                  foodFavorites.length,
+                ),
                 const SizedBox(height: 12),
-                ...foodFavorites.take(3).map((r) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _buildRestaurantCard(r, isDark),
-                    )),
+                ...foodFavorites
+                    .take(3)
+                    .map(
+                      (r) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _buildRestaurantCard(r, isDark),
+                      ),
+                    ),
                 if (foodFavorites.length > 3)
-                  _buildSeeMoreButton('${foodFavorites.length - 3} restoran daha', () {
-                    _tabController.animateTo(1);
-                  }),
+                  _buildSeeMoreButton(
+                    '${foodFavorites.length - 3} restoran daha',
+                    () {
+                      _tabController.animateTo(1);
+                    },
+                  ),
                 const SizedBox(height: 20),
               ],
             );
@@ -273,21 +302,35 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
         // Market Ürünleri - isolated rebuild
         Consumer(
           builder: (context, ref, _) {
-            final productFavorites = ref.watch(productFavoriteProvider.select((s) => s.favorites));
+            final productFavorites = ref.watch(
+              productFavoriteProvider.select((s) => s.favorites),
+            );
             if (productFavorites.isEmpty) return const SizedBox.shrink();
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildSectionHeader('Market Ürünleri', FavoriteServiceColors.market, Icons.shopping_bag_rounded, productFavorites.length),
+                _buildSectionHeader(
+                  'Market Ürünleri',
+                  FavoriteServiceColors.market,
+                  Icons.shopping_bag_rounded,
+                  productFavorites.length,
+                ),
                 const SizedBox(height: 12),
-                ...productFavorites.take(3).map((p) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _buildProductCard(p, isDark),
-                    )),
+                ...productFavorites
+                    .take(3)
+                    .map(
+                      (p) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _buildProductCard(p, isDark),
+                      ),
+                    ),
                 if (productFavorites.length > 3)
-                  _buildSeeMoreButton('${productFavorites.length - 3} ürün daha', () {
-                    _tabController.animateTo(2);
-                  }),
+                  _buildSeeMoreButton(
+                    '${productFavorites.length - 3} ürün daha',
+                    () {
+                      _tabController.animateTo(2);
+                    },
+                  ),
                 const SizedBox(height: 20),
               ],
             );
@@ -297,21 +340,35 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
         // Mağazalar - isolated rebuild
         Consumer(
           builder: (context, ref, _) {
-            final storeFavorites = ref.watch(storeFavoriteProvider.select((s) => s.favorites));
+            final storeFavorites = ref.watch(
+              storeFavoriteProvider.select((s) => s.favorites),
+            );
             if (storeFavorites.isEmpty) return const SizedBox.shrink();
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildSectionHeader('Mağazalar', Colors.teal, Icons.storefront_rounded, storeFavorites.length),
+                _buildSectionHeader(
+                  'Mağazalar',
+                  Colors.teal,
+                  Icons.storefront_rounded,
+                  storeFavorites.length,
+                ),
                 const SizedBox(height: 12),
-                ...storeFavorites.take(3).map((s) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _buildStoreCard(s, isDark),
-                    )),
+                ...storeFavorites
+                    .take(3)
+                    .map(
+                      (s) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _buildStoreCard(s, isDark),
+                      ),
+                    ),
                 if (storeFavorites.length > 3)
-                  _buildSeeMoreButton('${storeFavorites.length - 3} mağaza daha', () {
-                    _tabController.animateTo(2);
-                  }),
+                  _buildSeeMoreButton(
+                    '${storeFavorites.length - 3} mağaza daha',
+                    () {
+                      _tabController.animateTo(2);
+                    },
+                  ),
                 const SizedBox(height: 20),
               ],
             );
@@ -321,21 +378,35 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
         // Emlak - isolated rebuild
         Consumer(
           builder: (context, ref, _) {
-            final emlakFavorites = ref.watch(emlakFavoriteProvider.select((s) => s.properties));
+            final emlakFavorites = ref.watch(
+              emlakFavoriteProvider.select((s) => s.properties),
+            );
             if (emlakFavorites.isEmpty) return const SizedBox.shrink();
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildSectionHeader('Emlak İlanları', FavoriteServiceColors.emlak, Icons.home_rounded, emlakFavorites.length),
+                _buildSectionHeader(
+                  'Emlak İlanları',
+                  FavoriteServiceColors.emlak,
+                  Icons.home_rounded,
+                  emlakFavorites.length,
+                ),
                 const SizedBox(height: 12),
-                ...emlakFavorites.take(3).map((p) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _buildPropertyCard(p, isDark),
-                    )),
+                ...emlakFavorites
+                    .take(3)
+                    .map(
+                      (p) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _buildPropertyCard(p, isDark),
+                      ),
+                    ),
                 if (emlakFavorites.length > 3)
-                  _buildSeeMoreButton('${emlakFavorites.length - 3} ilan daha', () {
-                    _tabController.animateTo(3);
-                  }),
+                  _buildSeeMoreButton(
+                    '${emlakFavorites.length - 3} ilan daha',
+                    () {
+                      _tabController.animateTo(3);
+                    },
+                  ),
                 const SizedBox(height: 20),
               ],
             );
@@ -345,21 +416,35 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
         // Araçlar - isolated rebuild
         Consumer(
           builder: (context, ref, _) {
-            final carFavorites = ref.watch(carFavoriteProvider.select((s) => s.cars));
+            final carFavorites = ref.watch(
+              carFavoriteProvider.select((s) => s.cars),
+            );
             if (carFavorites.isEmpty) return const SizedBox.shrink();
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildSectionHeader('Araç İlanları', FavoriteServiceColors.car, Icons.directions_car_rounded, carFavorites.length),
+                _buildSectionHeader(
+                  'Araç İlanları',
+                  FavoriteServiceColors.car,
+                  Icons.directions_car_rounded,
+                  carFavorites.length,
+                ),
                 const SizedBox(height: 12),
-                ...carFavorites.take(3).map((c) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _buildCarCard(c, isDark),
-                    )),
+                ...carFavorites
+                    .take(3)
+                    .map(
+                      (c) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _buildCarCard(c, isDark),
+                      ),
+                    ),
                 if (carFavorites.length > 3)
-                  _buildSeeMoreButton('${carFavorites.length - 3} araç daha', () {
-                    _tabController.animateTo(4);
-                  }),
+                  _buildSeeMoreButton(
+                    '${carFavorites.length - 3} araç daha',
+                    () {
+                      _tabController.animateTo(4);
+                    },
+                  ),
                 const SizedBox(height: 20),
               ],
             );
@@ -369,21 +454,35 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
         // İş İlanları - isolated rebuild
         Consumer(
           builder: (context, ref, _) {
-            final jobFavorites = ref.watch(jobFavoriteProvider.select((s) => s.jobs));
+            final jobFavorites = ref.watch(
+              jobFavoriteProvider.select((s) => s.jobs),
+            );
             if (jobFavorites.isEmpty) return const SizedBox.shrink();
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildSectionHeader('İş İlanları', FavoriteServiceColors.jobs, Icons.work_rounded, jobFavorites.length),
+                _buildSectionHeader(
+                  'İş İlanları',
+                  FavoriteServiceColors.jobs,
+                  Icons.work_rounded,
+                  jobFavorites.length,
+                ),
                 const SizedBox(height: 12),
-                ...jobFavorites.take(3).map((j) => Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: _buildJobCard(j, isDark),
-                    )),
+                ...jobFavorites
+                    .take(3)
+                    .map(
+                      (j) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _buildJobCard(j, isDark),
+                      ),
+                    ),
                 if (jobFavorites.length > 3)
-                  _buildSeeMoreButton('${jobFavorites.length - 3} ilan daha', () {
-                    _tabController.animateTo(5);
-                  }),
+                  _buildSeeMoreButton(
+                    '${jobFavorites.length - 3} ilan daha',
+                    () {
+                      _tabController.animateTo(5);
+                    },
+                  ),
               ],
             );
           },
@@ -392,7 +491,12 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
     );
   }
 
-  Widget _buildSectionHeader(String title, Color color, IconData icon, int count) {
+  Widget _buildSectionHeader(
+    String title,
+    Color color,
+    IconData icon,
+    int count,
+  ) {
     return Row(
       children: [
         Container(
@@ -406,10 +510,7 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
         const SizedBox(width: 12),
         Text(
           title,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(width: 8),
         Container(
@@ -461,27 +562,40 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
     final favorites = ref.watch(foodFavoriteProvider).restaurants;
 
     if (favorites.isEmpty) {
-      return _buildEmptyState(isDark, 'Favori restoran yok', Icons.restaurant_rounded);
+      return _buildEmptyState(
+        isDark,
+        'Favori restoran yok',
+        Icons.restaurant_rounded,
+      );
     }
 
     return ListView.separated(
-      padding: EdgeInsets.fromLTRB(context.pagePaddingH, 8, context.pagePaddingH, context.bottomNavPadding),
+      padding: EdgeInsets.fromLTRB(
+        context.pagePaddingH,
+        8,
+        context.pagePaddingH,
+        context.bottomNavPadding,
+      ),
       itemCount: favorites.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemBuilder: (context, index) => _buildRestaurantCard(favorites[index], isDark),
+      separatorBuilder: (_, _) => const SizedBox(height: 12),
+      itemBuilder: (context, index) =>
+          _buildRestaurantCard(favorites[index], isDark),
     );
   }
 
   Widget _buildRestaurantCard(FavoriteRestaurant restaurant, bool isDark) {
     return GestureDetector(
       onTap: () {
-        context.push('/food/restaurant/${restaurant.id}', extra: {
-          'name': restaurant.name,
-          'imageUrl': restaurant.imageUrl,
-          'rating': restaurant.rating,
-          'categories': restaurant.category,
-          'deliveryTime': restaurant.deliveryTime,
-        });
+        context.push(
+          '/food/restaurant/${restaurant.id}',
+          extra: {
+            'name': restaurant.name,
+            'imageUrl': restaurant.imageUrl,
+            'rating': restaurant.rating,
+            'categories': restaurant.category,
+            'deliveryTime': restaurant.deliveryTime,
+          },
+        );
       },
       child: Container(
         decoration: BoxDecoration(
@@ -512,13 +626,23 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
                     CachedNetworkImage(
                       imageUrl: restaurant.imageUrl,
                       fit: BoxFit.cover,
-                      placeholder: (_, __) => Container(
-                        color: FavoriteServiceColors.food.withValues(alpha: 0.1),
-                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                      placeholder: (_, _) => Container(
+                        color: FavoriteServiceColors.food.withValues(
+                          alpha: 0.1,
+                        ),
+                        child: const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
                       ),
-                      errorWidget: (_, __, ___) => Container(
-                        color: FavoriteServiceColors.food.withValues(alpha: 0.1),
-                        child: Icon(Icons.restaurant, color: FavoriteServiceColors.food, size: 40),
+                      errorWidget: (_, _, _) => Container(
+                        color: FavoriteServiceColors.food.withValues(
+                          alpha: 0.1,
+                        ),
+                        child: Icon(
+                          Icons.restaurant,
+                          color: FavoriteServiceColors.food,
+                          size: 40,
+                        ),
                       ),
                     ),
                     Positioned(
@@ -570,16 +694,26 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
                       children: [
                         _buildRatingBadge(restaurant.rating),
                         const SizedBox(width: 8),
-                        Icon(Icons.access_time, size: 14, color: Colors.grey[400]),
+                        Icon(
+                          Icons.access_time,
+                          size: 14,
+                          color: Colors.grey[400],
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           restaurant.deliveryTime,
-                          style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[500],
+                          ),
                         ),
                         const SizedBox(width: 8),
                         Text(
                           'Min ₺${restaurant.minOrder.toStringAsFixed(0)}',
-                          style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[500],
+                          ),
                         ),
                       ],
                     ),
@@ -590,7 +724,9 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
             // Favorite button
             _buildFavoriteButton(
               onTap: () {
-                ref.read(foodFavoriteProvider.notifier).removeRestaurant(restaurant.id);
+                ref
+                    .read(foodFavoriteProvider.notifier)
+                    .removeRestaurant(restaurant.id);
                 _showRemovedSnackbar(restaurant.name);
               },
             ),
@@ -609,7 +745,11 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
     final storeFavorites = ref.watch(storeFavoriteProvider).favorites;
 
     if (productFavorites.isEmpty && storeFavorites.isEmpty) {
-      return _buildEmptyState(isDark, 'Favori ürün veya mağaza yok', Icons.shopping_bag_rounded);
+      return _buildEmptyState(
+        isDark,
+        'Favori ürün veya mağaza yok',
+        Icons.shopping_bag_rounded,
+      );
     }
 
     return ListView(
@@ -617,23 +757,37 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
       children: [
         // Ürünler
         if (productFavorites.isNotEmpty) ...[
-          _buildSectionHeader('Ürünler', FavoriteServiceColors.market, Icons.inventory_2_rounded, productFavorites.length),
+          _buildSectionHeader(
+            'Ürünler',
+            FavoriteServiceColors.market,
+            Icons.inventory_2_rounded,
+            productFavorites.length,
+          ),
           const SizedBox(height: 12),
-          ...productFavorites.map((p) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _buildProductCard(p, isDark),
-              )),
+          ...productFavorites.map(
+            (p) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _buildProductCard(p, isDark),
+            ),
+          ),
           const SizedBox(height: 20),
         ],
 
         // Mağazalar
         if (storeFavorites.isNotEmpty) ...[
-          _buildSectionHeader('Mağazalar', Colors.teal, Icons.storefront_rounded, storeFavorites.length),
+          _buildSectionHeader(
+            'Mağazalar',
+            Colors.teal,
+            Icons.storefront_rounded,
+            storeFavorites.length,
+          ),
           const SizedBox(height: 12),
-          ...storeFavorites.map((s) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _buildStoreCard(s, isDark),
-              )),
+          ...storeFavorites.map(
+            (s) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _buildStoreCard(s, isDark),
+            ),
+          ),
         ],
       ],
     );
@@ -642,7 +796,7 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
   Widget _buildProductCard(FavoriteProduct product, bool isDark) {
     return GestureDetector(
       onTap: () {
-        context.push('/store/${product.storeId}');
+        context.push('/store/detail/${product.storeId}');
       },
       child: Container(
         decoration: BoxDecoration(
@@ -672,13 +826,23 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
                     CachedNetworkImage(
                       imageUrl: product.imageUrl,
                       fit: BoxFit.cover,
-                      placeholder: (_, __) => Container(
-                        color: FavoriteServiceColors.market.withValues(alpha: 0.1),
-                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                      placeholder: (_, _) => Container(
+                        color: FavoriteServiceColors.market.withValues(
+                          alpha: 0.1,
+                        ),
+                        child: const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
                       ),
-                      errorWidget: (_, __, ___) => Container(
-                        color: FavoriteServiceColors.market.withValues(alpha: 0.1),
-                        child: Icon(Icons.shopping_bag, color: FavoriteServiceColors.market, size: 40),
+                      errorWidget: (_, _, _) => Container(
+                        color: FavoriteServiceColors.market.withValues(
+                          alpha: 0.1,
+                        ),
+                        child: Icon(
+                          Icons.shopping_bag,
+                          color: FavoriteServiceColors.market,
+                          size: 40,
+                        ),
                       ),
                     ),
                     Positioned(
@@ -690,7 +854,11 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
                           color: FavoriteServiceColors.market,
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Icon(Icons.shopping_bag, color: Colors.white, size: 14),
+                        child: const Icon(
+                          Icons.shopping_bag,
+                          color: Colors.white,
+                          size: 14,
+                        ),
                       ),
                     ),
                   ],
@@ -716,7 +884,10 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
                     const SizedBox(height: 4),
                     Text(
                       product.storeName,
-                      style: TextStyle(fontSize: 13, color: FavoriteServiceColors.market),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: FavoriteServiceColors.market,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Row(
@@ -724,9 +895,14 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
                         _buildRatingBadge(product.rating),
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
-                            color: FavoriteServiceColors.market.withValues(alpha: 0.1),
+                            color: FavoriteServiceColors.market.withValues(
+                              alpha: 0.1,
+                            ),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
@@ -746,7 +922,9 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
             ),
             _buildFavoriteButton(
               onTap: () {
-                ref.read(productFavoriteProvider.notifier).removeFavorite(product.id);
+                ref
+                    .read(productFavoriteProvider.notifier)
+                    .removeFavorite(product.id);
                 _showRemovedSnackbar(product.name);
               },
             ),
@@ -759,7 +937,7 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
   Widget _buildStoreCard(FavoriteStore store, bool isDark) {
     return GestureDetector(
       onTap: () {
-        context.push('/store/${store.id}');
+        context.push('/store/detail/${store.id}');
       },
       child: Container(
         decoration: BoxDecoration(
@@ -789,13 +967,19 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
                     CachedNetworkImage(
                       imageUrl: store.logoUrl,
                       fit: BoxFit.cover,
-                      placeholder: (_, __) => Container(
+                      placeholder: (_, _) => Container(
                         color: Colors.teal.withValues(alpha: 0.1),
-                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                        child: const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
                       ),
-                      errorWidget: (_, __, ___) => Container(
+                      errorWidget: (_, _, _) => Container(
                         color: Colors.teal.withValues(alpha: 0.1),
-                        child: const Icon(Icons.storefront, color: Colors.teal, size: 40),
+                        child: const Icon(
+                          Icons.storefront,
+                          color: Colors.teal,
+                          size: 40,
+                        ),
                       ),
                     ),
                     Positioned(
@@ -807,7 +991,11 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
                           color: Colors.teal,
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Icon(Icons.storefront, color: Colors.white, size: 14),
+                        child: const Icon(
+                          Icons.storefront,
+                          color: Colors.white,
+                          size: 14,
+                        ),
                       ),
                     ),
                   ],
@@ -840,11 +1028,18 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
                       children: [
                         _buildRatingBadge(store.rating),
                         const SizedBox(width: 8),
-                        Icon(Icons.inventory_2_outlined, size: 14, color: Colors.grey[400]),
+                        Icon(
+                          Icons.inventory_2_outlined,
+                          size: 14,
+                          color: Colors.grey[400],
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           '${store.productCount} ürün',
-                          style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[500],
+                          ),
                         ),
                       ],
                     ),
@@ -854,7 +1049,9 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
             ),
             _buildFavoriteButton(
               onTap: () {
-                ref.read(storeFavoriteProvider.notifier).removeFavorite(store.id);
+                ref
+                    .read(storeFavoriteProvider.notifier)
+                    .removeFavorite(store.id);
                 _showRemovedSnackbar(store.name);
               },
             ),
@@ -872,21 +1069,26 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
     final favorites = ref.watch(emlakFavoriteProvider).properties;
 
     if (favorites.isEmpty) {
-      return _buildEmptyState(isDark, 'Favori emlak ilanı yok', Icons.home_rounded);
+      return _buildEmptyState(
+        isDark,
+        'Favori emlak ilanı yok',
+        Icons.home_rounded,
+      );
     }
 
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
       itemCount: favorites.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemBuilder: (context, index) => _buildPropertyCard(favorites[index], isDark),
+      separatorBuilder: (_, _) => const SizedBox(height: 12),
+      itemBuilder: (context, index) =>
+          _buildPropertyCard(favorites[index], isDark),
     );
   }
 
   Widget _buildPropertyCard(FavoriteProperty property, bool isDark) {
     return GestureDetector(
       onTap: () {
-        context.push('/emlak/detail/${property.id}');
+        context.push('/emlak/property/${property.id}');
       },
       child: Container(
         decoration: BoxDecoration(
@@ -905,7 +1107,9 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
           children: [
             // Image with badge
             ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(16),
+              ),
               child: SizedBox(
                 height: 140,
                 width: double.infinity,
@@ -915,13 +1119,23 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
                     CachedNetworkImage(
                       imageUrl: property.imageUrl,
                       fit: BoxFit.cover,
-                      placeholder: (_, __) => Container(
-                        color: FavoriteServiceColors.emlak.withValues(alpha: 0.1),
-                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                      placeholder: (_, _) => Container(
+                        color: FavoriteServiceColors.emlak.withValues(
+                          alpha: 0.1,
+                        ),
+                        child: const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
                       ),
-                      errorWidget: (_, __, ___) => Container(
-                        color: FavoriteServiceColors.emlak.withValues(alpha: 0.1),
-                        child: Icon(Icons.home, color: FavoriteServiceColors.emlak, size: 50),
+                      errorWidget: (_, _, _) => Container(
+                        color: FavoriteServiceColors.emlak.withValues(
+                          alpha: 0.1,
+                        ),
+                        child: Icon(
+                          Icons.home,
+                          color: FavoriteServiceColors.emlak,
+                          size: 50,
+                        ),
                       ),
                     ),
                     // Type badge
@@ -929,9 +1143,14 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
                       top: 12,
                       left: 12,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
-                          color: property.type == 'sale' ? FavoriteServiceColors.emlak : Colors.blue,
+                          color: property.type == 'sale'
+                              ? FavoriteServiceColors.emlak
+                              : Colors.blue,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
@@ -949,7 +1168,10 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
                       bottom: 12,
                       right: 12,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.black.withValues(alpha: 0.7),
                           borderRadius: BorderRadius.circular(8),
@@ -970,7 +1192,9 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
                       right: 12,
                       child: GestureDetector(
                         onTap: () {
-                          ref.read(emlakFavoriteProvider.notifier).removeProperty(property.id);
+                          ref
+                              .read(emlakFavoriteProvider.notifier)
+                              .removeProperty(property.id);
                           _showRemovedSnackbar(property.title);
                         },
                         child: Container(
@@ -979,7 +1203,11 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
                             color: Colors.white,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.favorite, color: Color(0xFFEC4899), size: 20),
+                          child: const Icon(
+                            Icons.favorite,
+                            color: Color(0xFFEC4899),
+                            size: 20,
+                          ),
                         ),
                       ),
                     ),
@@ -1006,7 +1234,11 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      Icon(Icons.location_on_outlined, size: 14, color: Colors.grey[500]),
+                      Icon(
+                        Icons.location_on_outlined,
+                        size: 14,
+                        color: Colors.grey[500],
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         property.location,
@@ -1017,11 +1249,20 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      _buildPropertyFeature(Icons.bed_rounded, '${property.rooms} Oda'),
+                      _buildPropertyFeature(
+                        Icons.bed_rounded,
+                        '${property.rooms} Oda',
+                      ),
                       const SizedBox(width: 16),
-                      _buildPropertyFeature(Icons.square_foot_rounded, '${property.area} m²'),
+                      _buildPropertyFeature(
+                        Icons.square_foot_rounded,
+                        '${property.area} m²',
+                      ),
                       const SizedBox(width: 16),
-                      _buildPropertyFeature(Icons.home_work_rounded, property.propertyType),
+                      _buildPropertyFeature(
+                        Icons.home_work_rounded,
+                        property.propertyType,
+                      ),
                     ],
                   ),
                 ],
@@ -1039,10 +1280,7 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
       children: [
         Icon(icon, size: 16, color: FavoriteServiceColors.emlak),
         const SizedBox(width: 4),
-        Text(
-          text,
-          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-        ),
+        Text(text, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
       ],
     );
   }
@@ -1055,13 +1293,17 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
     final favorites = ref.watch(carFavoriteProvider).cars;
 
     if (favorites.isEmpty) {
-      return _buildEmptyState(isDark, 'Favori araç ilanı yok', Icons.directions_car_rounded);
+      return _buildEmptyState(
+        isDark,
+        'Favori araç ilanı yok',
+        Icons.directions_car_rounded,
+      );
     }
 
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
       itemCount: favorites.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (context, index) => _buildCarCard(favorites[index], isDark),
     );
   }
@@ -1069,7 +1311,7 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
   Widget _buildCarCard(FavoriteCar car, bool isDark) {
     return GestureDetector(
       onTap: () {
-        context.push('/car/detail/${car.id}');
+        context.push('/car-sales/detail/${car.id}');
       },
       child: Container(
         decoration: BoxDecoration(
@@ -1088,7 +1330,9 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
           children: [
             // Image
             ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(16),
+              ),
               child: SizedBox(
                 height: 160,
                 width: double.infinity,
@@ -1098,13 +1342,19 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
                     CachedNetworkImage(
                       imageUrl: car.imageUrl,
                       fit: BoxFit.cover,
-                      placeholder: (_, __) => Container(
+                      placeholder: (_, _) => Container(
                         color: FavoriteServiceColors.car.withValues(alpha: 0.1),
-                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                        child: const Center(
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
                       ),
-                      errorWidget: (_, __, ___) => Container(
+                      errorWidget: (_, _, _) => Container(
                         color: FavoriteServiceColors.car.withValues(alpha: 0.1),
-                        child: Icon(Icons.directions_car, color: FavoriteServiceColors.car, size: 50),
+                        child: Icon(
+                          Icons.directions_car,
+                          color: FavoriteServiceColors.car,
+                          size: 50,
+                        ),
                       ),
                     ),
                     // Brand badge
@@ -1112,7 +1362,10 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
                       top: 12,
                       left: 12,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: FavoriteServiceColors.car,
                           borderRadius: BorderRadius.circular(8),
@@ -1132,7 +1385,10 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
                       bottom: 12,
                       right: 12,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.black.withValues(alpha: 0.7),
                           borderRadius: BorderRadius.circular(8),
@@ -1153,7 +1409,9 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
                       right: 12,
                       child: GestureDetector(
                         onTap: () {
-                          ref.read(carFavoriteProvider.notifier).removeCar(car.id);
+                          ref
+                              .read(carFavoriteProvider.notifier)
+                              .removeCar(car.id);
                           _showRemovedSnackbar(car.title);
                         },
                         child: Container(
@@ -1162,7 +1420,11 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
                             color: Colors.white,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.favorite, color: Color(0xFFEC4899), size: 20),
+                          child: const Icon(
+                            Icons.favorite,
+                            color: Color(0xFFEC4899),
+                            size: 20,
+                          ),
                         ),
                       ),
                     ),
@@ -1189,7 +1451,11 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      Icon(Icons.location_on_outlined, size: 14, color: Colors.grey[500]),
+                      Icon(
+                        Icons.location_on_outlined,
+                        size: 14,
+                        color: Colors.grey[500],
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         car.location,
@@ -1200,13 +1466,22 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
                   const SizedBox(height: 10),
                   Row(
                     children: [
-                      _buildCarFeature(Icons.calendar_today_rounded, '${car.year}'),
+                      _buildCarFeature(
+                        Icons.calendar_today_rounded,
+                        '${car.year}',
+                      ),
                       const SizedBox(width: 12),
                       _buildCarFeature(Icons.speed_rounded, car.formattedKm),
                       const SizedBox(width: 12),
-                      _buildCarFeature(Icons.local_gas_station_rounded, car.fuelType),
+                      _buildCarFeature(
+                        Icons.local_gas_station_rounded,
+                        car.fuelType,
+                      ),
                       const SizedBox(width: 12),
-                      _buildCarFeature(Icons.settings_rounded, car.transmission),
+                      _buildCarFeature(
+                        Icons.settings_rounded,
+                        car.transmission,
+                      ),
                     ],
                   ),
                 ],
@@ -1224,10 +1499,7 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
       children: [
         Icon(icon, size: 14, color: FavoriteServiceColors.car),
         const SizedBox(width: 4),
-        Text(
-          text,
-          style: TextStyle(fontSize: 11, color: Colors.grey[600]),
-        ),
+        Text(text, style: TextStyle(fontSize: 11, color: Colors.grey[600])),
       ],
     );
   }
@@ -1240,13 +1512,17 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
     final favorites = ref.watch(jobFavoriteProvider).jobs;
 
     if (favorites.isEmpty) {
-      return _buildEmptyState(isDark, 'Favori iş ilanı yok', Icons.work_rounded);
+      return _buildEmptyState(
+        isDark,
+        'Favori iş ilanı yok',
+        Icons.work_rounded,
+      );
     }
 
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
       itemCount: favorites.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (context, index) => _buildJobCard(favorites[index], isDark),
     );
   }
@@ -1288,14 +1564,16 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
                       child: CachedNetworkImage(
                         imageUrl: job.companyLogo,
                         fit: BoxFit.cover,
-                        placeholder: (_, __) => Center(
+                        placeholder: (_, _) => Center(
                           child: Icon(
                             Icons.business,
-                            color: FavoriteServiceColors.jobs.withValues(alpha: 0.5),
+                            color: FavoriteServiceColors.jobs.withValues(
+                              alpha: 0.5,
+                            ),
                             size: 28,
                           ),
                         ),
-                        errorWidget: (_, __, ___) => Icon(
+                        errorWidget: (_, _, _) => Icon(
                           Icons.business,
                           color: FavoriteServiceColors.jobs,
                           size: 28,
@@ -1342,7 +1620,11 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
                         color: const Color(0xFFEC4899).withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.favorite, color: Color(0xFFEC4899), size: 20),
+                      child: const Icon(
+                        Icons.favorite,
+                        color: Color(0xFFEC4899),
+                        size: 20,
+                      ),
                     ),
                   ),
                 ],
@@ -1351,7 +1633,11 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
               // Location and salary row
               Row(
                 children: [
-                  Icon(Icons.location_on_outlined, size: 14, color: Colors.grey[500]),
+                  Icon(
+                    Icons.location_on_outlined,
+                    size: 14,
+                    color: Colors.grey[500],
+                  ),
                   const SizedBox(width: 4),
                   Text(
                     job.location,
@@ -1359,7 +1645,10 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
                   ),
                   const Spacer(),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.green.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
@@ -1382,7 +1671,9 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
                 runSpacing: 8,
                 children: [
                   _buildJobTag(job.employmentType, FavoriteServiceColors.jobs),
-                  ...job.tags.take(3).map((tag) => _buildJobTag(tag, Colors.grey)),
+                  ...job.tags
+                      .take(3)
+                      .map((tag) => _buildJobTag(tag, Colors.grey)),
                 ],
               ),
             ],
@@ -1426,11 +1717,7 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
               color: const Color(0xFFEC4899).withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              icon,
-              size: 50,
-              color: const Color(0xFFEC4899),
-            ),
+            child: Icon(icon, size: 50, color: const Color(0xFFEC4899)),
           ),
           const SizedBox(height: 24),
           Text(
@@ -1444,10 +1731,7 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
           const SizedBox(height: 8),
           Text(
             'Beğendiğiniz öğeleri favorilere ekleyin',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[500],
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey[500]),
           ),
         ],
       ),
@@ -1490,11 +1774,7 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen>
             color: const Color(0xFFEC4899).withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
-          child: const Icon(
-            Icons.favorite,
-            color: Color(0xFFEC4899),
-            size: 20,
-          ),
+          child: const Icon(Icons.favorite, color: Color(0xFFEC4899), size: 20),
         ),
       ),
     );

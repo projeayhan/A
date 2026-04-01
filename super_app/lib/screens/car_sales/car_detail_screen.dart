@@ -134,49 +134,31 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen>
                 ),
 
                 // Quick Stats Bar
-                SliverToBoxAdapter(
-                  child: _buildQuickStatsBar(isDark, car),
-                ),
+                SliverToBoxAdapter(child: _buildQuickStatsBar(isDark, car)),
 
                 // Price Section
-                SliverToBoxAdapter(
-                  child: _buildPriceSection(isDark, car),
-                ),
+                SliverToBoxAdapter(child: _buildPriceSection(isDark, car)),
 
                 // Key Specifications
-                SliverToBoxAdapter(
-                  child: _buildKeySpecs(isDark, car),
-                ),
+                SliverToBoxAdapter(child: _buildKeySpecs(isDark, car)),
 
                 // Description
-                SliverToBoxAdapter(
-                  child: _buildDescription(isDark, car),
-                ),
+                SliverToBoxAdapter(child: _buildDescription(isDark, car)),
 
                 // Features Grid
-                SliverToBoxAdapter(
-                  child: _buildFeaturesSection(isDark, car),
-                ),
+                SliverToBoxAdapter(child: _buildFeaturesSection(isDark, car)),
 
                 // Technical Details
-                SliverToBoxAdapter(
-                  child: _buildTechnicalDetails(isDark, car),
-                ),
+                SliverToBoxAdapter(child: _buildTechnicalDetails(isDark, car)),
 
                 // Seller Info
-                SliverToBoxAdapter(
-                  child: _buildSellerSection(isDark, car),
-                ),
+                SliverToBoxAdapter(child: _buildSellerSection(isDark, car)),
 
                 // Similar Cars
-                SliverToBoxAdapter(
-                  child: _buildSimilarCars(isDark),
-                ),
+                SliverToBoxAdapter(child: _buildSimilarCars(isDark)),
 
                 // Bottom spacing for bottom bar
-                const SliverToBoxAdapter(
-                  child: SizedBox(height: 100),
-                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 100)),
               ],
             ),
 
@@ -222,15 +204,19 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen>
                   itemCount: car.images.length,
                   itemBuilder: (context, index) {
                     return Hero(
-                      tag: index == 0 ? 'car_${car.id}' : 'car_${car.id}_$index',
+                      tag: index == 0
+                          ? 'car_${car.id}'
+                          : 'car_${car.id}_$index',
                       child: CachedNetworkImage(
                         imageUrl: car.images[index],
                         fit: BoxFit.cover,
-                        placeholder: (_, __) => Container(
+                        placeholder: (_, _) => Container(
                           color: Colors.grey[200],
-                          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                          child: const Center(
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
                         ),
-                        errorWidget: (_, __, ___) => Container(
+                        errorWidget: (_, _, _) => Container(
                           color: CarSalesColors.surface(isDark),
                           child: Icon(
                             Icons.directions_car,
@@ -293,7 +279,11 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen>
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.workspace_premium, color: Colors.white, size: 16),
+                      Icon(
+                        Icons.workspace_premium,
+                        color: Colors.white,
+                        size: 16,
+                      ),
                       SizedBox(width: 6),
                       Text(
                         'PREMIUM İLAN',
@@ -573,8 +563,8 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen>
             color: isFavorite
                 ? CarSalesColors.accent
                 : showTitle
-                    ? CarSalesColors.textPrimary(isDark)
-                    : Colors.white,
+                ? CarSalesColors.textPrimary(isDark)
+                : Colors.white,
             size: 20,
           ),
         ),
@@ -649,11 +639,7 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen>
     return Expanded(
       child: Column(
         children: [
-          Icon(
-            icon,
-            color: CarSalesColors.primary,
-            size: 24,
-          ),
+          Icon(icon, color: CarSalesColors.primary, size: 24),
           const SizedBox(height: 8),
           Text(
             value,
@@ -820,11 +806,7 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen>
                   '${car.favoriteCount}',
                   'Favori',
                 ),
-                _buildPriceStatItem(
-                  Icons.access_time,
-                  car.timeAgo,
-                  'Yayında',
-                ),
+                _buildPriceStatItem(Icons.access_time, car.timeAgo, 'Yayında'),
               ],
             ),
           ],
@@ -877,13 +859,43 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen>
             runSpacing: 12,
             children: [
               _buildSpecCard(isDark, 'Marka', car.brand.name, Icons.business),
-              _buildSpecCard(isDark, 'Model', car.modelName, Icons.directions_car),
-              _buildSpecCard(isDark, 'Kasa Tipi', car.bodyType.label, car.bodyType.icon),
-              _buildSpecCard(isDark, 'Motor', '${car.engineCC} cc', Icons.engineering),
+              _buildSpecCard(
+                isDark,
+                'Model',
+                car.modelName,
+                Icons.directions_car,
+              ),
+              _buildSpecCard(
+                isDark,
+                'Kasa Tipi',
+                car.bodyType.label,
+                car.bodyType.icon,
+              ),
+              _buildSpecCard(
+                isDark,
+                'Motor',
+                '${car.engineCC} cc',
+                Icons.engineering,
+              ),
               _buildSpecCard(isDark, 'Güç', '${car.horsePower} HP', Icons.bolt),
-              _buildSpecCard(isDark, 'Çekiş', car.traction.shortLabel, Icons.all_inclusive),
-              _buildSpecCard(isDark, 'Dış Renk', car.exteriorColor.label, Icons.palette),
-              _buildSpecCard(isDark, 'İç Renk', car.interiorColor.label, Icons.weekend),
+              _buildSpecCard(
+                isDark,
+                'Çekiş',
+                car.traction.shortLabel,
+                Icons.all_inclusive,
+              ),
+              _buildSpecCard(
+                isDark,
+                'Dış Renk',
+                car.exteriorColor.label,
+                Icons.palette,
+              ),
+              _buildSpecCard(
+                isDark,
+                'İç Renk',
+                car.interiorColor.label,
+                Icons.weekend,
+              ),
             ],
           ),
         ],
@@ -891,7 +903,12 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen>
     );
   }
 
-  Widget _buildSpecCard(bool isDark, String label, String value, IconData icon) {
+  Widget _buildSpecCard(
+    bool isDark,
+    String label,
+    String value,
+    IconData icon,
+  ) {
     return Container(
       width: (MediaQuery.of(context).size.width - 52) / 2,
       padding: const EdgeInsets.all(14),
@@ -909,11 +926,7 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen>
               color: CarSalesColors.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(
-              icon,
-              color: CarSalesColors.primary,
-              size: 20,
-            ),
+            child: Icon(icon, color: CarSalesColors.primary, size: 20),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -995,7 +1008,9 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen>
                     child: Padding(
                       padding: const EdgeInsets.only(top: 12),
                       child: Text(
-                        _showFullDescription ? 'Daha az göster' : 'Devamını oku',
+                        _showFullDescription
+                            ? 'Daha az göster'
+                            : 'Devamını oku',
                         style: const TextStyle(
                           color: CarSalesColors.primary,
                           fontWeight: FontWeight.w600,
@@ -1140,16 +1155,50 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen>
             ),
             child: Column(
               children: [
-                _buildDetailRow(isDark, 'Durum', car.condition.label, isFirst: true),
-                _buildDetailRow(isDark, 'Önceki Sahip', car.previousOwners?.toString() ?? '-'),
-                _buildDetailRow(isDark, 'Boyalı Parça', car.hasOriginalPaint ? 'Orijinal' : 'Var'),
-                _buildDetailRow(isDark, 'Kaza Kaydı', car.hasAccidentHistory ? 'Var' : 'Yok'),
-                _buildDetailRow(isDark, 'Plaka', '${car.plateCity ?? '-'} Plakalı'),
-                _buildDetailRow(isDark, 'Garanti', car.hasWarranty ? 'Var' : 'Yok'),
+                _buildDetailRow(
+                  isDark,
+                  'Durum',
+                  car.condition.label,
+                  isFirst: true,
+                ),
+                _buildDetailRow(
+                  isDark,
+                  'Önceki Sahip',
+                  car.previousOwners?.toString() ?? '-',
+                ),
+                _buildDetailRow(
+                  isDark,
+                  'Boyalı Parça',
+                  car.hasOriginalPaint ? 'Orijinal' : 'Var',
+                ),
+                _buildDetailRow(
+                  isDark,
+                  'Kaza Kaydı',
+                  car.hasAccidentHistory ? 'Var' : 'Yok',
+                ),
+                _buildDetailRow(
+                  isDark,
+                  'Plaka',
+                  '${car.plateCity ?? '-'} Plakalı',
+                ),
+                _buildDetailRow(
+                  isDark,
+                  'Garanti',
+                  car.hasWarranty ? 'Var' : 'Yok',
+                ),
                 if (car.warrantyDetails != null)
-                  _buildDetailRow(isDark, 'Garanti Detayı', car.warrantyDetails!),
+                  _buildDetailRow(
+                    isDark,
+                    'Garanti Detayı',
+                    car.warrantyDetails!,
+                  ),
                 if (car.serviceHistory != null)
-                  _buildDetailRow(isDark, 'Bakım', car.serviceHistory!, isLast: true),
+                  _buildDetailRow(
+                    isDark,
+                    'Bakım',
+                    car.serviceHistory!,
+                    isLast: true,
+                  ),
               ],
             ),
           ),
@@ -1158,17 +1207,19 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen>
     );
   }
 
-  Widget _buildDetailRow(bool isDark, String label, String value, {bool isFirst = false, bool isLast = false}) {
+  Widget _buildDetailRow(
+    bool isDark,
+    String label,
+    String value, {
+    bool isFirst = false,
+    bool isLast = false,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         border: isLast
             ? null
-            : Border(
-                bottom: BorderSide(
-                  color: CarSalesColors.divider(isDark),
-                ),
-              ),
+            : Border(bottom: BorderSide(color: CarSalesColors.divider(isDark))),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1240,11 +1291,15 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen>
                             ? CachedNetworkImage(
                                 imageUrl: seller.imageUrl!,
                                 fit: BoxFit.cover,
-                                placeholder: (_, __) => Container(
+                                placeholder: (_, _) => Container(
                                   color: Colors.grey[200],
-                                  child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                  child: const Center(
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
                                 ),
-                                errorWidget: (_, __, ___) => Icon(
+                                errorWidget: (_, _, _) => Icon(
                                   seller.type.icon,
                                   color: CarSalesColors.textSecondary(isDark),
                                   size: 28,
@@ -1296,7 +1351,9 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen>
                                   vertical: 2,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: CarSalesColors.primary.withValues(alpha: 0.1),
+                                  color: CarSalesColors.primary.withValues(
+                                    alpha: 0.1,
+                                  ),
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: Text(
@@ -1346,11 +1403,7 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen>
                         '${seller.totalListings}',
                         'İlan',
                       ),
-                      _buildSellerStat(
-                        isDark,
-                        '${seller.soldCount}',
-                        'Satış',
-                      ),
+                      _buildSellerStat(isDark, '${seller.soldCount}', 'Satış'),
                       _buildSellerStat(
                         isDark,
                         seller.rating.toStringAsFixed(1),
@@ -1421,11 +1474,7 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen>
                           child: const Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(
-                                Icons.call,
-                                color: Colors.white,
-                                size: 18,
-                              ),
+                              Icon(Icons.call, color: Colors.white, size: 18),
                               SizedBox(width: 6),
                               Text(
                                 'Ara',
@@ -1651,12 +1700,16 @@ class _CarDetailScreenState extends ConsumerState<CarDetailScreen>
                             height: 110,
                             width: double.infinity,
                             fit: BoxFit.cover,
-                            placeholder: (_, __) => Container(
+                            placeholder: (_, _) => Container(
                               height: 110,
                               color: Colors.grey[200],
-                              child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                              child: const Center(
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
                             ),
-                            errorWidget: (_, __, ___) => Container(
+                            errorWidget: (_, _, _) => Container(
                               height: 110,
                               color: CarSalesColors.surface(isDark),
                               child: Icon(

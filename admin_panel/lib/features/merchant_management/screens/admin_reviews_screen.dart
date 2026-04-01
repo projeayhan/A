@@ -47,7 +47,7 @@ class _AdminReviewsScreenState extends ConsumerState<AdminReviewsScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${widget.entityType} yorumlarini goruntuleyin ve yonetin.',
+                      '${widget.entityType} yorumlarını görüntüleyin ve yönetin.',
                       style: const TextStyle(
                         fontSize: 14,
                         color: AppColors.textSecondary,
@@ -87,7 +87,7 @@ class _AdminReviewsScreenState extends ConsumerState<AdminReviewsScreen> {
                       const Icon(Icons.error_outline, size: 48, color: AppColors.error),
                       const SizedBox(height: 16),
                       Text(
-                        'Yorumlar yuklenirken hata olustu',
+                        'Yorumlar yüklenirken hata oluştu',
                         style: const TextStyle(color: AppColors.textPrimary, fontSize: 16),
                       ),
                       const SizedBox(height: 8),
@@ -114,7 +114,7 @@ class _AdminReviewsScreenState extends ConsumerState<AdminReviewsScreen> {
                           Icon(Icons.rate_review_outlined, size: 64, color: AppColors.textMuted),
                           const SizedBox(height: 16),
                           const Text(
-                            'Henuz yorum bulunmuyor',
+                            'Henüz yorum bulunmuyor',
                             style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
                           ),
                         ],
@@ -171,8 +171,8 @@ class _AdminReviewsScreenState extends ConsumerState<AdminReviewsScreen> {
           items: const [
             DropdownMenuItem(value: 'newest', child: Text('En Yeni')),
             DropdownMenuItem(value: 'oldest', child: Text('En Eski')),
-            DropdownMenuItem(value: 'highest', child: Text('En Yuksek Puan')),
-            DropdownMenuItem(value: 'lowest', child: Text('En Dusuk Puan')),
+            DropdownMenuItem(value: 'highest', child: Text('En Yüksek Puan')),
+            DropdownMenuItem(value: 'lowest', child: Text('En Düşük Puan')),
           ],
           onChanged: (value) {
             if (value != null) setState(() => _sortBy = value);
@@ -196,12 +196,12 @@ class _AdminReviewsScreenState extends ConsumerState<AdminReviewsScreen> {
           dropdownColor: AppColors.surface,
           style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
           items: const [
-            DropdownMenuItem(value: 'all', child: Text('Tum Puanlar')),
-            DropdownMenuItem(value: '5', child: Text('5 Yildiz')),
-            DropdownMenuItem(value: '4', child: Text('4 Yildiz')),
-            DropdownMenuItem(value: '3', child: Text('3 Yildiz')),
-            DropdownMenuItem(value: '2', child: Text('2 Yildiz')),
-            DropdownMenuItem(value: '1', child: Text('1 Yildiz')),
+            DropdownMenuItem(value: 'all', child: Text('Tüm Puanlar')),
+            DropdownMenuItem(value: '5', child: Text('5 Yıldız')),
+            DropdownMenuItem(value: '4', child: Text('4 Yıldız')),
+            DropdownMenuItem(value: '3', child: Text('3 Yıldız')),
+            DropdownMenuItem(value: '2', child: Text('2 Yıldız')),
+            DropdownMenuItem(value: '1', child: Text('1 Yıldız')),
           ],
           onChanged: (value) {
             if (value != null) setState(() => _filterRating = value);
@@ -365,13 +365,10 @@ class _AdminReviewsScreenState extends ConsumerState<AdminReviewsScreen> {
   }
 
   Widget _buildReviewCard(Map<String, dynamic> review) {
-    final user = review['users'] as Map<String, dynamic>?;
-    final userName = user?['full_name'] ?? 'Anonim';
-    final avatarUrl = user?['avatar_url'] as String?;
+    final userName = review['customer_name'] as String? ?? 'Anonim';
     final rating = (review['rating'] as num?)?.toInt() ?? 0;
     final comment = review['comment'] as String? ?? '';
     final createdAt = review['created_at'] as String?;
-    final isHidden = review['is_hidden'] as bool? ?? false;
     final reviewId = review['id'] as String;
 
     String formattedDate = '';
@@ -391,11 +388,9 @@ class _AdminReviewsScreenState extends ConsumerState<AdminReviewsScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isHidden ? AppColors.surface.withValues(alpha: 0.5) : AppColors.surface,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isHidden ? AppColors.warning.withValues(alpha: 0.3) : AppColors.surfaceLight,
-        ),
+        border: Border.all(color: AppColors.surfaceLight),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -406,19 +401,14 @@ class _AdminReviewsScreenState extends ConsumerState<AdminReviewsScreen> {
               CircleAvatar(
                 radius: 20,
                 backgroundColor: AppColors.primary.withValues(alpha: 0.2),
-                backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
-                    ? NetworkImage(avatarUrl)
-                    : null,
-                child: avatarUrl == null || avatarUrl.isEmpty
-                    ? Text(
-                        userName.isNotEmpty ? userName[0].toUpperCase() : '?',
-                        style: const TextStyle(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      )
-                    : null,
+                child: Text(
+                  userName.isNotEmpty ? userName[0].toUpperCase() : '?',
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
               ),
               const SizedBox(width: 12),
               // Name and date
@@ -456,33 +446,8 @@ class _AdminReviewsScreenState extends ConsumerState<AdminReviewsScreen> {
                   );
                 }),
               ),
-              const SizedBox(width: 16),
-              // Hidden badge
-              if (isHidden)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppColors.warning.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Text(
-                    'Gizli',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.warning,
-                    ),
-                  ),
-                ),
               const SizedBox(width: 8),
               // Actions
-              _buildActionButton(
-                icon: isHidden ? Icons.visibility : Icons.visibility_off,
-                tooltip: isHidden ? 'Goster' : 'Gizle',
-                color: AppColors.info,
-                onPressed: () => _toggleHideReview(reviewId, isHidden),
-              ),
-              const SizedBox(width: 4),
               _buildActionButton(
                 icon: Icons.delete_outline,
                 tooltip: 'Sil',
@@ -495,10 +460,9 @@ class _AdminReviewsScreenState extends ConsumerState<AdminReviewsScreen> {
             const SizedBox(height: 12),
             Text(
               comment,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 14,
-                color: isHidden ? AppColors.textMuted : AppColors.textSecondary,
-                fontStyle: isHidden ? FontStyle.italic : FontStyle.normal,
+                color: AppColors.textSecondary,
               ),
             ),
           ],
@@ -530,33 +494,6 @@ class _AdminReviewsScreenState extends ConsumerState<AdminReviewsScreen> {
     );
   }
 
-  Future<void> _toggleHideReview(String reviewId, bool currentlyHidden) async {
-    try {
-      final client = ref.read(supabaseProvider);
-      await client.from('reviews').update({'is_hidden': !currentlyHidden}).eq('id', reviewId);
-      ref.invalidate(
-        entityReviewsProvider((entityType: widget.entityType, entityId: widget.entityId)),
-      );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(currentlyHidden ? 'Yorum gorunur yapildi' : 'Yorum gizlendi'),
-            backgroundColor: AppColors.success,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Islem basarisiz: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
-      }
-    }
-  }
-
   Future<void> _confirmDeleteReview(String reviewId) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -568,13 +505,13 @@ class _AdminReviewsScreenState extends ConsumerState<AdminReviewsScreen> {
           style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600),
         ),
         content: const Text(
-          'Bu yorumu silmek istediginizden emin misiniz? Bu islem geri alinamaz.',
+          'Bu yorumu silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.',
           style: TextStyle(color: AppColors.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Iptal', style: TextStyle(color: AppColors.textSecondary)),
+            child: const Text('İptal', style: TextStyle(color: AppColors.textSecondary)),
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
@@ -598,7 +535,7 @@ class _AdminReviewsScreenState extends ConsumerState<AdminReviewsScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Yorum basariyla silindi'),
+              content: Text('Yorum başarıyla silindi'),
               backgroundColor: AppColors.success,
             ),
           );
@@ -607,7 +544,7 @@ class _AdminReviewsScreenState extends ConsumerState<AdminReviewsScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Silme islemi basarisiz: $e'),
+              content: Text('Silme işlemi başarısız: $e'),
               backgroundColor: AppColors.error,
             ),
           );

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/pagination_controls.dart';
 import '../services/food_admin_service.dart';
 
 class RestaurantCategoriesScreen extends ConsumerStatefulWidget {
@@ -13,6 +14,9 @@ class RestaurantCategoriesScreen extends ConsumerStatefulWidget {
 }
 
 class _RestaurantCategoriesScreenState extends ConsumerState<RestaurantCategoriesScreen> {
+  int _currentPage = 0;
+  final int _pageSize = 25;
+
   @override
   Widget build(BuildContext context) {
     final categoriesAsync = ref.watch(restaurantCategoriesProvider);
@@ -94,25 +98,45 @@ class _RestaurantCategoriesScreenState extends ConsumerState<RestaurantCategorie
       );
     }
 
+    final totalCount = categories.length;
+    final totalPages = (totalCount / _pageSize).ceil().clamp(1, 999999);
+    final from = _currentPage * _pageSize;
+    final to = (from + _pageSize).clamp(0, totalCount);
+    final pageItems = categories.sublist(from, to);
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.surfaceLight),
       ),
-      child: SingleChildScrollView(
-        child: DataTable(
-          columnSpacing: 24,
-          columns: const [
-            DataColumn(label: Text('Resim')),
-            DataColumn(label: Text('Kategori Adı')),
-            DataColumn(label: Text('İkon')),
-            DataColumn(label: Text('Sıra')),
-            DataColumn(label: Text('Durum')),
-            DataColumn(label: Text('İşlemler')),
-          ],
-          rows: categories.map((category) => _buildCategoryRow(category)).toList(),
-        ),
+      child: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              child: DataTable(
+                columnSpacing: 24,
+                columns: const [
+                  DataColumn(label: Text('Resim')),
+                  DataColumn(label: Text('Kategori Adı')),
+                  DataColumn(label: Text('İkon')),
+                  DataColumn(label: Text('Sıra')),
+                  DataColumn(label: Text('Durum')),
+                  DataColumn(label: Text('İşlemler')),
+                ],
+                rows: pageItems.map((category) => _buildCategoryRow(category)).toList(),
+              ),
+            ),
+          ),
+          PaginationControls(
+            currentPage: _currentPage,
+            totalPages: totalPages,
+            totalCount: totalCount,
+            pageSize: _pageSize,
+            onPrevious: () => setState(() => _currentPage--),
+            onNext: () => setState(() => _currentPage++),
+          ),
+        ],
       ),
     );
   }
@@ -129,7 +153,7 @@ class _RestaurantCategoriesScreenState extends ConsumerState<RestaurantCategorie
                     width: 50,
                     height: 50,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
+                    errorBuilder: (ctx, err, st) => Container(
                       width: 50,
                       height: 50,
                       decoration: BoxDecoration(
@@ -273,7 +297,7 @@ class _RestaurantCategoriesScreenState extends ConsumerState<RestaurantCategorie
                                       width: 100,
                                       height: 100,
                                       fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => const Icon(
+                                      errorBuilder: (ctx, err, st) => const Icon(
                                         Icons.image_not_supported,
                                         color: AppColors.textMuted,
                                         size: 40,

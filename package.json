@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "@supabase/supabase-js": "^2.99.2",
+    "docx": "^9.6.1",
+    "pg": "^8.20.0"
+  }
+}

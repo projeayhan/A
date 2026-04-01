@@ -1,6 +1,6 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/delivery_service.dart';
+import 'package:super_app/core/services/log_service.dart';
 
 class CartItem {
   final String id;
@@ -227,8 +227,8 @@ class CartNotifier extends StateNotifier<CartState> {
       } else {
         state = state.copyWith(deliveryFeeLoading: false);
       }
-    } catch (e) {
-      debugPrint('calculateDeliveryFee error: $e');
+    } catch (e, st) {
+      LogService.error('calculateDeliveryFee error', error: e, stackTrace: st, source: 'CartProvider:calculateDeliveryFee');
       state = state.copyWith(deliveryFeeLoading: false);
     }
   }

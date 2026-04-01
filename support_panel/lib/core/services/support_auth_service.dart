@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:support_panel/core/services/log_service.dart';
 import '../models/support_models.dart';
 import 'supabase_service.dart';
 
@@ -68,7 +69,8 @@ class AgentNotifier extends StateNotifier<AsyncValue<SupportAgent?>> {
       } else {
         state = const AsyncValue.data(null);
       }
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to load agent', error: e, stackTrace: st, source: 'CurrentAgentNotifier:loadAgent');
       state = AsyncValue.error(e, StackTrace.current);
     }
   }
@@ -99,7 +101,9 @@ class AgentNotifier extends StateNotifier<AsyncValue<SupportAgent?>> {
         'updated_at': DateTime.now().toIso8601String(),
         'last_active_at': DateTime.now().toIso8601String(),
       }));
-    } catch (_) {}
+    } catch (e, st) {
+      LogService.error('Error syncing agent cache', error: e, stackTrace: st, source: 'CurrentAgentNotifier:loadAgent');
+    }
   }
 
   void clear() {
@@ -141,7 +145,8 @@ class SupportAuthService {
       return SupportAuthResult.success(agent);
     } on AuthException catch (e) {
       return SupportAuthResult.error(_getErrorMessage(e.message));
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Login failed', error: e, stackTrace: st, source: 'SupportAuthService:signIn');
       return SupportAuthResult.error('Beklenmeyen bir hata oluştu: $e');
     }
   }
@@ -155,7 +160,9 @@ class SupportAuthService {
             .from('support_agents')
             .update({'status': 'offline', 'last_active_at': DateTime.now().toIso8601String()})
             .eq('user_id', user.id);
-      } catch (_) {}
+      } catch (e, st) {
+        LogService.error('Error setting agent offline', error: e, stackTrace: st, source: 'SupportAuthService:signOut');
+      }
     }
     await _supabase.auth.signOut();
   }

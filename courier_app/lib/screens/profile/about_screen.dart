@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:courier_app/core/services/log_service.dart';
 import '../../core/theme/app_theme.dart';
 
 class AboutScreen extends StatefulWidget {
@@ -25,8 +26,8 @@ class _AboutScreenState extends State<AboutScreen> {
       if (mounted) {
         setState(() => _packageInfo = packageInfo);
       }
-    } catch (e) {
-      // Ignore
+    } catch (e, st) {
+      LogService.error('loadPackageInfo error', error: e, stackTrace: st, source: 'AboutScreen:_loadPackageInfo');
     }
   }
 

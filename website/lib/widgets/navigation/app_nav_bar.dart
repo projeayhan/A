@@ -39,7 +39,7 @@ class _AppNavBarState extends State<AppNavBar> {
               ? ImageFilter.blur(sigmaX: 10, sigmaY: 10)
               : ImageFilter.blur(sigmaX: 0, sigmaY: 0),
           child: Container(
-            height: 70,
+            height: 76,
             padding: EdgeInsets.symmetric(horizontal: isMobile ? 16 : 40),
             child: Row(
               children: [
@@ -98,30 +98,11 @@ class _Logo extends StatelessWidget {
       onTap: () => context.go(AppRoutes.home),
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.primary, AppColors.cyan],
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.apps_rounded, color: Colors.white, size: 22),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              'SuperCyp',
-              style: GoogleFonts.inter(
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textOnDark,
-              ),
-            ),
-          ],
+        child: Image.asset(
+          'assets/images/supercyp_logo_horizontal.png',
+          height: 50,
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.high,
         ),
       ),
     );

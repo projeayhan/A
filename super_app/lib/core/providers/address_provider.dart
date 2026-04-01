@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/supabase_service.dart';
 import 'auth_provider.dart';
+import 'package:super_app/core/services/log_service.dart';
 
 // Merkezi Adres Modeli
 class UserAddress {
@@ -187,8 +188,8 @@ class AddressNotifier extends StateNotifier<AddressState> {
         selectedAddressId: defaultAddressId ?? (addresses.isNotEmpty ? addresses.first.id : null),
         isLoading: false,
       );
-    } catch (e) {
-      if (kDebugMode) print('Error loading addresses: $e');
+    } catch (e, st) {
+      LogService.error('Error loading addresses', error: e, stackTrace: st, source: 'AddressProvider:loadAddresses');
       state = const AddressState(isLoading: false);
     }
   }
@@ -236,8 +237,8 @@ class AddressNotifier extends StateNotifier<AddressState> {
 
       if (kDebugMode) print('DEBUG addAddress: success!');
       return true;
-    } catch (e) {
-      if (kDebugMode) print('DEBUG addAddress: ERROR = $e');
+    } catch (e, st) {
+      LogService.error('Error adding address', error: e, stackTrace: st, source: 'AddressProvider:addAddress');
       return false;
     }
   }
@@ -264,7 +265,8 @@ class AddressNotifier extends StateNotifier<AddressState> {
             'longitude': updatedAddress.longitude ?? 0.0,
             'updated_at': DateTime.now().toIso8601String(),
           })
-          .eq('id', updatedAddress.id);
+          .eq('id', updatedAddress.id)
+          .eq('user_id', userId);
 
       final updatedList = state.addresses.map((a) {
         return a.id == updatedAddress.id ? updatedAddress : a;
@@ -272,8 +274,8 @@ class AddressNotifier extends StateNotifier<AddressState> {
 
       state = state.copyWith(addresses: updatedList);
       return true;
-    } catch (e) {
-      if (kDebugMode) print('Error updating address: $e');
+    } catch (e, st) {
+      LogService.error('Error updating address', error: e, stackTrace: st, source: 'AddressProvider:updateAddress');
       return false;
     }
   }
@@ -281,9 +283,13 @@ class AddressNotifier extends StateNotifier<AddressState> {
   // Adres sil - Supabase'den sil (soft delete)
   Future<bool> deleteAddress(String addressId) async {
     try {
+      final userId = SupabaseService.currentUser?.id;
+      if (userId == null) return false;
+
       await SupabaseService.client
           .from('saved_locations')
           .update({'is_active': false})
+          .eq('user_id', userId)
           .eq('id', addressId);
 
       final updatedList = state.addresses.where((a) => a.id != addressId).toList();
@@ -299,8 +305,8 @@ class AddressNotifier extends StateNotifier<AddressState> {
         selectedAddressId: newSelectedId,
       );
       return true;
-    } catch (e) {
-      if (kDebugMode) print('Error deleting address: $e');
+    } catch (e, st) {
+      LogService.error('Error deleting address', error: e, stackTrace: st, source: 'AddressProvider:deleteAddress');
       return false;
     }
   }
@@ -321,7 +327,8 @@ class AddressNotifier extends StateNotifier<AddressState> {
       await SupabaseService.client
           .from('saved_locations')
           .update({'is_default': true})
-          .eq('id', addressId);
+          .eq('id', addressId)
+          .eq('user_id', userId);
 
       // Local state güncelle
       final updatedList = state.addresses.map((a) {
@@ -332,8 +339,8 @@ class AddressNotifier extends StateNotifier<AddressState> {
         addresses: updatedList,
         selectedAddressId: addressId,
       );
-    } catch (e) {
-      if (kDebugMode) print('Error setting default address: $e');
+    } catch (e, st) {
+      LogService.error('Error setting default address', error: e, stackTrace: st, source: 'AddressProvider:setDefault');
     }
   }
 }

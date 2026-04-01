@@ -3,12 +3,16 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/merchant_models.dart';
+import '../services/log_service.dart';
 import '../services/supabase_service.dart';
 import '../services/notification_sound_service.dart';
 import '../utils/name_masking.dart';
 
 // Unread Messages Count Provider - lightweight count + realtime events
-final unreadMessagesCountProvider = StreamProvider.family<int, String>((ref, merchantId) {
+final unreadMessagesCountProvider = StreamProvider.family<int, String>((
+  ref,
+  merchantId,
+) {
   final controller = StreamController<int>();
 
   Future<void> loadCount() async {
@@ -26,7 +30,9 @@ final unreadMessagesCountProvider = StreamProvider.family<int, String>((ref, mer
           .eq('sender_type', 'customer')
           .eq('is_read', false);
       if (!controller.isClosed) {
-        controller.add((orderResult as List).length + (storeResult as List).length);
+        controller.add(
+          (orderResult as List).length + (storeResult as List).length,
+        );
       }
     } catch (e) {
       if (!controller.isClosed) controller.add(0);
@@ -37,36 +43,38 @@ final unreadMessagesCountProvider = StreamProvider.family<int, String>((ref, mer
   loadCount();
 
   // Listen for order_messages changes
-  final orderChannel = Supabase.instance.client
-      .channel('unread_order_msgs_$merchantId')
-      .onPostgresChanges(
-        event: PostgresChangeEvent.all,
-        schema: 'public',
-        table: 'order_messages',
-        filter: PostgresChangeFilter(
-          type: PostgresChangeFilterType.eq,
-          column: 'merchant_id',
-          value: merchantId,
-        ),
-        callback: (_) => loadCount(),
-      )
-      .subscribe();
+  final orderChannel =
+      Supabase.instance.client
+          .channel('unread_order_msgs_$merchantId')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'order_messages',
+            filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq,
+              column: 'merchant_id',
+              value: merchantId,
+            ),
+            callback: (_) => loadCount(),
+          )
+          .subscribe();
 
   // Listen for store_messages changes
-  final storeChannel = Supabase.instance.client
-      .channel('unread_store_msgs_$merchantId')
-      .onPostgresChanges(
-        event: PostgresChangeEvent.all,
-        schema: 'public',
-        table: 'store_messages',
-        filter: PostgresChangeFilter(
-          type: PostgresChangeFilterType.eq,
-          column: 'merchant_id',
-          value: merchantId,
-        ),
-        callback: (_) => loadCount(),
-      )
-      .subscribe();
+  final storeChannel =
+      Supabase.instance.client
+          .channel('unread_store_msgs_$merchantId')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'store_messages',
+            filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq,
+              column: 'merchant_id',
+              value: merchantId,
+            ),
+            callback: (_) => loadCount(),
+          )
+          .subscribe();
 
   ref.onDispose(() {
     controller.close();
@@ -129,18 +137,24 @@ class CurrentMerchantNotifier extends StateNotifier<AsyncValue<Merchant?>> {
             ref.read(menuItemsProvider.notifier).loadMenuItems(merchant.id);
           } else {
             ref.read(storeProductsProvider.notifier).loadProducts(merchant.id);
-            ref.read(productCategoriesProvider.notifier).loadCategories(merchant.id);
-            ref.read(stockMovementsProvider.notifier).loadMovements(merchant.id);
+            ref
+                .read(productCategoriesProvider.notifier)
+                .loadCategories(merchant.id);
+            ref
+                .read(stockMovementsProvider.notifier)
+                .loadMovements(merchant.id);
           }
 
           ref.read(reviewsProvider.notifier).loadReviews(merchant.id);
-          ref.read(notificationsProvider.notifier).loadNotifications(merchant.id);
+          ref
+              .read(notificationsProvider.notifier)
+              .loadNotifications(merchant.id);
         });
       } else {
         state = const AsyncValue.data(null);
       }
-    } catch (e) {
-      if (kDebugMode) print('loadMerchantByUserId error: $e');
+    } catch (e, st) {
+      LogService.error('loadMerchantByUserId failed', error: e, stackTrace: st, source: 'MerchantProvider:loadMerchantByUserId');
       state = const AsyncValue.data(null);
     }
   }
@@ -249,7 +263,9 @@ class OrdersNotifier extends StateNotifier<AsyncValue<List<Order>>> {
               callback: (payload) {
                 // Order updated
                 if (kDebugMode) {
-                  print('Realtime order update received: ${payload.newRecord['id']} - status: ${payload.newRecord['status']}');
+                  print(
+                    'Realtime order update received: ${payload.newRecord['id']} - status: ${payload.newRecord['status']}',
+                  );
                 }
                 final updatedOrder = Order.fromJson(payload.newRecord);
                 final oldRecord = payload.oldRecord;
@@ -258,26 +274,33 @@ class OrdersNotifier extends StateNotifier<AsyncValue<List<Order>>> {
                 if (updatedOrder.status == OrderStatus.cancelled &&
                     oldRecord['status'] == 'pending') {
                   // Customer cancelled the order - play general notification sound
-                  NotificationSoundService.playSound(type: NotificationSoundType.general);
+                  NotificationSoundService.playSound(
+                    type: NotificationSoundType.general,
+                  );
 
                   // Add notification
-                  ref.read(notificationsProvider.notifier).addNotification(
-                    MerchantNotification(
-                      id: DateTime.now().millisecondsSinceEpoch.toString(),
-                      type: 'order_cancelled',
-                      title: 'Sipariş İptal Edildi',
-                      message: 'Sipariş #${updatedOrder.orderNumber} müşteri tarafından iptal edildi.',
-                      data: {'order_id': updatedOrder.id},
-                      createdAt: DateTime.now(),
-                    ),
-                  );
+                  ref
+                      .read(notificationsProvider.notifier)
+                      .addNotification(
+                        MerchantNotification(
+                          id: DateTime.now().millisecondsSinceEpoch.toString(),
+                          type: 'order_cancelled',
+                          title: 'Sipariş İptal Edildi',
+                          message:
+                              'Sipariş #${updatedOrder.orderNumber} müşteri tarafından iptal edildi.',
+                          data: {'order_id': updatedOrder.id},
+                          createdAt: DateTime.now(),
+                        ),
+                      );
                 }
 
                 // Check if order was delivered by courier
                 if (updatedOrder.status == OrderStatus.delivered &&
                     oldRecord['status'] != 'delivered') {
                   if (kDebugMode) {
-                    print('Order ${updatedOrder.orderNumber} delivered by courier');
+                    print(
+                      'Order ${updatedOrder.orderNumber} delivered by courier',
+                    );
                   }
                 }
 
@@ -290,7 +313,9 @@ class OrdersNotifier extends StateNotifier<AsyncValue<List<Order>>> {
                     newList[index] = updatedOrder;
                     state = AsyncValue.data(newList);
                     if (kDebugMode) {
-                      print('Order list updated, order ${updatedOrder.id} now has status: ${updatedOrder.status}');
+                      print(
+                        'Order list updated, order ${updatedOrder.id} now has status: ${updatedOrder.status}',
+                      );
                     }
                   }
                 });
@@ -467,7 +492,8 @@ class MenuItemsNotifier extends StateNotifier<AsyncValue<List<MenuItem>>> {
 
       // Resmi yoksa havuzdan otomatik bul
       var itemData = item.toJson();
-      if ((item.imageUrl == null || item.imageUrl!.isEmpty) && item.name.isNotEmpty) {
+      if ((item.imageUrl == null || item.imageUrl!.isEmpty) &&
+          item.name.isNotEmpty) {
         final poolImage = await _checkMenuItemPool(item.name);
         if (poolImage != null) {
           itemData['image_url'] = poolImage;
@@ -475,11 +501,7 @@ class MenuItemsNotifier extends StateNotifier<AsyncValue<List<MenuItem>>> {
       }
 
       final response =
-          await supabase
-              .from('menu_items')
-              .insert(itemData)
-              .select()
-              .single();
+          await supabase.from('menu_items').insert(itemData).select().single();
 
       final newItem = MenuItem.fromJson(response);
       state.whenData((items) {
@@ -509,15 +531,20 @@ class MenuItemsNotifier extends StateNotifier<AsyncValue<List<MenuItem>>> {
   }
 
   /// Toplu menü öğesi ekleme (Excel/CSV import)
-  Future<int> bulkAddMenuItems(List<Map<String, dynamic>> items, String merchantId) async {
+  Future<int> bulkAddMenuItems(
+    List<Map<String, dynamic>> items,
+    String merchantId,
+  ) async {
     try {
       final supabase = ref.read(supabaseClientProvider);
 
       // Havuzdan resim bul (resimsizler için)
       for (int i = 0; i < items.length; i++) {
         final item = items[i];
-        if ((item['image_url'] == null || (item['image_url'] as String? ?? '').isEmpty) &&
-            item['name'] != null && (item['name'] as String).isNotEmpty) {
+        if ((item['image_url'] == null ||
+                (item['image_url'] as String? ?? '').isEmpty) &&
+            item['name'] != null &&
+            (item['name'] as String).isNotEmpty) {
           final poolImage = await _checkMenuItemPool(item['name'] as String);
           if (poolImage != null) {
             items[i] = {...item, 'image_url': poolImage};
@@ -533,7 +560,7 @@ class MenuItemsNotifier extends StateNotifier<AsyncValue<List<MenuItem>>> {
 
       return items.length;
     } catch (e, st) {
-      if (kDebugMode) print('Bulk add menu items error: $e');
+      LogService.error('Bulk add menu items failed', error: e, stackTrace: st, source: 'MenuItemsNotifier:bulkAddMenuItems');
       state = AsyncValue.error(e, st);
       return 0;
     }
@@ -543,17 +570,16 @@ class MenuItemsNotifier extends StateNotifier<AsyncValue<List<MenuItem>>> {
   Future<String?> _checkMenuItemPool(String name) async {
     try {
       final supabase = ref.read(supabaseClientProvider);
-      final result = await supabase.rpc('match_product_image', params: {
-        'p_barcode': null,
-        'p_name': name,
-        'p_brand': null,
-      });
+      final result = await supabase.rpc(
+        'match_product_image',
+        params: {'p_barcode': null, 'p_name': name, 'p_brand': null},
+      );
       if (result != null && result is List && result.isNotEmpty) {
         final imageUrl = result[0]['image_url'] as String?;
         if (imageUrl != null && imageUrl.isNotEmpty) return imageUrl;
       }
-    } catch (e) {
-      if (kDebugMode) print('Menu item pool check error: $e');
+    } catch (e, st) {
+      LogService.error('Menu item pool check failed', error: e, stackTrace: st, source: 'MenuItemsNotifier:_checkMenuItemPool');
     }
     return null;
   }
@@ -621,19 +647,20 @@ class StoreProductsNotifier
 
       // Resmi yoksa havuzdan otomatik bul
       var productData = product.toJson();
-      if ((product.imageUrl == null || product.imageUrl!.isEmpty) && product.name.isNotEmpty) {
-        final poolImage = await _checkSharedPool(product.barcode, product.name, product.brand);
+      if ((product.imageUrl == null || product.imageUrl!.isEmpty) &&
+          product.name.isNotEmpty) {
+        final poolImage = await _checkSharedPool(
+          product.barcode,
+          product.name,
+          product.brand,
+        );
         if (poolImage != null) {
           productData['image_url'] = poolImage;
         }
       }
 
       final response =
-          await supabase
-              .from('products')
-              .insert(productData)
-              .select()
-              .single();
+          await supabase.from('products').insert(productData).select().single();
 
       final newProduct = StoreProduct.fromJson(response);
       state.whenData((products) {
@@ -667,7 +694,11 @@ class StoreProductsNotifier
     }
   }
 
-  Future<void> updateStock(String productId, int newStock, {String? note}) async {
+  Future<void> updateStock(
+    String productId,
+    int newStock, {
+    String? note,
+  }) async {
     state.whenData((products) async {
       final product = products.firstWhere((p) => p.id == productId);
       final previousStock = product.stock;
@@ -676,17 +707,25 @@ class StoreProductsNotifier
 
       // Record stock movement
       final diff = newStock - previousStock;
-      final movementType = diff > 0 ? 'in' : diff < 0 ? 'out' : 'adjustment';
-      ref.read(stockMovementsProvider.notifier).addMovement(
-        merchantId: product.storeId,
-        productId: productId,
-        movementType: movementType,
-        quantity: diff,
-        previousStock: previousStock,
-        newStock: newStock,
-        referenceType: 'manual',
-        note: note ?? (diff > 0 ? 'Manuel stok ekleme' : 'Manuel stok dusme'),
-      );
+      final movementType =
+          diff > 0
+              ? 'in'
+              : diff < 0
+              ? 'out'
+              : 'adjustment';
+      ref
+          .read(stockMovementsProvider.notifier)
+          .addMovement(
+            merchantId: product.storeId,
+            productId: productId,
+            movementType: movementType,
+            quantity: diff,
+            previousStock: previousStock,
+            newStock: newStock,
+            referenceType: 'manual',
+            note:
+                note ?? (diff > 0 ? 'Manuel stok ekleme' : 'Manuel stok dusme'),
+          );
     });
   }
 
@@ -705,10 +744,16 @@ class StoreProductsNotifier
         updatedCount++;
 
         // Record stock movement
-        final product = currentProducts.where((p) => p.id == entry.key).firstOrNull;
+        final product =
+            currentProducts.where((p) => p.id == entry.key).firstOrNull;
         if (product != null) {
           final diff = entry.value - product.stock;
-          final movementType = diff > 0 ? 'in' : diff < 0 ? 'out' : 'adjustment';
+          final movementType =
+              diff > 0
+                  ? 'in'
+                  : diff < 0
+                  ? 'out'
+                  : 'adjustment';
           await supabase.from('stock_movements').insert({
             'merchant_id': product.storeId,
             'product_id': entry.key,
@@ -723,12 +768,13 @@ class StoreProductsNotifier
       }
       // Reload products
       state.whenData((products) {
-        final newList = products.map((p) {
-          if (stockUpdates.containsKey(p.id)) {
-            return p.copyWith(stockQuantity: stockUpdates[p.id]!);
-          }
-          return p;
-        }).toList();
+        final newList =
+            products.map((p) {
+              if (stockUpdates.containsKey(p.id)) {
+                return p.copyWith(stockQuantity: stockUpdates[p.id]!);
+              }
+              return p;
+            }).toList();
         state = AsyncValue.data(newList);
       });
 
@@ -737,8 +783,8 @@ class StoreProductsNotifier
       if (merchant != null) {
         ref.read(stockMovementsProvider.notifier).loadMovements(merchant.id);
       }
-    } catch (e) {
-      if (kDebugMode) print('Bulk update error: $e');
+    } catch (e, st) {
+      LogService.error('Bulk update failed', error: e, stackTrace: st, source: 'StoreProductsNotifier:bulkUpdateStock');
     }
     return updatedCount;
   }
@@ -760,23 +806,28 @@ class StoreProductsNotifier
         // Eslestirme: barkod > SKU > isim (case-insensitive)
         StoreProduct? match;
         if (product.barcode != null && product.barcode!.isNotEmpty) {
-          match = existing.where((e) => e.barcode == product.barcode).firstOrNull;
+          match =
+              existing.where((e) => e.barcode == product.barcode).firstOrNull;
         }
         if (match == null && product.sku != null && product.sku!.isNotEmpty) {
           match = existing.where((e) => e.sku == product.sku).firstOrNull;
         }
-        if (match == null) {
-          match = existing.where(
-            (e) => e.name.trim().toLowerCase() == product.name.trim().toLowerCase(),
-          ).firstOrNull;
-        }
+        match ??=
+            existing
+                .where(
+                  (e) =>
+                      e.name.trim().toLowerCase() ==
+                      product.name.trim().toLowerCase(),
+                )
+                .firstOrNull;
 
         if (match != null) {
           // Mevcut urun → guncelle (sadece degisen alanlari)
           final updates = <String, dynamic>{};
           if (product.price != match.price) updates['price'] = product.price;
           if (product.stock != match.stock) updates['stock'] = product.stock;
-          if (product.description != null && product.description != match.description) {
+          if (product.description != null &&
+              product.description != match.description) {
             updates['description'] = product.description;
           }
           if (product.barcode != null && product.barcode != match.barcode) {
@@ -788,7 +839,8 @@ class StoreProductsNotifier
           if (product.brand != null && product.brand != match.brand) {
             updates['brand'] = product.brand;
           }
-          if (product.categoryId != null && product.categoryId != match.categoryId) {
+          if (product.categoryId != null &&
+              product.categoryId != match.categoryId) {
             updates['category_id'] = product.categoryId;
           }
 
@@ -805,8 +857,10 @@ class StoreProductsNotifier
       // Yeni ürünlerin resimsizleri için havuzdan otomatik resim bul
       for (int i = 0; i < toInsert.length; i++) {
         final item = toInsert[i];
-        if ((item['image_url'] == null || (item['image_url'] as String).isEmpty) &&
-            item['name'] != null && (item['name'] as String).isNotEmpty) {
+        if ((item['image_url'] == null ||
+                (item['image_url'] as String).isEmpty) &&
+            item['name'] != null &&
+            (item['name'] as String).isNotEmpty) {
           final poolImage = await _checkSharedPool(
             item['barcode'] as String?,
             item['name'] as String,
@@ -842,8 +896,8 @@ class StoreProductsNotifier
           _upsertToSharedPool(p);
         }
       }
-    } catch (e) {
-      if (kDebugMode) print('Bulk add error: $e');
+    } catch (e, st) {
+      LogService.error('Bulk add products failed', error: e, stackTrace: st, source: 'StoreProductsNotifier:bulkAddProducts');
     }
     return processedCount;
   }
@@ -861,11 +915,12 @@ class StoreProductsNotifier
       final products = state.valueOrNull ?? [];
 
       // Resimsiz urunleri filtrele
-      final targets = products.where((p) {
-        if (p.imageUrl != null && p.imageUrl!.isNotEmpty) return false;
-        if (productIds != null && !productIds.contains(p.id)) return false;
-        return true;
-      }).toList();
+      final targets =
+          products.where((p) {
+            if (p.imageUrl != null && p.imageUrl!.isNotEmpty) return false;
+            if (productIds != null && !productIds.contains(p.id)) return false;
+            return true;
+          }).toList();
 
       if (targets.isEmpty) return 0;
 
@@ -873,12 +928,17 @@ class StoreProductsNotifier
       const batchSize = 5;
       for (int i = 0; i < targets.length; i += batchSize) {
         final batch = targets.skip(i).take(batchSize).toList();
-        final payload = batch.map((p) => {
-          'id': p.id,
-          'name': p.name,
-          'barcode': p.barcode,
-          'brand': p.brand,
-        }).toList();
+        final payload =
+            batch
+                .map(
+                  (p) => {
+                    'id': p.id,
+                    'name': p.name,
+                    'barcode': p.barcode,
+                    'brand': p.brand,
+                  },
+                )
+                .toList();
 
         try {
           final response = await supabase.functions.invoke(
@@ -887,7 +947,9 @@ class StoreProductsNotifier
           );
 
           if (response.status == 200 && response.data != null) {
-            final results = (response.data['results'] as Map?)?.cast<String, dynamic>() ?? {};
+            final results =
+                (response.data['results'] as Map?)?.cast<String, dynamic>() ??
+                {};
             for (final entry in results.entries) {
               final productId = entry.key;
               final imageUrl = entry.value as String;
@@ -901,8 +963,8 @@ class StoreProductsNotifier
               foundCount++;
             }
           }
-        } catch (e) {
-          if (kDebugMode) print('Auto image batch error: $e');
+        } catch (e, st) {
+          LogService.error('Auto image batch error', error: e, stackTrace: st, source: 'StoreProductsNotifier:autoFetchImages');
         }
 
         onProgress?.call(foundCount, targets.length);
@@ -911,27 +973,30 @@ class StoreProductsNotifier
       // State'i yenile
       final merchant = ref.read(currentMerchantProvider).valueOrNull;
       if (merchant != null) await loadProducts(merchant.id);
-    } catch (e) {
-      if (kDebugMode) print('Auto fetch images error: $e');
+    } catch (e, st) {
+      LogService.error('Auto fetch images failed', error: e, stackTrace: st, source: 'StoreProductsNotifier:autoFetchImages');
     }
     return foundCount;
   }
 
   /// Paylaşılan havuzdan resim bul (barcode exact + name fuzzy)
-  Future<String?> _checkSharedPool(String? barcode, String name, String? brand) async {
+  Future<String?> _checkSharedPool(
+    String? barcode,
+    String name,
+    String? brand,
+  ) async {
     try {
       final supabase = ref.read(supabaseClientProvider);
-      final result = await supabase.rpc('match_product_image', params: {
-        'p_barcode': barcode,
-        'p_name': name,
-        'p_brand': brand,
-      });
+      final result = await supabase.rpc(
+        'match_product_image',
+        params: {'p_barcode': barcode, 'p_name': name, 'p_brand': brand},
+      );
       if (result != null && result is List && result.isNotEmpty) {
         final imageUrl = result[0]['image_url'] as String?;
         if (imageUrl != null && imageUrl.isNotEmpty) return imageUrl;
       }
-    } catch (e) {
-      if (kDebugMode) print('Shared pool check error: $e');
+    } catch (e, st) {
+      LogService.error('Shared pool check failed', error: e, stackTrace: st, source: 'StoreProductsNotifier:_checkSharedPool');
     }
     return null;
   }
@@ -943,15 +1008,18 @@ class StoreProductsNotifier
 
     try {
       final supabase = ref.read(supabaseClientProvider);
-      await supabase.rpc('upsert_shared_product_image', params: {
-        'p_barcode': product.barcode,
-        'p_name': product.name,
-        'p_brand': product.brand,
-        'p_image_url': product.imageUrl,
-        'p_source': 'merchant',
-      });
-    } catch (e) {
-      if (kDebugMode) print('Shared pool upsert error: $e');
+      await supabase.rpc(
+        'upsert_shared_product_image',
+        params: {
+          'p_barcode': product.barcode,
+          'p_name': product.name,
+          'p_brand': product.brand,
+          'p_image_url': product.imageUrl,
+          'p_source': 'merchant',
+        },
+      );
+    } catch (e, st) {
+      LogService.error('Shared pool upsert failed', error: e, stackTrace: st, source: 'StoreProductsNotifier:_upsertToSharedPool');
     }
   }
 
@@ -1011,9 +1079,10 @@ class StockMovement {
       referenceType: json['reference_type'],
       referenceId: json['reference_id'],
       note: json['note'],
-      createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'])
-          : DateTime.now(),
+      createdAt:
+          json['created_at'] != null
+              ? DateTime.parse(json['created_at'])
+              : DateTime.now(),
       productName: product is Map ? product['name'] : null,
     );
   }
@@ -1044,9 +1113,10 @@ class StockMovementsNotifier
           .order('created_at', ascending: false)
           .limit(50);
 
-      final movements = (response as List)
-          .map((json) => StockMovement.fromJson(json))
-          .toList();
+      final movements =
+          (response as List)
+              .map((json) => StockMovement.fromJson(json))
+              .toList();
 
       state = AsyncValue.data(movements);
     } catch (e, st) {
@@ -1080,8 +1150,8 @@ class StockMovementsNotifier
       });
       // Reload
       await loadMovements(merchantId);
-    } catch (e) {
-      if (kDebugMode) print('Stock movement error: $e');
+    } catch (e, st) {
+      LogService.error('Stock movement failed', error: e, stackTrace: st, source: 'StockMovementsNotifier:addMovement');
     }
   }
 }
@@ -1158,21 +1228,20 @@ class ProductCategoriesNotifier
   Future<ProductCategory?> addCategory(String name, String merchantId) async {
     try {
       final supabase = ref.read(supabaseClientProvider);
-      final response = await supabase
-          .from('product_categories')
-          .insert({
-            'name': name,
-            'merchant_id': merchantId,
-          })
-          .select()
-          .single();
+      final response =
+          await supabase
+              .from('product_categories')
+              .insert({'name': name, 'merchant_id': merchantId})
+              .select()
+              .single();
 
       final newCategory = ProductCategory.fromJson(response);
       state.whenData((categories) {
         state = AsyncValue.data([...categories, newCategory]);
       });
       return newCategory;
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Add category failed', error: e, stackTrace: st, source: 'StoreCategoriesNotifier:addCategory');
       return null;
     }
   }
@@ -1186,16 +1255,22 @@ class ProductCategoriesNotifier
           .eq('id', id);
 
       state.whenData((categories) {
-        final updated = categories.map((c) {
-          if (c.id == id) {
-            return ProductCategory(id: c.id, name: name, merchantId: c.merchantId);
-          }
-          return c;
-        }).toList();
+        final updated =
+            categories.map((c) {
+              if (c.id == id) {
+                return ProductCategory(
+                  id: c.id,
+                  name: name,
+                  merchantId: c.merchantId,
+                );
+              }
+              return c;
+            }).toList();
         state = AsyncValue.data(updated);
       });
       return true;
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Update category failed', error: e, stackTrace: st, source: 'StoreCategoriesNotifier:updateCategory');
       return false;
     }
   }
@@ -1209,7 +1284,8 @@ class ProductCategoriesNotifier
         state = AsyncValue.data(categories.where((c) => c.id != id).toList());
       });
       return true;
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Delete category failed', error: e, stackTrace: st, source: 'StoreCategoriesNotifier:deleteCategory');
       return false;
     }
   }
@@ -1229,8 +1305,8 @@ class ProductCategoriesNotifier
       // Update local state
       state = AsyncValue.data(categories);
       return true;
-    } catch (e) {
-      if (kDebugMode) print('Update category order error: $e');
+    } catch (e, st) {
+      LogService.error('Update category order failed', error: e, stackTrace: st, source: 'StoreCategoriesNotifier:updateCategoryOrder');
       return false;
     }
   }
@@ -1350,7 +1426,9 @@ final dashboardStatsProvider = FutureProvider.family<DashboardStats, String>((
 
   final recentReviews = await supabase
       .from('reviews')
-      .select('id, customer_name, courier_rating, service_rating, taste_rating, created_at')
+      .select(
+        'id, customer_name, courier_rating, service_rating, taste_rating, created_at',
+      )
       .eq('merchant_id', merchantId)
       .order('created_at', ascending: false)
       .limit(3);
@@ -1359,7 +1437,11 @@ final dashboardStatsProvider = FutureProvider.family<DashboardStats, String>((
   double calculateRevenue(List<dynamic> orders) {
     return orders
         .where((o) => o['status'] != 'cancelled')
-        .fold(0.0, (sum, o) => sum + ((o['total_amount'] ?? o['total'] ?? 0) as num).toDouble());
+        .fold(
+          0.0,
+          (sum, o) =>
+              sum + ((o['total_amount'] ?? o['total'] ?? 0) as num).toDouble(),
+        );
   }
 
   int countCompleted(List<dynamic> orders) {
@@ -1387,8 +1469,11 @@ final dashboardStatsProvider = FutureProvider.family<DashboardStats, String>((
 
     for (var order in weekOrders) {
       final orderDate = DateTime.parse(order['created_at']);
-      if (orderDate.isAfter(dayStart) && orderDate.isBefore(dayEnd) && order['status'] != 'cancelled') {
-        weeklyRevenue[i] += ((order['total_amount'] ?? order['total'] ?? 0) as num).toDouble();
+      if (orderDate.isAfter(dayStart) &&
+          orderDate.isBefore(dayEnd) &&
+          order['status'] != 'cancelled') {
+        weeklyRevenue[i] +=
+            ((order['total_amount'] ?? order['total'] ?? 0) as num).toDouble();
       }
     }
   }
@@ -1416,8 +1501,11 @@ final dashboardStatsProvider = FutureProvider.family<DashboardStats, String>((
       'created_at': review['created_at'],
     });
   }
-  activities.sort((a, b) =>
-    DateTime.parse(b['created_at']).compareTo(DateTime.parse(a['created_at'])));
+  activities.sort(
+    (a, b) => DateTime.parse(
+      b['created_at'],
+    ).compareTo(DateTime.parse(a['created_at'])),
+  );
 
   return DashboardStats(
     todayOrders: todayOrders.length,
@@ -1427,7 +1515,8 @@ final dashboardStatsProvider = FutureProvider.family<DashboardStats, String>((
     monthOrders: monthOrders.length,
     monthRevenue: calculateRevenue(monthOrders),
     completedOrders: countCompleted(monthOrders),
-    cancelledOrders: monthOrders.where((o) => o['status'] == 'cancelled').length,
+    cancelledOrders:
+        monthOrders.where((o) => o['status'] == 'cancelled').length,
     pendingOrders: pendingOrders.length,
     averageRating: avgRating,
     totalReviews: reviews.length,
@@ -1517,17 +1606,18 @@ class NotificationsNotifier extends StateNotifier<List<MerchantNotification>> {
   Future<void> _loadReadIds(String merchantId) async {
     try {
       final supabase = ref.read(supabaseClientProvider);
-      final result = await supabase
-          .from('merchants')
-          .select('notification_read_ids')
-          .eq('id', merchantId)
-          .single();
+      final result =
+          await supabase
+              .from('merchants')
+              .select('notification_read_ids')
+              .eq('id', merchantId)
+              .single();
       final ids = result['notification_read_ids'] as List<dynamic>?;
       if (ids != null) {
         _readNotificationIds = ids.map((e) => e.toString()).toSet();
       }
-    } catch (e) {
-      debugPrint('_loadReadIds error: $e');
+    } catch (e, st) {
+      LogService.error('Load read IDs failed', error: e, stackTrace: st, source: 'NotificationsNotifier:_loadReadIds');
     }
   }
 
@@ -1542,8 +1632,8 @@ class NotificationsNotifier extends StateNotifier<List<MerchantNotification>> {
           .from('merchants')
           .update({'notification_read_ids': trimmed})
           .eq('id', _merchantId!);
-    } catch (e) {
-      debugPrint('_saveReadIds error: $e');
+    } catch (e, st) {
+      LogService.error('Save read IDs failed', error: e, stackTrace: st, source: 'NotificationsNotifier:_saveReadIds');
     }
   }
 
@@ -1563,7 +1653,9 @@ class NotificationsNotifier extends StateNotifier<List<MerchantNotification>> {
 
       final recentReviews = await supabase
           .from('reviews')
-          .select('id, customer_name, courier_rating, service_rating, taste_rating, comment, created_at')
+          .select(
+            'id, customer_name, courier_rating, service_rating, taste_rating, comment, created_at',
+          )
           .eq('merchant_id', merchantId)
           .order('created_at', ascending: false)
           .limit(10);
@@ -1602,15 +1694,17 @@ class NotificationsNotifier extends StateNotifier<List<MerchantNotification>> {
         }
 
         final notifId = 'order_${order['id']}';
-        notifications.add(MerchantNotification(
-          id: notifId,
-          type: type,
-          title: title,
-          message: message,
-          data: {'order_id': order['id']},
-          isRead: _readNotificationIds.contains(notifId),
-          createdAt: createdAt,
-        ));
+        notifications.add(
+          MerchantNotification(
+            id: notifId,
+            type: type,
+            title: title,
+            message: message,
+            data: {'order_id': order['id']},
+            isRead: _readNotificationIds.contains(notifId),
+            createdAt: createdAt,
+          ),
+        );
       }
 
       // Son yorumlari bildirime cevir
@@ -1623,15 +1717,17 @@ class NotificationsNotifier extends StateNotifier<List<MerchantNotification>> {
         final rating = ((courier + service + taste) / 3).round();
 
         final notifId = 'review_${review['id']}';
-        notifications.add(MerchantNotification(
-          id: notifId,
-          type: 'review',
-          title: 'Yeni Degerlendirme',
-          message: '$customerName - $rating yildiz',
-          data: {'review_id': review['id']},
-          isRead: _readNotificationIds.contains(notifId),
-          createdAt: createdAt,
-        ));
+        notifications.add(
+          MerchantNotification(
+            id: notifId,
+            type: 'review',
+            title: 'Yeni Degerlendirme',
+            message: '$customerName - $rating yildiz',
+            data: {'review_id': review['id']},
+            isRead: _readNotificationIds.contains(notifId),
+            createdAt: createdAt,
+          ),
+        );
       }
 
       // Tarihe gore sirala
@@ -1641,8 +1737,8 @@ class NotificationsNotifier extends StateNotifier<List<MerchantNotification>> {
 
       // Realtime subscription baslat
       _subscribeToNotifications(merchantId);
-    } catch (e) {
-      if (kDebugMode) print('loadNotifications error: $e');
+    } catch (e, st) {
+      LogService.error('loadNotifications failed', error: e, stackTrace: st, source: 'NotificationsNotifier:loadNotifications');
     }
   }
 
@@ -1652,37 +1748,44 @@ class NotificationsNotifier extends StateNotifier<List<MerchantNotification>> {
     final supabase = ref.read(supabaseClientProvider);
 
     // Yeni yorumlari dinle
-    _channel = supabase
-        .channel('notifications_$merchantId')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.insert,
-          schema: 'public',
-          table: 'reviews',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'merchant_id',
-            value: merchantId,
-          ),
-          callback: (payload) {
-            final review = payload.newRecord;
-            final customerName = maskUserName(review['customer_name'] as String?);
-            // Calculate average rating from courier, service, taste
-            final courier = (review['courier_rating'] as num?)?.toDouble() ?? 0;
-            final service = (review['service_rating'] as num?)?.toDouble() ?? 0;
-            final taste = (review['taste_rating'] as num?)?.toDouble() ?? 0;
-            final rating = ((courier + service + taste) / 3).round();
+    _channel =
+        supabase
+            .channel('notifications_$merchantId')
+            .onPostgresChanges(
+              event: PostgresChangeEvent.insert,
+              schema: 'public',
+              table: 'reviews',
+              filter: PostgresChangeFilter(
+                type: PostgresChangeFilterType.eq,
+                column: 'merchant_id',
+                value: merchantId,
+              ),
+              callback: (payload) {
+                final review = payload.newRecord;
+                final customerName = maskUserName(
+                  review['customer_name'] as String?,
+                );
+                // Calculate average rating from courier, service, taste
+                final courier =
+                    (review['courier_rating'] as num?)?.toDouble() ?? 0;
+                final service =
+                    (review['service_rating'] as num?)?.toDouble() ?? 0;
+                final taste = (review['taste_rating'] as num?)?.toDouble() ?? 0;
+                final rating = ((courier + service + taste) / 3).round();
 
-            addNotification(MerchantNotification(
-              id: 'review_${review['id']}',
-              type: 'review',
-              title: 'Yeni Degerlendirme',
-              message: '$customerName - $rating yildiz',
-              data: {'review_id': review['id']},
-              createdAt: DateTime.now(),
-            ));
-          },
-        )
-        .subscribe();
+                addNotification(
+                  MerchantNotification(
+                    id: 'review_${review['id']}',
+                    type: 'review',
+                    title: 'Yeni Degerlendirme',
+                    message: '$customerName - $rating yildiz',
+                    data: {'review_id': review['id']},
+                    createdAt: DateTime.now(),
+                  ),
+                );
+              },
+            )
+            .subscribe();
   }
 
   void addNotification(MerchantNotification notification) {
@@ -1785,23 +1888,50 @@ final financeStatsProvider = FutureProvider.family<FinanceStats, FinanceQuery>((
       break;
   }
 
-  // Platform komisyon oranini al
-  double commissionRate = 15.0; // Varsayilan
+  // Komisyon oranini al (önce merchant override, sonra sektör varsayilani)
+  double commissionRate = 10.0; // Fallback
   try {
-    final commissionData = await supabase
-        .from('platform_commissions')
-        .select('platform_commission_rate')
-        .eq('service_type', serviceType)
-        .eq('is_active', true)
-        .maybeSingle();
+    // Önce merchant-specific override kontrol et
+    final overrideData =
+        await supabase
+            .from('merchant_commission_overrides')
+            .select('custom_rate')
+            .eq('merchant_id', query.merchantId)
+            .maybeSingle();
 
-    if (commissionData != null) {
-      commissionRate = double.tryParse(
-        commissionData['platform_commission_rate']?.toString() ?? '15'
-      ) ?? 15.0;
+    if (overrideData != null) {
+      commissionRate =
+          double.tryParse(
+            overrideData['custom_rate']?.toString() ?? '10',
+          ) ??
+          10.0;
+    } else {
+      // Sektör bazlı varsayılan komisyon oranını al
+      const sectorMap = {
+        'restaurant': 'food',
+        'store': 'store',
+        'market': 'market',
+        'taxi': 'taxi',
+      };
+      final sector = sectorMap[serviceType] ?? 'food';
+      final sectorData =
+          await supabase
+              .from('commission_rates')
+              .select('default_rate')
+              .eq('sector', sector)
+              .eq('is_active', true)
+              .maybeSingle();
+
+      if (sectorData != null) {
+        commissionRate =
+            double.tryParse(
+              sectorData['default_rate']?.toString() ?? '10',
+            ) ??
+            10.0;
+      }
     }
-  } catch (e) {
-    if (kDebugMode) print('Komisyon orani alinamadi: $e');
+  } catch (e, st) {
+    LogService.error('Komisyon orani alinamadi', error: e, stackTrace: st, source: 'financeStatsProvider');
   }
 
   // Tarih araligini hesapla
@@ -1826,7 +1956,9 @@ final financeStatsProvider = FutureProvider.family<FinanceStats, FinanceQuery>((
   // Tum siparisleri al (commission_rate dahil)
   final orders = await supabase
       .from('orders')
-      .select('id, total_amount, status, payment_method, created_at, commission_rate')
+      .select(
+        'id, total_amount, status, payment_method, created_at, commission_rate',
+      )
       .eq('merchant_id', query.merchantId)
       .gte('created_at', startDate.toIso8601String())
       .order('created_at', ascending: false);
@@ -1846,7 +1978,8 @@ final financeStatsProvider = FutureProvider.family<FinanceStats, FinanceQuery>((
     final paymentMethod = order['payment_method'] as String? ?? 'card';
 
     // Siparişin kendi komisyon oranını kullan, yoksa güncel oranı fallback olarak kullan
-    final orderCommissionRate = (order['commission_rate'] as num?)?.toDouble() ?? commissionRate;
+    final orderCommissionRate =
+        (order['commission_rate'] as num?)?.toDouble() ?? commissionRate;
 
     if (status != 'cancelled') {
       totalRevenue += amount;
@@ -1883,10 +2016,13 @@ final financeStatsProvider = FutureProvider.family<FinanceStats, FinanceQuery>((
     final createdAt = DateTime.parse(order['created_at']);
     final dayKey = '${createdAt.day}';
     final amount = ((order['total_amount'] ?? 0) as num).toDouble();
-    final orderCommissionRate = (order['commission_rate'] as num?)?.toDouble() ?? commissionRate;
+    final orderCommissionRate =
+        (order['commission_rate'] as num?)?.toDouble() ?? commissionRate;
 
     dailyRevenue[dayKey] = (dailyRevenue[dayKey] ?? 0) + amount;
-    dailyNetRevenue[dayKey] = (dailyNetRevenue[dayKey] ?? 0) + (amount * (1 - orderCommissionRate / 100));
+    dailyNetRevenue[dayKey] =
+        (dailyNetRevenue[dayKey] ?? 0) +
+        (amount * (1 - orderCommissionRate / 100));
   }
 
   // Son islemleri olustur
@@ -1896,38 +2032,46 @@ final financeStatsProvider = FutureProvider.family<FinanceStats, FinanceQuery>((
     final amount = ((order['total_amount'] ?? 0) as num).toDouble();
     final createdAt = DateTime.parse(order['created_at']);
     final orderId = order['id'] as String? ?? '';
-    final orderCommissionRate = (order['commission_rate'] as num?)?.toDouble() ?? commissionRate;
+    final orderCommissionRate =
+        (order['commission_rate'] as num?)?.toDouble() ?? commissionRate;
 
     if (status != 'cancelled') {
       // Siparis odemesi
-      transactions.add(FinanceTransaction(
-        id: 'TRX-$orderId',
-        description: 'Siparis Odemesi',
-        amount: amount,
-        isIncome: true,
-        status: 'Tamamlandi',
-        date: createdAt,
-      ));
+      transactions.add(
+        FinanceTransaction(
+          id: 'TRX-$orderId',
+          description: 'Siparis Odemesi',
+          amount: amount,
+          isIncome: true,
+          status: 'Tamamlandi',
+          date: createdAt,
+        ),
+      );
 
       // Komisyon kesintisi (siparişin kendi oranıyla)
-      transactions.add(FinanceTransaction(
-        id: 'COM-$orderId',
-        description: 'Komisyon Kesintisi (%${orderCommissionRate.toStringAsFixed(0)})',
-        amount: amount * (orderCommissionRate / 100),
-        isIncome: false,
-        status: 'Tamamlandi',
-        date: createdAt,
-      ));
+      transactions.add(
+        FinanceTransaction(
+          id: 'COM-$orderId',
+          description:
+              'Komisyon Kesintisi (%${orderCommissionRate.toStringAsFixed(0)})',
+          amount: amount * (orderCommissionRate / 100),
+          isIncome: false,
+          status: 'Tamamlandi',
+          date: createdAt,
+        ),
+      );
     } else {
       // Iptal
-      transactions.add(FinanceTransaction(
-        id: 'CNC-$orderId',
-        description: 'Siparis Iptali',
-        amount: amount,
-        isIncome: false,
-        status: 'Iptal',
-        date: createdAt,
-      ));
+      transactions.add(
+        FinanceTransaction(
+          id: 'CNC-$orderId',
+          description: 'Siparis Iptali',
+          amount: amount,
+          isIncome: false,
+          status: 'Iptal',
+          date: createdAt,
+        ),
+      );
     }
   }
 
@@ -1971,7 +2115,8 @@ class FinanceQuery {
           merchantType == other.merchantType;
 
   @override
-  int get hashCode => merchantId.hashCode ^ period.hashCode ^ merchantType.hashCode;
+  int get hashCode =>
+      merchantId.hashCode ^ period.hashCode ^ merchantType.hashCode;
 }
 
 class FinanceStats {
@@ -2003,9 +2148,12 @@ class FinanceStats {
     required this.transactions,
   });
 
-  double get cardPercentage => totalRevenue > 0 ? (cardRevenue / totalRevenue * 100) : 0;
-  double get cashPercentage => totalRevenue > 0 ? (cashRevenue / totalRevenue * 100) : 0;
-  double get transferPercentage => totalRevenue > 0 ? (transferRevenue / totalRevenue * 100) : 0;
+  double get cardPercentage =>
+      totalRevenue > 0 ? (cardRevenue / totalRevenue * 100) : 0;
+  double get cashPercentage =>
+      totalRevenue > 0 ? (cashRevenue / totalRevenue * 100) : 0;
+  double get transferPercentage =>
+      totalRevenue > 0 ? (transferRevenue / totalRevenue * 100) : 0;
 }
 
 class FinanceTransaction {
@@ -2050,14 +2198,16 @@ class ReportsParams {
   int get hashCode => Object.hash(merchantId, startDate, endDate);
 }
 
-final reportsStatsProvider = FutureProvider.family<ReportsStats, ReportsParams>((
-  ref,
-  params,
-) async {
+final reportsStatsProvider = FutureProvider.family<
+  ReportsStats,
+  ReportsParams
+>((ref, params) async {
   final supabase = ref.read(supabaseClientProvider);
   final merchantId = params.merchantId;
   final startDate = params.startDate;
-  final endDate = params.endDate.add(const Duration(days: 1)); // Include end date
+  final endDate = params.endDate.add(
+    const Duration(days: 1),
+  ); // Include end date
 
   // Calculate previous period for comparison (same duration before start date)
   final duration = endDate.difference(startDate);
@@ -2122,7 +2272,8 @@ final reportsStatsProvider = FutureProvider.family<ReportsStats, ReportsParams>(
     final items = order['items'] as List<dynamic>? ?? [];
 
     // Gunluk veriler icin
-    final dayKey = '${createdAt.year}-${createdAt.month.toString().padLeft(2, '0')}-${createdAt.day.toString().padLeft(2, '0')}';
+    final dayKey =
+        '${createdAt.year}-${createdAt.month.toString().padLeft(2, '0')}-${createdAt.day.toString().padLeft(2, '0')}';
 
     if (status != 'cancelled') {
       totalOrders++;
@@ -2158,7 +2309,8 @@ final reportsStatsProvider = FutureProvider.family<ReportsStats, ReportsParams>(
         final itemPrice = ((item['price'] ?? 0) as num).toDouble();
 
         productSales[itemName] = (productSales[itemName] ?? 0) + quantity;
-        productRevenue[itemName] = (productRevenue[itemName] ?? 0) + (itemPrice * quantity);
+        productRevenue[itemName] =
+            (productRevenue[itemName] ?? 0) + (itemPrice * quantity);
       }
     } else {
       cancelledOrders++;
@@ -2181,23 +2333,32 @@ final reportsStatsProvider = FutureProvider.family<ReportsStats, ReportsParams>(
   double averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
 
   // Iptal orani
-  double cancellationRate = (totalOrders + cancelledOrders) > 0
-      ? (cancelledOrders / (totalOrders + cancelledOrders) * 100)
-      : 0;
+  double cancellationRate =
+      (totalOrders + cancelledOrders) > 0
+          ? (cancelledOrders / (totalOrders + cancelledOrders) * 100)
+          : 0;
 
   // En cok satan urunler
-  var sortedProducts = productSales.entries.toList()
-    ..sort((a, b) => b.value.compareTo(a.value));
+  var sortedProducts =
+      productSales.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
 
-  List<TopProduct> topProducts = sortedProducts.take(5).map((e) => TopProduct(
-    name: e.key,
-    quantity: e.value,
-    revenue: productRevenue[e.key] ?? 0,
-  )).toList();
+  List<TopProduct> topProducts =
+      sortedProducts
+          .take(5)
+          .map(
+            (e) => TopProduct(
+              name: e.key,
+              quantity: e.value,
+              revenue: productRevenue[e.key] ?? 0,
+            ),
+          )
+          .toList();
 
   // En cok satan urun
-  String bestSellingProduct = topProducts.isNotEmpty ? topProducts.first.name : '-';
-  int bestSellingQuantity = topProducts.isNotEmpty ? topProducts.first.quantity : 0;
+  String bestSellingProduct =
+      topProducts.isNotEmpty ? topProducts.first.name : '-';
+  int bestSellingQuantity =
+      topProducts.isNotEmpty ? topProducts.first.quantity : 0;
 
   // Ortalama rating - calculate from courier, service, taste ratings
   double averageRating = 0;
@@ -2228,15 +2389,16 @@ final reportsStatsProvider = FutureProvider.family<ReportsStats, ReportsParams>(
 
   // Tekrar eden musteri orani
   // Tekrar eden = onceki donemde de siparis vermis musteriler
-  int repeatCustomers = uniqueCustomers.intersection(prevPeriodCustomers).length;
-  double repeatCustomerRate = uniqueCustomers.isNotEmpty
-      ? (repeatCustomers / uniqueCustomers.length * 100)
-      : 0;
+  int repeatCustomers =
+      uniqueCustomers.intersection(prevPeriodCustomers).length;
+  double repeatCustomerRate =
+      uniqueCustomers.isNotEmpty
+          ? (repeatCustomers / uniqueCustomers.length * 100)
+          : 0;
 
   // Ortalama siparis per musteri
-  double avgOrdersPerCustomer = uniqueCustomers.isNotEmpty
-      ? totalOrders / uniqueCustomers.length
-      : 0;
+  double avgOrdersPerCustomer =
+      uniqueCustomers.isNotEmpty ? totalOrders / uniqueCustomers.length : 0;
 
   // Saatlik siparis dagilimi (10-22 arasi)
   List<int> hourlyDistribution = [];
@@ -2265,11 +2427,13 @@ final reportsStatsProvider = FutureProvider.family<ReportsStats, ReportsParams>(
   // Gunluk veriler listesi olustur
   List<DailyStat> dailyStats = [];
   for (var entry in dailyOrders.entries) {
-    dailyStats.add(DailyStat(
-      date: entry.key,
-      orders: entry.value,
-      revenue: dailyRevenue[entry.key] ?? 0,
-    ));
+    dailyStats.add(
+      DailyStat(
+        date: entry.key,
+        orders: entry.value,
+        revenue: dailyRevenue[entry.key] ?? 0,
+      ),
+    );
   }
   dailyStats.sort((a, b) => a.date.compareTo(b.date));
 
@@ -2304,11 +2468,7 @@ class DailyStat {
   final int orders;
   final double revenue;
 
-  DailyStat({
-    required this.date,
-    required this.orders,
-    required this.revenue,
-  });
+  DailyStat({required this.date, required this.orders, required this.revenue});
 
   double get averageOrderValue => orders > 0 ? revenue / orders : 0;
 }
@@ -2364,7 +2524,9 @@ class ReportsStats {
 
   double get orderChangePercent {
     if (prevPeriodTotalOrders == 0) return totalOrders > 0 ? 100 : 0;
-    return ((totalOrders - prevPeriodTotalOrders) / prevPeriodTotalOrders * 100);
+    return ((totalOrders - prevPeriodTotalOrders) /
+        prevPeriodTotalOrders *
+        100);
   }
 }
 

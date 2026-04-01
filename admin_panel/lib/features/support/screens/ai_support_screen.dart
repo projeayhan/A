@@ -75,6 +75,11 @@ class _AiSupportScreenState extends ConsumerState<AiSupportScreen>
       });
     } catch (e) {
       debugPrint('Error loading sessions: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Oturumlar yüklenemedi: $e'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
@@ -91,6 +96,11 @@ class _AiSupportScreenState extends ConsumerState<AiSupportScreen>
       });
     } catch (e) {
       debugPrint('Error loading knowledge base: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Bilgi tabanı yüklenemedi: $e'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
@@ -106,6 +116,11 @@ class _AiSupportScreenState extends ConsumerState<AiSupportScreen>
       });
     } catch (e) {
       debugPrint('Error loading system prompts: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Sistem promptları yüklenemedi: $e'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
@@ -160,6 +175,11 @@ class _AiSupportScreenState extends ConsumerState<AiSupportScreen>
       });
     } catch (e) {
       debugPrint('Error loading stats: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('İstatistikler yüklenemedi: $e'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
@@ -620,6 +640,7 @@ class _AiSupportScreenState extends ConsumerState<AiSupportScreen>
 
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
+      debugPrint('Error loading session messages: $e');
       return [];
     }
   }

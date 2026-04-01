@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/supabase_service.dart';
+import '../../../shared/widgets/pagination_controls.dart';
 
 // Model
 class CourierVehicleType {
@@ -48,6 +49,9 @@ class CourierVehicleTypesScreen extends ConsumerStatefulWidget {
 }
 
 class _CourierVehicleTypesScreenState extends ConsumerState<CourierVehicleTypesScreen> {
+  int _currentPage = 0;
+  final int _pageSize = 25;
+
   @override
   Widget build(BuildContext context) {
     final typesAsync = ref.watch(courierVehicleTypesProvider);
@@ -125,25 +129,45 @@ class _CourierVehicleTypesScreenState extends ConsumerState<CourierVehicleTypesS
       );
     }
 
+    final totalCount = items.length;
+    final totalPages = (totalCount / _pageSize).ceil().clamp(1, 999999);
+    final from = _currentPage * _pageSize;
+    final to = (from + _pageSize).clamp(0, totalCount);
+    final pageItems = items.sublist(from, to);
+
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.surfaceLight),
       ),
-      child: SingleChildScrollView(
-        child: DataTable(
-          columnSpacing: 32,
-          columns: const [
-            DataColumn(label: Text('ID')),
-            DataColumn(label: Text('Ad')),
-            DataColumn(label: Text('Ikon')),
-            DataColumn(label: Text('Sira')),
-            DataColumn(label: Text('Durum')),
-            DataColumn(label: Text('Islemler')),
-          ],
-          rows: items.map((item) => _buildRow(item)).toList(),
-        ),
+      child: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              child: DataTable(
+                columnSpacing: 32,
+                columns: const [
+                  DataColumn(label: Text('ID')),
+                  DataColumn(label: Text('Ad')),
+                  DataColumn(label: Text('Ikon')),
+                  DataColumn(label: Text('Sira')),
+                  DataColumn(label: Text('Durum')),
+                  DataColumn(label: Text('Islemler')),
+                ],
+                rows: pageItems.map((item) => _buildRow(item)).toList(),
+              ),
+            ),
+          ),
+          PaginationControls(
+            currentPage: _currentPage,
+            totalPages: totalPages,
+            totalCount: totalCount,
+            pageSize: _pageSize,
+            onPrevious: () => setState(() => _currentPage--),
+            onNext: () => setState(() => _currentPage++),
+          ),
+        ],
       ),
     );
   }

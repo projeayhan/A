@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:rent_a_car_panel/core/services/log_service.dart';
 
 /// AI Chat Service for Rent a Car Panel
 class AiChatService {
@@ -31,7 +32,8 @@ class AiChatService {
       } else {
         return {'success': false, 'error': 'AI servisi yanit vermedi'};
       }
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to send AI message', error: e, stackTrace: st, source: 'AiChatService:sendMessage');
       return {'success': false, 'error': e.toString()};
     }
   }
@@ -46,7 +48,8 @@ class AiChatService {
           .order('created_at', ascending: true);
 
       return List<Map<String, dynamic>>.from(response);
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to get chat history', error: e, stackTrace: st, source: 'AiChatService:getChatHistory');
       return [];
     }
   }
@@ -68,7 +71,8 @@ class AiChatService {
           .maybeSingle();
 
       return response?['id'];
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to get active session', error: e, stackTrace: st, source: 'AiChatService:getActiveSessionId');
       return null;
     }
   }
@@ -81,7 +85,8 @@ class AiChatService {
           .update({'status': 'closed'})
           .eq('id', sessionId);
       return true;
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to close session', error: e, stackTrace: st, source: 'AiChatService:closeSession');
       return false;
     }
   }

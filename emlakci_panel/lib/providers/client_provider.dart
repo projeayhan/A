@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/client_model.dart';
 import '../models/client_engagement_model.dart';
 import '../services/client_service.dart';
+import 'package:emlakci_panel/core/services/log_service.dart';
 
 // ============================================
 // CLIENT SERVICE PROVIDER
@@ -76,7 +77,8 @@ class ClientsNotifier extends StateNotifier<ClientsState> {
         status: state.selectedStatus,
       );
       state = state.copyWith(clients: clients, isLoading: false);
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to load clients', error: e, stackTrace: st, source: 'ClientsNotifier:loadClients');
       state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
@@ -85,7 +87,8 @@ class ClientsNotifier extends StateNotifier<ClientsState> {
     try {
       await _service.addClient(data);
       await loadClients();
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to add client', error: e, stackTrace: st, source: 'ClientsNotifier:addClient');
       state = state.copyWith(error: e.toString());
     }
   }
@@ -94,7 +97,8 @@ class ClientsNotifier extends StateNotifier<ClientsState> {
     try {
       await _service.updateClient(id, data);
       await loadClients();
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to update client', error: e, stackTrace: st, source: 'ClientsNotifier:updateClient');
       state = state.copyWith(error: e.toString());
     }
   }
@@ -103,7 +107,8 @@ class ClientsNotifier extends StateNotifier<ClientsState> {
     try {
       await _service.deleteClient(id);
       await loadClients();
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Failed to delete client', error: e, stackTrace: st, source: 'ClientsNotifier:deleteClient');
       state = state.copyWith(error: e.toString());
     }
   }

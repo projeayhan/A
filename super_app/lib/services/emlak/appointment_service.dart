@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:super_app/core/services/log_service.dart';
 
 /// Randevu durumu
 enum AppointmentStatus {
@@ -234,7 +235,8 @@ class AppointmentService {
           .eq('id', appointmentId)
           .eq('owner_id', _userId!);
       return true;
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Error confirming appointment', error: e, stackTrace: st, source: 'AppointmentService:confirmAppointment');
       return false;
     }
   }
@@ -253,7 +255,8 @@ class AppointmentService {
           .eq('id', appointmentId)
           .or('requester_id.eq.$_userId,owner_id.eq.$_userId');
       return true;
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Error cancelling appointment', error: e, stackTrace: st, source: 'AppointmentService:cancelAppointment');
       return false;
     }
   }
@@ -269,7 +272,8 @@ class AppointmentService {
           .eq('id', appointmentId)
           .eq('owner_id', _userId!);
       return true;
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Error completing appointment', error: e, stackTrace: st, source: 'AppointmentService:completeAppointment');
       return false;
     }
   }
@@ -285,7 +289,8 @@ class AppointmentService {
           .eq('id', appointmentId)
           .eq('requester_id', _userId!);
       return true;
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Error deleting appointment', error: e, stackTrace: st, source: 'AppointmentService:deleteAppointment');
       return false;
     }
   }

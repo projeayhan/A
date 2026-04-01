@@ -37,21 +37,21 @@ extension RideStatusExtension on RideStatus {
   String get displayName {
     switch (this) {
       case RideStatus.pending:
-        return 'Surucu Araniyor';
+        return 'Sürücü Aranıyor';
       case RideStatus.accepted:
         return 'Kabul Edildi';
       case RideStatus.arrived:
-        return 'Musteride';
+        return 'Müşteride';
       case RideStatus.inProgress:
         return 'Yolculukta';
       case RideStatus.completed:
-        return 'Tamamlandi';
+        return 'Tamamlandı';
       case RideStatus.cancelledByUser:
-        return 'Musteri Iptal';
+        return 'Müşteri İptal';
       case RideStatus.cancelledByDriver:
-        return 'Surucu Iptal';
+        return 'Sürücü İptal';
       case RideStatus.noDriverFound:
-        return 'Surucu Bulunamadi';
+        return 'Sürücü Bulunamadı';
     }
   }
 
@@ -107,6 +107,7 @@ extension RideStatusExtension on RideStatus {
       case 'completed':
         return RideStatus.completed;
       case 'cancelled_by_user':
+      case 'cancelled':  // super_app compatibility
         return RideStatus.cancelledByUser;
       case 'cancelled_by_driver':
         return RideStatus.cancelledByDriver;
@@ -392,6 +393,9 @@ class EarningsSummary {
   final double week;
   final double month;
   final double total;
+  final double commissionRate;
+  final double commissionAmount;
+  final double netEarnings;
   final int todayRides;
   final int weekRides;
   final int monthRides;
@@ -403,6 +407,9 @@ class EarningsSummary {
     required this.week,
     required this.month,
     required this.total,
+    required this.commissionRate,
+    required this.commissionAmount,
+    required this.netEarnings,
     required this.todayRides,
     required this.weekRides,
     required this.monthRides,
@@ -416,6 +423,9 @@ class EarningsSummary {
       week: (json['week'] as num?)?.toDouble() ?? 0.0,
       month: (json['month'] as num?)?.toDouble() ?? 0.0,
       total: (json['total'] as num?)?.toDouble() ?? 0.0,
+      commissionRate: (json['commission_rate'] as num?)?.toDouble() ?? 20.0,
+      commissionAmount: (json['commission_amount'] as num?)?.toDouble() ?? 0.0,
+      netEarnings: (json['net_earnings'] as num?)?.toDouble() ?? 0.0,
       todayRides: json['today_rides'] as int? ?? 0,
       weekRides: json['week_rides'] as int? ?? 0,
       monthRides: json['month_rides'] as int? ?? 0,
@@ -430,6 +440,9 @@ class EarningsSummary {
       week: 0,
       month: 0,
       total: 0,
+      commissionRate: 20.0,
+      commissionAmount: 0,
+      netEarnings: 0,
       todayRides: 0,
       weekRides: 0,
       monthRides: 0,

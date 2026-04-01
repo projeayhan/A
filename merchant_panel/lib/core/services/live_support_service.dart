@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:merchant_panel/core/services/log_service.dart';
 
 class LiveSupportService {
   static SupabaseClient get _client => Supabase.instance.client;
@@ -81,7 +82,9 @@ class LiveSupportService {
       if (userData != null && userData['full_name'] != null) {
         senderName = userData['full_name'] as String;
       }
-    } catch (_) {}
+    } catch (e, st) {
+      LogService.error('Failed to fetch sender name', error: e, stackTrace: st, source: 'live_support_service:sendMessage');
+    }
 
     await _client.from('ticket_messages').insert({
       'ticket_id': ticketId,

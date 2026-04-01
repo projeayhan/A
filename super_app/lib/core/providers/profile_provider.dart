@@ -8,7 +8,7 @@ final currentUserIdProvider = Provider<String?>((ref) {
 });
 
 // Kullanıcı profili provider
-final userProfileProvider = FutureProvider<UserProfile?>((ref) async {
+final profileDataProvider = FutureProvider<UserProfile?>((ref) async {
   final userId = ref.watch(currentUserIdProvider);
   if (userId == null) return null;
   return await ProfileService.getUserProfile(userId);

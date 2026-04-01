@@ -1,6 +1,6 @@
-import 'package:flutter/foundation.dart';
 import 'supabase_service.dart';
 import '../../models/rental/rental_models.dart';
+import 'package:super_app/core/services/log_service.dart';
 
 class RentalService {
   static final _client = SupabaseService.client;
@@ -32,8 +32,8 @@ class RentalService {
       final response = await query.order('daily_price');
 
       return (response as List).map((car) => _mapToRentalCar(car)).toList();
-    } catch (e) {
-      debugPrint('Error fetching cars: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching cars', error: e, stackTrace: st, source: 'RentalService:getAvailableCars');
       return [];
     }
   }
@@ -66,8 +66,8 @@ class RentalService {
 
       // Çakışan rezervasyonu olmayan araçları filtrele
       return cars.where((car) => !bookedCarIds.contains(car.id)).toList();
-    } catch (e) {
-      debugPrint('Error fetching available cars for dates: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching available cars for dates', error: e, stackTrace: st, source: 'RentalService:getAvailableCarsForDates');
       return [];
     }
   }
@@ -87,8 +87,8 @@ class RentalService {
 
       if (response == null) return null;
       return _mapToRentalCar(response);
-    } catch (e) {
-      debugPrint('Error fetching car: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching car', error: e, stackTrace: st, source: 'RentalService:getCarById');
       return null;
     }
   }
@@ -113,8 +113,8 @@ class RentalService {
         isAirport: loc['is_airport'] ?? false,
         is24Hours: loc['is_24_hours'] ?? false,
       )).toList();
-    } catch (e) {
-      debugPrint('Error fetching locations: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching locations', error: e, stackTrace: st, source: 'RentalService:getLocations');
       return [];
     }
   }
@@ -173,8 +173,8 @@ class RentalService {
       }).select('id').single();
 
       return response['id'] as String;
-    } catch (e) {
-      debugPrint('Error creating booking: $e');
+    } catch (e, st) {
+      LogService.error('Error creating booking', error: e, stackTrace: st, source: 'RentalService:createBooking');
       return null;
     }
   }
@@ -197,8 +197,8 @@ class RentalService {
           .order('created_at', ascending: false);
 
       return (response as List).map((b) => _mapToRentalBooking(b)).toList();
-    } catch (e) {
-      debugPrint('Error fetching bookings: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching bookings', error: e, stackTrace: st, source: 'RentalService:getMyBookings');
       return [];
     }
   }
@@ -206,15 +206,18 @@ class RentalService {
   /// Rezervasyonu iptal eder
   static Future<bool> cancelBooking(String bookingId, String reason) async {
     try {
+      final userId = SupabaseService.currentUser?.id;
+      if (userId == null) throw Exception('User not logged in');
+
       await _client.from('rental_bookings').update({
         'status': 'cancelled',
         'cancellation_reason': reason,
         'cancelled_at': DateTime.now().toIso8601String(),
-      }).eq('id', bookingId);
+      }).eq('id', bookingId).eq('user_id', userId);
 
       return true;
-    } catch (e) {
-      debugPrint('Error cancelling booking: $e');
+    } catch (e, st) {
+      LogService.error('Error cancelling booking', error: e, stackTrace: st, source: 'RentalService:cancelBooking');
       return false;
     }
   }
@@ -238,8 +241,8 @@ class RentalService {
       doors: car['doors'] ?? 4,
       luggage: car['luggage_capacity'] ?? 2,
       dailyPrice: (car['daily_price'] as num?)?.toDouble() ?? 0,
-      weeklyPrice: (car['daily_price'] as num?)?.toDouble() ?? 0 * 6,
-      monthlyPrice: (car['daily_price'] as num?)?.toDouble() ?? 0 * 25,
+      weeklyPrice: ((car['daily_price'] as num?)?.toDouble() ?? 0) * 6,
+      monthlyPrice: ((car['daily_price'] as num?)?.toDouble() ?? 0) * 25,
       imageUrls: car['image_url'] != null ? [car['image_url']] : [],
       thumbnailUrl: car['image_url'] ?? '',
       featureIds: _parseFeatures(car['features']),
@@ -293,8 +296,8 @@ class RentalService {
       case CarCategory.sedan: return 'midsize';
       case CarCategory.suv: return 'suv';
       case CarCategory.luxury: return 'luxury';
-      case CarCategory.sports: return 'luxury';
-      case CarCategory.electric: return 'economy';
+      case CarCategory.sports: return 'sports';
+      case CarCategory.electric: return 'electric';
       case CarCategory.van: return 'van';
     }
   }
@@ -307,6 +310,8 @@ class RentalService {
       case 'fullsize': return CarCategory.sedan;
       case 'suv': return CarCategory.suv;
       case 'luxury': return CarCategory.luxury;
+      case 'sports': return CarCategory.sports;
+      case 'electric': return CarCategory.electric;
       case 'van': return CarCategory.van;
       default: return CarCategory.economy;
     }
@@ -340,7 +345,8 @@ class RentalService {
     if (features is String) {
       try {
         return features.split(',').map((f) => f.trim()).toList();
-      } catch (_) {
+      } catch (e, st) {
+        LogService.error('Error parsing features', error: e, stackTrace: st, source: 'RentalService:_parseFeatures');
         return [];
       }
     }

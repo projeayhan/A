@@ -1,7 +1,7 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/supabase_service.dart';
+import 'package:super_app/core/services/log_service.dart';
 
 class NotificationPreferencesState {
   final bool pushEnabled;
@@ -116,8 +116,8 @@ class NotificationPreferencesNotifier
         await _saveToSupabase();
         state = state.copyWith(isLoading: false);
       }
-    } catch (e) {
-      if (kDebugMode) print('Error loading notification preferences: $e');
+    } catch (e, st) {
+      LogService.error('Error loading notification preferences', error: e, stackTrace: st, source: 'NotificationPreferencesProvider:loadPreferences');
       state = state.copyWith(isLoading: false);
     }
   }
@@ -146,8 +146,8 @@ class NotificationPreferencesNotifier
         'campaigns': state.campaigns,
         'new_features': state.newFeatures,
       }, onConflict: 'user_id');
-    } catch (e) {
-      if (kDebugMode) print('Error saving notification preferences: $e');
+    } catch (e, st) {
+      LogService.error('Error saving notification preferences', error: e, stackTrace: st, source: 'NotificationPreferencesProvider:savePreferences');
     }
   }
 

@@ -24,14 +24,24 @@ class BusinessService {
       query = query.eq('type', sector.merchantTypeFilter!);
     }
 
-    // Status filter
+    // Status filter - merchants tablosunda status yok, is_approved kullanıyor
     if (statusFilter != 'all') {
-      query = query.eq('status', statusFilter);
+      if (sector == SectorType.food || sector == SectorType.market || sector == SectorType.store) {
+        // merchants: is_approved boolean
+        if (statusFilter == 'active') {
+          query = query.eq('is_approved', true);
+        } else if (statusFilter == 'inactive') {
+          query = query.eq('is_approved', false);
+        }
+      } else {
+        query = query.eq('status', statusFilter);
+      }
     }
 
     // Search
     if (searchQuery.isNotEmpty) {
-      query = query.or('name.ilike.%$searchQuery%,email.ilike.%$searchQuery%,phone.ilike.%$searchQuery%');
+      final nameCol = sector.nameField;
+      query = query.or('$nameCol.ilike.%$searchQuery%,email.ilike.%$searchQuery%,phone.ilike.%$searchQuery%');
     }
 
     // Pagination & ordering
@@ -57,6 +67,32 @@ class BusinessService {
         .select()
         .eq(sector.idField, id)
         .maybeSingle();
+
+    if (response == null) return null;
+
+    // Reviews tablosundan canlı puan ortalaması hesapla
+    try {
+      final reviewTable = sector.reviewTableName;
+      final merchantCol = sector.reviewMerchantColumn;
+      if (reviewTable != null && merchantCol != null) {
+        final reviews = await _client
+            .from(reviewTable)
+            .select('rating')
+            .eq(merchantCol, id);
+        final reviewList = List<Map<String, dynamic>>.from(reviews);
+        if (reviewList.isNotEmpty) {
+          double total = 0;
+          for (final r in reviewList) {
+            total += (r['rating'] as num?)?.toDouble() ?? 0;
+          }
+          response['_live_rating'] = total / reviewList.length;
+          response['_live_review_count'] = reviewList.length;
+        }
+      }
+    } catch (_) {
+      // reviews tablosu yoksa veya hata olursa sessizce devam et
+    }
+
     return response;
   }
 
@@ -65,13 +101,68 @@ class BusinessService {
     required SectorType sector,
     required String id,
   }) async {
-    // Placeholder - sektöre göre farklı istatistikler dönecek
-    return {
-      'totalOrders': 0,
-      'totalRevenue': 0.0,
-      'avgRating': 0.0,
-      'reviewCount': 0,
-    };
+    // Fetch real stats from the business record
+    final record = await _client
+        .from(sector.tableName)
+        .select()
+        .eq(sector.idField, id)
+        .maybeSingle();
+
+    if (record == null) {
+      return {
+        'totalOrders': 0,
+        'totalRevenue': 0.0,
+        'avgRating': 0.0,
+        'reviewCount': 0,
+      };
+    }
+
+    switch (sector) {
+      case SectorType.food:
+      case SectorType.market:
+      case SectorType.store:
+        return {
+          'totalOrders': (record['total_orders'] as num?)?.toInt() ?? 0,
+          'totalRevenue': 0.0,
+          'avgRating': (record['rating'] as num?)?.toDouble() ?? 0.0,
+          'reviewCount': (record['review_count'] as num?)?.toInt() ?? 0,
+        };
+      case SectorType.taxi:
+        return {
+          'totalOrders': (record['total_rides'] as num?)?.toInt() ?? 0,
+          'totalRevenue': (record['total_earnings'] as num?)?.toDouble() ?? 0.0,
+          'avgRating': (record['rating'] as num?)?.toDouble() ?? 0.0,
+          'reviewCount': 0,
+        };
+      case SectorType.carRental:
+        return {
+          'totalOrders': (record['total_bookings'] as num?)?.toInt() ?? 0,
+          'totalRevenue': 0.0,
+          'avgRating': (record['rating'] as num?)?.toDouble() ?? 0.0,
+          'reviewCount': (record['review_count'] as num?)?.toInt() ?? 0,
+        };
+      case SectorType.realEstate:
+        return {
+          'totalOrders': ((record['total_sales'] as num?)?.toInt() ?? 0) + ((record['total_rentals'] as num?)?.toInt() ?? 0),
+          'totalRevenue': 0.0,
+          'avgRating': (record['average_rating'] as num?)?.toDouble() ?? 0.0,
+          'reviewCount': (record['total_reviews'] as num?)?.toInt() ?? 0,
+        };
+      case SectorType.carSales:
+        return {
+          'totalOrders': (record['total_listings'] as num?)?.toInt() ?? 0,
+          'totalRevenue': 0.0,
+          'avgRating': (record['average_rating'] as num?)?.toDouble() ?? 0.0,
+          'reviewCount': (record['total_reviews'] as num?)?.toInt() ?? 0,
+        };
+      case SectorType.jobs:
+        return {
+          'totalOrders': (record['active_listings'] as num?)?.toInt() ?? 0,
+          'totalRevenue': 0.0,
+          'avgRating': 0.0,
+          'reviewCount': 0,
+        };
+    }
   }
 }
 

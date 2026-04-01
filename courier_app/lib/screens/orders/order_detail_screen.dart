@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/services/courier_service.dart';
+import '../../core/services/log_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/app_dialogs.dart';
 import 'navigation_map_screen.dart';
@@ -14,7 +16,11 @@ class OrderDetailScreen extends ConsumerStatefulWidget {
   final String orderId;
   final Map<String, dynamic>? initialOrderData;
 
-  const OrderDetailScreen({super.key, required this.orderId, this.initialOrderData});
+  const OrderDetailScreen({
+    super.key,
+    required this.orderId,
+    this.initialOrderData,
+  });
 
   @override
   ConsumerState<OrderDetailScreen> createState() => _OrderDetailScreenState();
@@ -40,8 +46,8 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       _loadOrder();
     }
     _subscribeToOrderUpdates();
-    // Location tracking'i ertele - UI donmasını önle
-    Future.delayed(const Duration(milliseconds: 500), () {
+    // Location tracking'i ilk frame sonrasına ertele - UI donmasını önle
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _startLocationTracking();
     });
   }
@@ -119,8 +125,8 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
               timeLimit: Duration(seconds: 5),
             ),
           );
-        } catch (e) {
-          debugPrint('getCurrentPosition error: $e');
+        } catch (e, st) {
+          LogService.error('getCurrentPosition error', error: e, stackTrace: st, source: 'OrderDetailScreen:_getCurrentLocation');
         }
       }
 
@@ -128,15 +134,17 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
 
       if (_currentPosition != null && mounted) {
         // Konum güncellemeyi arka planda yap, beklemeden devam et
-        unawaited(CourierService.updateLocation(
-          _currentPosition!.latitude,
-          _currentPosition!.longitude,
-        ).then((_) {}).catchError((e) {
-          debugPrint('Location update to server error: $e');
-        }));
+        unawaited(
+          CourierService.updateLocation(
+            _currentPosition!.latitude,
+            _currentPosition!.longitude,
+          ).then((_) {}).catchError((e) {
+            debugPrint('Location update to server error: $e');
+          }),
+        );
       }
-    } catch (e) {
-      debugPrint('Location error: $e');
+    } catch (e, st) {
+      LogService.error('Location error', error: e, stackTrace: st, source: 'OrderDetailScreen:_getCurrentLocation');
     }
   }
 
@@ -148,12 +156,14 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     final destLng = (_order!['delivery_longitude'] as num?)?.toDouble();
 
     if (destLat != null && destLng != null) {
-      _distanceToDestination = Geolocator.distanceBetween(
-        _currentPosition!.latitude,
-        _currentPosition!.longitude,
-        destLat,
-        destLng,
-      ) / 1000;
+      _distanceToDestination =
+          Geolocator.distanceBetween(
+            _currentPosition!.latitude,
+            _currentPosition!.longitude,
+            destLat,
+            destLng,
+          ) /
+          1000;
     }
   }
 
@@ -174,7 +184,8 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
         _isLoading = false;
       });
       _calculateDistance();
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('loadOrder error', error: e, stackTrace: st, source: 'OrderDetailScreen:_loadOrder');
       setState(() => _isLoading = false);
     }
   }
@@ -182,7 +193,10 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
   Future<void> _updateStatus(String newStatus) async {
     setState(() => _isUpdating = true);
     try {
-      final success = await CourierService.updateOrderStatus(widget.orderId, newStatus);
+      final success = await CourierService.updateOrderStatus(
+        widget.orderId,
+        newStatus,
+      );
       if (success) {
         await _loadOrder();
         if (mounted && newStatus == 'delivered') {
@@ -275,6 +289,9 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
 
     final merchant = _order!['merchants'] as Map<String, dynamic>?;
     final status = _order!['status'] as String? ?? '';
+    if (kDebugMode && status.isEmpty) {
+      debugPrint('order_detail: unexpected empty status for ${_order!['id']}');
+    }
     final deliveryStatus = _order!['delivery_status'] as String? ?? '';
     final courierType = _order!['courier_type'] as String? ?? 'platform';
     final isRestaurantCourier = courierType == 'restaurant';
@@ -291,10 +308,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
       appBar: AppBar(
         title: Text(_order!['order_number'] ?? 'Sipariş'),
         actions: [
-          IconButton(
-            onPressed: _loadOrder,
-            icon: const Icon(Icons.refresh),
-          ),
+          IconButton(onPressed: _loadOrder, icon: const Icon(Icons.refresh)),
         ],
       ),
       body: SingleChildScrollView(
@@ -316,9 +330,14 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
 
                   // Distance Info
                   if (_distanceToDestination != null && status != 'delivered')
-                    _buildDistanceCard(status, deliveryStatus, isRestaurantCourier: isRestaurantCourier),
+                    _buildDistanceCard(
+                      status,
+                      deliveryStatus,
+                      isRestaurantCourier: isRestaurantCourier,
+                    ),
 
-                  if (_distanceToDestination != null) const SizedBox(height: 16),
+                  if (_distanceToDestination != null)
+                    const SizedBox(height: 16),
 
                   // MÜŞTERİ KARTI - Sipariş alındıktan sonra aktif
                   _buildLocationCard(
@@ -326,7 +345,8 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                     iconColor: AppColors.error,
                     title: 'Müşteri (Teslimat Noktası)',
                     name: customerName,
-                    address: _order!['delivery_address'] ?? 'Adres belirtilmemiş',
+                    address:
+                        _order!['delivery_address'] ?? 'Adres belirtilmemiş',
                     lat: (_order!['delivery_latitude'] as num?)?.toDouble(),
                     lng: (_order!['delivery_longitude'] as num?)?.toDouble(),
                     phone: customerPhone,
@@ -358,7 +378,8 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                   ],
 
                   // Delivery Instructions
-                  if (deliveryInstructions != null && deliveryInstructions.isNotEmpty) ...[
+                  if (deliveryInstructions != null &&
+                      deliveryInstructions.isNotEmpty) ...[
                     const SizedBox(height: 12),
                     _buildNotesCard(deliveryInstructions),
                   ],
@@ -380,13 +401,15 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                     totalAmount: totalAmount,
                     deliveryFee: deliveryFee,
                     isRestaurantCourier: isRestaurantCourier,
-                    courierEarnings: (_order!['courier_earnings'] as num?)?.toDouble(),
+                    courierEarnings: (_order!['courier_earnings'] as num?)
+                        ?.toDouble(),
                   ),
 
                   const SizedBox(height: 24),
 
                   // Action Buttons
-                  if (status != 'delivered') _buildActionButtons(status, deliveryStatus),
+                  if (status != 'delivered')
+                    _buildActionButtons(status, deliveryStatus),
 
                   const SizedBox(height: 32),
                 ],
@@ -418,7 +441,8 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
   Widget _buildProgressStepper(String status, String deliveryStatus) {
     // Adımlar: Atandı -> Alındı -> Yolda -> Teslim
     int currentStep = 0;
-    if (deliveryStatus == 'assigned' && (status == 'preparing' || status == 'ready')) {
+    if (deliveryStatus == 'assigned' &&
+        (status == 'preparing' || status == 'ready')) {
       currentStep = 0;
     } else if (status == 'picked_up') {
       currentStep = 1;
@@ -458,7 +482,9 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                       Expanded(
                         child: Container(
                           height: 3,
-                          color: isCompleted ? AppColors.success : AppColors.border,
+                          color: isCompleted
+                              ? AppColors.success
+                              : AppColors.border,
                         ),
                       ),
                     Container(
@@ -468,21 +494,25 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                         color: isCompleted
                             ? AppColors.success
                             : isCurrent
-                                ? AppColors.primary
-                                : AppColors.border,
+                            ? AppColors.primary
+                            : AppColors.border,
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
                         step['icon'] as IconData,
                         size: 18,
-                        color: isCompleted || isCurrent ? Colors.white : AppColors.textHint,
+                        color: isCompleted || isCurrent
+                            ? Colors.white
+                            : AppColors.textHint,
                       ),
                     ),
                     if (index < steps.length - 1)
                       Expanded(
                         child: Container(
                           height: 3,
-                          color: isCompleted ? AppColors.success : AppColors.border,
+                          color: isCompleted
+                              ? AppColors.success
+                              : AppColors.border,
                         ),
                       ),
                   ],
@@ -493,7 +523,9 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: isCurrent ? FontWeight.w600 : FontWeight.normal,
-                    color: isCurrent ? AppColors.primary : AppColors.textSecondary,
+                    color: isCurrent
+                        ? AppColors.primary
+                        : AppColors.textSecondary,
                   ),
                 ),
               ],
@@ -504,7 +536,11 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     );
   }
 
-  Widget _buildDistanceCard(String status, String deliveryStatus, {bool isRestaurantCourier = false}) {
+  Widget _buildDistanceCard(
+    String status,
+    String deliveryStatus, {
+    bool isRestaurantCourier = false,
+  }) {
     final estimatedMinutes = (_distanceToDestination! * 3).round();
     // Her zaman müşteriye mesafe göster - ana hedef müşteri
     const destination = 'Müşteriye';
@@ -575,12 +611,14 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     String subtitle;
 
     // Durumu belirle
-    if (deliveryStatus == 'assigned' && (status == 'preparing' || status == 'ready')) {
+    if (deliveryStatus == 'assigned' &&
+        (status == 'preparing' || status == 'ready')) {
       if (status == 'preparing') {
         icon = Icons.hourglass_empty;
         color = AppColors.warning;
         title = 'Sipariş Hazırlanıyor';
-        subtitle = 'Restoran siparişi hazırlıyor, bekleyin veya restorana gidin';
+        subtitle =
+            'Restoran siparişi hazırlıyor, bekleyin veya restorana gidin';
       } else {
         icon = Icons.check_circle_outline;
         color = AppColors.success;
@@ -722,7 +760,10 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
               ),
               if (isActive)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: iconColor,
                     borderRadius: BorderRadius.circular(12),
@@ -870,10 +911,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                 const SizedBox(height: 4),
                 Text(
                   notes,
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
                 ),
               ],
             ),
@@ -892,9 +930,7 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppColors.border),
         ),
-        child: const Center(
-          child: Text('Sipariş içeriği bulunamadı'),
-        ),
+        child: const Center(child: Text('Sipariş içeriği bulunamadı')),
       );
     }
 
@@ -913,7 +949,8 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
           final name = item['name'] as String? ?? 'Ürün';
           final quantity = item['quantity'] as int? ?? 1;
           final price = (item['price'] as num?)?.toDouble() ?? 0;
-          final total = (item['total'] as num?)?.toDouble() ?? (price * quantity);
+          final total =
+              (item['total'] as num?)?.toDouble() ?? (price * quantity);
           final imageUrl = item['image_url'] as String?;
 
           return Column(
@@ -931,7 +968,8 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
                           width: 50,
                           height: 50,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _buildQuantityBadge(quantity),
+                          errorBuilder: (_, _, _) =>
+                              _buildQuantityBadge(quantity),
                         ),
                       )
                     else
@@ -1006,8 +1044,12 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
     required bool isRestaurantCourier,
     double? courierEarnings,
   }) {
-    final methodIcon = paymentMethod == 'card' ? Icons.credit_card : Icons.money;
-    final methodColor = paymentMethod == 'card' ? AppColors.success : AppColors.warning;
+    final methodIcon = paymentMethod == 'card'
+        ? Icons.credit_card
+        : Icons.money;
+    final methodColor = paymentMethod == 'card'
+        ? AppColors.success
+        : AppColors.warning;
 
     // Ödeme durumu metni
     String methodText;
@@ -1065,7 +1107,10 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
               // Nakit ise tahsil edilecek tutarı vurgula
               if (paymentMethod == 'cash')
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.warning.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(8),
@@ -1130,7 +1175,9 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
           ),
           // Kurye kazancı - SADECE platform kuryesi için göster
           // Restoran kuryesi maaşlı personeldir, teslimat başına kazanç almaz
-          if (!isRestaurantCourier && courierEarnings != null && courierEarnings > 0) ...[
+          if (!isRestaurantCourier &&
+              courierEarnings != null &&
+              courierEarnings > 0) ...[
             const Divider(height: 16),
             Container(
               padding: const EdgeInsets.all(12),
@@ -1214,7 +1261,10 @@ class _OrderDetailScreenState extends ConsumerState<OrderDetailScreen> {
         child: ElevatedButton.icon(
           onPressed: () => _updateStatus('picked_up'),
           icon: const Icon(Icons.inventory_2, size: 24),
-          label: const Text('Siparişi Teslim Aldım', style: TextStyle(fontSize: 16)),
+          label: const Text(
+            'Siparişi Teslim Aldım',
+            style: TextStyle(fontSize: 16),
+          ),
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.success,
             padding: const EdgeInsets.symmetric(vertical: 16),

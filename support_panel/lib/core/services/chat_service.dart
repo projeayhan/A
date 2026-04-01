@@ -1,7 +1,7 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:support_panel/core/services/log_service.dart';
 import 'supabase_service.dart';
 import 'support_auth_service.dart';
 
@@ -16,22 +16,30 @@ class ChatService {
 
   ChatService(this._supabase, this._ref);
 
-  /// Get all active chats (tickets with recent messages, assigned to current agent or unassigned)
+  /// Get active chats for the current agent.
+  /// Supervisors and managers see all active chats; L1/L2 agents see only their assigned chats.
   Future<List<Map<String, dynamic>>> getActiveChats() async {
     final agent = _ref.read(currentAgentProvider).value;
     if (agent == null) return [];
 
     try {
-      final response = await _supabase
+      var query = _supabase
           .from('support_tickets')
           .select('*, support_agents!assigned_agent_id(full_name)')
-          .inFilter('status', ['open', 'assigned', 'pending', 'waiting_customer'])
+          .inFilter('status', ['open', 'assigned', 'pending', 'waiting_customer']);
+
+      // Agent isolation: restrict non-supervisor/manager agents to their own assigned chats.
+      if (!agent.isSupervisor && !agent.isManager) {
+        query = query.eq('assigned_agent_id', agent.id);
+      }
+
+      final response = await query
           .order('updated_at', ascending: false)
           .limit(50);
 
       return List<Map<String, dynamic>>.from(response);
-    } catch (e) {
-      if (kDebugMode) print('Error fetching active chats: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching active chats', error: e, stackTrace: st, source: 'ChatService:getActiveChats');
       return [];
     }
   }
@@ -46,7 +54,8 @@ class ChatService {
           .eq('is_read', false)
           .neq('sender_type', 'agent');
       return (response as List).length;
-    } catch (_) {
+    } catch (e, st) {
+      LogService.error('Error fetching unread count', error: e, stackTrace: st, source: 'ChatService:getUnreadCount');
       return 0;
     }
   }
@@ -66,8 +75,8 @@ class ChatService {
           .eq('ticket_id', ticketId)
           .eq('is_read', false)
           .neq('sender_type', 'agent');
-    } catch (e) {
-      if (kDebugMode) print('Error marking messages as read: $e');
+    } catch (e, st) {
+      LogService.error('Error marking messages as read', error: e, stackTrace: st, source: 'ChatService:markMessagesAsRead');
     }
   }
 
@@ -104,8 +113,8 @@ class ChatService {
         'locked_at': DateTime.now().toIso8601String(),
         'expires_at': DateTime.now().add(const Duration(minutes: 5)).toIso8601String(),
       });
-    } catch (e) {
-      if (kDebugMode) print('Error updating collision lock: $e');
+    } catch (e, st) {
+      LogService.error('Error updating collision lock', error: e, stackTrace: st, source: 'ChatService:updateCollisionLock');
     }
   }
 
@@ -120,7 +129,9 @@ class ChatService {
           .delete()
           .eq('ticket_id', ticketId)
           .eq('agent_id', agent.id);
-    } catch (_) {}
+    } catch (e, st) {
+      LogService.error('Error releasing collision lock', error: e, stackTrace: st, source: 'ChatService:releaseCollisionLock');
+    }
   }
 
   /// Check if another agent has the ticket locked
@@ -137,7 +148,8 @@ class ChatService {
           .gt('expires_at', DateTime.now().toIso8601String())
           .maybeSingle();
       return response;
-    } catch (_) {
+    } catch (e, st) {
+      LogService.error('Error checking collision lock', error: e, stackTrace: st, source: 'ChatService:checkCollisionLock');
       return null;
     }
   }
@@ -163,14 +175,17 @@ class ChatService {
   Future<void> incrementCannedResponseUsage(String id) async {
     try {
       await _supabase.rpc('increment_canned_response_usage', params: {'response_id': id});
-    } catch (_) {
+    } catch (e, st) {
+      LogService.error('Error incrementing canned response via RPC', error: e, stackTrace: st, source: 'ChatService:incrementCannedResponseUsage');
       // Fallback: manual increment
       try {
         final current = await _supabase.from('canned_responses').select('usage_count').eq('id', id).single();
         await _supabase.from('canned_responses').update({
           'usage_count': (current['usage_count'] as int? ?? 0) + 1,
         }).eq('id', id);
-      } catch (_) {}
+      } catch (e2, st2) {
+        LogService.error('Error incrementing canned response manually', error: e2, stackTrace: st2, source: 'ChatService:incrementCannedResponseUsage');
+      }
     }
   }
 }

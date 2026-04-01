@@ -34,7 +34,10 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
               padding: const EdgeInsets.only(right: 16),
               child: Center(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.blue,
                     borderRadius: BorderRadius.circular(12),
@@ -98,19 +101,13 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
             const SizedBox(height: 16),
             Text(
               'Henüz mesajınız yok',
-              style: TextStyle(
-                color: Colors.grey[600],
-                fontSize: 16,
-              ),
+              style: TextStyle(color: Colors.grey[600], fontSize: 16),
             ),
             const SizedBox(height: 8),
             Text(
               'İlanlarla ilgili sorularınız olduğunda\nmesajlarınız burada görünecek',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.grey[500],
-                fontSize: 14,
-              ),
+              style: TextStyle(color: Colors.grey[500], fontSize: 14),
             ),
           ],
         ),
@@ -210,10 +207,7 @@ class _ConversationTile extends StatelessWidget {
                     if (conversation.listing != null)
                       Text(
                         conversation.listing!.displayTitle,
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          fontSize: 13,
-                        ),
+                        style: TextStyle(color: Colors.grey[600], fontSize: 13),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -293,7 +287,7 @@ class _ConversationTile extends StatelessWidget {
           width: 56,
           height: 56,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _buildDefaultAvatar(profile),
+          errorBuilder: (_, _, _) => _buildDefaultAvatar(profile),
         ),
       );
     }

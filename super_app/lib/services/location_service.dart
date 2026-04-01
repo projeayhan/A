@@ -1,5 +1,6 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:super_app/core/services/log_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
@@ -72,8 +73,8 @@ class LocationService {
       );
 
       return _lastPosition;
-    } catch (e) {
-      if (kDebugMode) print('Error getting current position: $e');
+    } catch (e, st) {
+      LogService.error('Error getting current position', error: e, stackTrace: st, source: 'LocationService:getCurrentPosition');
       return null;
     }
   }
@@ -109,8 +110,8 @@ class LocationService {
           }
         }
       }
-    } catch (e) {
-      if (kDebugMode) print('Error getting address from coordinates: $e');
+    } catch (e, st) {
+      LogService.error('Error getting address from coordinates', error: e, stackTrace: st, source: 'LocationService:getAddressFromCoordinates');
     }
     return null;
   }
@@ -196,8 +197,8 @@ class LocationService {
           }
         }
       }
-    } catch (e) {
-      if (kDebugMode) print('Error calculating real distance: $e');
+    } catch (e, st) {
+      LogService.error('Error calculating real distance', error: e, stackTrace: st, source: 'LocationService:calculateRealDistance');
     }
     return null;
   }

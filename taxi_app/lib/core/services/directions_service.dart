@@ -1,7 +1,7 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
+import 'log_service.dart';
 
 class DirectionsResult {
   final double distanceMeters;
@@ -49,9 +49,9 @@ class DirectionsService {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
 
-        final distanceMeters = (data['distance_meters'] as num).toDouble();
-        final durationSeconds = (data['duration_seconds'] as num).toInt();
-        final routePointsData = data['route_points'] as List;
+        final distanceMeters = (data['distance_meters'] as num?)?.toDouble() ?? 0.0;
+        final durationSeconds = (data['duration_seconds'] as num?)?.toInt() ?? 0;
+        final routePointsData = (data['route_points'] as List?) ?? const [];
 
         final routePoints = routePointsData.map<LatLng>((point) {
           return LatLng(
@@ -66,10 +66,10 @@ class DirectionsService {
           routePoints: routePoints,
         );
       } else {
-        debugPrint('Directions API error: ${response.statusCode}');
+        LogService.error('Directions API error: ${response.statusCode}', source: 'DirectionsService:getDirections');
       }
-    } catch (e) {
-      debugPrint('Error fetching directions: $e');
+    } catch (e, st) {
+      LogService.error('Error fetching directions', error: e, stackTrace: st, source: 'DirectionsService:getDirections');
     }
 
     return null;

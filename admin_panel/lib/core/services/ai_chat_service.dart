@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:admin_panel/core/services/log_service.dart';
 import 'supabase_service.dart';
 
 enum AiStreamEventType { session, chunk, actions, done, error }
@@ -57,7 +58,8 @@ class AiChatService {
         try {
           final refreshed = await _client.auth.refreshSession();
           return refreshed.session?.accessToken;
-        } catch (_) {
+        } catch (e, st) {
+          LogService.error('Token refresh failed', error: e, stackTrace: st, source: 'ai_chat_service.dart:_getValidAccessToken');
           return null;
         }
       }
@@ -100,7 +102,9 @@ class AiChatService {
           if (newToken != null) {
             return await _invokeAdminAiChat(message, sessionId, accessToken: newToken, generateAudio: generateAudio);
           }
-        } catch (_) {}
+        } catch (e2, st2) {
+          LogService.error('Session refresh failed after 401', error: e2, stackTrace: st2, source: 'ai_chat_service.dart:sendMessage');
+        }
         return {
           'success': false,
           'error': 'Oturum sureniz dolmus. Lutfen tekrar giris yapin.',
@@ -111,7 +115,8 @@ class AiChatService {
         'success': false,
         'error': 'AI servisi hatasi: ${e.details?['message'] ?? e.status}',
       };
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('sendMessage failed', error: e, stackTrace: st, source: 'ai_chat_service.dart:sendMessage');
       return {'success': false, 'error': e.toString()};
     }
   }
@@ -186,7 +191,8 @@ class AiChatService {
         try {
           final json = jsonDecode(responseBody);
           yield AiStreamEvent.error(json['error'] ?? 'HTTP ${response.statusCode}');
-        } catch (_) {
+        } catch (e2, st2) {
+          LogService.error('Failed to parse error response', error: e2, stackTrace: st2, source: 'ai_chat_service.dart:sendMessageStream');
           yield AiStreamEvent.error('HTTP ${response.statusCode}');
         }
         return;
@@ -208,7 +214,8 @@ class AiChatService {
         final event = _parseSseChunk(buffer.trim());
         if (event != null) yield event;
       }
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('Stream connection error', error: e, stackTrace: st, source: 'ai_chat_service.dart:sendMessageStream');
       yield AiStreamEvent.error('Baglanti hatasi: $e');
     } finally {
       client?.close();
@@ -250,7 +257,8 @@ class AiChatService {
         default:
           return null;
       }
-    } catch (_) {
+    } catch (e, st) {
+      LogService.error('SSE chunk parse failed', error: e, stackTrace: st, source: 'ai_chat_service.dart:_parseSseChunk');
       return null;
     }
   }
@@ -265,8 +273,8 @@ class AiChatService {
           .order('created_at', ascending: true);
 
       return List<Map<String, dynamic>>.from(response);
-    } catch (e) {
-      debugPrint('getChatHistory error: $e');
+    } catch (e, st) {
+      LogService.error('getChatHistory error', error: e, stackTrace: st, source: 'ai_chat_service.dart:getChatHistory');
       rethrow;
     }
   }
@@ -287,7 +295,8 @@ class AiChatService {
           .maybeSingle();
 
       return response?['id'];
-    } catch (e) {
+    } catch (e, st) {
+      LogService.error('getActiveSessionId failed', error: e, stackTrace: st, source: 'ai_chat_service.dart:getActiveSessionId');
       return null;
     }
   }
@@ -300,8 +309,8 @@ class AiChatService {
           .update({'status': 'closed', 'closed_at': DateTime.now().toIso8601String()})
           .eq('id', sessionId);
       return true;
-    } catch (e) {
-      debugPrint('closeSession error: $e');
+    } catch (e, st) {
+      LogService.error('closeSession error', error: e, stackTrace: st, source: 'ai_chat_service.dart:closeSession');
       rethrow;
     }
   }
@@ -316,8 +325,8 @@ class AiChatService {
           .order('created_at', ascending: false);
 
       return List<Map<String, dynamic>>.from(response);
-    } catch (e) {
-      debugPrint('getSessionActions error: $e');
+    } catch (e, st) {
+      LogService.error('getSessionActions error', error: e, stackTrace: st, source: 'ai_chat_service.dart:getSessionActions');
       rethrow;
     }
   }

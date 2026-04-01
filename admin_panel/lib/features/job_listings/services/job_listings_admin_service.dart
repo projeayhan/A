@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/services/log_service.dart';
 
 // ==================== MODELS ====================
 
@@ -109,8 +110,6 @@ class JobSkill {
   final String name;
   final String? category;
   final bool isPopular;
-  final bool isActive;
-  final int sortOrder;
   final int usageCount;
   final DateTime? createdAt;
 
@@ -119,8 +118,6 @@ class JobSkill {
     required this.name,
     this.category,
     this.isPopular = false,
-    this.isActive = true,
-    this.sortOrder = 0,
     this.usageCount = 0,
     this.createdAt,
   });
@@ -131,8 +128,6 @@ class JobSkill {
       name: json['name'] as String,
       category: json['category'] as String?,
       isPopular: json['is_popular'] as bool? ?? false,
-      isActive: json['is_active'] as bool? ?? true,
-      sortOrder: json['sort_order'] as int? ?? 0,
       usageCount: json['usage_count'] as int? ?? 0,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
@@ -451,9 +446,9 @@ class JobListingsAdminService {
       return (response as List)
           .map((json) => JobCategory.fromJson(json))
           .toList();
-    } catch (e) {
-      debugPrint('getCategories error: $e');
-      return [];
+    } catch (e, st) {
+      LogService.error('Failed to fetch job categories', error: e, stackTrace: st, source: 'job_listings_admin_service:getCategories');
+      rethrow;
     }
   }
 
@@ -485,9 +480,9 @@ class JobListingsAdminService {
       return (response as List)
           .map((json) => JobSubcategory.fromJson(json))
           .toList();
-    } catch (e) {
-      debugPrint('getSubcategories error: $e');
-      return [];
+    } catch (e, st) {
+      LogService.error('Failed to fetch job subcategories', error: e, stackTrace: st, source: 'job_listings_admin_service:getSubcategories');
+      rethrow;
     }
   }
 
@@ -518,9 +513,9 @@ class JobListingsAdminService {
       return (response as List)
           .map((json) => JobSkill.fromJson(json))
           .toList();
-    } catch (e) {
-      debugPrint('getSkills error: $e');
-      return [];
+    } catch (e, st) {
+      LogService.error('Failed to fetch job skills', error: e, stackTrace: st, source: 'job_listings_admin_service:getSkills');
+      rethrow;
     }
   }
 
@@ -551,9 +546,9 @@ class JobListingsAdminService {
       return (response as List)
           .map((json) => JobBenefit.fromJson(json))
           .toList();
-    } catch (e) {
-      debugPrint('getBenefits error: $e');
-      return [];
+    } catch (e, st) {
+      LogService.error('Failed to fetch job benefits', error: e, stackTrace: st, source: 'job_listings_admin_service:getBenefits');
+      rethrow;
     }
   }
 
@@ -594,9 +589,9 @@ class JobListingsAdminService {
       return (response as List)
           .map((json) => JobListing.fromJson(json))
           .toList();
-    } catch (e) {
-      debugPrint('getListings error: $e');
-      return [];
+    } catch (e, st) {
+      LogService.error('Failed to fetch job listings', error: e, stackTrace: st, source: 'job_listings_admin_service:getListings');
+      rethrow;
     }
   }
 
@@ -663,9 +658,9 @@ class JobListingsAdminService {
       return (response as List)
           .map((json) => Company.fromJson(json))
           .toList();
-    } catch (e) {
-      debugPrint('getCompanies error: $e');
-      return [];
+    } catch (e, st) {
+      LogService.error('Failed to fetch companies', error: e, stackTrace: st, source: 'job_listings_admin_service:getCompanies');
+      rethrow;
     }
   }
 
@@ -703,9 +698,9 @@ class JobListingsAdminService {
       return (response as List)
           .map((json) => JobPromotionPrice.fromJson(json))
           .toList();
-    } catch (e) {
-      debugPrint('getPromotionPrices error: $e');
-      return [];
+    } catch (e, st) {
+      LogService.error('Failed to fetch job promotion prices', error: e, stackTrace: st, source: 'job_listings_admin_service:getPromotionPrices');
+      rethrow;
     }
   }
 
@@ -728,9 +723,9 @@ class JobListingsAdminService {
       return (response as List)
           .map((json) => JobSetting.fromJson(json))
           .toList();
-    } catch (e) {
-      debugPrint('getSettings error: $e');
-      return [];
+    } catch (e, st) {
+      LogService.error('Failed to fetch job settings', error: e, stackTrace: st, source: 'job_listings_admin_service:getSettings');
+      rethrow;
     }
   }
 
@@ -801,9 +796,9 @@ class JobListingsAdminService {
         totalBenefits: (benefits as List).length,
         totalApplications: (applications as List).length,
       );
-    } catch (e) {
-      debugPrint('getDashboardStats error: $e');
-      return JobDashboardStats();
+    } catch (e, st) {
+      LogService.error('Failed to fetch job dashboard stats', error: e, stackTrace: st, source: 'job_listings_admin_service:getDashboardStats');
+      rethrow;
     }
   }
 }
